@@ -1,0 +1,78 @@
+{
+  "name": "reception-panel",
+  "version": "1.2.3",
+  "description": "Panel przekazania zmiany recepcji — Conrad Comfort",
+  "main": "electron/main.cjs",
+  "author": "Conrad Comfort",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_IS_DEV=true electron .\"",
+    "dist": "npm run build && electron-builder --win --x64",
+    "release": "npm run build && electron-builder --win --x64 --publish always"
+  },
+  "dependencies": {
+    "@formkit/auto-animate": "^0.9.0",
+    "@ngrok/ngrok": "^1.7.0",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.8.3",
+    "framer-motion": "^11.0.0",
+    "jspdf": "^2.5.1",
+    "lottie-react": "^2.4.1",
+    "lucide-react": "^0.383.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3",
+    "vite": "^5.4.0",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "pl.conradcomfort.reception",
+    "productName": "Panel Recepcji Conrad Comfort",
+    "copyright": "Copyright © 2026 Conrad Comfort",
+    "publish": {
+      "provider": "github",
+      "owner": "grzankatoster-sketch",
+      "repo": "conrad-comfort-releases",
+      "private": false,
+      "releaseType": "release"
+    },
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Panel Recepcji"
+    }
+  }
+}

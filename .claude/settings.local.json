@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs=require\\(''fs''\\); const code=fs.readFileSync\\(''src/App.jsx'',''utf8''\\); const lines=code.split\\(''\\\\n''\\); console.log\\(''Total lines:'', lines.length\\);\")",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm run:*)",
+      "WebSearch",
+      "Bash(\"C:/Users/grzan/Desktop/trading-ai/venv311/Scripts/python.exe\" \"C:/Users/grzan/Desktop/trading-ai/test_quick.py\")",
+      "Read(//c/Users/grzan/Desktop/trading-ai/**)",
+      "Bash(python test_sections.py)",
+      "Bash(python -m pytest --version)",
+      "Bash(where python:*)",
+      "Bash(git clone:*)",
+      "Bash(venv311/Scripts/python.exe -m api.server)",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s \"http://localhost:8000/scan?bot=scalper&category=meme&top_n=3&min_conf=0.0\")",
+      "Bash(curl -s -X POST http://localhost:8000/train -H 'Content-Type: application/json' -d '{\"symbol\":\"AUTO\",\"bot\":\"scalper\",\"timesteps\":10000,\"resume\":false}')",
+      "Bash(curl -s http://localhost:8000/status)",
+      "Bash(C:/Users/grzan/Desktop/trading-ai/venv311/Scripts/python.exe -c ':*)"
+    ]
+  }
+}

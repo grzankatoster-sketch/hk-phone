@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>HK Panel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e6edf3;min-height:100vh;overscroll-behavior:none}
+.header{background:#161b22;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #30363d;position:sticky;top:0;z-index:10}
+.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0}
+.name{font-size:17px;font-weight:800;flex:1}
+.shift-badge{font-size:10px;padding:3px 8px;border-radius:999px;font-weight:700}
+.tabs{display:flex;background:#161b22;border-bottom:2px solid #30363d;position:sticky;top:66px;z-index:9}
+.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:#484f58;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn.active{color:#6366f1;border-bottom-color:#6366f1}
+.tab-badge{display:inline-block;background:#f59e0b;color:#000;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
+.stats{display:flex;gap:6px;padding:12px 14px;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
+.stat{background:#1c2128;border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
+.stat-n{font-size:18px;font-weight:900}
+.stat-l{font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;margin-top:1px}
+.sections{padding:12px 12px 80px}
+.section-title{font-size:10px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.room-card{background:#1c2128;border-radius:12px;margin-bottom:8px;overflow:hidden;border:1.5px solid #30363d;transition:border-color .2s}
+.room-card.cleaning{border-color:#60a5fa}
+.room-card.done{border-color:#34d399}
+.room-card.skipped{border-color:#a78bfa;opacity:.75}
+.room-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
+.room-no{font-size:26px;font-weight:900;min-width:56px;letter-spacing:-.02em}
+.room-status{font-size:12px;font-weight:700;flex:1;text-transform:uppercase;letter-spacing:.04em}
+.room-dur{font-size:11px;font-weight:700}
+.room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:#21262d;color:#8b949e;font-weight:700}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s;font-family:inherit}
+.btn:active{opacity:.75}
+.btn-blue{background:#2563eb;color:#fff}
+.btn-green{background:#16a34a;color:#fff}
+.btn-amber{background:#d97706;color:#fff}
+.btn-gray{background:#21262d;color:#8b949e;border:1px solid #30363d}
+.report-panel{padding:14px;border-top:1px solid #30363d;display:none}
+.report-panel.open{display:block}
+.report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.report-item{background:#161b22;border-radius:8px;padding:10px 8px;text-align:center}
+.report-label{font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;margin-bottom:6px}
+.report-ctrl{display:flex;align-items:center;justify-content:center;gap:8px}
+.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:#21262d;color:#e6edf3;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.report-ctrl span{font-size:18px;font-weight:900;min-width:22px;text-align:center}
+.extra-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.extra-row input{flex:1;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:7px 10px;color:#e6edf3;font-size:13px;font-family:inherit}
+.add-extra{background:#21262d;border:1px solid #30363d;border-radius:7px;padding:7px 14px;color:#8b949e;font-size:12px;cursor:pointer;font-family:inherit}
+.task-card{background:#1c2128;border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid #f59e0b}
+.task-text{font-size:14px;font-weight:700;margin-bottom:6px}
+.task-meta{font-size:11px;color:#484f58;margin-bottom:8px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c2128;border:1px solid #30363d;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:opacity .3s;white-space:nowrap}
+.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:#484f58;font-size:14px}
+.spinner{width:36px;height:36px;border:3px solid #21262d;border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:40px 20px;color:#484f58}
+.empty-icon{font-size:40px;margin-bottom:12px}
+/* Team tab */
+.team-section{background:#161b22;border:1.5px solid #30363d;border-radius:12px;margin-bottom:10px;overflow:hidden}
+.team-section-title{padding:10px 14px;font-size:10px;font-weight:800;color:#484f58;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid #21262d}
+.worker-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #21262d}
+.worker-row:last-child{border-bottom:none}
+.worker-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0}
+.worker-bar-bg{height:4px;border-radius:999px;background:#21262d;margin-top:4px}
+.worker-bar{height:100%;border-radius:999px;transition:width .3s}
+.log-row{display:flex;align-items:flex-start;gap:9px;padding:8px 14px;border-bottom:1px solid #21262d}
+.log-row:last-child{border-bottom:none}
+.log-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
+.log-text{font-size:12px;font-weight:600;line-height:1.4}
+.log-time{font-size:10px;color:#484f58;margin-top:2px}
+.ex-card{background:#161b22;border:2px solid #f59e0b;border-radius:12px;padding:13px 14px;margin-bottom:10px}
+.ex-title{font-size:13px;font-weight:800;color:#f59e0b;margin-bottom:6px}
+.ex-btns{display:flex;gap:8px;margin-top:10px}
+.ex-accept{flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);color:#f87171;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-accept:active,.ex-reject:active{opacity:.7}
+.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(99,102,241,.35);background:rgba(99,102,241,.08);color:#a5b4fc;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(96,165,250,.35);background:rgba(96,165,250,.08);color:#60a5fa;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.transfer-btn:active,.request-btn:active{opacity:.7}
+.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-size:12px;font-weight:700;margin:3px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+let sb = null;
+const app = document.getElementById("app");
+
+const params  = new URLSearchParams(location.search);
+const WORKER  = params.get("w") || "";
+const TODAY   = new Date().toISOString().split("T")[0];
+
+const COLORS  = ["#6366f1","#f59e0b","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c","#2dd4bf","#e879f9","#facc15"];
+const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
+const wColor  = (name) => COLORS[Math.abs([...(name||"")].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
+
+const LINEN = [
+  {key:"poszwa",label:"Poszwa"},{key:"poszewki",label:"Poszewki"},
+  {key:"przes_sr",label:"Prześ.Śr."},{key:"przes_duze",label:"Prześ.Duże"},
+  {key:"recz_duzy",label:"Ręcz.Duży"},{key:"recz_sredni",label:"Ręcz.Śr."},
+  {key:"dywanik",label:"Dywanik"},{key:"narzuta",label:"Narzuta"},
+  {key:"koldra",label:"Kołdra"},{key:"poduszka",label:"Poduszka"},
+  {key:"podklad",label:"Podkład"}
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let myRooms    = [];
+let myPmRooms  = [];
+let roomStates = {};
+let tasks      = [];
+let openRoom   = null;
+let reports    = {};
+let extraItems = {};
+let isPm       = false;
+let pmRoomTypes = {};
+let activeTab  = "rooms";
+
+// Team state
+let allAssignments = {}; // { workerName: [roomNo, ...] }
+let allRoomStates  = {}; // { roomNo: roomRow }
+let allLogs        = []; // recent hk_logs
+let pendingExchanges = []; // parsed from logs
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function toast(msg, color="#34d399") {
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.style.color = color;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity="0"; setTimeout(()=>el.remove(),300); }, 2200);
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function now() { return new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}); }
+function dur(start, end) {
+  if (!start||!end) return null;
+  return Math.floor((new Date(end)-new Date(start))/60000)+"min";
+}
+function escHtml(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function uid() {
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+}
+
+// ─── Log helper ───────────────────────────────────────────────────────────────
+async function addLog(action, room, extra) {
+  if (!sb) return;
+  await sb.from("hk_logs").insert({ date:TODAY, log_time:now(), worker:WORKER, action, room:room||null, extra:extra||null });
+}
+
+// ─── Room actions ─────────────────────────────────────────────────────────────
+async function startRoom(room) {
+  const started = new Date().toISOString();
+  await sb.from("hk_rooms").upsert({ date:TODAY, room, worker:WORKER, status:"czyszczenie", started_at:started }, {onConflict:"date,room"});
+  await addLog("start", room);
+  roomStates[room] = {...(roomStates[room]||{}), status:"czyszczenie", started_at:started};
+  openRoom = room;
+  render();
+}
+
+async function doneRoom(room) {
+  const done = new Date().toISOString();
+  const report = { ...(reports[room]||{}), extraItems: extraItems[room]||[] };
+  await sb.from("hk_rooms").upsert({ date:TODAY, room, worker:WORKER, status:"czyste", done_at:done, report }, {onConflict:"date,room"});
+  const duration = dur(roomStates[room]?.started_at, done);
+  await addLog("done", room, duration);
+  roomStates[room] = {...(roomStates[room]||{}), status:"czyste", done_at:done, report};
+  openRoom = null;
+  render();
+  toast(`Pokój ${room} — gotowe ✓`);
+}
+
+async function skipRoom(room) {
+  const done = new Date().toISOString();
+  await sb.from("hk_rooms").upsert({ date:TODAY, room, worker:WORKER, status:"pominięte", done_at:done }, {onConflict:"date,room"});
+  await addLog("skip", room);
+  roomStates[room] = {...(roomStates[room]||{}), status:"pominięte", done_at:done};
+  openRoom = null;
+  render();
+  toast(`Pokój ${room} — pominięty`,"#a78bfa");
+}
+
+async function doneTask(id, text) {
+  await sb.from("hk_tasks").update({ status:"done", done_by:WORKER, done_at:new Date().toISOString() }).eq("id", id);
+  await addLog("task_done", null, text);
+  toast("Zadanie zakończone ✓");
+}
+
+// ─── Report helpers ──────────────────────────────────────────────────────────
+function getReport(room) { return reports[room] || (reports[room]={}); }
+function getExtra(room)  { return extraItems[room] || (extraItems[room]=[]); }
+
+function changeCount(room, key, delta) {
+  const r = getReport(room);
+  r[key] = Math.max(0, (r[key]||0) + delta);
+  renderReportPanel(room);
+}
+function addExtraRow(room) {
+  getExtra(room).push({name:"",count:1});
+  renderReportPanel(room);
+}
+function removeExtraRow(room, idx) {
+  getExtra(room).splice(idx,1);
+  renderReportPanel(room);
+}
+
+// ─── Exchange logic ───────────────────────────────────────────────────────────
+function parsePendingExchanges(logs) {
+  const requests = {};
+  const resolved = new Set();
+  logs.forEach(l => {
+    try {
+      if (l.action === "exchange_request") {
+        const d = JSON.parse(l.extra||"{}");
+        if (d.id) requests[d.id] = {...d, worker: l.worker, log_time: l.log_time};
+      }
+      if (l.action === "exchange_accept" || l.action === "exchange_reject") {
+        const d = JSON.parse(l.extra||"{}");
+        if (d.id) resolved.add(d.id);
+      }
+    } catch {}
+  });
+  return Object.values(requests).filter(r => !resolved.has(r.id));
+}
+
+// Tetiana clicks "Przekaż wolne do Kasia" — instant transfer
+async function transferRooms(toWorker) {
+  if (!confirm(`Przekazać wolne pokoje do ${toWorker}?`)) return;
+  const waitingRooms = (allAssignments[WORKER]||[]).filter(no => {
+    const s = allRoomStates[no];
+    return !s || s.status === "W";
+  });
+  if (!waitingRooms.length) { toast("Brak wolnych pokoi","#f87171"); return; }
+
+  const newFromRooms = (allAssignments[WORKER]||[]).filter(no => !waitingRooms.includes(no));
+  const newToRooms   = [...new Set([...(allAssignments[toWorker]||[]), ...waitingRooms])];
+
+  const newAssignments = {...allAssignments, [WORKER]: newFromRooms, [toWorker]: newToRooms};
+
+  // Update hk_plan assignments
+  const {error} = await sb.from("hk_plan")
+    .update({ assignments: newAssignments, updated_at: new Date().toISOString() })
+    .eq("date", TODAY);
+  if (error) { toast("Błąd: "+error.message, "#f87171"); return; }
+
+  // Update hk_rooms worker field for transferred rooms
+  await Promise.all(waitingRooms.map(no =>
+    sb.from("hk_rooms").upsert({ date:TODAY, room:no, worker:toWorker, status:"W" }, {onConflict:"date,room"})
+  ));
+
+  const exId = uid();
+  await addLog("exchange_accept", null, JSON.stringify({id:exId, from:WORKER, to:toWorker, rooms:waitingRooms, note:`${WORKER}→${toWorker} (${waitingRooms.length} pok.)`}));
+
+  toast(`Przekazano ${waitingRooms.length} pokoi do ${toWorker} ✓`);
+  allAssignments = newAssignments;
+  renderTeam();
+}
+
+// Kasia clicks "Poproś Tetianę o pokoje" — sends a request notification
+async function requestRooms(fromWorker) {
+  if (!confirm(`Poprosić ${fromWorker} o przekazanie wolnych pokoi?`)) return;
+  const exId = uid();
+  await sb.from("hk_logs").insert({
+    date: TODAY,
+    log_time: now(),
+    worker: WORKER,
+    action: "exchange_request",
+    room: null,
+    extra: JSON.stringify({ id: exId, from: fromWorker, to: WORKER, requestedBy: WORKER })
+  });
+  toast(`Prośba wysłana do ${fromWorker}`,"#60a5fa");
+}
+
+// Tetiana clicks "Akceptuj" on a request from Kasia
+async function acceptRequest(exId, fromWorker, toWorker) {
+  const waitingRooms = (allAssignments[fromWorker]||[]).filter(no => {
+    const s = allRoomStates[no];
+    return !s || s.status === "W";
+  });
+  if (!waitingRooms.length) { toast("Brak wolnych pokoi","#f87171"); return; }
+
+  const newFromRooms = (allAssignments[fromWorker]||[]).filter(no => !waitingRooms.includes(no));
+  const newToRooms   = [...new Set([...(allAssignments[toWorker]||[]), ...waitingRooms])];
+  const newAssignments = {...allAssignments, [fromWorker]: newFromRooms, [toWorker]: newToRooms};
+
+  const {error} = await sb.from("hk_plan")
+    .update({ assignments: newAssignments, updated_at: new Date().toISOString() })
+    .eq("date", TODAY);
+  if (error) { toast("Błąd: "+error.message,"#f87171"); return; }
+
+  await Promise.all(waitingRooms.map(no =>
+    sb.from("hk_rooms").upsert({ date:TODAY, room:no, worker:toWorker, status:"W" }, {onConflict:"date,room"})
+  ));
+
+  await sb.from("hk_logs").insert({
+    date: TODAY, log_time: now(), worker: WORKER, action: "exchange_accept", room: null,
+    extra: JSON.stringify({ id: exId, from: fromWorker, to: toWorker, rooms: waitingRooms })
+  });
+  toast(`Przekazano pokoje do ${toWorker} ✓`);
+  allAssignments = newAssignments;
+  renderTeam();
+}
+
+async function rejectRequest(exId) {
+  await sb.from("hk_logs").insert({
+    date: TODAY, log_time: now(), worker: WORKER, action: "exchange_reject", room: null,
+    extra: JSON.stringify({ id: exId })
+  });
+  toast("Prośba odrzucona");
+  renderTeam();
+}
+
+// ─── Rooms tab render ─────────────────────────────────────────────────────────
+function render() {
+  if (!WORKER) { app.innerHTML = `<div class="loading"><div class="empty-icon">⚠️</div><div>Brak parametru ?w= w URL</div></div>`; return; }
+
+  const allRooms = [...myRooms, ...myPmRooms];
+  const waiting   = allRooms.filter(r => { const s=roomStates[r]; return !s||s.status==="W"; });
+  const cleaning  = allRooms.filter(r => roomStates[r]?.status==="czyszczenie");
+  const done      = allRooms.filter(r => roomStates[r]?.status==="czyste");
+  const skipped   = allRooms.filter(r => roomStates[r]?.status==="pominięte");
+  const vacated   = allRooms.filter(r => roomStates[r]?.vacated && roomStates[r]?.status==="W");
+  const myTasks   = tasks.filter(t=>t.status==="open"&&(t.target==="all"||t.target==="morning"||t.target===WORKER||(isPm&&t.target==="pm")));
+
+  const pending = parsePendingExchanges(allLogs);
+  const myPending = pending.filter(e => e.from === WORKER || e.to === WORKER);
+
+  let html = `
+  <div class="header">
+    <div class="avatar" style="background:${WCOLOR}">${WORKER.charAt(0).toUpperCase()}</div>
+    <div class="name">${WORKER}</div>
+    <div class="shift-badge" style="background:${isPm?"rgba(167,139,250,.15)":"rgba(52,211,153,.15)"}; color:${isPm?"#a78bfa":"#34d399"}">${isPm?"PM":"Rano"}</div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
+    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">👥 Zespół${myPending.length?`<span class="tab-badge">${myPending.length}</span>`:""}</button>
+  </div>`;
+
+  if (activeTab === "team") {
+    html += renderTeamHtml();
+    app.innerHTML = html;
+    return;
+  }
+
+  // Rooms tab
+  html += `
+  <div class="stats">
+    <div class="stat"><div class="stat-n" style="color:#8b949e">${waiting.length}</div><div class="stat-l">Czeka</div></div>
+    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:#60a5fa">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
+    <div class="stat"><div class="stat-n" style="color:#34d399">${done.length}</div><div class="stat-l">Gotowe</div></div>
+    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:#a78bfa">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
+    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:#f59e0b">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
+    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:#f59e0b">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
+  </div>
+  <div class="sections">`;
+
+  if (myTasks.length) {
+    html += `<div class="section-title">Zadania (${myTasks.length})</div>`;
+    myTasks.forEach(t => {
+      html += `<div class="task-card">
+        <div class="task-text">${escHtml(t.text)}</div>
+        <div class="task-meta">${t.room?"🚪 "+t.room+" · ":""}${escHtml(t.created_by)}</div>
+        <button class="btn btn-green" onclick="doneTask('${t.id}','${escHtml(t.text)}')">✓ Gotowe</button>
+      </div>`;
+    });
+  }
+
+  if (cleaning.length) {
+    html += `<div class="section-title">W trakcie</div>`;
+    cleaning.forEach(r => { html += roomCard(r, "czyszczenie"); });
+  }
+  if (waiting.length) {
+    html += `<div class="section-title">Do sprzątania (${waiting.length})</div>`;
+    waiting.forEach(r => { html += roomCard(r, roomStates[r]?.vacated?"vacated":"W"); });
+  }
+  if (done.length) {
+    html += `<div class="section-title">Gotowe (${done.length})</div>`;
+    done.forEach(r => { html += roomCard(r, "czyste"); });
+  }
+  if (skipped.length) {
+    html += `<div class="section-title">Pominięte (${skipped.length})</div>`;
+    skipped.forEach(r => { html += roomCard(r, "pominięte"); });
+  }
+  if (!allRooms.length) {
+    html += `<div class="empty"><div class="empty-icon">🧹</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:#484f58">Poczekaj na przypisanie przez recepcję.</div></div>`;
+  }
+  html += `</div>`;
+  app.innerHTML = html;
+
+  if (openRoom && roomStates[openRoom]?.status === "czyszczenie") {
+    const panel = document.getElementById(`rp-${openRoom}`);
+    if (panel) { panel.classList.add("open"); renderReportPanel(openRoom); }
+  }
+}
+
+// ─── Team tab render ──────────────────────────────────────────────────────────
+function renderTeam() { render(); }
+
+function renderTeamHtml() {
+  const pending = parsePendingExchanges(allLogs);
+
+  // Exchanges for me
+  const forMe     = pending.filter(e => e.from === WORKER && e.requestedBy && e.requestedBy !== WORKER);
+  const sentByMe  = pending.filter(e => e.requestedBy === WORKER);
+  const myWaiting = (allAssignments[WORKER]||[]).filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; });
+
+  let html = `<div class="sections" style="padding-top:10px">`;
+
+  // ── Pending requests ──
+  if (forMe.length || sentByMe.length) {
+    html += `<div class="section-title">⇄ Wymiany</div>`;
+    forMe.forEach(ex => {
+      html += `<div class="ex-card">
+        <div class="ex-title">← ${escHtml(ex.requestedBy)} prosi o Twoje wolne pokoje</div>
+        <div style="font-size:12px;color:#8b949e">Masz ${myWaiting.length} wolnych pokoi</div>
+        <div class="ex-btns">
+          <button class="ex-accept" onclick="acceptRequest('${escHtml(ex.id)}','${escHtml(WORKER)}','${escHtml(ex.requestedBy)}')">✓ Oddaj pokoje</button>
+          <button class="ex-reject" onclick="rejectRequest('${escHtml(ex.id)}')">✕ Odmów</button>
+        </div></div>`;
+    });
+    sentByMe.forEach(ex => {
+      html += `<div style="background:#1c2128;border:1.5px solid rgba(96,165,250,.3);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:#60a5fa">⏳ Czekasz na odpowiedź od ${escHtml(ex.from)}</div></div>`;
+    });
+  }
+
+  // ── Transfer buttons (I have free rooms) ──
+  if (!sentByMe.length && myWaiting.length > 0) {
+    html += `<div class="section-title">Przekaż wolne pokoje</div>`;
+    Object.keys(allAssignments).filter(w => w !== WORKER).forEach(w => {
+      html += `<button class="transfer-btn" onclick="transferRooms('${escHtml(w)}')">→ Przekaż do ${escHtml(w)} (${myWaiting.length} pok. wolnych)</button>`;
+    });
+  }
+
+  // ── Request buttons (I have 0 free rooms) ──
+  if (!sentByMe.length && myWaiting.length === 0) {
+    const workersWithFree = Object.entries(allAssignments).filter(([w, rooms]) => {
+      if (w === WORKER) return false;
+      return rooms.some(no => { const s=allRoomStates[no]; return !s||s.status==="W"; });
+    });
+    if (workersWithFree.length) {
+      html += `<div class="section-title">Poproś o pokoje</div>`;
+      workersWithFree.forEach(([w, rooms]) => {
+        const free = rooms.filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; }).length;
+        html += `<button class="request-btn" onclick="requestRooms('${escHtml(w)}')">← Poproś ${escHtml(w)} o pokoje (ma ${free} wolnych)</button>`;
+      });
+    }
+  }
+
+  // ── Worker progress ──
+  html += `<div class="section-title">Postęp zespołu</div><div class="team-section">`;
+  const workers = Object.keys(allAssignments);
+  if (!workers.length) {
+    html += `<div style="padding:12px 14px;color:#484f58;font-size:12px">Brak danych o pracownikach</div>`;
+  } else {
+    workers.forEach(w => {
+      const rooms = allAssignments[w] || [];
+      const done  = rooms.filter(no => allRoomStates[no]?.status === "czyste").length;
+      const free  = rooms.filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; }).length;
+      const pct   = rooms.length ? Math.round(done/rooms.length*100) : 0;
+      const isMe  = w === WORKER;
+      const startLog = allLogs.slice().reverse().find(l => l.worker===w && l.action==="start");
+      const startTxt = startLog ? startLog.log_time : "—";
+      html += `<div class="worker-row" style="${isMe?"background:rgba(99,102,241,.06)":""}">
+        <div class="worker-av" style="background:${wColor(w)}">${w.charAt(0).toUpperCase()}</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-size:13px;font-weight:${isMe?900:700};color:#e6edf3">${escHtml(w)}${isMe?" <span style='font-size:10px;color:#6366f1'>Ty</span>":""}</span>
+            <span style="font-size:13px;font-weight:900;color:#34d399">${done}/${rooms.length}</span>
+          </div>
+          <div class="worker-bar-bg"><div class="worker-bar" style="width:${pct}%;background:${wColor(w)}"></div></div>
+          <div style="font-size:10px;color:#484f58;margin-top:3px">start: ${startTxt} · ${free} wolnych</div>
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+
+  // ── Vacated rooms ──
+  const vacatedNos = Object.entries(allRoomStates)
+    .filter(([,r]) => r.vacated && r.status==="W")
+    .map(([no]) => no);
+  if (vacatedNos.length) {
+    html += `<div class="section-title">🔔 Puste pokoje (czekają)</div>
+    <div class="team-section"><div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px">
+    ${vacatedNos.map(no=>`<span class="vac-pill">${escHtml(no)}</span>`).join("")}
+    </div></div>`;
+  }
+
+  // ── Activity feed ──
+  const LOG_TEXT = {
+    start:            l => `${escHtml(l.worker)} zaczyna pok. ${escHtml(l.room)}`,
+    done:             l => `${escHtml(l.worker)} skończyła pok. ${escHtml(l.room)}`,
+    skip:             l => `${escHtml(l.worker)} — goście nie chcieli (${escHtml(l.room)})`,
+    vacate:           l => `Recepcja: pok. ${escHtml(l.room)} pusty`,
+    task_done:        l => `${escHtml(l.worker)}: zadanie`,
+    exchange_accept:  l => { try{ const d=JSON.parse(l.extra||"{}"); return `⇄ ${escHtml(d.from||l.worker)} → ${escHtml(d.to||"")} (${(d.rooms||[]).length} pok.)`; }catch{return "wymiana";} },
+    exchange_reject:  l => `${escHtml(l.worker)} odrzucił/a wymianę`,
+    exchange_request: l => { try{ const d=JSON.parse(l.extra||"{}"); return `${escHtml(l.worker)} prosi o pokoje od ${escHtml(d.from||"")}`; }catch{return "prośba o pokoje";} },
+  };
+  const LOG_COLOR = { start:"#60a5fa", done:"#34d399", skip:"#f59e0b", vacate:"#a78bfa", task_done:"#34d399", exchange_accept:"#34d399", exchange_reject:"#f87171", exchange_request:"#f59e0b" };
+
+  const recentLogs = allLogs.slice(-25).reverse();
+  if (recentLogs.length) {
+    html += `<div class="section-title">Aktywność dziś</div><div class="team-section">`;
+    recentLogs.forEach((l,i) => {
+      const c = LOG_COLOR[l.action] || "#8b949e";
+      const fn = LOG_TEXT[l.action];
+      const txt = fn ? fn(l) : escHtml(l.worker)+" "+escHtml(l.action);
+      html += `<div class="log-row">
+        <div class="log-icon" style="background:${c}22;color:${c}">●</div>
+        <div><div class="log-text" style="color:#e6edf3">${txt}</div><div class="log-time">${escHtml(l.log_time)}</div></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  return html;
+}
+
+function switchTab(t) {
+  activeTab = t;
+  if (t === "team") loadTeamData().then(render);
+  else render();
+}
+
+// ─── Room card ────────────────────────────────────────────────────────────────
+function roomCard(no, status) {
+  const rs    = roomStates[no] || {};
+  const isOpen = openRoom === no;
+  const pm    = myPmRooms.includes(no);
+  const pmt   = pmRoomTypes[no];
+
+  const colors = { W:"#8b949e", czyszczenie:"#60a5fa", czyste:"#34d399", "pominięte":"#a78bfa", vacated:"#f59e0b" };
+  const labels = { W:"Czeka", czyszczenie:"Sprząta", czyste:"Czyste ✓", "pominięte":"Pominięte", vacated:"Pokój pusty" };
+  const col = colors[status] || "#8b949e";
+  const lbl = labels[status] || "Czeka";
+  const duration = (status==="czyste"||status==="czyszczenie") ? dur(rs.started_at, rs.done_at||new Date().toISOString()) : null;
+
+  let buttons = "";
+  if (status === "W" || status === "vacated") {
+    buttons = `<button class="btn btn-blue" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>`;
+    if (status === "vacated") buttons = `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px;font-size:12px;color:#f59e0b;font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
+  } else if (status === "czyszczenie") {
+    buttons = `
+      <button class="btn btn-green" style="margin-bottom:8px" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>
+      <div id="rp-${no}" class="report-panel"></div>
+      <button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
+  }
+
+  return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
+    <div class="room-head" onclick="toggleRoom('${no}')">
+      <div class="room-no" style="color:${col}">${no}</div>
+      <div class="room-status" style="color:${col}">${lbl}</div>
+      ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
+      ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
+    </div>
+    ${buttons ? `<div style="padding:0 12px 12px">${buttons}</div>` : ""}
+  </div>`;
+}
+
+function toggleRoom(no) {
+  openRoom = openRoom === no ? null : no;
+  render();
+}
+function toggleReport(no) {
+  const panel = document.getElementById(`rp-${no}`);
+  if (!panel) return;
+  panel.classList.toggle("open");
+  if (panel.classList.contains("open")) renderReportPanel(no);
+}
+
+function renderReportPanel(room) {
+  const panel = document.getElementById(`rp-${room}`);
+  if (!panel) return;
+  const r = getReport(room);
+  const ex = getExtra(room);
+
+  let html = `<div class="report-grid">`;
+  LINEN.forEach(f => {
+    html += `<div class="report-item">
+      <div class="report-label">${f.label}</div>
+      <div class="report-ctrl">
+        <button onclick="changeCount('${room}','${f.key}',-1)">−</button>
+        <span>${r[f.key]||0}</span>
+        <button onclick="changeCount('${room}','${f.key}',1)">+</button>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  html += `<div style="font-size:11px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Dodatkowe pozycje</div>`;
+  ex.forEach((it,idx) => {
+    html += `<div class="extra-row">
+      <input placeholder="Nazwa…" value="${escHtml(it.name)}" oninput="getExtra('${room}')[${idx}].name=this.value"/>
+      <div class="report-ctrl" style="flex-shrink:0">
+        <button onclick="getExtra('${room}')[${idx}].count=Math.max(0,(getExtra('${room}')[${idx}].count||1)-1);renderReportPanel('${room}')">−</button>
+        <span>${it.count||0}</span>
+        <button onclick="getExtra('${room}')[${idx}].count=(getExtra('${room}')[${idx}].count||0)+1;renderReportPanel('${room}')">+</button>
+      </div>
+      <button onclick="removeExtraRow('${room}',${idx})" style="background:#21262d;border:1px solid #30363d;border-radius:7px;padding:6px 10px;color:#f87171;cursor:pointer">✕</button>
+    </div>`;
+  });
+  html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
+  html += `<button class="btn btn-green" onclick="doneRoom('${room}')">✓ Gotowe — zatwierdź raport</button>`;
+  panel.innerHTML = html;
+}
+
+// ─── Team data load ───────────────────────────────────────────────────────────
+async function loadTeamData() {
+  if (!sb) return;
+  const [{ data: plan }, { data: rData }, { data: lData }] = await Promise.all([
+    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single(),
+    sb.from("hk_rooms").select("*").eq("date", TODAY),
+    sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
+  ]);
+
+  if (plan) {
+    allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
+  }
+  if (rData) {
+    allRoomStates = {};
+    rData.forEach(r => { allRoomStates[r.room] = r; });
+  }
+  if (lData) allLogs = lData;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  if (!WORKER) { render(); return; }
+  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:#f87171">Brak konfiguracji Supabase.</div>'; return; }
+  app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
+
+  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single();
+  if (plan) {
+    myRooms   = (plan.assignments   || {})[WORKER] || [];
+    myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
+    pmRoomTypes = plan.pm_room_types || {};
+    isPm = myPmRooms.length > 0 && myRooms.length === 0;
+    allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
+  }
+
+  const allRooms = [...myRooms, ...myPmRooms];
+  if (allRooms.length) {
+    const { data: rData } = await sb.from("hk_rooms").select("*").eq("date", TODAY);
+    if (rData) {
+      rData.forEach(r => { roomStates[r.room] = r; allRoomStates[r.room] = r; });
+    }
+  }
+
+  const { data: tData } = await sb.from("hk_tasks").select("*").eq("date", TODAY).order("created_at");
+  if (tData) tasks = tData;
+
+  const { data: lData } = await sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at");
+  if (lData) allLogs = lData;
+
+  render();
+
+  // Realtime
+  const allMyRooms = [...myRooms, ...myPmRooms];
+  sb.channel(`phone-${WORKER}-${TODAY}`)
+    .on("postgres_changes",{event:"*",schema:"public",table:"hk_rooms",filter:`date=eq.${TODAY}`}, ({new:row})=>{
+      if (!row) return;
+      if (row.worker === WORKER && !allMyRooms.includes(row.room)) {
+        myRooms.push(row.room);
+        allMyRooms.push(row.room);
+      }
+      roomStates[row.room]    = row;
+      allRoomStates[row.room] = row;
+      render();
+    })
+    .on("postgres_changes",{event:"*",schema:"public",table:"hk_tasks",filter:`date=eq.${TODAY}`}, ({new:row,old,eventType})=>{
+      if (eventType==="INSERT") tasks=[row,...tasks];
+      else if (eventType==="UPDATE") tasks=tasks.map(t=>t.id===row.id?row:t);
+      else if (eventType==="DELETE") tasks=tasks.filter(t=>t.id!==old.id);
+      render();
+    })
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"hk_plan",filter:`date=eq.${TODAY}`}, async ({new:row})=>{
+      const newRooms   = (row.assignments   ||{})[WORKER] || [];
+      const newPmRooms = (row.pm_assignments||{})[WORKER] || [];
+      allAssignments = {...(row.assignments||{}), ...(row.pm_assignments||{})};
+      if (JSON.stringify(newRooms)!==JSON.stringify(myRooms)||JSON.stringify(newPmRooms)!==JSON.stringify(myPmRooms)) {
+        myRooms=newRooms; myPmRooms=newPmRooms; pmRoomTypes=row.pm_room_types||{};
+        isPm=myPmRooms.length>0&&myRooms.length===0;
+        const all=[...myRooms,...myPmRooms];
+        if (all.length) {
+          const {data}=await sb.from("hk_rooms").select("*").eq("date",TODAY).in("room",all);
+          if (data) data.forEach(r=>{ roomStates[r.room]=r; allRoomStates[r.room]=r; });
+        }
+        toast("Recepcja zaktualizowała plan","#60a5fa");
+      }
+      render();
+    })
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"hk_logs",filter:`date=eq.${TODAY}`}, ({new:row})=>{
+      if (!row) return;
+      allLogs = [...allLogs, row];
+      // Powiadomienie o prośbie wymiany
+      if (row.action==="exchange_request") {
+        try {
+          const d = JSON.parse(row.extra||"{}");
+          if (d.from === WORKER) toast(`${escHtml(row.worker)} prosi Cię o pokoje!`,"#f59e0b");
+        } catch {}
+      }
+      render();
+    })
+    .subscribe();
+}
+
+(async()=>{
+  sb = supabase.createClient(
+    "https://pjgcaujndvjvicqsdcns.supabase.co",
+    "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb"
+  );
+  init();
+})();
+</script>
+</body>
+</html>

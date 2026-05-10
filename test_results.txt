@@ -1,0 +1,20 @@
+Test run: 2026-04-06 12:05:22
+Passed: 17/17
+
+OK  [  5.0s] config: device=cuda stocks=122 meme=55
+OK  [  4.2s] fetcher_init: OK
+OK  [  0.0s] indicators: 74 feature columns
+OK  [  3.8s] fetch_btc_3d: 864 candles, last price $69,820.74
+OK  [  4.1s] compute_indicators: 864 candles, 80 indicators
+OK  [  0.0s] signal_detection: action=WAIT conf=67% entry=$69820.74
+OK  [ 16.3s] train_10k_steps: model saved as ppo_test.zip
+OK  [  0.0s] predict: action=BUY conf=36%
+OK  [  0.6s] evaluate: avg_equity=1.0381
+OK  [  0.0s] database: saved + loaded 50 candles
+OK  [  4.7s] risk_manager: capital=$1000.00 (start=$1000)
+OK  [  8.2s] scan_3_symbols: BTC/USDT:WAIT:58% | ETH/USDT:WAIT:58% | SOL/USDT:WAIT:33%
+OK  [  0.0s] saved_predictions: save/load/delete OK | action=BUY entry=$69820.74 result=PENDING
+OK  [  0.0s] watchlist_sizes: stocks=122 crypto=75 meme=55 etf=73 total=325
+OK  [  0.0s] news_sentiment_analyzer: 3/3 correct | e.g. 'beats earnings' = POSITIVE
+OK  [  3.1s] news_rss_fetch: NEUTRAL score=-0.011 n=20 | 'It's 'time to jump in' with Palantir and these 2 stock picks...'
+OK  [  0.3s] websocket_and_endpoints: WebSocket OK + 34 endpointów zarejestrowanych
