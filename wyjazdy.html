@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#161b22"/>
+<title>Wyjazdy PG/PGZ • HK</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#e6edf3;min-height:100vh;overscroll-behavior:none}
+.hdr{background:#161b22;padding:14px 16px;border-bottom:2px solid #30363d;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:#34d399;flex-shrink:0}.dot.off{background:#f87171}
+.hdr-title{font-size:17px;font-weight:800}.hdr-sub{font-size:11px;color:#8b949e;margin-top:2px}
+.sync{font-size:10px;color:#484f58}
+.summary{padding:14px 16px;display:flex;gap:10px;border-bottom:1px solid #21262d;background:#0d1117}
+.sbox{flex:1;background:#161b22;border:1.5px solid #30363d;border-radius:12px;padding:10px 12px;text-align:center}
+.sbox .l{font-size:10px;font-weight:800;color:#8b949e;letter-spacing:.08em;text-transform:uppercase}
+.sbox .v{font-size:26px;font-weight:900;margin-top:4px}
+.sbox.pg .v{color:#f59e0b}.sbox.pgz .v{color:#a78bfa}.sbox.tot .v{color:#34d399}
+.legend{padding:8px 16px 0;color:#8b949e;font-size:11px;line-height:1.6}
+.days{padding:12px;display:flex;flex-direction:column;gap:10px;padding-bottom:40px}
+.day{background:#161b22;border:1.5px solid #30363d;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:14px}
+.day.today{border-color:#6366f1;background:#11142a}
+.day.tomorrow{border-color:rgba(99,102,241,.4)}
+.day.empty{opacity:.5}
+.dleft{flex:1;min-width:0}
+.ddow{font-size:11px;font-weight:800;color:#8b949e;letter-spacing:.08em;text-transform:uppercase}
+.ddate{font-size:20px;font-weight:900;margin-top:2px;line-height:1.1}
+.dlbl{font-size:11px;color:#6366f1;font-weight:800;margin-top:3px}
+.dright{display:flex;gap:10px;flex-shrink:0}
+.pill{min-width:62px;text-align:center;border-radius:10px;padding:8px 10px;border:1.5px solid}
+.pill .pl{font-size:10px;font-weight:800;letter-spacing:.05em}
+.pill .pv{font-size:22px;font-weight:900;line-height:1.1;margin-top:2px}
+.pill.pg{border-color:rgba(245,158,11,.45);background:rgba(245,158,11,.08);color:#f59e0b}
+.pill.pgz{border-color:rgba(167,139,250,.45);background:rgba(167,139,250,.08);color:#a78bfa}
+.pill.zero{opacity:.4}
+.foot{text-align:center;color:#484f58;font-size:11px;padding:10px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="dot" id="dot"></div>
+  <div style="flex:1"><div class="hdr-title">🧳 Wyjazdy PG / PGZ</div><div class="hdr-sub">Podgląd live • Manager HK</div></div>
+  <div class="sync" id="sync"></div>
+</div>
+<div class="summary">
+  <div class="sbox pg"><div class="l">PG łącznie</div><div class="v" id="sumPG">0</div></div>
+  <div class="sbox pgz"><div class="l">PGZ łącznie</div><div class="v" id="sumPGZ">0</div></div>
+  <div class="sbox tot"><div class="l">Razem</div><div class="v" id="sumTOT">0</div></div>
+</div>
+<div class="legend">Następne 14 dni • dane z planu HK (hk_plan). Wyszarzona karta = brak zapisanego planu.</div>
+<div id="days" class="days"><div class="foot">Pobieranie danych...</div></div>
+<div class="foot" id="lastUpd"></div>
+<script>
+const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
+const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const DAYS = 14;
+const DOW = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+
+const pad = n => n<10 ? "0"+n : ""+n;
+const isoDate = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+
+function buildRange() {
+  const out = [];
+  const t = new Date(); t.setHours(0,0,0,0);
+  for (let i=0; i<DAYS; i++) {
+    out.push(isoDate(new Date(t.getTime()+i*86400000)));
+  }
+  return out;
+}
+
+function countTypes(pmRoomTypes) {
+  let pg=0, pgz=0;
+  if (pmRoomTypes && typeof pmRoomTypes === "object") {
+    Object.values(pmRoomTypes).forEach(v => { if (v==="PG") pg++; else if (v==="PGZ") pgz++; });
+  }
+  return { pg, pgz };
+}
+
+function fmtDate(iso) {
+  const [y,m,d] = iso.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  return { dow: DOW[dt.getDay()], txt: d+" "+MON[m-1] };
+}
+
+async function fetchPlans() {
+  const range = buildRange();
+  const from = range[0], to = range[range.length-1];
+  const url = `${SB_URL}/rest/v1/hk_plan?date=gte.${from}&date=lte.${to}&select=date,pm_room_types`;
+  const res = await fetch(url, { headers: { apikey: SB_KEY, Authorization: "Bearer "+SB_KEY }});
+  const rows = await res.json();
+  const m = {};
+  (rows || []).forEach(row => { m[row.date] = row.pm_room_types || {}; });
+  return m;
+}
+
+function render(byDate) {
+  const range = buildRange();
+  const todayIso = range[0], tomorrowIso = range[1];
+  const c = document.getElementById("days");
+  c.innerHTML = "";
+  let sPG = 0, sPGZ = 0;
+  range.forEach(iso => {
+    const counts = countTypes(byDate[iso]);
+    sPG += counts.pg; sPGZ += counts.pgz;
+    const cls = iso===todayIso ? "today" : (iso===tomorrowIso ? "tomorrow" : "");
+    const empty = counts.pg===0 && counts.pgz===0 && !byDate[iso] ? " empty" : "";
+    const lbl = iso===todayIso ? "DZIŚ" : (iso===tomorrowIso ? "JUTRO" : "");
+    const d = fmtDate(iso);
+    const pgZero = counts.pg===0 ? " zero" : "";
+    const pgzZero = counts.pgz===0 ? " zero" : "";
+    const div = document.createElement("div");
+    div.className = "day "+cls+empty;
+    div.innerHTML =
+      `<div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>`+
+      `<div class="dright"><div class="pill pg${pgZero}"><div class="pl">PG</div><div class="pv">${counts.pg}</div></div>`+
+      `<div class="pill pgz${pgzZero}"><div class="pl">PGZ</div><div class="pv">${counts.pgz}</div></div></div>`;
+    c.appendChild(div);
+  });
+  document.getElementById("sumPG").textContent = sPG;
+  document.getElementById("sumPGZ").textContent = sPGZ;
+  document.getElementById("sumTOT").textContent = sPG + sPGZ;
+  document.getElementById("lastUpd").textContent = "Aktualizacja: "+new Date().toLocaleTimeString("pl-PL");
+}
+
+async function tick() {
+  const dot = document.getElementById("dot");
+  try {
+    const m = await fetchPlans();
+    dot.className = "dot";
+    document.getElementById("sync").textContent = new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+    render(m);
+  } catch (e) {
+    dot.className = "dot off";
+  }
+}
+
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>
