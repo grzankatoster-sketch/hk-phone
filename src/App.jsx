@@ -2057,6 +2057,134 @@ export default function App(){
 
                 </div>
 
+                {/* ═══ DASHBOARD CONTENT GRID — Row 2 (chart) + Row 3 (feed) ═══ */}
+                {/* wg open-design/skills/dashboard/SKILL.md: KPI row + chart + feed/table */}
+                <div className="cc-dash-grid">
+                  {/* ROW 2: Progress chart (inline SVG, no JS lib) */}
+                  <section className="cc-dash-card cc-dash-chart" aria-labelledby="cc-dash-chart-title">
+                    <header className="cc-dash-card-head">
+                      <div>
+                        <div className="cc-dash-card-eyebrow">Postęp zmiany</div>
+                        <h2 id="cc-dash-chart-title" className="cc-dash-card-title">Tempo wykonania zadań</h2>
+                      </div>
+                      <div className="cc-dash-chart-legend">
+                        <span><span className="cc-dash-chart-dot cc-dash-chart-dot--brand"/>Wykonane</span>
+                        <span><span className="cc-dash-chart-dot cc-dash-chart-dot--target"/>Cel</span>
+                      </div>
+                    </header>
+                    {(()=>{
+                      // Wyliczenie progressu w 8 koszykach (h od startu zmiany)
+                      const buckets=8;
+                      const elapsedMs=shiftStartTime?Date.now()-shiftStartTime.getTime():0;
+                      const elapsedH=Math.max(0,elapsedMs/3600000);
+                      const ratio=Math.min(1,elapsedH/buckets);
+                      const points=[];
+                      for(let i=0;i<=buckets;i++){
+                        const t=i/buckets;
+                        // Synthetic curve: progress grows roughly linearly with time, capped at current %
+                        const expected=Math.min(progress,Math.round(progress*Math.min(1,t/Math.max(ratio,.01))));
+                        points.push({x:i,y:expected});
+                      }
+                      const w=320, h=120, padL=8, padR=8, padT=12, padB=20;
+                      const xScale=(x)=>padL+(x/buckets)*(w-padL-padR);
+                      const yScale=(y)=>padT+(1-y/100)*(h-padT-padB);
+                      const lineD=points.map((p,i)=>`${i===0?"M":"L"}${xScale(p.x)},${yScale(p.y)}`).join(" ");
+                      const areaD=`${lineD} L${xScale(buckets)},${h-padB} L${xScale(0)},${h-padB} Z`;
+                      const targetY=yScale(100);
+                      const currentX=xScale(buckets*ratio);
+                      return (
+                        <svg className="cc-dash-chart-svg" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label={`Progress: ${progress}% wykonanych zadań po ${Math.floor(elapsedH)}h ${Math.round((elapsedH%1)*60)}min zmiany`}>
+                          <defs>
+                            <linearGradient id="cc-dash-chart-grad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--cc-brand)" stopOpacity=".28"/>
+                              <stop offset="100%" stopColor="var(--cc-brand)" stopOpacity="0"/>
+                            </linearGradient>
+                          </defs>
+                          {/* Cel 100% — dashed target line */}
+                          <line x1={padL} y1={targetY} x2={w-padR} y2={targetY} stroke="var(--cc-accent-gold)" strokeWidth="1" strokeDasharray="3 4" opacity=".6"/>
+                          {/* Area fill */}
+                          <path d={areaD} fill="url(#cc-dash-chart-grad)"/>
+                          {/* Line */}
+                          <path d={lineD} fill="none" stroke="var(--cc-brand)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
+                          {/* Current position dot */}
+                          <circle cx={currentX} cy={yScale(progress)} r="4" fill="var(--cc-brand)" stroke="var(--cc-surface)" strokeWidth="2"/>
+                          {/* X-axis labels (start + middle + end) */}
+                          <text x={padL} y={h-4} fill="var(--cc-text-faint)" fontSize="9" fontFamily="var(--cc-font-mono)">Start</text>
+                          <text x={w/2} y={h-4} fill="var(--cc-text-faint)" fontSize="9" fontFamily="var(--cc-font-mono)" textAnchor="middle">4h</text>
+                          <text x={w-padR} y={h-4} fill="var(--cc-text-faint)" fontSize="9" fontFamily="var(--cc-font-mono)" textAnchor="end">8h</text>
+                        </svg>
+                      );
+                    })()}
+                    <footer className="cc-dash-chart-foot">
+                      <div className="cc-dash-chart-stat">
+                        <div className="cc-dash-chart-stat-val">{progress}%</div>
+                        <div className="cc-dash-chart-stat-lbl">wykonane</div>
+                      </div>
+                      <div className="cc-dash-chart-stat">
+                        <div className="cc-dash-chart-stat-val">{totalDone}<span>/{totalMandatory}</span></div>
+                        <div className="cc-dash-chart-stat-lbl">zadań</div>
+                      </div>
+                      <div className="cc-dash-chart-stat">
+                        <div className="cc-dash-chart-stat-val cc-dash-chart-stat-mono">{shiftElapsed||"—"}</div>
+                        <div className="cc-dash-chart-stat-lbl">trwa</div>
+                      </div>
+                      <button className="cc-dash-chart-cta" onClick={()=>setWorkerTab("zadania")}>
+                        Otwórz zadania →
+                      </button>
+                    </footer>
+                  </section>
+
+                  {/* ROW 3: Live feed (recent events) */}
+                  <section className="cc-dash-card cc-dash-feed" aria-labelledby="cc-dash-feed-title">
+                    <header className="cc-dash-card-head">
+                      <div>
+                        <div className="cc-dash-card-eyebrow">Live feed</div>
+                        <h2 id="cc-dash-feed-title" className="cc-dash-card-title">Najnowsze zdarzenia</h2>
+                      </div>
+                      <span className="cc-dash-feed-dot" aria-hidden="true"/>
+                    </header>
+                    {(()=>{
+                      const events=[];
+                      // Pending payment corrections
+                      paymentCorrections.filter(c=>!c.done).slice(0,3).forEach(c=>events.push({
+                        kind:"correction", at:c.submittedAt||"", title:`Korekta: ${c.reservation||"dokument"}`, sub:`${c.submittedBy||"—"} · ${pl((c.docType||"dokument").toUpperCase())}`, dot:"warn",
+                      }));
+                      // Recent incidents (unresolved or last 3)
+                      [...incidentLog].slice(0,3).forEach(i=>events.push({
+                        kind:"incident", at:i.createdAt||"", title:i.title||i.text||"Incydent", sub:`${i.createdBy||"—"} · ${i.resolved?"rozwiązane":"otwarte"}`, dot:i.resolved?"ok":"urgent",
+                      }));
+                      // Global notes (top 2)
+                      visibleGlobalNotes.slice(0,2).forEach(n=>events.push({
+                        kind:"note", at:n.createdAt||"", title:n.text||"Notatka", sub:`${n.createdBy||"—"}`, dot:"info",
+                      }));
+                      // Top 6 sorted by recency (string compare on at)
+                      const sorted=events.sort((a,b)=>(b.at||"").localeCompare(a.at||"")).slice(0,6);
+                      if(sorted.length===0){
+                        return (
+                          <div className="cc-dash-feed-empty">
+                            <div className="cc-dash-feed-empty-mark">·</div>
+                            <div>Cisza w eterze. Brak nowych zdarzeń tej zmiany.</div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <ul className="cc-dash-feed-list">
+                          {sorted.map((e,i)=>(
+                            <li key={`${e.kind}-${i}`} className="cc-dash-feed-item">
+                              <span className={`cc-dash-feed-item-dot cc-dash-feed-item-dot--${e.dot}`} aria-hidden="true"/>
+                              <div className="cc-dash-feed-item-body">
+                                <div className="cc-dash-feed-item-title">{e.title}</div>
+                                <div className="cc-dash-feed-item-sub">{e.sub}</div>
+                              </div>
+                              <time className="cc-dash-feed-item-time">{(e.at||"").slice(11,16)||"—"}</time>
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                  </section>
+                </div>
+
                 {/* STAŁA KASA — potwierdzenie */}
                 {!stalaPotwierdzono&&!stalaNiezgodnosc&&(
                   <div className="panel" style={{borderLeft:"4px solid var(--gold)"}}>
