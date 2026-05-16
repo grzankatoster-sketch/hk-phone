@@ -331,6 +331,28 @@ function WelcomeOverlayScreen({name,onDone}){
 
 const IS_DEV_TEST = typeof localStorage !== 'undefined' && localStorage.getItem('dev-test-mode') === '1';
 
+// ── Page-title labels for shell topbar (sekcja 2 redesign) ────────────────────
+const WORKER_TAB_LABELS = {
+  zmiana: "Przegląd zmiany",
+  zadania: "Zadania",
+  przekazanie: "Przekaż zmianę",
+  hk: "Housekeeping",
+  informacje: "Informacje",
+  usterki: "Usterki",
+  parking: "Parking",
+  goscie: "Stali goście",
+  vouchery: "Vouchery",
+  opinie: "Opinie gości",
+};
+const ADMIN_TAB_LABELS = {
+  ewidencja: "Ewidencja", zadania: "Zadania", pracownicy: "Pracownicy",
+  grafik: "Grafik", statystyki: "Statystyki", ustawienia: "Ustawienia",
+  korekty: "Korekty", parking: "Parking", usterki: "Usterki",
+  goscie: "Stali goście", wiadomosci: "Wiadomości", alerty: "Alerty",
+  przypomnienia: "Przypomnienia", historia: "Historia", wiki: "Wiki",
+  kasa: "Kasa", vouchery: "Vouchery", opinie: "Opinie",
+};
+
 export default function App(){
   const customManagers=React.useMemo(()=>{const m=getCustomManagers();return m.length>0?m:ADMIN_MANAGERS;},[]);
   const [tasks,setTasks]=useState(defaultTasks);
@@ -1555,11 +1577,9 @@ export default function App(){
   );
 
   // ── Admin panel ───────────────────────────────────────────────────────────────
+  // (Title + manager info przeniesione do globalnego cc-shell-topbar w sekcji 2)
   const adminPanel=(
     <div>
-      <div className="topbar dark-text" style={{marginBottom:16}}>
-        <div><h1>Panel kierownictwa recepcji</h1><p>Zalogowany(a): <strong style={{color:"var(--plum)"}}>{currentManager}</strong></p></div>
-      </div>
       <div className="admin-content-full">
           {pendingCorrections.length>0&&adminTab!=="korekty"&&(
             <div style={{background:"var(--gold-soft, var(--gold-bg))",border:"1px solid var(--gold-border)",borderLeft:"4px solid var(--gold)",borderRadius:"var(--radius-md)",padding:"12px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
@@ -2793,41 +2813,82 @@ export default function App(){
 
   return(
     <div className={appShellClass}>
-      {/* Top toggle dla zalogowanego kierownika (B19) */}
-      {isAdmin&&(
-        <div className={`cc-mgr-toggle-bar${mgrToggleMini?" cc-mgr-toggle-bar--mini":""}`}>
-          <div className="cc-mgr-toggle-inner">
-            <div className="cc-mgr-toggle-info">
+      {/* ═══ Shell Top Bar (sekcja 2 redesign) ═══════════════════════════════ */}
+      <header className={`cc-shell-topbar${mgrToggleMini?" cc-shell-topbar--mini":""}${isAdmin&&showAdminPanel?" cc-shell-topbar--admin":""}`}>
+        <div className="cc-shell-topbar-left">
+          {isAdmin&&(
+            <div className="cc-shell-topbar-brand" aria-hidden="true">
               <Logo variant="dotsOnly" tone="white" width={28} height={6}/>
-              <span><strong>{currentManager}</strong> · zalogowany jako kierownik</span>
             </div>
-            <div className="cc-mgr-toggle-tabs">
+          )}
+          <div className="cc-shell-topbar-titlewrap">
+            <div className="cc-shell-topbar-crumb">
+              <b>{isAdmin&&showAdminPanel?"Admin":"Recepcja"}</b>
+              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+              <span>{(isAdmin&&showAdminPanel)?(ADMIN_TAB_LABELS[adminTab]||adminTab):(WORKER_TAB_LABELS[workerTab]||workerTab)}</span>
+            </div>
+            <h1 className="cc-shell-topbar-title">
+              {(isAdmin&&showAdminPanel)?(ADMIN_TAB_LABELS[adminTab]||"Panel kierownictwa"):(WORKER_TAB_LABELS[workerTab]||"Panel recepcji")}
+            </h1>
+            {isAdmin&&showAdminPanel&&(
+              <div className="cc-shell-topbar-meta">
+                <span>Zalogowany(a) jako kierownik: <strong>{currentManager}</strong></span>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="cc-shell-topbar-actions">
+          <button
+            className="cc-shell-topbar-search"
+            onClick={()=>setShowSearch(true)}
+            title="Wyszukiwarka globalna (Ctrl+K)">
+            <Search size={14}/>
+            <span className="cc-shell-topbar-search-label">Szukaj pokoju, gościa, voucheru…</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+          {!mgrToggleMini&&(
+            <div className="cc-shell-topbar-clock" aria-live="polite">
+              <span className="cc-shell-topbar-clock-dot"/>
+              <div>
+                <div className="cc-shell-topbar-clock-time">{liveTime||new Date().toLocaleTimeString("pl-PL").slice(0,5)}</div>
+                <div className="cc-shell-topbar-clock-date">{new Date().toLocaleDateString("pl-PL",{weekday:"short",day:"2-digit",month:"short"})}</div>
+              </div>
+            </div>
+          )}
+          {isAdmin&&(
+            <div className="cc-shell-topbar-roletoggle" role="tablist" aria-label="Wybór panelu kierownika">
               <button
-                className={`cc-mgr-toggle-tab${!showAdminPanel?" cc-active":""}`}
+                className={`cc-shell-topbar-roletab${!showAdminPanel?" is-active":""}`}
+                role="tab" aria-selected={!showAdminPanel}
                 onClick={()=>{setShowAdminPanel(false);localStorage.setItem("reception-last-view","worker");setLastView("worker");}}>
                 Panel pracownika
               </button>
               <button
-                className={`cc-mgr-toggle-tab${showAdminPanel?" cc-active":""}`}
+                className={`cc-shell-topbar-roletab${showAdminPanel?" is-active":""}`}
+                role="tab" aria-selected={showAdminPanel}
                 onClick={()=>{setShowAdminPanel(true);localStorage.setItem("reception-last-view","manager");setLastView("manager");}}>
                 Panel kierownika
               </button>
+            </div>
+          )}
+          {isAdmin&&(
+            <>
               <button
-                className="cc-mgr-toggle-logout"
+                className="cc-shell-topbar-iconbtn"
                 onClick={()=>{const v=!mgrToggleMini;setMgrToggleMini(v);localStorage.setItem("reception-mgr-toggle-mini",v?"1":"0");}}
                 title={mgrToggleMini?"Rozwiń pasek":"Zwiń do mini"}>
-                {mgrToggleMini?<Maximize2 size={13}/>:<Minimize2 size={13}/>}
+                {mgrToggleMini?<Maximize2 size={14}/>:<Minimize2 size={14}/>}
               </button>
               <button
-                className="cc-mgr-toggle-logout"
+                className="cc-shell-topbar-iconbtn cc-shell-topbar-iconbtn--danger"
                 onClick={handleAdminLogout}
                 title="Wyloguj kierownika">
-                <LogOut size={13}/>
+                <LogOut size={14}/>
               </button>
-            </div>
-          </div>
+            </>
+          )}
         </div>
-      )}
+      </header>
       <div className="app-layout worker-layout">
         {(isAdmin&&showAdminPanel)?(
           <AdminSidebarRail

@@ -1201,6 +1201,321 @@ button[aria-label="Pokaż kwoty"] {
   .cc-preshift-footer button { flex: 1; }
 }
 
+/* ═══ SHELL TOPBAR (sekcja 2 redesign — Conrad Comfort v2) ═══════════════════
+   Globalny topbar widoczny po zalogowaniu w obu trybach (worker + admin).
+   Zastępuje stary .cc-mgr-toggle-bar funkcjonalnie. Stary blok poniżej
+   pozostawiony jako bezużyteczna kompatybilność (cleanup w sekcji 35).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-shell-topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 28px 14px;
+  background: var(--cc-bg);
+  border-bottom: 1px solid var(--cc-border);
+  color: var(--cc-text);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: padding 200ms cubic-bezier(.4,0,.2,1);
+}
+.cc-shell-topbar--admin {
+  background: linear-gradient(180deg, var(--cc-surface-elevated) 0%, var(--cc-bg) 100%);
+}
+.cc-shell-topbar--mini {
+  padding: 6px 22px;
+  align-items: center;
+}
+
+.cc-shell-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.cc-shell-topbar-brand {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--cc-radius-sm);
+  background: linear-gradient(135deg, var(--cc-brand) 0%, var(--cc-brand-deep) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-shell-topbar--mini .cc-shell-topbar-brand {
+  width: 26px;
+  height: 26px;
+}
+.cc-shell-topbar-titlewrap {
+  min-width: 0;
+  flex: 1;
+}
+.cc-shell-topbar-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+.cc-shell-topbar-crumb b {
+  font-family: var(--cc-font-display);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cc-brand);
+}
+.cc-shell-topbar-crumb svg {
+  color: var(--cc-text-faint);
+}
+.cc-shell-topbar--mini .cc-shell-topbar-crumb {
+  display: none;
+}
+.cc-shell-topbar-title {
+  font-family: var(--cc-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+  color: var(--cc-text);
+  margin: 0;
+}
+.cc-shell-topbar--mini .cc-shell-topbar-title {
+  font-size: 14px;
+}
+.cc-shell-topbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  margin-top: 4px;
+}
+.cc-shell-topbar-meta strong {
+  color: var(--cc-text);
+  font-weight: 600;
+}
+.cc-shell-topbar--mini .cc-shell-topbar-meta {
+  display: none;
+}
+
+.cc-shell-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 2px;
+  flex-shrink: 0;
+}
+.cc-shell-topbar--mini .cc-shell-topbar-actions {
+  padding-bottom: 0;
+}
+
+.cc-shell-topbar-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  padding: 6px 10px;
+  width: 280px;
+  color: var(--cc-text-muted);
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 80ms, color 80ms;
+}
+.cc-shell-topbar-search:hover {
+  border-color: var(--cc-border-strong);
+  color: var(--cc-text);
+}
+.cc-shell-topbar-search:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-shell-topbar-search-label {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cc-shell-topbar-search kbd {
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--cc-text-faint);
+  background: var(--cc-bg-elevated);
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-border);
+}
+.cc-shell-topbar--mini .cc-shell-topbar-search {
+  width: 36px;
+  padding: 6px;
+  justify-content: center;
+}
+.cc-shell-topbar--mini .cc-shell-topbar-search-label,
+.cc-shell-topbar--mini .cc-shell-topbar-search kbd {
+  display: none;
+}
+
+.cc-shell-topbar-clock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+}
+.cc-shell-topbar-clock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cc-success);
+  box-shadow: 0 0 8px var(--cc-success);
+  animation: cc-shell-pulse 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes cc-shell-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: .45; transform: scale(.8); }
+}
+.cc-shell-topbar-clock-time {
+  font-family: var(--cc-font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cc-text);
+  line-height: 1;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+.cc-shell-topbar-clock-date {
+  font-size: 10px;
+  color: var(--cc-text-muted);
+  margin-top: 2px;
+  text-transform: capitalize;
+}
+
+.cc-shell-topbar-roletoggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+}
+.cc-shell-topbar-roletab {
+  border: none;
+  background: transparent;
+  color: var(--cc-text-muted);
+  font-family: var(--cc-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-shell-topbar-roletab:hover {
+  color: var(--cc-text);
+  background: var(--cc-bg-elevated);
+}
+.cc-shell-topbar-roletab.is-active {
+  background: var(--cc-brand);
+  color: var(--cc-text-on-brand);
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-shell-topbar-roletab:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-shell-topbar--mini .cc-shell-topbar-roletab {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.cc-shell-topbar-iconbtn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--cc-radius-sm);
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  color: var(--cc-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-shell-topbar-iconbtn:hover {
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-shell-topbar-iconbtn:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-shell-topbar-iconbtn--danger:hover {
+  color: var(--cc-danger);
+  border-color: var(--cc-danger);
+}
+.cc-shell-topbar--mini .cc-shell-topbar-iconbtn {
+  width: 26px;
+  height: 26px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .cc-shell-topbar {
+    flex-wrap: wrap;
+    padding: 12px 16px;
+  }
+  .cc-shell-topbar-search {
+    width: 200px;
+  }
+  .cc-shell-topbar-clock {
+    display: none;
+  }
+}
+@media (max-width: 640px) {
+  .cc-shell-topbar-search {
+    width: 36px;
+    padding: 6px;
+    justify-content: center;
+  }
+  .cc-shell-topbar-search-label,
+  .cc-shell-topbar-search kbd {
+    display: none;
+  }
+  .cc-shell-topbar-roletab {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+}
+
+/* ── App shell wrapper refresh (sekcja 2) ── */
+.app-shell {
+  min-height: 100vh;
+  background: var(--cc-bg);
+  color: var(--cc-text);
+  display: flex;
+  flex-direction: column;
+}
+
 /* Top toggle bar dla zalogowanego kierownika (B19) */
 .cc-mgr-toggle-bar {
   background: var(--plum);
