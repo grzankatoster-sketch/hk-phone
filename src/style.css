@@ -1207,7 +1207,7 @@ button[aria-label="Pokaż kwoty"] {
   min-width: 220px;
 }
 
-/* ─── Kanban zadań (2B) ──────────────────────────────────────────────── */
+/* ═══ Kanban zadań (sekcja 7 redesign — Conrad Comfort v2) ════════════════════ */
 .cc-kanban-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1217,86 +1217,171 @@ button[aria-label="Pokaż kwoty"] {
   .cc-kanban-grid { grid-template-columns: 1fr; }
 }
 .cc-kanban-col {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-lg);
   padding: 14px;
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   min-height: 200px;
 }
-.cc-kanban-col-hot { border-left: 4px solid var(--rose); }
-.cc-kanban-col-done { border-left: 4px solid var(--emerald); }
+.cc-kanban-col-hot { border-left: 4px solid var(--cc-danger); }
+.cc-kanban-col-done { border-left: 4px solid var(--cc-success); }
 .cc-kanban-head {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 800;
-  color: var(--text-secondary);
-  text-transform: uppercase; letter-spacing: .07em;
-  padding-bottom: 12px; margin-bottom: 12px;
-  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--cc-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cc-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--cc-border);
 }
-.cc-kanban-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.cc-kanban-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 .cc-kanban-count {
   margin-left: auto;
-  background: var(--bg-secondary);
-  color: var(--text-muted);
-  border-radius: 999px; padding: 2px 9px;
-  font-size: 11px; font-weight: 800;
-  min-width: 22px; text-align: center;
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text-muted);
+  border: 1px solid var(--cc-border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
-.cc-kanban-list { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.cc-kanban-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
 .cc-kanban-empty {
-  text-align: center; padding: 20px 12px;
-  font-size: 12px; color: var(--text-muted);
-  border: 1.5px dashed var(--border-light);
-  border-radius: var(--radius-md);
+  text-align: center;
+  padding: 20px 12px;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  border: 1.5px dashed var(--cc-border);
+  border-radius: var(--cc-radius-md);
 }
 .cc-kanban-card {
-  display: flex; align-items: flex-start; gap: 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   padding: 12px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  transition: all .15s;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  transition: all 160ms cubic-bezier(.4,0,.2,1);
   cursor: pointer;
 }
-.cc-kanban-card:hover { border-color: var(--plum); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
-.cc-kanban-card-done { background: var(--emerald-light); border-color: var(--emerald-border); opacity: .85; }
-.cc-kanban-card-done .cc-kanban-text { text-decoration: line-through; color: var(--text-muted); }
-.cc-kanban-card-overdue { background: var(--rose-light); border-color: var(--rose-border); }
-.cc-kanban-card-urgent { border-left: 3px solid var(--rose); }
+.cc-kanban-card:hover {
+  border-color: var(--cc-brand);
+  transform: translateY(-1px);
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-kanban-card:focus-within {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-kanban-card-done {
+  background: color-mix(in srgb, var(--cc-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent);
+  opacity: .85;
+}
+.cc-kanban-card-done .cc-kanban-text {
+  text-decoration: line-through;
+  color: var(--cc-text-muted);
+}
+.cc-kanban-card-overdue {
+  background: color-mix(in srgb, var(--cc-danger) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cc-danger) 30%, transparent);
+}
+.cc-kanban-card-urgent {
+  border-left: 3px solid var(--cc-danger);
+}
 .cc-kanban-check {
-  width: 22px; height: 22px;
-  border-radius: 6px;
-  border: 2px solid var(--border-medium);
+  width: 22px;
+  height: 22px;
+  border-radius: var(--cc-radius-sm);
+  border: 2px solid var(--cc-border-strong);
   background: transparent;
-  cursor: pointer; flex-shrink: 0;
-  font-size: 14px; font-weight: 900;
-  color: var(--emerald);
-  display: flex; align-items: center; justify-content: center;
-  transition: all .12s;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--cc-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 120ms cubic-bezier(.4,0,.2,1);
   margin-top: 1px;
 }
-.cc-kanban-check:hover { border-color: var(--plum); }
-.cc-kanban-card-done .cc-kanban-check { border-color: var(--emerald); background: var(--emerald); color: #fff; }
+.cc-kanban-check:hover {
+  border-color: var(--cc-brand);
+}
+.cc-kanban-check:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-kanban-card-done .cc-kanban-check {
+  border-color: var(--cc-success);
+  background: var(--cc-success);
+  color: var(--cc-text-on-brand);
+}
 .cc-kanban-text {
-  font-size: 13.5px; font-weight: 600;
-  color: var(--text-primary); line-height: 1.4;
+  font-family: var(--cc-font-body);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cc-text);
+  line-height: 1.4;
 }
 .cc-kanban-meta {
-  display: flex; flex-wrap: wrap; gap: 5px;
-  margin-top: 5px; align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+  align-items: center;
 }
 .cc-kanban-tag {
-  font-size: 9.5px; font-weight: 800;
-  padding: 2px 7px; border-radius: 999px;
-  letter-spacing: .04em; text-transform: uppercase;
+  font-family: var(--cc-font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
-.cc-kanban-tag-rose { background: var(--rose-light); color: var(--rose); }
-.cc-kanban-tag-plum { background: var(--plum-soft); color: var(--plum); }
+.cc-kanban-tag-rose {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+  color: var(--cc-danger);
+}
+.cc-kanban-tag-plum {
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+}
 .cc-kanban-time {
-  font-size: 11px; color: var(--text-muted); font-weight: 600;
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
-.cc-kanban-time-late { color: var(--rose); font-weight: 800; }
+.cc-kanban-time-late {
+  color: var(--cc-danger);
+  font-weight: 700;
+}
 
 /* ─── Modul Usterki (C1) ─────────────────────────────────────────────── */
 .cc-floor-tabs {

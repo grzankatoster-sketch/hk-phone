@@ -2222,7 +2222,7 @@ export default function App(){
                         </div>
                       )}
                     </div>
-                    <span style={{fontSize:15,fontWeight:800,color:task.done?"#2d6a4f":"#9a3040",lineHeight:1,flexShrink:0}}>{task.done?"✓":"✕"}</span>
+                    <span style={{fontSize:15,fontWeight:800,color:task.done?"var(--cc-success)":"var(--cc-danger)",lineHeight:1,flexShrink:0}}>{task.done?"✓":"✕"}</span>
                   </div>
                 ))}
                 {!carryOverForCurrentShift.length&&<div className="empty-box">Brak przekazanych zadań dla tej zmiany.</div>}
