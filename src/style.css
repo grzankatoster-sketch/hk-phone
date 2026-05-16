@@ -3,48 +3,105 @@
    Copyright © 2026 Conrad Comfort. All rights reserved. UNLICENSED.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ═══ CONRAD COMFORT DESIGN TOKENS (single source of truth) ═══════════════════
+   Wszystkie nowe komponenty piszą się do `var(--cc-*)`. Stare nazwy
+   (--plum, --bg-primary, --gold itd.) są ALIASAMI na te tokeny i pozostają
+   dla kompatybilności wstecznej. W trybie ciemnym (`html.theme-dark` lub
+   `body.app-dark`) tokeny `--cc-*` zmieniają wartości; aliasy idą za nimi.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root,
+html.theme-light {
+  color-scheme: light;
+
+  /* ── Brand (plum z loga Conrad Comfort) ── */
+  --cc-brand:            #5a1d4a;
+  --cc-brand-hover:      #6e2658;
+  --cc-brand-deep:       #3d1232;
+  --cc-brand-soft:       #f0e4ec;
+
+  /* ── Powierzchnie i tła ── */
+  --cc-bg:               #faf8f5;
+  --cc-bg-elevated:      #f1ecea;
+  --cc-surface:          #ffffff;
+  --cc-surface-elevated: #fbf9f7;
+  --cc-border:           #e8dde3;
+  --cc-border-strong:    #d3c4cd;
+
+  /* ── Typografia (kolory tekstu) ── */
+  --cc-text:             #2a1a24;
+  --cc-text-secondary:   #5a4350;
+  --cc-text-muted:       #7a6972;
+  --cc-text-faint:       #c9bbc4;
+  --cc-text-on-brand:    #ffffff;
+
+  /* ── Akcenty semantyczne ── */
+  --cc-accent-gold:      #c99950;
+  --cc-success:          #2d6a4f;
+  --cc-warning:          #b97a1f;
+  --cc-danger:           #a63e3e;
+  --cc-info:             #5a1d4a;            /* w light = plum (sky/violet kompat) */
+  --cc-focus:            #5a1d4a;
+
+  /* ── Cienie ── */
+  --cc-shadow-sm:        0 1px 2px rgba(45,16,84,.06), 0 1px 4px rgba(45,16,84,.04);
+  --cc-shadow-md:        0 6px 18px rgba(45,16,84,.10);
+  --cc-shadow-lg:        0 12px 32px rgba(45,16,84,.14);
+
+  /* ── Promienie ── */
+  --cc-radius-sm: 6px;
+  --cc-radius-md: 10px;
+  --cc-radius-lg: 14px;
+  --cc-radius-xl: 20px;
+
+  /* ── Czcionki (Conrad Comfort v2 stack) ── */
+  --cc-font-display: 'Syne', 'DM Serif Display', serif;
+  --cc-font-body:    'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --cc-font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+}
 
 :root {
   /* ── Conrad Comfort light palette ─── */
-  --bg-primary:    #faf8f5;     /* off-white kremowy */
-  --bg-secondary:  #f1ecea;
-  --bg-card:       #ffffff;
-  --bg-elevated:   #fbf9f7;
-  --bg-input:      #ffffff;
-  --border-light:  #e8dde3;
-  --border-medium: #d3c4cd;
-  --text-primary:  #2a1a24;     /* głęboka śliwka tekstowa */
-  --text-secondary:#5a4350;
-  --text-muted:    #7a6972;     /* WCAG AA ~5:1 on #faf8f5 */
-  --text-faint:    #c9bbc4;
+  /* Stare nazwy → aliasy na --cc-* (wartości identyczne; w dark mode cascade automatyczny) */
+  --bg-primary:    var(--cc-bg);              /* #faf8f5 */
+  --bg-secondary:  var(--cc-bg-elevated);     /* #f1ecea */
+  --bg-card:       var(--cc-surface);         /* #ffffff */
+  --bg-elevated:   var(--cc-surface-elevated);/* #fbf9f7 */
+  --bg-input:      var(--cc-surface);         /* #ffffff */
+  --border-light:  var(--cc-border);          /* #e8dde3 */
+  --border-medium: var(--cc-border-strong);   /* #d3c4cd */
+  --text-primary:  var(--cc-text);            /* #2a1a24 */
+  --text-secondary:var(--cc-text-secondary);  /* #5a4350 */
+  --text-muted:    var(--cc-text-muted);      /* #7a6972 — WCAG AA ~5:1 on #faf8f5 */
+  --text-faint:    var(--cc-text-faint);      /* #c9bbc4 */
 
   /* ── Conrad Comfort accent (plum z loga) ─── */
-  --plum:          #5a1d4a;     /* primary */
-  --plum-hover:    #6e2658;
-  --plum-deep:     #3d1232;
-  --plum-soft:     #f0e4ec;
+  --plum:          var(--cc-brand);           /* #5a1d4a — primary */
+  --plum-hover:    var(--cc-brand-hover);     /* #6e2658 */
+  --plum-deep:     var(--cc-brand-deep);      /* #3d1232 */
+  --plum-soft:     var(--cc-brand-soft);      /* #f0e4ec */
   --plum-bg:       #f7eef3;
   --plum-border:   #e4ccd9;
 
   /* ── Pomocnicze (zachowane nazwy dla kompatybilnosci) ─── */
-  --gold:          #c99950;
+  --gold:          var(--cc-accent-gold);     /* #c99950 */
   --gold-light:    #d8aa61;
   --gold-bg:       #f5eadc;
   --gold-border:   #e9d4ad;
-  --rose:          #a63e3e;
+  --rose:          var(--cc-danger);          /* light: #a63e3e */
   --rose-light:    #f3dcdc;
   --rose-border:   #d9a4a4;
-  --emerald:       #2d6a4f;
+  --emerald:       var(--cc-success);         /* light: #2d6a4f */
   --emerald-light: #dceeec;
   --emerald-border:#9bc8b8;
-  --sky:           #5a1d4a;     /* COMPAT-ALIAS → --plum. NOT blue. Do not use for new code. */
+  --sky:           var(--cc-info);            /* light: #5a1d4a (= plum). COMPAT-ALIAS — NOT blue. */
   --sky-light:     #f0e4ec;
   --sky-border:    #d3a8c4;
-  --violet:        #5a1d4a;     /* COMPAT-ALIAS → --plum. NOT violet. Do not use for new code. */
+  --violet:        var(--cc-info);            /* light: #5a1d4a (= plum). COMPAT-ALIAS — NOT violet. */
   --violet-light:  #f0e4ec;
   --violet-border: #d3a8c4;
-  --amber:         #b97a1f;
+  --amber:         var(--cc-warning);         /* light: #b97a1f */
 
   /* ── Admin dark palette (Conrad Comfort dark) ─── */
   --dark-bg:       #0B0810;     /* v2: deep aubergine-black */
@@ -2042,6 +2099,53 @@ button:focus:not(:focus-visible) { outline: none; }
   .wsb-item.wsb-active { border-bottom-color: #B065A0; background: transparent; color: var(--text-primary); }
   .worker-sidebar-dark .wsb-item.wsb-active { border-bottom-color: #B065A0; color: #F0E8DC; background: transparent; }
   .worker-content { height: auto; padding: 14px; }
+}
+
+/* ═══ DARK THEME — Conrad Comfort --cc-* tokens (single source) ═══════════════
+   Selektor podwójny: html.theme-dark (nowy mechanizm, sekcja 35) ORAZ
+   body.app-dark (stary mechanizm, działa nadal). Dokąd używamy obu — aliasy
+   --plum, --bg-primary itd. (zdefiniowane w :root jako var(--cc-*)) same się
+   przeliczają. Stare bezpośrednie redefinicje --plum/--bg-primary w bloku
+   body.app-dark poniżej są redundantne (te same wartości) — zachowane na razie
+   jako belt-and-suspenders, zostaną wyczyszczone w sekcji 35.
+   ═══════════════════════════════════════════════════════════════════════════ */
+html.theme-dark,
+body.app-dark {
+  color-scheme: dark;
+
+  /* ── Brand (jaśniejszy aubergine na ciemnym tle) ── */
+  --cc-brand:            #B065A0;
+  --cc-brand-hover:      #C988B7;
+  --cc-brand-deep:       #6E2B5C;
+  --cc-brand-soft:       rgba(176,101,160,.10);
+
+  /* ── Powierzchnie i tła ── */
+  --cc-bg:               #0B0810;
+  --cc-bg-elevated:      #110D17;
+  --cc-surface:          #17131F;
+  --cc-surface-elevated: #1F1626;
+  --cc-border:           #2A2334;
+  --cc-border-strong:    #3A3144;
+
+  /* ── Typografia ── */
+  --cc-text:             #F0E8DC;
+  --cc-text-secondary:   #A89DAE;
+  --cc-text-muted:       #766A7E;            /* WCAG AA on #0B0810 */
+  --cc-text-faint:       #4A3F52;
+  --cc-text-on-brand:    #14101a;            /* ciemny tekst na jasnym brand */
+
+  /* ── Akcenty semantyczne (jaśniejsze odpowiedniki na dark) ── */
+  --cc-accent-gold:      #C8A269;
+  --cc-success:          #2BD4A0;
+  --cc-warning:          #F4C055;
+  --cc-danger:           #FF5471;
+  --cc-info:             #5BA8E8;            /* w dark = prawdziwy sky/violet */
+  --cc-focus:            #B065A0;
+
+  /* ── Cienie ── */
+  --cc-shadow-sm:        0 1px 2px rgba(0,0,0,.4);
+  --cc-shadow-md:        0 8px 24px rgba(0,0,0,.5);
+  --cc-shadow-lg:        0 12px 32px rgba(0,0,0,.55);
 }
 
 /* ─── Dark mode (body.app-dark) — v2 aubergine palette ──────────────────── */
