@@ -318,12 +318,20 @@ function WelcomeOverlayScreen({name,onDone}){
     return()=>{clearTimeout(t1);clearTimeout(t2);};
   },[]);
   const h=new Date().getHours();
-  const greeting=h<18?"Dzień dobry,":"Dobry wieczór,";
+  const greeting=h<10?"Dzień dobry,":h<18?"Dobre popołudnie,":"Dobry wieczór,";
   return(
-    <div className="cc-welcome-overlay" style={{opacity:out?0:1}}>
-      <motion.div initial={{opacity:0,y:22}} animate={{opacity:1,y:0}} transition={{duration:.45,ease:[.22,1,.36,1]}} className="cc-welcome-inner">
+    <div className="cc-welcome-overlay" style={{opacity:out?0:1}} role="status" aria-live="polite">
+      <motion.div
+        initial={{opacity:0,y:22}}
+        animate={{opacity:1,y:0}}
+        transition={{duration:.45,ease:[.22,1,.36,1]}}
+        className="cc-welcome-inner">
+        <div className="cc-welcome-mark" aria-hidden="true">
+          <Logo variant="dotsOnly" tone="white" width={56} height={14}/>
+        </div>
         <div className="cc-welcome-greeting">{greeting}</div>
         <div className="cc-welcome-name">{name||"Recepcja"}</div>
+        <div className="cc-welcome-brand" aria-hidden="true">Conrad Comfort</div>
       </motion.div>
     </div>
   );

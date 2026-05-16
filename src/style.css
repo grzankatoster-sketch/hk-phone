@@ -577,6 +577,21 @@ html.theme-light {
   line-height: 1;
   letter-spacing: -.02em;
 }
+.cc-welcome-mark {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 28px;
+  opacity: .82;
+}
+.cc-welcome-brand {
+  margin-top: 32px;
+  font-family: var(--cc-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+  color: rgba(245, 237, 224, .42);
+}
 button[aria-label="Ukryj kwoty"],
 button[aria-label="Pokaż kwoty"] {
   display: none !important;
