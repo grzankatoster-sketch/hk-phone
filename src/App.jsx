@@ -1930,25 +1930,25 @@ export default function App(){
                   </div>
                 )}
                 {(visibleGlobalNotes.length>0)&&(
-                  <div className="panel" style={{borderColor:"#fde68a",background:"#fffbeb",position:"relative"}}>
-                    <div className="panel-title" style={{color:"#92400e",marginBottom:12}}><Bell size={15}/> Ważne informacje</div>
+                  <div className="panel cc-globalnotes-panel" style={{position:"relative"}}>
+                    <div className="panel-title cc-globalnotes-title" style={{marginBottom:12}}><Bell size={15}/> Ważne informacje</div>
                     <div style={{display:"grid",gap:8}}>
                       {visibleGlobalNotes.map(n=>(
-                        <div key={n.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 12px",background:"rgba(255,255,255,.6)",border:"1px solid #fde68a",borderRadius:"var(--radius-md)",position:"relative"}} className="notif-item">
+                        <div key={n.id} className="notif-item cc-globalnotes-item" style={{position:"relative"}}>
                           <div style={{flex:1}}>
-                            <div style={{fontSize:13.5,color:"var(--text-primary)",lineHeight:1.55,fontWeight:500}}>{n.text}</div>
-                            <div style={{fontSize:11,color:"var(--text-muted)",marginTop:3}}>{n.createdBy} · {n.createdAt}</div>
+                            <div style={{fontSize:13.5,color:"var(--cc-text)",lineHeight:1.55,fontWeight:500}}>{n.text}</div>
+                            <div style={{fontSize:11,color:"var(--cc-text-muted)",marginTop:3}}>{n.createdBy} · {n.createdAt}</div>
                           </div>
                           {n.fromManager?(
                             <div title="Powiadomienie od kierownika — usuwa tylko kierownik"
-                              style={{color:"#92400e",opacity:.4,flexShrink:0,display:"flex",alignItems:"center",padding:"3px"}}>
+                              className="cc-globalnotes-mgr-mark"
+                              style={{flexShrink:0,display:"flex",alignItems:"center",padding:"3px",opacity:.5}}>
                               <ShieldCheck size={13}/>
                             </div>
                           ):(
                             <button onClick={()=>dismissGlobalNote(n.id)}
-                              style={{background:"rgba(0,0,0,.07)",border:"none",cursor:"pointer",color:"#92400e",padding:"3px",borderRadius:"50%",flexShrink:0,display:"flex",alignItems:"center",opacity:.6,transition:"opacity .15s"}}
-                              onMouseEnter={e=>e.currentTarget.style.opacity="1"}
-                              onMouseLeave={e=>e.currentTarget.style.opacity=".6"}
+                              className="cc-globalnotes-dismiss"
+                              style={{flexShrink:0,display:"flex",alignItems:"center"}}
                               title="Zamknij — nie będzie się więcej pokazywać">
                               <X size={13}/>
                             </button>
