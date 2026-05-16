@@ -2536,20 +2536,43 @@ export default function App(){
 
   if (!started && loginStep !== "ready") {
     return (
-      <div className="cc-login-screen">
-        {/* Pasek gorny: logo + zegar + data */}
-        <div className="cc-login-topbar">
-          <Logo variant="dotsOnly" tone="white" width={40} height={10}/>
-          <div className="cc-login-clock">
-            <div className="cc-login-date">{new Date().toLocaleDateString("pl-PL",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})}</div>
-            <div className="cc-login-time">{liveTime||new Date().toLocaleTimeString("pl-PL")}</div>
+      <div className="cc-login-screen cc-login-split">
+        {/* ── Lewa kolumna: brand panel v2 ── */}
+        <aside className="cc-login-brand" aria-hidden="true">
+          <div className="cc-login-brand-top">
+            <span className="cc-login-brand-version">v2.0</span>
+            <span className="cc-login-brand-status">
+              <span className="cc-login-brand-status-dot"/>Online
+            </span>
           </div>
-        </div>
-
-        {/* Logo + formularz ustawione pionowo — logo na gorze (20%), formularz nizej */}
-        <div className="cc-login-hero">
-          <div className="cc-login-logo-hero">
+          <div className="cc-login-brand-hero">
             <Logo variant="full" tone="white"/>
+            <div className="cc-login-brand-tagline">Panel Recepcji — niedoścignione doświadczenie gości.</div>
+          </div>
+          <div className="cc-login-brand-cards">
+            <div className="cc-login-brand-card">
+              <div className="cc-login-brand-card-lbl">Data</div>
+              <div className="cc-login-brand-card-val">{new Date().toLocaleDateString("pl-PL",{day:"2-digit",month:"short"})}</div>
+              <div className="cc-login-brand-card-sub">{new Date().toLocaleDateString("pl-PL",{weekday:"long"})}</div>
+            </div>
+            <div className="cc-login-brand-card">
+              <div className="cc-login-brand-card-lbl">Czas</div>
+              <div className="cc-login-brand-card-val">{liveTime||new Date().toLocaleTimeString("pl-PL").slice(0,5)}</div>
+              <div className="cc-login-brand-card-sub">lokalny</div>
+            </div>
+            <div className="cc-login-brand-card">
+              <div className="cc-login-brand-card-lbl">Synch.</div>
+              <div className="cc-login-brand-card-val">Live</div>
+              <div className="cc-login-brand-card-sub">Supabase</div>
+            </div>
+          </div>
+        </aside>
+
+        {/* ── Prawa kolumna: form panel ── */}
+        <main className="cc-login-form" role="main">
+          <div className="cc-login-form-eyebrow">
+            <span className="cc-login-form-eyebrow-line"/>
+            <span>Logowanie · Conrad Comfort</span>
           </div>
           <div className="cc-login-center">
           {loginStep==="name"&&(
@@ -2803,10 +2826,8 @@ export default function App(){
             </div>
           )}
           </div>
-        </div>
-
-        {/* Stopka */}
-        <div className="cc-login-footer">Conrad Comfort · Panel Recepcji</div>
+          <div className="cc-login-footer">© Conrad Comfort · Panel Recepcji</div>
+        </main>
       </div>
     );
   }

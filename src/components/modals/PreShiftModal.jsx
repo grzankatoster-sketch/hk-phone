@@ -74,7 +74,7 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
       <div style={{ fontSize: 34, marginBottom: 10, opacity: .5 }}>📭</div>
       <div style={{ fontSize: 13.5, fontWeight: 600 }}>{msg}</div>
       {counts[activeTab === "alerts" ? "alerts" : activeTab === "standing" ? "standing" : "wiki"] === 0 ? (
-        <div style={{ fontSize: 11.5, marginTop: 6, opacity: .7, color: "var(--teal)" }}>
+        <div style={{ fontSize: 11.5, marginTop: 6, opacity: .7, color: "var(--cc-success)" }}>
           Sekcja pusta — zatwierdzona automatycznie.
         </div>
       ) : (
@@ -100,18 +100,21 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
   );
 
   return (
-    <div className="modal-backdrop" style={{ zIndex: 1100 }}>
+    <div className="modal-backdrop" style={{ zIndex: 1100 }} role="presentation">
       <motion.div
         initial={{ opacity: 0, y: 12, scale: .97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="cc-preshift-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cc-preshift-title-id"
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="cc-preshift-header">
           <Logo variant="icon" tone="dark" width={36} height={36} />
           <div style={{ flex: 1 }}>
-            <div className="cc-preshift-title">Zanim rozpoczniesz zmianę</div>
+            <div className="cc-preshift-title" id="cc-preshift-title-id">Zanim rozpoczniesz zmianę</div>
             <div className="cc-preshift-sub">
               <strong>{employeeName}</strong> · {SHIFT_LABELS_PL[selectedShift] || selectedShift}
             </div>
@@ -122,10 +125,10 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
         </div>
 
         {/* Tabs */}
-        <div className="cc-preshift-tabs">
-          {tab("alerts",   "Pilne informacje",    counts.alerts,   "var(--rose)")}
-          {tab("standing", "Stałe przypomnienia", counts.standing, "var(--gold)")}
-          {tab("wiki",     "Nowe w Wiki",          counts.wiki,    "var(--plum)")}
+        <div className="cc-preshift-tabs" role="tablist">
+          {tab("alerts",   "Pilne informacje",    counts.alerts,   "var(--cc-danger)")}
+          {tab("standing", "Stałe przypomnienia", counts.standing, "var(--cc-accent-gold)")}
+          {tab("wiki",     "Nowe w Wiki",          counts.wiki,    "var(--cc-brand)")}
         </div>
 
         {/* Tab content */}
@@ -134,7 +137,7 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
             <div className="cc-preshift-list">
               {alerts.length === 0 ? renderEmpty("Brak pilnych informacji od kierownika.") :
                 alerts.map(a => (
-                  <div key={a.id} className="cc-preshift-item" style={{ borderLeftColor: a.priority === "urgent" ? "var(--rose)" : "var(--gold)" }}>
+                  <div key={a.id} className="cc-preshift-item" style={{ borderLeftColor: a.priority === "urgent" ? "var(--cc-danger)" : "var(--cc-accent-gold)" }}>
                     <div className="cc-preshift-item-head">
                       <div className="cc-preshift-item-title">{a.title || "Informacja"}</div>
                       {a.pinned && <span className="cc-preshift-pin">📌</span>}
@@ -151,7 +154,7 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
             <div className="cc-preshift-list">
               {reminders.length === 0 ? renderEmpty("Brak stałych przypomnień.") :
                 reminders.map(r => (
-                  <div key={r.id} className="cc-preshift-item" style={{ borderLeftColor: "var(--gold)" }}>
+                  <div key={r.id} className="cc-preshift-item" style={{ borderLeftColor: "var(--cc-accent-gold)" }}>
                     <div className="cc-preshift-item-head">
                       <div className="cc-preshift-item-title">{r.title || "Przypomnienie"}</div>
                       {r.category && <span className="cc-preshift-cat">{r.category}</span>}
@@ -166,7 +169,7 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
             <div className="cc-preshift-list">
               {newWiki.length === 0 ? renderEmpty("Brak nowych wpisów w Wiki od ostatniego logowania.") :
                 newWiki.map(w => (
-                  <div key={w.id} className="cc-preshift-item" style={{ borderLeftColor: "var(--plum)" }}>
+                  <div key={w.id} className="cc-preshift-item" style={{ borderLeftColor: "var(--cc-brand)" }}>
                     <div className="cc-preshift-item-head">
                       <div className="cc-preshift-item-title">{w.topic}</div>
                     </div>
