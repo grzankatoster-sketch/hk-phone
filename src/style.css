@@ -4504,6 +4504,119 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ HK Panel — Floor Card + Vacated Dot + Apt Note (sekcja 9 v2) ═══════════
+   Targeted improvements w HKPanel.jsx — inline styles → klasy CSS na cc-* tokens.
+   Wzorzec: design-preview/v2/06-hk-panel.html.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-hk-floor-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-lg);
+  box-shadow: var(--cc-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+.cc-hk-floor-head {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--cc-border);
+  background: var(--cc-bg-elevated);
+}
+.cc-hk-floor-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  font-size: 13px;
+  color: var(--cc-text);
+  letter-spacing: 0.01em;
+  min-width: 0;
+}
+.cc-hk-floor-tag {
+  font-family: var(--cc-font-display);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+  border: 1px solid color-mix(in srgb, var(--cc-brand) 25%, transparent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.cc-hk-floor-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-hk-floor-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 90px;
+}
+.cc-hk-floor-progress-count {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cc-text-muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* Vacated dot — używa tokenów cc-success / cc-warning */
+.cc-hk-vacated-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: var(--cc-warning);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-warning) 28%, transparent);
+  border: none;
+  padding: 0;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-hk-vacated-dot:hover {
+  transform: scale(1.15);
+}
+.cc-hk-vacated-dot:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-hk-vacated-dot--done {
+  background: var(--cc-success);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-success) 32%, transparent);
+}
+
+/* Apartment note input (mini inline editor w apt-room card) */
+.cc-hk-apt-note {
+  flex: 1;
+  min-width: 0;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--cc-accent-gold);
+  background: color-mix(in srgb, var(--cc-surface) 90%, transparent);
+  color: var(--cc-brand);
+  font-family: var(--cc-font-body);
+  outline: none;
+  transition: border-color 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-hk-apt-note:focus {
+  border-color: var(--cc-brand);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cc-brand) 18%, transparent);
+}
+
 /* ═══ Flow Card + Compose Card (sekcja 8 — Przekazanie zmiany v2) ═══════════
    Wg design-preview/v2/11-przekazanie.html flow-card + compose patterns.
    ═══════════════════════════════════════════════════════════════════════════ */

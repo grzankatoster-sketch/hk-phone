@@ -819,41 +819,23 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     const done=rooms.filter(r=>hkData[r.no]?.status).length;
     const pct=rooms.length>0?(done/rooms.length)*100:0;
     const floorNum=title.split(" ").pop(); // "1", "2", "3"
-    const floorBg=dark?"var(--dark-card)":"var(--bg-card)";
-    const floorBorder=dark?"var(--dark-border)":"var(--border-light)";
-    const headBg=dark?"rgba(255,255,255,.025)":"var(--bg-secondary)";
-    const titleColor=dark?"var(--dark-text)":"var(--text-primary)";
-    const mutedColor=dark?"var(--dark-text-muted)":"var(--text-muted)";
     return(
-      <div key={title}
-        style={{background:floorBg,border:`1px solid ${floorBorder}`,
-                borderRadius:"var(--radius-lg)",boxShadow:"var(--shadow-sm)",
-                display:"flex",flexDirection:"column",overflow:"hidden",flex:1,minWidth:0}}>
+      <section key={title} className="cc-hk-floor-card" aria-labelledby={`cc-hk-floor-${floorNum}-title`}>
         {/* Floor header */}
-        <div style={{padding:"10px 14px",display:"flex",alignItems:"center",
-                     justifyContent:"space-between",gap:10,
-                     borderBottom:`1px solid ${floorBorder}`,background:headBg}}>
-          <span style={{fontWeight:650,fontSize:13,color:titleColor,
-                        display:"flex",alignItems:"center",gap:8,letterSpacing:"0.01em"}}>
-            <span style={{fontSize:9.5,fontWeight:700,letterSpacing:"0.04em",
-                          background:dark?"rgba(90,29,74,.35)":"var(--plum-bg)",
-                          color:dark?"#f0e4ec":"var(--plum)",
-                          border:"1px solid",borderColor:dark?"rgba(90,29,74,.55)":"var(--plum-border)",
-                          borderRadius:4,padding:"2px 6px"}}>
-              P{floorNum}
-            </span>
-            {title}
-          </span>
-          <div style={{display:"flex",alignItems:"center",gap:8,minWidth:90}}>
-            <span style={{fontSize:11,fontWeight:600,color:mutedColor,
-                          fontVariantNumeric:"tabular-nums",flexShrink:0}}>
+        <header className="cc-hk-floor-head">
+          <div className="cc-hk-floor-title" id={`cc-hk-floor-${floorNum}-title`}>
+            <span className="cc-hk-floor-tag" aria-hidden="true">P{floorNum}</span>
+            <span className="cc-hk-floor-name">{title}</span>
+          </div>
+          <div className="cc-hk-floor-progress">
+            <span className="cc-hk-floor-progress-count">
               {done}/{rooms.length}
             </span>
-            <div className="hkd-progress-bar">
+            <div className="hkd-progress-bar" role="progressbar" aria-valuenow={Math.round(pct)} aria-valuemin="0" aria-valuemax="100">
               <div className="hkd-progress-fill" style={{width:`${pct}%`}}/>
             </div>
           </div>
-        </div>
+        </header>
         {/* Rooms */}
         <div className="hkd-floor-rooms">
           {rooms.map(r=>{
@@ -869,7 +851,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
             );
           })}
         </div>
-      </div>
+      </section>
     );
   };
 
@@ -909,11 +891,11 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       <div key={room.no} className={`room-card ${cls}`} onClick={(e)=>handleRoomCardClick(room.no,e)} style={{position:"relative"}}>
         {isCheckout?(
           <div
+            className={`cc-hk-vacated-dot${isVacated?" cc-hk-vacated-dot--done":""}`}
             title={isVacated?"✓ Przekazano HK — kliknij aby cofnąć":"Kliknij: poinformuj HK o wymeldowaniu"}
             onClick={e=>{e.stopPropagation();isVacated?unmarkVacated(room.no):markVacatedFromPlan(room.no);}}
-            style={{position:"absolute",top:5,right:5,width:11,height:11,borderRadius:"50%",cursor:"pointer",
-                     background:isVacated?"#34d399":"#f59e0b",
-                     boxShadow:isVacated?"0 0 0 2px rgba(52,211,153,.3)":"0 0 0 2px rgba(245,158,11,.25)"}}
+            role="button"
+            aria-label={isVacated?"Cofnij przekazanie HK":"Poinformuj HK o wymeldowaniu"}
           />
         ):(
           <div className={`room-status-dot ${cls}`}/>
@@ -924,9 +906,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
             <input type="text" value={rd.apartmentNote||""} placeholder="D+T, D+D, SOFA…"
               onChange={e=>setRoom(room.no,"apartmentNote",e.target.value)}
               onClick={e=>e.stopPropagation()}
-              style={{flex:1,minWidth:0,fontSize:10,padding:"2px 5px",borderRadius:4,
-                      border:"1px solid #c8a050",background:"rgba(255,255,255,.9)",
-                      color:"#5a1d4a",fontFamily:"inherit",outline:"none"}}/>
+              className="cc-hk-apt-note"/>
           ):(
             <select value={rd.roomType||room.type||""} onChange={e=>setRoom(room.no,"roomType",e.target.value)} onClick={e=>e.stopPropagation()} style={{flex:1,minWidth:0}}>
               {["DBL","SGL","TWIN","TRPL","D+S"].map(t=><option key={t} value={t}>{t}</option>)}
