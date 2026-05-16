@@ -30,22 +30,28 @@ export default function WorkerSidebar({
   const nb = (id, icon, label, badge = 0, disabled = false) => (
     <button
       key={id}
+      type="button"
+      role="tab"
+      aria-selected={activeTab === id}
+      aria-disabled={disabled || undefined}
       className={`nsb-item${activeTab === id ? " nsb-active" : ""}${disabled ? " nsb-disabled" : ""}`}
       onClick={() => !disabled && setActiveTab(id)}
     >
-      <span className="nsb-item-icon">{icon}</span>
-      <span style={{ flex: 1 }}>{label}</span>
+      <span className="nsb-item-icon" aria-hidden="true">{icon}</span>
+      <span className="nsb-item-label">{label}</span>
       {badge > 0 && <span className="nsb-badge">{badge}</span>}
     </button>
   );
 
   const soon = (icon, label) => (
     <button
+      type="button"
+      aria-disabled="true"
       className="nsb-item nsb-disabled"
       onClick={() => showToast?.(`Moduł "${label}" — wkrótce dostępny.`, "info")}
     >
-      <span className="nsb-item-icon">{icon}</span>
-      <span style={{ flex: 1 }}>{label}</span>
+      <span className="nsb-item-icon" aria-hidden="true">{icon}</span>
+      <span className="nsb-item-label">{label}</span>
       <span className="nsb-soon">Wkrótce</span>
     </button>
   );
@@ -92,7 +98,7 @@ export default function WorkerSidebar({
       )}
 
       {/* Navigation */}
-      <nav className="nsb-nav">
+      <nav className="nsb-nav" role="tablist" aria-label="Nawigacja recepcji">
         <div className="nsb-section-label">Zmiana</div>
         {nb("zmiana",     <ClipboardList size={16} />, "Przegląd zmiany", totalBadge)}
         {nb("przekazanie",<ArrowLeftRight size={16} />, "Przekaż zmianę", 0, !started)}
@@ -115,22 +121,22 @@ export default function WorkerSidebar({
         {soon(<MessageSquare size={16} />, "Czat zespołu")}
         <button className="nsb-item" onClick={() => setShowEmpReport(true)}>
           <span className="nsb-item-icon"><FileDown size={16} /></span>
-          <span style={{ flex: 1 }}>Notatka służbowa</span>
+          <span className="nsb-item-label">Notatka służbowa</span>
         </button>
         <button className="nsb-item" onClick={onShowMsg}>
           <span className="nsb-item-icon"><AlertCircle size={16} /></span>
-          <span style={{ flex: 1 }}>Wiad. do kierownika</span>
+          <span className="nsb-item-label">Wiad. do kierownika</span>
         </button>
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Narzędzia</div>
         <button className="nsb-item" onClick={() => setShowWiki(true)}>
           <span className="nsb-item-icon"><BookOpen size={16} /></span>
-          <span style={{ flex: 1 }}>Wiki</span>
+          <span className="nsb-item-label">Wiki</span>
         </button>
         <button className="nsb-item" onClick={() => setShowPaymentForm(true)}>
           <span className="nsb-item-icon"><FileText size={16} /></span>
-          <span style={{ flex: 1 }}>Korekta płatności</span>
+          <span className="nsb-item-label">Korekta płatności</span>
         </button>
         {isAdmin && (
           <button className="nsb-item" onClick={() => setShowAdminPanel(true)}>
@@ -139,7 +145,7 @@ export default function WorkerSidebar({
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
             </span>
-            <span style={{ flex: 1 }}>Panel kierownika</span>
+            <span className="nsb-item-label">Panel kierownika</span>
           </button>
         )}
       </nav>

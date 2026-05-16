@@ -42,14 +42,24 @@ export default function AdminSidebarRail({
     {id:"system",    label:"System",     icon:<ShieldCheck size={22}/>},
   ];
   const nb=(id,icon,label,badge=0)=>(
-    <button key={id} className={`wsb-item${activeTab===id?" wsb-active":""}`} onClick={()=>setActiveTab(id)}>
-      <span className="wsb-icon">{icon}</span><span className="wsb-label">{label}</span>
+    <button
+      key={id}
+      type="button"
+      role="tab"
+      aria-selected={activeTab===id}
+      className={`wsb-item${activeTab===id?" wsb-active":""}`}
+      onClick={()=>setActiveTab(id)}>
+      <span className="wsb-icon" aria-hidden="true">{icon}</span><span className="wsb-label">{label}</span>
       {badge>0&&<span className="wsb-badge">{badge}</span>}
     </button>
   );
   const soon=(icon,label)=>(
-    <button className="wsb-item wsb-disabled" onClick={()=>showToast&&showToast(`Moduł "${label}" — wkrótce dostępny.`,"info")}>
-      <span className="wsb-icon">{icon}</span><span className="wsb-label">{label}</span>
+    <button
+      type="button"
+      aria-disabled="true"
+      className="wsb-item wsb-disabled"
+      onClick={()=>showToast&&showToast(`Moduł "${label}" — wkrótce dostępny.`,"info")}>
+      <span className="wsb-icon" aria-hidden="true">{icon}</span><span className="wsb-label">{label}</span>
       <span className="wsb-soon">Wkrótce</span>
     </button>
   );
@@ -60,29 +70,32 @@ export default function AdminSidebarRail({
   }[activeGroup];
 
   return(
-    <aside className={`worker-sidebar-rail${adminDark?" worker-sidebar-dark":""}`}>
+    <aside className={`worker-sidebar-rail${adminDark?" worker-sidebar-dark":""}`} aria-label="Panel kierownictwa — nawigacja">
       <div className="wsb-rail">
-        <div className="wsb-rail-logo" title="Conrad Comfort — panel kierownictwa"><Logo variant="icon" tone="dark"/></div>
-        <div className="wsb-rail-groups">
+        <div className="wsb-rail-logo" title="Conrad Comfort — panel kierownictwa" aria-hidden="true"><Logo variant="icon" tone="dark"/></div>
+        <div className="wsb-rail-groups" role="tablist" aria-label="Grupy paneli">
           {groups.map(g=>(
             <button key={g.id}
+              type="button"
+              role="tab"
+              aria-selected={activeGroup===g.id}
               className={`wsb-rail-btn${activeGroup===g.id?" wsb-rail-active":""}`}
               onClick={()=>setActiveGroup(g.id)}
               title={g.label}>
-              {g.icon}
-              {groupBadge[g.id]>0&&<span className="wsb-rail-dot"/>}
+              <span aria-hidden="true">{g.icon}</span>
+              {groupBadge[g.id]>0&&<span className="wsb-rail-dot" aria-hidden="true"/>}
+              <span className="visually-hidden">{g.label}</span>
             </button>
           ))}
         </div>
         <div className="wsb-rail-spacer"/>
-        <button className="wsb-rail-btn" onClick={()=>setShowSearch(true)} title="Szukaj"><Search size={22}/></button>
-        <button className="wsb-rail-btn" onClick={onCheckUpdate}
-          style={{color:updateState==="available"?"#60a5fa":updateState==="error"?"#f87171":undefined}}
-          title="Sprawdź aktualizacje"><RefreshCw size={22}/></button>
-        <button className="wsb-rail-btn" onClick={()=>setAdminDark(v=>!v)} title={adminDark?"Tryb jasny":"Tryb ciemny"}>
-          {adminDark?<Sun size={22}/>:<Moon size={22}/>}
+        <button type="button" className="wsb-rail-btn" onClick={()=>setShowSearch(true)} title="Szukaj"><Search size={22} aria-hidden="true"/><span className="visually-hidden">Szukaj</span></button>
+        <button type="button" className={`wsb-rail-btn wsb-rail-update wsb-rail-update--${updateState||"idle"}`} onClick={onCheckUpdate} title="Sprawdź aktualizacje"><RefreshCw size={22} aria-hidden="true"/><span className="visually-hidden">Sprawdź aktualizacje</span></button>
+        <button type="button" className="wsb-rail-btn" onClick={()=>setAdminDark(v=>!v)} title={adminDark?"Tryb jasny":"Tryb ciemny"}>
+          {adminDark?<Sun size={22} aria-hidden="true"/>:<Moon size={22} aria-hidden="true"/>}
+          <span className="visually-hidden">{adminDark?"Tryb jasny":"Tryb ciemny"}</span>
         </button>
-        <button className="wsb-rail-btn" onClick={handleAdminLogout} title="Wyloguj"><LogOut size={22}/></button>
+        <button type="button" className="wsb-rail-btn" onClick={handleAdminLogout} title="Wyloguj"><LogOut size={22} aria-hidden="true"/><span className="visually-hidden">Wyloguj</span></button>
       </div>
 
       <div className="wsb-details">
@@ -91,23 +104,24 @@ export default function AdminSidebarRail({
           <div className="wsb-details-sub">Kierownik: <strong>{currentManager}</strong></div>
         </div>
         {updateState==="available"&&updateInfo&&(
-          <div style={{margin:"10px 12px",padding:"10px 12px",background:"rgba(56,189,248,.12)",border:"1px solid rgba(56,189,248,.35)",borderRadius:8,fontSize:12}}>
-            <div style={{color:"#38bdf8",fontWeight:700,marginBottom:6}}>Dostępna v{updateInfo.version}</div>
-            <button onClick={onDownloadUpdate} className="btn btn-sky" style={{fontSize:11,padding:"4px 10px",width:"100%"}}>Pobierz aktualizację</button>
+          <div className="cc-update-banner cc-update-banner--info" role="status">
+            <div className="cc-update-banner-title">Dostępna v{updateInfo.version}</div>
+            <button type="button" onClick={onDownloadUpdate} className="cc-update-banner-btn cc-update-banner-btn--info">Pobierz aktualizację</button>
           </div>
         )}
         {updateState==="downloading"&&(
-          <div style={{margin:"10px 12px",padding:"10px 12px",background:"rgba(56,189,248,.08)",border:"1px solid rgba(56,189,248,.25)",borderRadius:8,fontSize:12,color:"#38bdf8",display:"flex",alignItems:"center",gap:8}}>
-            <RefreshCw size={13}/> Pobieranie {updateProgress}%
+          <div className="cc-update-banner cc-update-banner--progress" role="status" aria-live="polite">
+            <RefreshCw size={13} aria-hidden="true"/>
+            <span>Pobieranie {updateProgress}%</span>
           </div>
         )}
         {updateState==="downloaded"&&(
-          <div style={{margin:"10px 12px",padding:"10px 12px",background:"rgba(52,211,153,.12)",border:"1px solid rgba(52,211,153,.35)",borderRadius:8,fontSize:12}}>
-            <div style={{color:"#34d399",fontWeight:700,marginBottom:6}}>Aktualizacja gotowa</div>
-            <button onClick={onInstallUpdate} className="btn btn-emerald" style={{fontSize:11,padding:"4px 10px",width:"100%"}}>Zaktualizuj teraz</button>
+          <div className="cc-update-banner cc-update-banner--ready" role="status">
+            <div className="cc-update-banner-title">Aktualizacja gotowa</div>
+            <button type="button" onClick={onInstallUpdate} className="cc-update-banner-btn cc-update-banner-btn--ready">Zaktualizuj teraz</button>
           </div>
         )}
-        <div className="wsb-details-items">
+        <div className="wsb-details-items" role="tablist" aria-label={`Panele: ${detailsTitle}`}>
           {activeGroup==="dashboard"&&<>
             {nb("wiadomosci",<Bell size={14}/>,"Wiadomości",unreadMsgCount)}
             {nb("statystyki",<BarChart2 size={14}/>,"Statystyki")}
