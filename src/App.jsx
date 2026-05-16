@@ -2257,65 +2257,91 @@ export default function App(){
                 </div>
               </div>
             )}
-            {/* KANBAN — 3 kolumny: Do zrobienia / Pilne / Zrobione */}
+            {/* ═══ TASKS LIST v2 (wg design-preview/v2/02-recepcja-dzienna .tlist) ═══
+                Pojedyncza karta z listą zadań: header (count + sync) + rows
+                (check + text + tag + time). Sortowanie: pilne/spóźnione → zaplanowane → done.
+            ═══════════════════════════════════════════════════════════════════════ */}
             {(()=>{
               const enriched=currentTasks.map((task,index)=>{
                 const isDone=!!completed[index];
                 const isOverdue=!isDone&&task.scheduledTime&&(()=>{const now=new Date();const[h,m]=task.scheduledTime.split(":").map(Number);const sd=new Date(now);sd.setHours(h||0,m||0,0,0);return now>=sd&&shiftStartTime&&sd>=shiftStartTime;})();
                 return {task,index,isDone,isOverdue};
               });
-              const colTodo=enriched.filter(t=>!t.isDone&&!t.isOverdue&&!t.task.urgent);
-              const colHot =enriched.filter(t=>!t.isDone&&(t.isOverdue||t.task.urgent));
-              const colDone=enriched.filter(t=>t.isDone);
-              const renderCard=({task,index,isDone,isOverdue})=>(
-                <motion.div key={task.id} layout
-                  className={`cc-kanban-card${isDone?" cc-kanban-card-done":""}${isOverdue?" cc-kanban-card-overdue":""}${task.urgent&&!isDone?" cc-kanban-card-urgent":""}`}>
-                  <button className="cc-kanban-check" onClick={()=>toggleTask(index,!isDone)} aria-label={isDone?"Cofnij":"Oznacz jako zrobione"}>
-                    {isDone?"✓":""}
-                  </button>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div className="cc-kanban-text">{task.text}</div>
-                    <div className="cc-kanban-meta">
-                      {task.urgent&&!isDone&&<span className="cc-kanban-tag cc-kanban-tag-rose">PILNE</span>}
-                      {task.weekdaysOnly&&!isDone&&<span className="cc-kanban-tag cc-kanban-tag-plum">Pn-Pt</span>}
-                      {task.scheduledTime&&<span className={`cc-kanban-time${isOverdue?" cc-kanban-time-late":""}`}>{isOverdue?"⏰ ":"🕒 "}{task.scheduledTime}</span>}
-                    </div>
-                  </div>
-                </motion.div>
-              );
+              // Sort: done last, urgent/overdue first, then by scheduledTime asc
+              const sorted=[...enriched].sort((a,b)=>{
+                if(a.isDone!==b.isDone) return a.isDone?1:-1;
+                const aHot=(a.task.urgent||a.isOverdue)?0:1;
+                const bHot=(b.task.urgent||b.isOverdue)?0:1;
+                if(aHot!==bHot) return aHot-bHot;
+                const at=a.task.scheduledTime||"99:99";
+                const bt=b.task.scheduledTime||"99:99";
+                return at.localeCompare(bt);
+              });
+              const totalCount=enriched.length;
+              const doneCount=enriched.filter(t=>t.isDone).length;
+              const hotCount=enriched.filter(t=>!t.isDone&&(t.task.urgent||t.isOverdue)).length;
               return (
-                <div className="cc-kanban-grid">
-                  <div className="cc-kanban-col">
-                    <div className="cc-kanban-head">
-                      <span className="cc-kanban-dot" style={{background:"var(--text-muted)"}}/>
-                      Do zrobienia <span className="cc-kanban-count">{colTodo.length}</span>
+                <section className="cc-task-card" aria-labelledby="cc-task-card-title">
+                  <header className="cc-task-card-head">
+                    <div className="cc-task-card-headline">
+                      <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" className="cc-task-card-icon" aria-hidden="true">
+                        <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                      </svg>
+                      <h2 id="cc-task-card-title" className="cc-task-card-title">Zadania zmiany</h2>
                     </div>
-                    <div className="cc-kanban-list">
-                      {colTodo.length===0&&<div className="cc-kanban-empty">Wszystko poukładane</div>}
-                      {colTodo.map(renderCard)}
+                    <div className="cc-task-card-meta">
+                      <span className="cc-task-card-count">
+                        <strong>{doneCount}</strong> / {totalCount} <span className="cc-task-card-count-lbl">ukończono</span>
+                      </span>
+                      {hotCount>0&&(
+                        <span className="cc-task-card-hot">
+                          <span className="cc-task-card-hot-dot" aria-hidden="true"/>
+                          {hotCount} pilne
+                        </span>
+                      )}
                     </div>
-                  </div>
-                  <div className="cc-kanban-col cc-kanban-col-hot">
-                    <div className="cc-kanban-head">
-                      <span className="cc-kanban-dot" style={{background:"var(--rose)"}}/>
-                      Pilne / nadchodzące <span className="cc-kanban-count">{colHot.length}</span>
+                  </header>
+
+                  {sorted.length===0?(
+                    <div className="cc-task-card-empty">
+                      <div className="cc-task-card-empty-mark">·</div>
+                      <div>Brak zadań dla tej zmiany.</div>
                     </div>
-                    <div className="cc-kanban-list">
-                      {colHot.length===0&&<div className="cc-kanban-empty">Brak pilnych</div>}
-                      {colHot.map(renderCard)}
-                    </div>
-                  </div>
-                  <div className="cc-kanban-col cc-kanban-col-done">
-                    <div className="cc-kanban-head">
-                      <span className="cc-kanban-dot" style={{background:"var(--emerald)"}}/>
-                      Zrobione <span className="cc-kanban-count">{colDone.length}</span>
-                    </div>
-                    <div className="cc-kanban-list">
-                      {colDone.length===0&&<div className="cc-kanban-empty">Jeszcze nic</div>}
-                      {colDone.map(renderCard)}
-                    </div>
-                  </div>
-                </div>
+                  ):(
+                    <ul className="cc-task-list" role="list">
+                      {sorted.map(({task,index,isDone,isOverdue})=>(
+                        <motion.li
+                          key={task.id}
+                          layout
+                          className={`cc-task-row${isDone?" cc-task-row--done":""}${task.urgent&&!isDone?" cc-task-row--urgent":""}${isOverdue?" cc-task-row--overdue":""}`}>
+                          <button
+                            type="button"
+                            className="cc-task-check"
+                            onClick={()=>toggleTask(index,!isDone)}
+                            aria-label={isDone?"Cofnij wykonanie zadania":"Oznacz jako zrobione"}
+                            aria-pressed={isDone}>
+                            {isDone&&(
+                              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24" aria-hidden="true">
+                                <polyline points="20 6 9 17 4 12"/>
+                              </svg>
+                            )}
+                          </button>
+                          <div className="cc-task-text">{task.text}</div>
+                          <div className="cc-task-tags">
+                            {task.urgent&&!isDone&&<span className="cc-task-tag cc-task-tag--urgent">Pilne</span>}
+                            {task.weekdaysOnly&&!isDone&&<span className="cc-task-tag cc-task-tag--neutral">Pn-Pt</span>}
+                            {!task.urgent&&!task.weekdaysOnly&&task.required&&!isDone&&<span className="cc-task-tag cc-task-tag--req">Wymagane</span>}
+                          </div>
+                          {task.scheduledTime&&(
+                            <time className={`cc-task-time${isOverdue?" cc-task-time--late":""}`}>
+                              {task.scheduledTime}
+                            </time>
+                          )}
+                        </motion.li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
               );
             })()}
             <div className="panel">
