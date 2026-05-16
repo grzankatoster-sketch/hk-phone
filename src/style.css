@@ -4233,9 +4233,389 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
-/* ═══ Dashboard Content Grid (sekcja 6 v2 wg open-design/skills/dashboard) ═══
-   Row 2 (chart) + Row 3 (live feed) w layoutcie 1.6fr / 1fr, poniżej KPI row.
+/* ═══ KASA ZMIANY — Cash Card v2 (sekcja 6 v3) ═══════════════════════════════
+   Wg design-preview/v2/02-recepcja-dzienna.html: card head + 4-cell grid
+   (stała / KW prev / KW końcowa / przyrost computed) + cash-result tile + footer.
+   Zastępuje: brzydki baner "Potwierdź stan kasy" + osobny KW panel + alert "Akcje".
    ═══════════════════════════════════════════════════════════════════════════ */
+.cc-cash-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cc-cash-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--cc-border);
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.cc-cash-card-headline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-cash-card-icon {
+  color: var(--cc-brand);
+}
+.cc-cash-card-title {
+  font-family: var(--cc-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cc-text);
+  margin: 0;
+  letter-spacing: -.005em;
+}
+.cc-cash-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-faint);
+}
+.cc-cash-card-eye {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--cc-text-muted);
+  border-radius: var(--cc-radius-sm);
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-cash-card-eye:hover {
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text);
+  border-color: var(--cc-border);
+}
+.cc-cash-card-eye:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
+/* ── 4-cell grid ── */
+.cc-cash-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+  padding: 20px;
+}
+@media (min-width: 900px) {
+  .cc-cash-card-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.cc-cash-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cc-cash-cell--active {
+  /* KW końcowa cell ma subtelne wyróżnienie ember */
+}
+.cc-cash-cell--computed {
+  /* read-only computed cell */
+}
+.cc-cash-cell-lbl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cc-text-faint);
+  line-height: 1;
+}
+.cc-cash-cell-lbl-req {
+  font-family: var(--cc-font-body);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--cc-brand);
+  background: var(--cc-brand-soft);
+  padding: 2px 6px;
+  border-radius: 99px;
+  margin-left: auto;
+}
+.cc-cash-cell-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: auto;
+}
+.cc-cash-cell-pill--warn {
+  background: color-mix(in srgb, var(--cc-warning) 18%, transparent);
+  color: var(--cc-warning);
+  animation: cc-shell-pulse 1.8s ease-in-out infinite;
+}
+.cc-cash-cell-pill--ok {
+  background: color-mix(in srgb, var(--cc-success) 18%, transparent);
+  color: var(--cc-success);
+}
+.cc-cash-cell-pill--err {
+  background: color-mix(in srgb, var(--cc-danger) 18%, transparent);
+  color: var(--cc-danger);
+}
+
+.cc-cash-cell-val {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 42px;
+}
+.cc-cash-cell-num {
+  font-family: var(--cc-font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cc-text);
+  letter-spacing: -.01em;
+  padding: 10px 0;
+  font-variant-numeric: tabular-nums;
+}
+.cc-cash-cell-num--muted {
+  color: var(--cc-text-muted);
+}
+.cc-cash-cell-num--success {
+  color: var(--cc-success);
+}
+.cc-cash-cell-num--placeholder {
+  color: var(--cc-text-faint);
+}
+.cc-cash-cell-input {
+  flex: 1;
+  font-family: var(--cc-font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  background: var(--cc-bg-elevated);
+  border: 1.5px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  padding: 8px 12px;
+  color: var(--cc-text);
+  outline: none;
+  min-width: 0;
+  transition: all 160ms cubic-bezier(.4,0,.2,1);
+}
+.cc-cash-cell--active .cc-cash-cell-input {
+  border-color: color-mix(in srgb, var(--cc-brand) 35%, transparent);
+}
+.cc-cash-cell-input:focus {
+  border-color: var(--cc-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cc-brand) 18%, transparent);
+}
+.cc-cash-cell-input::placeholder {
+  color: var(--cc-text-faint);
+}
+.cc-cash-cell-unit {
+  font-family: var(--cc-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cc-text-muted);
+}
+.cc-cash-cell-hint {
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+  letter-spacing: .01em;
+}
+
+.cc-cash-cell-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.cc-cash-cell-btn {
+  flex: 1;
+  border: 1px solid var(--cc-border);
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text-secondary);
+  font-family: var(--cc-font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: var(--cc-radius-sm);
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+  white-space: nowrap;
+}
+.cc-cash-cell-btn:hover {
+  border-color: var(--cc-border-strong);
+  color: var(--cc-text);
+}
+.cc-cash-cell-btn:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+.cc-cash-cell-btn--ok {
+  border-color: color-mix(in srgb, var(--cc-success) 35%, transparent);
+  color: var(--cc-success);
+}
+.cc-cash-cell-btn--ok:hover {
+  background: color-mix(in srgb, var(--cc-success) 12%, transparent);
+}
+.cc-cash-cell-btn--err {
+  border-color: color-mix(in srgb, var(--cc-danger) 35%, transparent);
+  color: var(--cc-danger);
+}
+.cc-cash-cell-btn--err:hover {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+}
+
+.cc-cash-cell-discr {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.cc-cash-cell-discr-input {
+  flex: 1;
+  font-family: var(--cc-font-mono);
+  font-size: 13px;
+  background: var(--cc-bg-elevated);
+  border: 1px solid color-mix(in srgb, var(--cc-danger) 35%, transparent);
+  border-radius: var(--cc-radius-sm);
+  padding: 6px 10px;
+  color: var(--cc-text);
+  outline: none;
+}
+.cc-cash-cell-discr-input:focus {
+  border-color: var(--cc-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cc-danger) 18%, transparent);
+}
+
+/* ── Cash result tile (gradient ember background) ── */
+.cc-cash-result {
+  margin: 0 20px 18px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, var(--cc-brand-soft) 0%, transparent 100%);
+  border: 1px solid color-mix(in srgb, var(--cc-brand) 30%, transparent);
+  border-radius: var(--cc-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.cc-cash-result-info {
+  min-width: 0;
+  flex: 1;
+}
+.cc-cash-result-lbl {
+  font-family: var(--cc-font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cc-brand);
+  line-height: 1.3;
+}
+.cc-cash-result-formula {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.cc-cash-result-val {
+  font-family: var(--cc-font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--cc-brand);
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cc-cash-result-unit {
+  font-family: var(--cc-font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cc-brand-deep);
+  margin-left: 4px;
+}
+
+/* ── Footer z warningiem + akcjami ── */
+.cc-cash-card-foot {
+  border-top: 1px solid var(--cc-border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--cc-bg-elevated);
+}
+.cc-cash-card-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--cc-warning);
+  flex: 1;
+  min-width: 0;
+}
+.cc-cash-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cc-cash-card-action {
+  border-radius: var(--cc-radius-sm);
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+  border: 1px solid transparent;
+}
+.cc-cash-card-action--ghost {
+  background: transparent;
+  color: var(--cc-text-muted);
+  border-color: var(--cc-border);
+}
+.cc-cash-card-action--ghost:hover {
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-cash-card-action--primary {
+  background: var(--cc-brand);
+  color: var(--cc-text-on-brand);
+  border-color: var(--cc-brand);
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-cash-card-action--primary:hover:not(:disabled) {
+  background: var(--cc-brand-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--cc-shadow-md);
+}
+.cc-cash-card-action--primary:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+.cc-cash-card-action:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
+/* ═══ Dashboard Content Grid (NIEUŻYWANE w v3, zachowane na wszelki wypadek) ═══ */
 .cc-dash-grid {
   display: grid;
   grid-template-columns: 1.6fr 1fr;

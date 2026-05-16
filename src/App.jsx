@@ -2057,180 +2057,164 @@ export default function App(){
 
                 </div>
 
-                {/* ═══ DASHBOARD CONTENT GRID — Row 2 (chart) + Row 3 (feed) ═══ */}
-                {/* wg open-design/skills/dashboard/SKILL.md: KPI row + chart + feed/table */}
-                <div className="cc-dash-grid">
-                  {/* ROW 2: Progress chart (inline SVG, no JS lib) */}
-                  <section className="cc-dash-card cc-dash-chart" aria-labelledby="cc-dash-chart-title">
-                    <header className="cc-dash-card-head">
-                      <div>
-                        <div className="cc-dash-card-eyebrow">Postęp zmiany</div>
-                        <h2 id="cc-dash-chart-title" className="cc-dash-card-title">Tempo wykonania zadań</h2>
-                      </div>
-                      <div className="cc-dash-chart-legend">
-                        <span><span className="cc-dash-chart-dot cc-dash-chart-dot--brand"/>Wykonane</span>
-                        <span><span className="cc-dash-chart-dot cc-dash-chart-dot--target"/>Cel</span>
-                      </div>
-                    </header>
-                    {(()=>{
-                      // Wyliczenie progressu w 8 koszykach (h od startu zmiany)
-                      const buckets=8;
-                      const elapsedMs=shiftStartTime?Date.now()-shiftStartTime.getTime():0;
-                      const elapsedH=Math.max(0,elapsedMs/3600000);
-                      const ratio=Math.min(1,elapsedH/buckets);
-                      const points=[];
-                      for(let i=0;i<=buckets;i++){
-                        const t=i/buckets;
-                        // Synthetic curve: progress grows roughly linearly with time, capped at current %
-                        const expected=Math.min(progress,Math.round(progress*Math.min(1,t/Math.max(ratio,.01))));
-                        points.push({x:i,y:expected});
-                      }
-                      const w=320, h=120, padL=8, padR=8, padT=12, padB=20;
-                      const xScale=(x)=>padL+(x/buckets)*(w-padL-padR);
-                      const yScale=(y)=>padT+(1-y/100)*(h-padT-padB);
-                      const lineD=points.map((p,i)=>`${i===0?"M":"L"}${xScale(p.x)},${yScale(p.y)}`).join(" ");
-                      const areaD=`${lineD} L${xScale(buckets)},${h-padB} L${xScale(0)},${h-padB} Z`;
-                      const targetY=yScale(100);
-                      const currentX=xScale(buckets*ratio);
-                      return (
-                        <svg className="cc-dash-chart-svg" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" role="img" aria-label={`Progress: ${progress}% wykonanych zadań po ${Math.floor(elapsedH)}h ${Math.round((elapsedH%1)*60)}min zmiany`}>
-                          <defs>
-                            <linearGradient id="cc-dash-chart-grad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="var(--cc-brand)" stopOpacity=".28"/>
-                              <stop offset="100%" stopColor="var(--cc-brand)" stopOpacity="0"/>
-                            </linearGradient>
-                          </defs>
-                          {/* Cel 100% — dashed target line */}
-                          <line x1={padL} y1={targetY} x2={w-padR} y2={targetY} stroke="var(--cc-accent-gold)" strokeWidth="1" strokeDasharray="3 4" opacity=".6"/>
-                          {/* Area fill */}
-                          <path d={areaD} fill="url(#cc-dash-chart-grad)"/>
-                          {/* Line */}
-                          <path d={lineD} fill="none" stroke="var(--cc-brand)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"/>
-                          {/* Current position dot */}
-                          <circle cx={currentX} cy={yScale(progress)} r="4" fill="var(--cc-brand)" stroke="var(--cc-surface)" strokeWidth="2"/>
-                          {/* X-axis labels (start + middle + end) */}
-                          <text x={padL} y={h-4} fill="var(--cc-text-faint)" fontSize="9" fontFamily="var(--cc-font-mono)">Start</text>
-                          <text x={w/2} y={h-4} fill="var(--cc-text-faint)" fontSize="9" fontFamily="var(--cc-font-mono)" textAnchor="middle">4h</text>
-                          <text x={w-padR} y={h-4} fill="var(--cc-text-faint)" fontSize="9" fontFamily="var(--cc-font-mono)" textAnchor="end">8h</text>
-                        </svg>
-                      );
-                    })()}
-                    <footer className="cc-dash-chart-foot">
-                      <div className="cc-dash-chart-stat">
-                        <div className="cc-dash-chart-stat-val">{progress}%</div>
-                        <div className="cc-dash-chart-stat-lbl">wykonane</div>
-                      </div>
-                      <div className="cc-dash-chart-stat">
-                        <div className="cc-dash-chart-stat-val">{totalDone}<span>/{totalMandatory}</span></div>
-                        <div className="cc-dash-chart-stat-lbl">zadań</div>
-                      </div>
-                      <div className="cc-dash-chart-stat">
-                        <div className="cc-dash-chart-stat-val cc-dash-chart-stat-mono">{shiftElapsed||"—"}</div>
-                        <div className="cc-dash-chart-stat-lbl">trwa</div>
-                      </div>
-                      <button className="cc-dash-chart-cta" onClick={()=>setWorkerTab("zadania")}>
-                        Otwórz zadania →
-                      </button>
-                    </footer>
-                  </section>
-
-                  {/* ROW 3: Live feed (recent events) */}
-                  <section className="cc-dash-card cc-dash-feed" aria-labelledby="cc-dash-feed-title">
-                    <header className="cc-dash-card-head">
-                      <div>
-                        <div className="cc-dash-card-eyebrow">Live feed</div>
-                        <h2 id="cc-dash-feed-title" className="cc-dash-card-title">Najnowsze zdarzenia</h2>
-                      </div>
-                      <span className="cc-dash-feed-dot" aria-hidden="true"/>
-                    </header>
-                    {(()=>{
-                      const events=[];
-                      // Pending payment corrections
-                      paymentCorrections.filter(c=>!c.done).slice(0,3).forEach(c=>events.push({
-                        kind:"correction", at:c.submittedAt||"", title:`Korekta: ${c.reservation||"dokument"}`, sub:`${c.submittedBy||"—"} · ${pl((c.docType||"dokument").toUpperCase())}`, dot:"warn",
-                      }));
-                      // Recent incidents (unresolved or last 3)
-                      [...incidentLog].slice(0,3).forEach(i=>events.push({
-                        kind:"incident", at:i.createdAt||"", title:i.title||i.text||"Incydent", sub:`${i.createdBy||"—"} · ${i.resolved?"rozwiązane":"otwarte"}`, dot:i.resolved?"ok":"urgent",
-                      }));
-                      // Global notes (top 2)
-                      visibleGlobalNotes.slice(0,2).forEach(n=>events.push({
-                        kind:"note", at:n.createdAt||"", title:n.text||"Notatka", sub:`${n.createdBy||"—"}`, dot:"info",
-                      }));
-                      // Top 6 sorted by recency (string compare on at)
-                      const sorted=events.sort((a,b)=>(b.at||"").localeCompare(a.at||"")).slice(0,6);
-                      if(sorted.length===0){
-                        return (
-                          <div className="cc-dash-feed-empty">
-                            <div className="cc-dash-feed-empty-mark">·</div>
-                            <div>Cisza w eterze. Brak nowych zdarzeń tej zmiany.</div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <ul className="cc-dash-feed-list">
-                          {sorted.map((e,i)=>(
-                            <li key={`${e.kind}-${i}`} className="cc-dash-feed-item">
-                              <span className={`cc-dash-feed-item-dot cc-dash-feed-item-dot--${e.dot}`} aria-hidden="true"/>
-                              <div className="cc-dash-feed-item-body">
-                                <div className="cc-dash-feed-item-title">{e.title}</div>
-                                <div className="cc-dash-feed-item-sub">{e.sub}</div>
-                              </div>
-                              <time className="cc-dash-feed-item-time">{(e.at||"").slice(11,16)||"—"}</time>
-                            </li>
-                          ))}
-                        </ul>
-                      );
-                    })()}
-                  </section>
-                </div>
-
-                {/* STAŁA KASA — potwierdzenie */}
-                {!stalaPotwierdzono&&!stalaNiezgodnosc&&(
-                  <div className="panel" style={{borderLeft:"4px solid var(--gold)"}}>
-                    <div className="panel-title"><AlertTriangle size={16} style={{color:"var(--gold)"}}/> Potwierdź stan kasy</div>
-                    <div style={{fontSize:13,color:"var(--text-secondary)",marginBottom:12}}>Zanim rozpoczniesz pracę, sprawdź czy w kasie jest <strong>{fmtMoney(stalaKasowa)}</strong>.</div>
-                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                      <button className="btn btn-emerald" onClick={()=>setStalaPotwierdzono(true)}>✓ Zgadza się — potwierdzam</button>
-                      <button className="btn btn-outline" style={{color:"var(--rose)",borderColor:"var(--rose)"}} onClick={()=>setShowStalaDiscrepancyForm(v=>!v)}>⚠ Zgłoś niezgodność</button>
+                {/* ═══ KASA ZMIANY — Cash Card v2 (wg design-preview/v2/02-recepcja-dzienna) ═══
+                    Łączy w jednej karcie: stała kasowa potwierdzenie (status pill, nie baner) +
+                    KW poprzednia (read-only) + KW końcowa (input) + przyrost computed.
+                    Plus cash-result tile z formułą + akcje (Zakończ zmianę, Wróć).
+                ═══════════════════════════════════════════════════════════════════════════ */}
+                <section className="cc-cash-card" aria-labelledby="cc-cash-card-title">
+                  <header className="cc-cash-card-head">
+                    <div className="cc-cash-card-headline">
+                      <FileText size={15} className="cc-cash-card-icon"/>
+                      <h2 id="cc-cash-card-title" className="cc-cash-card-title">Kasa zmiany</h2>
                     </div>
-                    {showStalaDiscrepancyForm&&(
-                      <div style={{marginTop:12,padding:12,background:"var(--rose-light)",border:"1px solid var(--rose-border)",borderRadius:"var(--radius-md)"}}>
-                        <div style={{fontSize:12,fontWeight:700,color:"var(--rose)",marginBottom:6}}>Ile faktycznie jest w kasie?</div>
-                        <div style={{display:"flex",gap:6}}>
-                          <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={stalaDiscrepancyInput} onChange={e=>setStalaDiscrepancyInput(e.target.value)} style={{fontSize:13,flex:1}}/>
-                          <button className="btn btn-rose" onClick={()=>reportStalaDiscrepancy(stalaDiscrepancyInput)}>Zgłoś</button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+                    <div className="cc-cash-card-meta">
+                      <button
+                        type="button"
+                        className="cc-cash-card-eye"
+                        onClick={()=>setCashVisible(v=>!v)}
+                        title={cashVisible?"Ukryj kwoty":"Pokaż kwoty"}
+                        aria-label={cashVisible?"Ukryj kwoty":"Pokaż kwoty"}>
+                        {cashVisible?<EyeOff size={13}/>:<Eye size={13}/>}
+                      </button>
+                      <span className="cc-cash-card-meta-txt">PLN · zaokrąglanie 0,01</span>
+                    </div>
+                  </header>
 
-                {/* KW INPUT — kompaktowy panel */}
-                <div className="panel">
-                  <div className="panel-title"><FileText size={16}/> KW z dokumentów kasowych</div>
-                  <div style={{fontSize:12,color:"var(--text-muted)",marginBottom:8}}>Poprzednia zmiana zostawiła {fmtMoney(kwTotal)}. Wpisz aktualną sumę KW z Twojej zmiany:</div>
-                  <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={cashClosingDocumentsAmount} onChange={e=>setCashClosingDocumentsAmount(e.target.value)} style={{fontSize:15,padding:"10px 14px"}}/>
-                  {cashDiff!==null&&(
-                    <div className="cc-cash-summary">
-                      <div>
-                        <div style={{fontSize:11,color:"var(--text-muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",display:"flex",alignItems:"center",gap:6}}>
-                          Łącznie w kasie
-                          <button onClick={()=>setCashVisible(v=>!v)} title={cashVisible?"Ukryj kwoty":"Pokaż kwoty"} aria-label={cashVisible?"Ukryj kwoty":"Pokaż kwoty"} style={{background:"none",border:"none",cursor:"pointer",padding:0,color:"var(--text-muted)",display:"flex",alignItems:"center"}}>{cashVisible?<EyeOff size={12}/>:<Eye size={12}/>}</button>
-                        </div>
-                        <div style={{fontSize:24,fontFamily:"'DM Serif Display',serif",color:"var(--plum)",letterSpacing:"-.02em"}}>{cashVisible?fmtMoney(cashDiff):"•••"}</div>
+                  <div className="cc-cash-card-grid">
+                    {/* CELL 1: Stała kasowa + status pill */}
+                    <div className="cc-cash-cell">
+                      <label className="cc-cash-cell-lbl">
+                        Stała kasowa
+                        {!stalaPotwierdzono&&!stalaNiezgodnosc&&(
+                          <span className="cc-cash-cell-pill cc-cash-cell-pill--warn" title="Wymaga potwierdzenia">●</span>
+                        )}
+                        {stalaPotwierdzono&&(
+                          <span className="cc-cash-cell-pill cc-cash-cell-pill--ok" title="Potwierdzona">✓</span>
+                        )}
+                        {stalaNiezgodnosc&&(
+                          <span className="cc-cash-cell-pill cc-cash-cell-pill--err" title="Niezgodność">!</span>
+                        )}
+                      </label>
+                      <div className="cc-cash-cell-val">
+                        <span className="cc-cash-cell-num">{cashVisible?fmtMoney(stalaKasowa):"•••"}</span>
                       </div>
-                      <div style={{fontSize:11,color:"var(--text-muted)",textAlign:"right"}}>{cashVisible?<>Stała: {fmtMoney(stalaKasowa)}<br/>+ KW: {fmtMoney(parseFloat(cashClosingDocumentsAmount)||0)}</>:<>Stała: •••<br/>+ KW: •••</>}</div>
+                      {!stalaPotwierdzono&&!stalaNiezgodnosc&&(
+                        <div className="cc-cash-cell-actions">
+                          <button
+                            type="button"
+                            className="cc-cash-cell-btn cc-cash-cell-btn--ok"
+                            onClick={()=>setStalaPotwierdzono(true)}>
+                            ✓ Zgadza się
+                          </button>
+                          <button
+                            type="button"
+                            className="cc-cash-cell-btn cc-cash-cell-btn--err"
+                            onClick={()=>setShowStalaDiscrepancyForm(v=>!v)}>
+                            ⚠ Niezgodność
+                          </button>
+                        </div>
+                      )}
+                      {showStalaDiscrepancyForm&&!stalaPotwierdzono&&(
+                        <div className="cc-cash-cell-discr">
+                          <input
+                            className="cc-cash-cell-discr-input"
+                            type="number" min="0" step="0.01"
+                            placeholder="Ile faktycznie?"
+                            value={stalaDiscrepancyInput}
+                            onChange={e=>setStalaDiscrepancyInput(e.target.value)}/>
+                          <button
+                            type="button"
+                            className="cc-cash-cell-btn cc-cash-cell-btn--err"
+                            onClick={()=>reportStalaDiscrepancy(stalaDiscrepancyInput)}>
+                            Zgłoś
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* CELL 2: KW total poprzednia (read-only) */}
+                    <div className="cc-cash-cell">
+                      <label className="cc-cash-cell-lbl">KW poprzedniej zmiany</label>
+                      <div className="cc-cash-cell-val">
+                        <span className="cc-cash-cell-num cc-cash-cell-num--muted">{cashVisible?fmtMoney(kwTotal):"•••"}</span>
+                      </div>
+                      <div className="cc-cash-cell-hint">read-only · dane z systemu</div>
+                    </div>
+
+                    {/* CELL 3: KW total końcowa (input z ember accent) */}
+                    <div className="cc-cash-cell cc-cash-cell--active">
+                      <label className="cc-cash-cell-lbl" htmlFor="cc-cash-kw-end">
+                        KW końcowa <span className="cc-cash-cell-lbl-req">wymagane</span>
+                      </label>
+                      <div className="cc-cash-cell-val">
+                        <input
+                          id="cc-cash-kw-end"
+                          className="cc-cash-cell-input"
+                          type="number" min="0" step="0.01"
+                          placeholder="0,00"
+                          value={cashClosingDocumentsAmount}
+                          onChange={e=>setCashClosingDocumentsAmount(e.target.value)}/>
+                        <span className="cc-cash-cell-unit">PLN</span>
+                      </div>
+                      <div className="cc-cash-cell-hint">wpisz z drukarki kasowej</div>
+                    </div>
+
+                    {/* CELL 4: Przyrost KW (computed) */}
+                    <div className="cc-cash-cell cc-cash-cell--computed">
+                      <label className="cc-cash-cell-lbl">Przyrost KW (auto)</label>
+                      <div className="cc-cash-cell-val">
+                        {cashClosingDocumentsAmount.trim()?(
+                          <span className="cc-cash-cell-num cc-cash-cell-num--success">
+                            +{cashVisible?fmtMoney((parseFloat(cashClosingDocumentsAmount)||0)-kwTotal):"•••"}
+                          </span>
+                        ):(
+                          <span className="cc-cash-cell-num cc-cash-cell-num--placeholder">—</span>
+                        )}
+                      </div>
+                      <div className="cc-cash-cell-hint">{cashClosingDocumentsAmount.trim()?"= końcowa − poprzednia":"po wpisaniu KW końcowej"}</div>
+                    </div>
+                  </div>
+
+                  {/* CASH RESULT TILE */}
+                  {cashDiff!==null&&(
+                    <div className="cc-cash-result">
+                      <div className="cc-cash-result-info">
+                        <div className="cc-cash-result-lbl">Kasa końcowa zmiany</div>
+                        <div className="cc-cash-result-formula">{cashVisible?`${fmtMoney(stalaKasowa)} + ${fmtMoney(parseFloat(cashClosingDocumentsAmount)||0)} (przyrost KW)`:"••• + ••• (przyrost KW)"}</div>
+                      </div>
+                      <div className="cc-cash-result-val">
+                        {cashVisible?fmtMoney(cashDiff):"•••"}
+                        <span className="cc-cash-result-unit">PLN</span>
+                      </div>
                     </div>
                   )}
-                </div>
 
-                {/* AKCJE */}
-                {!canFinishShift&&<div className="alert"><AlertTriangle size={14}/> Uzupełnij kwotę KW z dokumentów, aby zakończyć zmianę.</div>}
-                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                  <button className="btn btn-indigo" style={{flex:1,minWidth:180}} onClick={()=>setFinishDialogOpen(true)}>Zakończ zmianę</button>
-                  <button className="btn btn-outline" onClick={resetView}>Wróć do wyboru</button>
-                </div>
+                  {/* ACTIONS — wbudowane w kartę kasową (zamiast osobnego baneru "alert") */}
+                  <footer className="cc-cash-card-foot">
+                    {!canFinishShift&&(
+                      <div className="cc-cash-card-warn" role="status">
+                        <AlertTriangle size={13}/>
+                        <span>Uzupełnij KW końcową, aby zakończyć zmianę</span>
+                      </div>
+                    )}
+                    <div className="cc-cash-card-actions">
+                      <button
+                        type="button"
+                        className="cc-cash-card-action cc-cash-card-action--ghost"
+                        onClick={resetView}>
+                        Wróć do wyboru
+                      </button>
+                      <button
+                        type="button"
+                        className="cc-cash-card-action cc-cash-card-action--primary"
+                        disabled={!canFinishShift}
+                        onClick={()=>setFinishDialogOpen(true)}>
+                        Zakończ zmianę →
+                      </button>
+                    </div>
+                  </footer>
+                </section>
               </div>
             )}
           </motion.div>
