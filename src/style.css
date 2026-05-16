@@ -4504,6 +4504,381 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ Flow Card + Compose Card (sekcja 8 — Przekazanie zmiany v2) ═══════════
+   Wg design-preview/v2/11-przekazanie.html flow-card + compose patterns.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-flow-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  background: linear-gradient(135deg, var(--cc-brand-soft) 0%, var(--cc-surface) 60%, var(--cc-surface) 100%);
+  border: 1px solid color-mix(in srgb, var(--cc-brand) 25%, transparent);
+  border-radius: var(--cc-radius-lg);
+}
+.cc-flow-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.cc-flow-block--next {
+  justify-content: flex-end;
+  text-align: right;
+}
+.cc-flow-block--next .cc-flow-info {
+  text-align: right;
+  order: -1;
+}
+.cc-flow-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--cc-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--cc-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -.01em;
+  color: var(--cc-text-on-brand);
+  flex-shrink: 0;
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-flow-avatar--curr {
+  background: linear-gradient(135deg, var(--cc-brand) 0%, var(--cc-brand-deep) 100%);
+}
+.cc-flow-avatar--next {
+  background: linear-gradient(135deg, var(--cc-bg-elevated) 0%, var(--cc-surface-elevated) 100%);
+  border: 2px dashed var(--cc-border-strong);
+  color: var(--cc-text-muted);
+  box-shadow: none;
+}
+.cc-flow-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cc-flow-name {
+  font-family: var(--cc-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cc-text);
+  letter-spacing: -.005em;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.cc-flow-name-tag {
+  font-family: var(--cc-font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--cc-brand);
+}
+.cc-flow-meta {
+  font-family: var(--cc-font-mono);
+  font-size: 11.5px;
+  color: var(--cc-text-muted);
+  letter-spacing: .02em;
+}
+.cc-flow-arrow {
+  font-family: var(--cc-font-display);
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--cc-brand);
+  line-height: 1;
+  opacity: .55;
+}
+.cc-flow-pick {
+  position: relative;
+  margin-top: 6px;
+}
+.cc-flow-block--next .cc-flow-pick {
+  align-self: flex-end;
+}
+.cc-flow-pick-summary {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--cc-font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cc-brand);
+  background: var(--cc-brand-soft);
+  border: 1px solid color-mix(in srgb, var(--cc-brand) 25%, transparent);
+  border-radius: var(--cc-radius-sm);
+  padding: 4px 10px;
+  cursor: pointer;
+  list-style: none;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-flow-pick-summary::-webkit-details-marker { display: none; }
+.cc-flow-pick-summary:hover {
+  background: color-mix(in srgb, var(--cc-brand) 18%, transparent);
+}
+.cc-flow-pick-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border-strong);
+  border-radius: var(--cc-radius-md);
+  padding: 6px;
+  box-shadow: var(--cc-shadow-md);
+  min-width: 200px;
+}
+.cc-flow-pick-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  background: transparent;
+  color: var(--cc-text-secondary);
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--cc-radius-sm);
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-flow-pick-item:hover {
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text);
+}
+.cc-flow-pick-item.is-active {
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+  font-weight: 700;
+}
+.cc-flow-status {
+  position: absolute;
+  top: -10px;
+  right: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.cc-flow-status--draft {
+  background: var(--cc-bg-elevated);
+  border: 1px solid var(--cc-border-strong);
+  color: var(--cc-text-muted);
+}
+.cc-flow-status--signed {
+  background: color-mix(in srgb, var(--cc-success) 12%, var(--cc-surface));
+  border: 1px solid color-mix(in srgb, var(--cc-success) 35%, transparent);
+  color: var(--cc-success);
+}
+.cc-flow-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.cc-flow-status--signed .cc-flow-status-dot {
+  box-shadow: 0 0 6px currentColor;
+}
+
+@media (max-width: 720px) {
+  .cc-flow-card {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 18px;
+  }
+  .cc-flow-arrow {
+    transform: rotate(90deg);
+    text-align: center;
+  }
+  .cc-flow-block--next {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  .cc-flow-block--next .cc-flow-info {
+    text-align: left;
+    order: 0;
+  }
+  .cc-flow-status {
+    position: static;
+    align-self: flex-end;
+    margin-top: -6px;
+  }
+}
+
+/* ── Autosave recovery pill (sekcja 8) ── */
+.cc-handover-recovery {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--cc-warning) 10%, var(--cc-bg));
+  border: 1px solid color-mix(in srgb, var(--cc-warning) 35%, transparent);
+  border-radius: var(--cc-radius-md);
+}
+.cc-handover-recovery-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cc-warning) 18%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--cc-warning);
+  flex-shrink: 0;
+}
+.cc-handover-recovery-body {
+  flex: 1;
+  min-width: 0;
+}
+.cc-handover-recovery-title {
+  font-family: var(--cc-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cc-warning);
+  margin-bottom: 4px;
+  letter-spacing: .02em;
+}
+.cc-handover-recovery-preview {
+  font-size: 12px;
+  color: var(--cc-text-secondary);
+  white-space: pre-wrap;
+  max-height: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.cc-handover-recovery-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cc-handover-recovery-btn {
+  border-radius: var(--cc-radius-sm);
+  border: 1px solid var(--cc-border);
+  background: var(--cc-surface);
+  color: var(--cc-text-secondary);
+  font-family: var(--cc-font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+  white-space: nowrap;
+}
+.cc-handover-recovery-btn:hover {
+  border-color: var(--cc-border-strong);
+  color: var(--cc-text);
+}
+.cc-handover-recovery-btn--primary {
+  background: var(--cc-warning);
+  color: var(--cc-text-on-brand);
+  border-color: var(--cc-warning);
+}
+.cc-handover-recovery-btn--primary:hover {
+  filter: brightness(1.06);
+  color: var(--cc-text-on-brand);
+}
+
+/* ── Compose Card (sekcja 8) ── */
+.cc-compose-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-lg);
+  overflow: hidden;
+}
+.cc-compose-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--cc-border);
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.cc-compose-card-headline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-compose-card-icon { color: var(--cc-brand); }
+.cc-compose-card-title {
+  font-family: var(--cc-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cc-text);
+  letter-spacing: -.005em;
+  margin: 0;
+}
+.cc-compose-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+}
+.cc-compose-card-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cc-success);
+  box-shadow: 0 0 6px var(--cc-success);
+  animation: cc-shell-pulse 1.8s ease-in-out infinite;
+}
+.cc-compose-card-body {
+  padding: 18px 20px;
+}
+.cc-compose-card-textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: 14px 16px;
+  background: var(--cc-bg-elevated);
+  border: 1.5px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  color: var(--cc-text);
+  font-family: var(--cc-font-body);
+  font-size: 13.5px;
+  line-height: 1.65;
+  resize: vertical;
+  outline: none;
+  transition: all 160ms cubic-bezier(.4,0,.2,1);
+}
+.cc-compose-card-textarea:focus {
+  border-color: var(--cc-brand);
+  background: var(--cc-surface);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cc-brand) 18%, transparent);
+}
+.cc-compose-card-textarea::placeholder {
+  color: var(--cc-text-faint);
+}
+.cc-compose-card-foot {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cc-compose-card-counter {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ═══ KASA ZMIANY — Cash Card v2 (sekcja 6 v3) ═══════════════════════════════
    Wg design-preview/v2/02-recepcja-dzienna.html: card head + 4-cell grid
    (stała / KW prev / KW końcowa / przyrost computed) + cash-result tile + footer.

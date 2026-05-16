@@ -2379,66 +2379,106 @@ export default function App(){
         )}
         {workerTab==="przekazanie"&&started&&(
           <motion.div key="prz" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
+
+            {/* ═══ FLOW CARD v2 — shift blocks z avatars + arrows + status ═══ */}
+            <section className="cc-flow-card" aria-labelledby="cc-flow-title">
+              <h2 id="cc-flow-title" className="visually-hidden">Przepływ przekazania zmiany</h2>
+              <div className="cc-flow-block cc-flow-block--curr">
+                <div className="cc-flow-avatar cc-flow-avatar--curr" aria-hidden="true">
+                  {(employeeName||"?").charAt(0).toUpperCase()}
+                </div>
+                <div className="cc-flow-info">
+                  <div className="cc-flow-name">
+                    {employeeName}
+                    <span className="cc-flow-name-tag">· ty</span>
+                  </div>
+                  <div className="cc-flow-meta">{SHIFT_LABELS_PL[selectedShift]||selectedShift||"—"}</div>
+                </div>
+              </div>
+              <div className="cc-flow-arrow" aria-hidden="true">→</div>
+              <div className="cc-flow-block cc-flow-block--next">
+                <div className="cc-flow-avatar cc-flow-avatar--next" aria-hidden="true">?</div>
+                <div className="cc-flow-info">
+                  <div className="cc-flow-name">Następna zmiana</div>
+                  <div className="cc-flow-meta">{SHIFT_LABELS_PL[carryOverTarget]||"—"}</div>
+                  <details className="cc-flow-pick">
+                    <summary className="cc-flow-pick-summary">Zmień ▾</summary>
+                    <div className="cc-flow-pick-menu" role="menu">
+                      {SHIFT_OPTIONS.map(s=>(
+                        <button
+                          key={s}
+                          type="button"
+                          role="menuitem"
+                          className={`cc-flow-pick-item${carryOverTarget===s?" is-active":""}`}
+                          onClick={()=>setCarryOverTarget(s)}>
+                          {SHIFT_LABELS_PL[s]}
+                        </button>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              </div>
+              <div className="cc-flow-status cc-flow-status--draft" role="status">
+                <span className="cc-flow-status-dot" aria-hidden="true"/>
+                Szkic · niesygnowany
+              </div>
+            </section>
+
+            {/* ═══ AUTOSAVE recovery (inline pill, gdy istnieje) ═══ */}
             {autosaveNote&&autosaveNote.employee===employeeName&&autosaveNote.shift===selectedShift&&(
-              <div style={{padding:"10px 14px",borderRadius:"var(--radius-md)",
-                           background:"rgba(245,158,11,.1)",border:"1.5px solid rgba(245,158,11,.35)",
-                           display:"flex",alignItems:"flex-start",gap:12}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:12.5,fontWeight:700,color:"var(--amber)",marginBottom:4}}>
-                    ⚡ Automatyczny zapis z {autosaveNote.savedAt}
-                  </div>
-                  <div style={{fontSize:12,color:"var(--text-secondary)",marginBottom:6,whiteSpace:"pre-wrap",
-                               maxHeight:60,overflow:"hidden",textOverflow:"ellipsis"}}>
-                    {autosaveNote.text}
-                  </div>
-                  <div style={{display:"flex",gap:6}}>
-                    <button className="btn btn-amber" style={{fontSize:11.5}}
-                      onClick={()=>{if(autosaveNote.text&&!handoverNote)setHandoverNote(autosaveNote.text);setAutosaveNote(null);localStorage.removeItem(AUTOSAVE_KEY);}}>
-                      Przywróć notatkę
-                    </button>
-                    <button className="btn btn-outline" style={{fontSize:11.5}}
-                      onClick={()=>{setAutosaveNote(null);localStorage.removeItem(AUTOSAVE_KEY);}}>
-                      Odrzuć
-                    </button>
-                  </div>
+              <div className="cc-handover-recovery" role="status">
+                <div className="cc-handover-recovery-icon" aria-hidden="true">⚡</div>
+                <div className="cc-handover-recovery-body">
+                  <div className="cc-handover-recovery-title">Znaleziono automatyczny zapis z {autosaveNote.savedAt}</div>
+                  <div className="cc-handover-recovery-preview">{autosaveNote.text}</div>
+                </div>
+                <div className="cc-handover-recovery-actions">
+                  <button
+                    type="button"
+                    className="cc-handover-recovery-btn cc-handover-recovery-btn--primary"
+                    onClick={()=>{if(autosaveNote.text&&!handoverNote)setHandoverNote(autosaveNote.text);setAutosaveNote(null);localStorage.removeItem(AUTOSAVE_KEY);}}>
+                    Przywróć
+                  </button>
+                  <button
+                    type="button"
+                    className="cc-handover-recovery-btn cc-handover-recovery-btn--ghost"
+                    onClick={()=>{setAutosaveNote(null);localStorage.removeItem(AUTOSAVE_KEY);}}>
+                    Odrzuć
+                  </button>
                 </div>
               </div>
             )}
-            {/* HERO przekazania — kto i dla kogo */}
-            <div className="cc-handover-hero">
-              <div>
-                <div className="cc-handover-label">Przekazujesz</div>
-                <div className="cc-handover-name">{employeeName}</div>
-                <div className="cc-handover-from">{SHIFT_LABELS_PL[selectedShift]||selectedShift||"—"}</div>
-              </div>
-              <div className="cc-handover-arrow">→</div>
-              <div style={{textAlign:"right"}}>
-                <div className="cc-handover-label">Następnej zmianie</div>
-                <div className="cc-handover-name">{SHIFT_LABELS_PL[carryOverTarget]||"—"}</div>
-                <details style={{position:"relative"}}>
-                  <summary className="cc-handover-change">Zmień ▾</summary>
-                  <div className="cc-handover-dropdown">
-                    {SHIFT_OPTIONS.map(s=>(
-                      <button key={s} type="button" onClick={()=>setCarryOverTarget(s)}
-                        style={{display:"block",width:"100%",textAlign:"left",padding:"7px 10px",border:"none",background:carryOverTarget===s?"var(--plum-soft)":"transparent",color:carryOverTarget===s?"var(--plum)":"var(--text-secondary)",fontWeight:carryOverTarget===s?700:500,borderRadius:5,cursor:"pointer",fontSize:13}}>
-                        {SHIFT_LABELS_PL[s]}
-                      </button>
-                    ))}
-                  </div>
-                </details>
-              </div>
-            </div>
 
-            {/* NOTATKA KONTEKSTOWA */}
-            <div className="panel" style={{borderLeft:"4px solid var(--plum)"}}>
-              <div className="panel-title"><MessageSquare size={16}/> ✍ Notatka kontekstowa</div>
-              <div className="tiny muted" style={{marginBottom:10,marginTop:-10}}>Co się działo, ważne uwagi, kontakty z gośćmi — trafi do raportu PDF.</div>
-              <textarea className="input" style={{minHeight:140,resize:"vertical",lineHeight:1.65,fontSize:14,padding:"12px 14px"}} placeholder="Np. Gość z pokoju 302 czeka na fakturę. VIP w 108 prosił o dodatkowe ręczniki…" value={handoverNote} onChange={e=>{setHandoverNote(e.target.value);if(autosaveTimerRef.current)clearTimeout(autosaveTimerRef.current);autosaveTimerRef.current=setTimeout(()=>{const snap={text:e.target.value.trim(),shiftNote:shiftNoteInput,employee:employeeName,shift:selectedShift,savedAt:fmtA(),auto:true};localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(snap));},20000);}}/>
-              <div style={{fontSize:11.5,color:"var(--text-faint)",marginTop:6,display:"flex",justifyContent:"space-between"}}>
-                <span>💾 Auto-zapis co 20s</span>
-                <span>{handoverNote.length} znaków</span>
+            {/* ═══ COMPOSE CARD v2 — notatka kontekstowa ═══ */}
+            <section className="cc-compose-card" aria-labelledby="cc-compose-title">
+              <header className="cc-compose-card-head">
+                <div className="cc-compose-card-headline">
+                  <MessageSquare size={15} className="cc-compose-card-icon"/>
+                  <h2 id="cc-compose-title" className="cc-compose-card-title">Twoja notatka dla następnej zmiany</h2>
+                </div>
+                <div className="cc-compose-card-meta">
+                  <span className="cc-compose-card-live" aria-hidden="true"/>
+                  Auto-save · co 20s
+                </div>
+              </header>
+              <div className="cc-compose-card-body">
+                <textarea
+                  className="cc-compose-card-textarea"
+                  placeholder="Co warto przekazać? Np. Pok. 304 późny check-out 13:00, usterka 412 konserwator po 16:00, voucher 218 wykorzystany przy wczesnym CO…"
+                  value={handoverNote}
+                  onChange={e=>{
+                    setHandoverNote(e.target.value);
+                    if(autosaveTimerRef.current)clearTimeout(autosaveTimerRef.current);
+                    autosaveTimerRef.current=setTimeout(()=>{
+                      const snap={text:e.target.value.trim(),shiftNote:shiftNoteInput,employee:employeeName,shift:selectedShift,savedAt:fmtA(),auto:true};
+                      localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(snap));
+                    },20000);
+                  }}/>
+                <div className="cc-compose-card-foot">
+                  <span className="cc-compose-card-counter">{handoverNote.length} znaków · zapisane lokalnie</span>
+                </div>
               </div>
-            </div>
+            </section>
 
             {/* CHECKLISTA DO ZROBIENIA */}
             <div className="panel" style={{borderLeft:"4px solid var(--gold)"}}>
