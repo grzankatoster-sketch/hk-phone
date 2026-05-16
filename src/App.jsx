@@ -708,22 +708,31 @@ export default function App(){
   const askConfirm=useCallback((message,onConfirm)=>setConfirmDialog({message,onConfirm}),[]);
 
   // Keyboard shortcuts + lock timer
+  // Plain digits 1-9 mapują na sidebar items (workerSidebar nav), zgodnie z kbd labels.
   useEffect(()=>{
+    const SIDEBAR_KEYS={
+      "1":"zmiana", "2":"przekazanie", "3":"informacje",
+      "4":"hk",     "5":"usterki",
+      "6":"parking","7":"goscie","8":"vouchery","9":"opinie",
+    };
     const h=(e)=>{
       const tag=e.target.tagName;
       const typing=tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT";
       if(e.key==="Escape"){setShowSearch(false);setShowWiki(false);return;}
       if((e.ctrlKey||e.metaKey)&&e.key==="k"){e.preventDefault();setShowSearch(v=>!v);return;}
       if((e.ctrlKey||e.metaKey)&&e.key==="w"){e.preventDefault();setShowWiki(v=>!v);return;}
-      if(!typing&&!e.ctrlKey&&!e.metaKey&&!e.altKey){
-        if(e.key==="1"&&!showAdminPanel){setWorkerTab("zmiana");return;}
-        if(e.key==="2"&&!showAdminPanel){setWorkerTab("zadania");return;}
-        if(e.key==="3"&&!showAdminPanel){setWorkerTab("przekazanie");return;}
+      if(!typing&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!showAdminPanel){
+        const target=SIDEBAR_KEYS[e.key];
+        if(target){
+          // 'przekazanie' wymaga aktywnej zmiany — zachowanie zgodne z sidebar disabled state
+          if(target==="przekazanie"&&!started)return;
+          setWorkerTab(target);
+        }
       }
     };
     window.addEventListener("keydown",h);return()=>window.removeEventListener("keydown",h);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[showAdminPanel]);
+  },[showAdminPanel,started]);
 
   // Inactivity lock — 15 min (tylko gdy zmiana jest aktywna)
   useEffect(()=>{

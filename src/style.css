@@ -3146,6 +3146,14 @@ button:focus:not(:focus-visible) { outline: none; }
   overflow: hidden;
   box-shadow: var(--cc-shadow-sm);
 }
+.nsb-logo-mark-txt {
+  font-family: var(--cc-font-display);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--cc-text-on-brand);
+  line-height: 1;
+}
 .nsb-logo-text { display: flex; flex-direction: column; min-width: 0; }
 .nsb-logo-name {
   font-family: var(--cc-font-display);
@@ -3272,17 +3280,19 @@ button:focus:not(:focus-visible) { outline: none; }
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 6px 8px 4px;
+  padding: 4px 8px 4px;
   gap: 1px;
+  overflow-y: auto;
 }
+.nsb-nav::-webkit-scrollbar { width: 0; }
 .nsb-section-label {
-  font-family: var(--cc-font-display);
+  font-family: var(--cc-font-mono);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .12em;
+  letter-spacing: .14em;
   color: var(--cc-text-faint);
-  padding: 10px 10px 4px;
+  padding: 12px 12px 5px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -3358,6 +3368,32 @@ button:focus:not(:focus-visible) { outline: none; }
   min-width: 18px;
   text-align: center;
   flex-shrink: 0;
+}
+/* Keyboard shortcut hint (v2 sb-kbd pattern) */
+.nsb-kbd {
+  margin-left: auto;
+  font-family: var(--cc-font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--cc-text-faint);
+  background: var(--cc-bg-elevated);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--cc-border);
+  line-height: 1.2;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.nsb-item:hover .nsb-kbd {
+  color: var(--cc-text-muted);
+  border-color: var(--cc-border-strong);
+}
+.nsb-item.nsb-active .nsb-kbd {
+  background: color-mix(in srgb, var(--cc-brand) 12%, transparent);
+  color: var(--cc-brand);
+  border-color: color-mix(in srgb, var(--cc-brand) 35%, transparent);
 }
 .nsb-soon {
   margin-left: auto;

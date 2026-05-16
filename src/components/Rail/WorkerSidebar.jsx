@@ -27,19 +27,21 @@ export default function WorkerSidebar({
     : `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   const dateStr = now.toLocaleDateString("pl-PL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
-  const nb = (id, icon, label, badge = 0, disabled = false) => (
+  const nb = (id, icon, label, badge = 0, disabled = false, kbd = null) => (
     <button
       key={id}
       type="button"
       role="tab"
       aria-selected={activeTab === id}
       aria-disabled={disabled || undefined}
+      aria-keyshortcuts={kbd ? `Alt+${kbd}` : undefined}
       className={`nsb-item${activeTab === id ? " nsb-active" : ""}${disabled ? " nsb-disabled" : ""}`}
       onClick={() => !disabled && setActiveTab(id)}
     >
       <span className="nsb-item-icon" aria-hidden="true">{icon}</span>
       <span className="nsb-item-label">{label}</span>
       {badge > 0 && <span className="nsb-badge">{badge}</span>}
+      {kbd && badge === 0 && <span className="nsb-kbd" aria-hidden="true">{kbd}</span>}
     </button>
   );
 
@@ -58,10 +60,10 @@ export default function WorkerSidebar({
 
   return (
     <aside className="nsb">
-      {/* Logo */}
+      {/* Logo — v2 brand pill style */}
       <div className="nsb-logo-block">
-        <div className="nsb-logo-mark">
-          <Logo variant="icon" tone="white" width={28} height={28} />
+        <div className="nsb-logo-mark" aria-hidden="true">
+          <span className="nsb-logo-mark-txt">CC</span>
         </div>
         <div className="nsb-logo-text">
           <div className="nsb-logo-name">Conrad Comfort</div>
@@ -97,24 +99,24 @@ export default function WorkerSidebar({
         </div>
       )}
 
-      {/* Navigation */}
+      {/* Navigation — z kbd shortcuts (Alt+1..9) */}
       <nav className="nsb-nav" role="tablist" aria-label="Nawigacja recepcji">
         <div className="nsb-section-label">Zmiana</div>
-        {nb("zmiana",     <ClipboardList size={16} />, "Przegląd zmiany", totalBadge)}
-        {nb("przekazanie",<ArrowLeftRight size={16} />, "Przekaż zmianę", 0, !started)}
-        {nb("informacje", <BellRing size={16} />,      "Informacje", inboxCount)}
+        {nb("zmiana",     <ClipboardList size={16} />, "Przegląd zmiany", totalBadge, false, "1")}
+        {nb("przekazanie",<ArrowLeftRight size={16} />, "Przekaż zmianę", 0, !started, "2")}
+        {nb("informacje", <BellRing size={16} />,      "Informacje", inboxCount, false, "3")}
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Pokoje</div>
-        {nb("hk",     <Home size={16} />,          "Housekeeping")}
-        {nb("usterki",<AlertTriangle size={16} />,  "Usterki", faultsCount)}
+        {nb("hk",     <Home size={16} />,          "Housekeeping", 0, false, "4")}
+        {nb("usterki",<AlertTriangle size={16} />,  "Usterki", faultsCount, false, "5")}
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Obsługa</div>
-        {nb("parking", <Car size={16} />, "Parking")}
-        {nb("goscie",  <Users size={16} />,         "Stali goście")}
-        {nb("vouchery",<FileText size={16} />,       "Vouchery")}
-        {nb("opinie",  <Star size={16} />,           "Opinie gości")}
+        {nb("parking", <Car size={16} />, "Parking", 0, false, "6")}
+        {nb("goscie",  <Users size={16} />,         "Stali goście", 0, false, "7")}
+        {nb("vouchery",<FileText size={16} />,       "Vouchery", 0, false, "8")}
+        {nb("opinie",  <Star size={16} />,           "Opinie gości", 0, false, "9")}
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Komunikacja</div>
