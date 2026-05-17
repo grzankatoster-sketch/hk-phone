@@ -12,18 +12,36 @@ export default function UpdateBanner({ dark }) {
   useEffect(() => {
     if (!isElectron) return;
     window.electronAPI.getAppVersion().then(setAppVersion).catch(() => {});
-    window.electronAPI.onUpdateAvailable((data) => { setState("available"); setInfo(data); });
-    window.electronAPI.onUpdateNotAvailable(() => { setState("upToDate"); setTimeout(() => setState("idle"), 4000); });
-    window.electronAPI.onUpdateProgress((data) => { setState("downloading"); setProgress(data.percent); });
-    window.electronAPI.onUpdateDownloaded(() => setState("downloaded"));
-    window.electronAPI.onUpdateError((msg) => { setState("error"); setInfo({ error: msg }); setTimeout(() => setState("idle"), 8000); });
-    return () => window.electronAPI.removeUpdateListeners?.();
+    const off = [
+      window.electronAPI.onUpdateAvailable((data) => { setState("available"); setInfo(data); }),
+      window.electronAPI.onUpdateNotAvailable(() => { setState("upToDate"); setTimeout(() => setState("idle"), 4000); }),
+      window.electronAPI.onUpdateProgress((data) => { setState("downloading"); setProgress(data.percent || 0); }),
+      window.electronAPI.onUpdateDownloaded((data) => { setInfo(data); setState("downloaded"); }),
+      window.electronAPI.onUpdateError((msg) => { setState("error"); setInfo({ error: msg }); setTimeout(() => setState("idle"), 8000); }),
+    ];
+    return () => off.forEach(dispose => dispose?.());
   }, []);
 
   const checkUpdate = async () => {
     setState("checking");
     try { await window.electronAPI.checkForUpdates(); }
     catch { setState("error"); setTimeout(() => setState("idle"), 5000); }
+  };
+  const downloadUpdate = async () => {
+    setState("downloading");
+    setProgress(0);
+    const result = await window.electronAPI.downloadUpdate();
+    if (result?.error) {
+      setState("error");
+      setInfo({ error: result.error });
+    }
+  };
+  const installUpdate = async () => {
+    const result = await window.electronAPI.installUpdate();
+    if (result?.error) {
+      setState("error");
+      setInfo({ error: result.error });
+    }
   };
 
   if (!isElectron) return null;
@@ -51,13 +69,19 @@ export default function UpdateBanner({ dark }) {
   );
 
   if (state === "checking") return (
-    <StatusBar bg={d?"#0d2a4a":"#eff6ff"} border={d?"rgba(88,166,255,.2)":"#93c5fd"}
-               color={d?"#58a6ff":"#1d4ed8"} text="Sprawdzanie aktualizacji…"/>
+    <StatusBar
+      bg={"color-mix(in srgb, var(--cc-info) 12%, transparent)"}
+      border={"color-mix(in srgb, var(--cc-info) 30%, transparent)"}
+      color={"var(--cc-info)"}
+      text="Sprawdzanie aktualizacji…"/>
   );
 
   if (state === "upToDate") return (
-    <StatusBar bg={d?"#0a2a1a":"#f0fdf4"} border={d?"rgba(52,211,153,.2)":"#6ee7b7"}
-               color={d?"#34d399":"#047857"} text={`✓ Masz najnowszą wersję${appVersion?` (v${appVersion})`:""}`}/>
+    <StatusBar
+      bg={"color-mix(in srgb, var(--cc-success) 12%, transparent)"}
+      border={"color-mix(in srgb, var(--cc-success) 30%, transparent)"}
+      color={"var(--cc-success)"}
+      text={`✓ Masz najnowszą wersję${appVersion?` (v${appVersion})`:""}`}/>
   );
 
   if (state === "available") return (
@@ -75,12 +99,12 @@ export default function UpdateBanner({ dark }) {
         )}
       </div>
       <div style={{display:"flex",gap:8,flexShrink:0}}>
-        <button onClick={() => window.electronAPI.downloadUpdate()}
+        <button onClick={downloadUpdate}
           style={{padding:"6px 14px",borderRadius:6,fontWeight:700,fontSize:12,cursor:"pointer",
                   background:d?"rgba(245,158,11,.15)":"#fef3c7",
                   border:d?"1px solid rgba(245,158,11,.4)":"1px solid #fde68a",
                   color:d?"#f5d06a":"#92400e"}}>
-          Pobierz i zainstaluj
+          Pobierz aktualizację
         </button>
         <button onClick={() => setState("idle")}
           style={{padding:"6px 12px",borderRadius:6,fontSize:11,cursor:"pointer",
@@ -94,11 +118,11 @@ export default function UpdateBanner({ dark }) {
   if (state === "downloading") return (
     <div style={{padding:"10px 16px",borderRadius:"var(--radius-md)",
                  background:d?"#0d1e38":"#eff6ff",border:d?"1px solid rgba(88,166,255,.2)":"1px solid #93c5fd"}}>
-      <div style={{fontSize:12,fontWeight:600,color:d?"#58a6ff":"#1d4ed8",marginBottom:6}}>
+      <div style={{fontSize:12,fontWeight:600,color:d?"#B065A0":"#1d4ed8",marginBottom:6}}>
         Pobieranie aktualizacji… {progress}%
       </div>
       <div style={{height:6,background:d?"#1c2a40":"#dbeafe",borderRadius:3}}>
-        <div style={{width:`${progress}%`,height:"100%",background:d?"#58a6ff":"#3b82f6",borderRadius:3,transition:"width .3s"}}/>
+        <div style={{width:`${progress}%`,height:"100%",background:d?"#B065A0":"#B065A0",borderRadius:3,transition:"width .3s"}}/>
       </div>
     </div>
   );
@@ -108,15 +132,15 @@ export default function UpdateBanner({ dark }) {
                  padding:"10px 16px",borderRadius:"var(--radius-md)",
                  background:d?"#0a2a1a":"#f0fdf4",border:d?"1px solid rgba(52,211,153,.3)":"1px solid #6ee7b7"}}>
       <span style={{fontWeight:700,fontSize:13,color:d?"#34d399":"#047857"}}>
-        ✓ Aktualizacja pobrana — gotowa do instalacji
+        ✓ Aktualizacja pobrana - gotowa do cichego restartu
       </span>
       <div style={{display:"flex",gap:8,flexShrink:0}}>
-        <button onClick={() => window.electronAPI.installUpdate()}
+        <button onClick={installUpdate}
           style={{padding:"6px 14px",borderRadius:6,fontWeight:700,fontSize:12,cursor:"pointer",
                   background:d?"rgba(52,211,153,.15)":"#dcfce7",
                   border:d?"1px solid rgba(52,211,153,.4)":"1px solid #6ee7b7",
                   color:d?"#34d399":"#047857"}}>
-          Zainstaluj i uruchom ponownie
+          Zaktualizuj teraz
         </button>
         <button onClick={() => setState("idle")}
           style={{padding:"6px 12px",borderRadius:6,fontSize:11,cursor:"pointer",
