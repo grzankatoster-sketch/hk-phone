@@ -4573,6 +4573,250 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ Wiadomości v2 (sekcja 17 v2) wg v2/20-wiadomosci ═══════════════════════
+   AdminMessagesPanel: card head + flat message rows z avatarami + type pills.
+   MessageModal: chip toggle msg/bug + send button color-coded.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-msgs-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-lg);
+  padding: 18px 20px;
+}
+.cc-msgs-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cc-msgs-head-info { min-width: 0; }
+.cc-msgs-head-title {
+  font-family: var(--cc-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cc-text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -.005em;
+}
+.cc-msgs-unread-pill {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--cc-danger) 14%, transparent);
+  color: var(--cc-danger);
+  border: 1px solid color-mix(in srgb, var(--cc-danger) 30%, transparent);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.cc-msgs-head-sub {
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  margin-top: 4px;
+}
+.cc-msgs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 24px;
+  background: var(--cc-bg-elevated);
+  border: 1px dashed var(--cc-border-strong);
+  border-radius: var(--cc-radius-md);
+  color: var(--cc-text-muted);
+  font-size: 13px;
+}
+.cc-msgs-empty-icon { font-size: 32px; opacity: .55; }
+
+.cc-msgs-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cc-msg-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 28px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 16px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-left-width: 3px;
+  border-radius: var(--cc-radius-md);
+  transition: border-color 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-msg-row:hover { border-color: var(--cc-border-strong); }
+.cc-msg-row--msg { border-left-color: var(--cc-brand); }
+.cc-msg-row--bug { border-left-color: var(--cc-danger); }
+.cc-msg-row--unread {
+  background: color-mix(in srgb, var(--cc-brand) 4%, var(--cc-surface));
+}
+.cc-msg-row--unread.cc-msg-row--bug {
+  background: color-mix(in srgb, var(--cc-danger) 5%, var(--cc-surface));
+}
+.cc-msg-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--cc-font-display);
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  letter-spacing: -.01em;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12);
+  margin-top: 2px;
+}
+.cc-msg-body { min-width: 0; }
+.cc-msg-headline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.cc-msg-sender {
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cc-text);
+}
+.cc-msg-type {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 99px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.cc-msg-type--msg {
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+  border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent);
+}
+.cc-msg-type--bug {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 30%, transparent);
+}
+.cc-msg-time {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-faint);
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.cc-msg-text {
+  font-size: 13.5px;
+  color: var(--cc-text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.cc-msg-delete-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--cc-radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cc-text-faint);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-msg-delete-btn:hover {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 30%, transparent);
+}
+.cc-msg-delete-btn:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
+/* MessageModal — type toggle chips + send btn */
+.cc-msg-type-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.cc-msg-type-btn {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: var(--cc-radius-md);
+  text-align: left;
+  background: transparent;
+  border: 1.5px solid var(--cc-border);
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-msg-type-btn:hover {
+  border-color: var(--cc-border-strong);
+  color: var(--cc-text);
+}
+.cc-msg-type-btn--msg.cc-msg-type-btn--on {
+  background: var(--cc-brand-soft);
+  border-color: color-mix(in srgb, var(--cc-brand) 40%, transparent);
+  color: var(--cc-brand);
+}
+.cc-msg-type-btn--bug.cc-msg-type-btn--on {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--cc-danger) 40%, transparent);
+  color: var(--cc-danger);
+}
+.cc-msg-type-btn-icon { font-size: 18px; margin-bottom: 4px; }
+.cc-msg-type-btn-lbl {
+  font-family: var(--cc-font-display);
+  font-size: 13px;
+  font-weight: 700;
+}
+.cc-msg-type-btn-sub { font-size: 11px; opacity: .75; margin-top: 1px; }
+
+.cc-msg-send-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: var(--cc-radius-md);
+  border: none;
+  cursor: pointer;
+  font-family: var(--cc-font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-msg-send-btn--msg { background: var(--cc-info); }
+.cc-msg-send-btn--msg:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-info) 80%, black);
+}
+.cc-msg-send-btn--bug { background: var(--cc-danger); }
+.cc-msg-send-btn--bug:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--cc-danger) 80%, black);
+}
+.cc-msg-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+.cc-msg-send-btn:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
 /* ═══ Reviews v2 (sekcja 16 v2) — Hero z score card + meta card ═══════════════
    Wzorzec: design-preview/v2/05-reviews.html.
    ═══════════════════════════════════════════════════════════════════════════ */

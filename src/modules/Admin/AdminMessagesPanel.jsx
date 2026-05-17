@@ -24,61 +24,75 @@ function AdminMessagesPanel({messages,setMessages,dark}){
     }
   },[]);
 
+  /* ═══ Inbox v2 wg v2/20-wiadomosci — avatar rows + type pills ═══ */
+  const avatarGradient = (name) => {
+    const palettes = [
+      "linear-gradient(135deg, var(--cc-brand), var(--cc-brand-deep))",
+      "linear-gradient(135deg, var(--cc-info), color-mix(in srgb, var(--cc-info) 55%, black))",
+      "linear-gradient(135deg, var(--cc-success), color-mix(in srgb, var(--cc-success) 55%, black))",
+      "linear-gradient(135deg, var(--cc-accent-gold), color-mix(in srgb, var(--cc-accent-gold) 60%, black))",
+      "linear-gradient(135deg, var(--cc-danger), color-mix(in srgb, var(--cc-danger) 60%, black))",
+      "linear-gradient(135deg, #7c3aed, #5b21b6)",
+    ];
+    const hash = [...(name||"?")].reduce((s,c)=>s+c.charCodeAt(0),0);
+    return palettes[hash % palettes.length];
+  };
+
   return(
     <div className="stack">
-      <div className="panel glass dark-panel">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
-          <div>
-            <div className="panel-title" style={{margin:0,display:"flex",alignItems:"center",gap:8}}>
+      <section className="cc-msgs-card" aria-labelledby="cc-msgs-title">
+        <header className="cc-msgs-head">
+          <div className="cc-msgs-head-info">
+            <h2 id="cc-msgs-title" className="cc-msgs-head-title">
               <MessageSquare size={16}/> Skrzynka wiadomości
-              {unread.length>0&&<span style={{fontSize:11,padding:"2px 10px",borderRadius:999,
-                background:"var(--rose-light)",color:"var(--rose)",fontWeight:800,border:"1px solid var(--rose-border)"}}>{unread.length} nowych</span>}
-            </div>
-            <div style={{fontSize:12,color:"var(--text-muted)",marginTop:3}}>{messages.length} wiadomości łącznie</div>
+              {unread.length>0 && <span className="cc-msgs-unread-pill">{unread.length} nowych</span>}
+            </h2>
+            <div className="cc-msgs-head-sub">{messages.length} wiadomości łącznie</div>
           </div>
           {messages.length>0&&(
-            <button className="btn btn-danger-outline" style={{fontSize:12}}
+            <button type="button" className="btn btn-danger-outline" style={{fontSize:12}}
               onClick={()=>setMessages([])}>
               <Trash2 size={12}/> Wyczyść wszystkie
             </button>
           )}
-        </div>
+        </header>
         {messages.length===0?(
-          <div className="empty-box empty-box-dark">Brak wiadomości od pracowników.</div>
-        ):(
-          <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            {messages.map(m=>(
-              <div key={m.id} style={{
-                display:"flex",gap:12,padding:"13px 16px",borderRadius:"var(--radius-md)",
-                border:"1px solid var(--border-light)",
-                borderLeft:`3px solid ${m.type==="bug"?"var(--rose)":"var(--plum)"}`,
-                background:"var(--bg-card)"}}>
-                <div style={{fontSize:20,flexShrink:0,marginTop:2}}>{m.type==="bug"?"🐛":"💬"}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,flexWrap:"wrap"}}>
-                    <span style={{fontSize:13,fontWeight:700,color:dark?"var(--dark-text)":"var(--text-primary)"}}>
-                      {m.sender}
-                    </span>
-                    <span style={{fontSize:10.5,padding:"2px 9px",borderRadius:999,fontWeight:700,letterSpacing:".04em",
-                      background:m.type==="bug"?"var(--rose-light)":"var(--plum-soft)",
-                      color:m.type==="bug"?"var(--rose)":"var(--plum)"}}>
-                      {m.type==="bug"?"Błąd programu":"Wiadomość"}
-                    </span>
-                    <span style={{fontSize:11,color:"#5f5a54"}}>{m.sentAt}</span>
-                  </div>
-                  <div style={{fontSize:13.5,color:dark?"var(--dark-text)":"var(--text-primary)",
-                               lineHeight:1.6,whiteSpace:"pre-wrap"}}>{m.text}</div>
-                </div>
-                <button onClick={()=>deleteMsg(m.id)}
-                  style={{background:"none",border:"none",cursor:"pointer",color:"rgba(255,255,255,.25)",
-                          padding:2,flexShrink:0,display:"flex",alignItems:"flex-start"}}>
-                  <X size={13}/>
-                </button>
-              </div>
-            ))}
+          <div className="cc-msgs-empty">
+            <div className="cc-msgs-empty-icon">📭</div>
+            <div>Brak wiadomości od pracowników.</div>
           </div>
+        ):(
+          <ul className="cc-msgs-list" role="list">
+            {messages.map(m=>{
+              const isBug = m.type==="bug";
+              const initial = (m.sender||"?").charAt(0).toUpperCase();
+              return (
+                <li key={m.id} className={`cc-msg-row cc-msg-row--${isBug?"bug":"msg"}${!m.readByAdmin?" cc-msg-row--unread":""}`}>
+                  <div className="cc-msg-avatar" style={{background:avatarGradient(m.sender)}}>{initial}</div>
+                  <div className="cc-msg-body">
+                    <div className="cc-msg-headline">
+                      <span className="cc-msg-sender">{m.sender}</span>
+                      <span className={`cc-msg-type cc-msg-type--${isBug?"bug":"msg"}`}>
+                        {isBug?"🐛 Błąd":"💬 Wiadomość"}
+                      </span>
+                      <time className="cc-msg-time">{m.sentAt}</time>
+                    </div>
+                    <div className="cc-msg-text">{m.text}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={()=>deleteMsg(m.id)}
+                    className="cc-msg-delete-btn"
+                    title="Usuń wiadomość"
+                    aria-label="Usuń wiadomość">
+                    <X size={13}/>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
+      </section>
     </div>
   );
 }

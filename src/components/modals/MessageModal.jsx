@@ -44,22 +44,17 @@ export default function MessageModal({onClose,employeeName,employees,messages,se
           </button>
         </div>
 
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <div className="cc-msg-type-row">
           {[["msg","💬","Wiadomość","Informacja dla kierownika"],
             ["bug","🐛","Błąd programu","Coś nie działa"]].map(([v,ic,lbl,sub])=>(
-            <button key={v} onClick={()=>setMsgType(v)}
-              style={{flex:1,padding:"12px 14px",borderRadius:"var(--radius-md)",cursor:"pointer",
-                      textAlign:"left",
-                      border:`1.5px solid ${msgType===v?
-                        (v==="bug"?"var(--rose)":"var(--plum)"):
-                        (dark?"var(--dark-border)":"var(--border-light)")}`,
-                      background:msgType===v?
-                        (v==="bug"?"var(--rose-light)":"var(--plum-soft)"):
-                        "transparent",
-                      color:msgType===v?(v==="bug"?"var(--rose)":"var(--plum)"):(dark?"var(--dark-text-muted)":"var(--text-muted)")}}>
-              <div style={{fontSize:18,marginBottom:4}}>{ic}</div>
-              <div style={{fontSize:13,fontWeight:700}}>{lbl}</div>
-              <div style={{fontSize:11,opacity:.75,marginTop:1}}>{sub}</div>
+            <button
+              key={v}
+              type="button"
+              onClick={()=>setMsgType(v)}
+              className={`cc-msg-type-btn cc-msg-type-btn--${v}${msgType===v?" cc-msg-type-btn--on":""}`}>
+              <div className="cc-msg-type-btn-icon">{ic}</div>
+              <div className="cc-msg-type-btn-lbl">{lbl}</div>
+              <div className="cc-msg-type-btn-sub">{sub}</div>
             </button>
           ))}
         </div>
@@ -87,13 +82,12 @@ export default function MessageModal({onClose,employeeName,employees,messages,se
         </div>
 
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-          <button className={dark?"btn btn-outline-dark":"btn btn-outline"} onClick={onClose}>Anuluj</button>
-          <button onClick={send}
+          <button type="button" className={dark?"btn btn-outline-dark":"btn btn-outline"} onClick={onClose}>Anuluj</button>
+          <button
+            type="button"
+            onClick={send}
             disabled={!sender.trim()||!text.trim()}
-            style={{display:"flex",alignItems:"center",gap:7,padding:"8px 18px",borderRadius:"var(--radius-md)",
-                    border:"none",cursor:"pointer",fontWeight:700,fontSize:13,
-                    background:msgType==="bug"?"var(--rose)":"var(--sky)",
-                    color:"#fff",opacity:(!sender.trim()||!text.trim())?0.5:1}}>
+            className={`cc-msg-send-btn cc-msg-send-btn--${msgType}`}>
             <Send size={14}/> Wyślij
           </button>
         </div>
