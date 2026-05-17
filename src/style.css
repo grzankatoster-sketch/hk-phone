@@ -4504,6 +4504,213 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ HK Live (sekcja 10) — topbar + status bar + sidebar tabs na cc-* ═══════
+   Wg design-preview/v2/01-hk-live.html.
+   Zastępuje masywne inline styles w HKLivePanel.jsx.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-hkl-wrap {
+  background: var(--cc-bg);
+  color: var(--cc-text);
+}
+
+.cc-hkl-topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 22px 14px;
+  background: var(--cc-surface);
+  border-bottom: 1px solid var(--cc-border);
+  flex-shrink: 0;
+}
+.cc-hkl-topbar-info {
+  min-width: 0;
+}
+.cc-hkl-crumb {
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  font-weight: 500;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cc-hkl-crumb-pill {
+  font-family: var(--cc-font-display);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cc-brand);
+}
+.cc-hkl-crumb svg {
+  color: var(--cc-text-faint);
+}
+.cc-hkl-title {
+  font-family: var(--cc-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cc-text);
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.1;
+  margin: 0;
+  flex-wrap: wrap;
+}
+.cc-hkl-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.cc-hkl-meta b {
+  color: var(--cc-text);
+  font-weight: 600;
+  font-family: var(--cc-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.cc-hkl-meta-success {
+  color: var(--cc-success) !important;
+}
+
+/* Status bar — 5 stat cells */
+.cc-hkl-statbar {
+  display: flex;
+  gap: 0;
+  flex-wrap: wrap;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  overflow: hidden;
+  background: var(--cc-surface);
+}
+.cc-hkl-statcell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-right: 1px solid var(--cc-border);
+}
+.cc-hkl-statcell:last-child {
+  border-right: none;
+}
+.cc-hkl-statcell-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--cc-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+.cc-hkl-statcell-num {
+  font-family: var(--cc-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.cc-hkl-statcell-lbl {
+  font-family: var(--cc-font-display);
+  font-size: 9.5px;
+  color: var(--cc-text-muted);
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+/* Variants — kolor tokenów semantycznych */
+.cc-hkl-statcell--wait .cc-hkl-statcell-badge {
+  background: var(--cc-bg-elevated);
+  border-color: var(--cc-border);
+}
+.cc-hkl-statcell--wait .cc-hkl-statcell-num {
+  color: var(--cc-text-muted);
+}
+.cc-hkl-statcell--info .cc-hkl-statcell-badge {
+  background: color-mix(in srgb, var(--cc-info) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cc-info) 30%, transparent);
+}
+.cc-hkl-statcell--info .cc-hkl-statcell-num {
+  color: var(--cc-info);
+}
+.cc-hkl-statcell--success .cc-hkl-statcell-badge {
+  background: color-mix(in srgb, var(--cc-success) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent);
+}
+.cc-hkl-statcell--success .cc-hkl-statcell-num {
+  color: var(--cc-success);
+}
+.cc-hkl-statcell--warning .cc-hkl-statcell-badge {
+  background: color-mix(in srgb, var(--cc-warning) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cc-warning) 30%, transparent);
+}
+.cc-hkl-statcell--warning .cc-hkl-statcell-num {
+  color: var(--cc-warning);
+}
+.cc-hkl-statcell--violet .cc-hkl-statcell-badge {
+  background: color-mix(in srgb, var(--cc-brand) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cc-brand) 25%, transparent);
+}
+.cc-hkl-statcell--violet .cc-hkl-statcell-num {
+  color: var(--cc-brand);
+}
+
+/* Sidebar tabs */
+.cc-hkl-sidebar {
+  background: var(--cc-bg-elevated);
+  border-right: 1px solid var(--cc-border);
+}
+.cc-hkl-tab {
+  background: transparent;
+  color: var(--cc-text-muted);
+  font-weight: 600;
+  border-left: 3px solid transparent;
+  transition: all 160ms cubic-bezier(.4,0,.2,1);
+}
+.cc-hkl-tab:hover {
+  background: var(--cc-surface);
+  color: var(--cc-text);
+}
+.cc-hkl-tab:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: -2px;
+}
+.cc-hkl-tab--active {
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+  font-weight: 800;
+  border-left-color: var(--cc-brand);
+  box-shadow: inset 0 0 18px color-mix(in srgb, var(--cc-brand) 8%, transparent);
+}
+.cc-hkl-tab-icon {
+  font-size: 14px;
+}
+.cc-hkl-tab-badge {
+  margin-left: auto;
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 7px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  line-height: 1.2;
+}
+.cc-hkl-tab-badge--brand {
+  color: var(--cc-brand);
+  background: var(--cc-brand-soft);
+  border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent);
+}
+.cc-hkl-tab-badge--warning {
+  color: var(--cc-warning);
+  background: color-mix(in srgb, var(--cc-warning) 18%, transparent);
+  border-color: color-mix(in srgb, var(--cc-warning) 30%, transparent);
+}
+
 /* ═══ HK Panel — Floor Card + Vacated Dot + Apt Note (sekcja 9 v2) ═══════════
    Targeted improvements w HKPanel.jsx — inline styles → klasy CSS na cc-* tokens.
    Wzorzec: design-preview/v2/06-hk-panel.html.

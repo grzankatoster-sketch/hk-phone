@@ -1253,83 +1253,76 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   const progressPct = totalRooms ? Math.round((totalDone / totalRooms) * 100) : 0;
 
   return (
-    <div className="hk-live-wrap" style={{ background: dark ? "var(--dark-bg)" : "var(--bg-primary)" }}>
+    <div className="hk-live-wrap cc-hkl-wrap">
 
-      {/* v2 TOPBAR — crumb + title + meta + live pill + status bar */}
-      <div style={{ background: dark ? "var(--dark-bg2)" : "#fff", borderBottom: `1px solid ${dark ? "var(--dark-border)" : "var(--border-light)"}`, padding: "16px 22px 14px", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 11, color: muted, fontWeight: 500, marginBottom: 5, display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "var(--plum)", fontWeight: 700, fontSize: 10, letterSpacing: ".1em", textTransform: "uppercase", fontFamily: "'DM Serif Display', serif" }}>Pokoje</span>
-              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-              <span>HK Live</span>
-            </div>
-            <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: 22, fontWeight: 700, color: text, letterSpacing: "-.01em", display: "flex", alignItems: "center", gap: 10, lineHeight: 1.1, margin: 0 }}>
-              Housekeeping na żywo
-              <span className="v2-live-pill">Live · SSE 3737</span>
-            </h1>
-            <div style={{ display: "flex", gap: 14, fontSize: 12, color: muted, marginTop: 6, flexWrap: "wrap" }}>
-              <span>Pracownice: <b style={{ color: text, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{totalWorkersOnline}</b></span>
-              <span>Pokoje: <b style={{ color: text, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{totalDone}/{totalRooms}</b></span>
-              <span>Postęp: <b style={{ color: "#34d399", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{progressPct}%</b></span>
-              <span>Data: <b style={{ color: text, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{date}</b></span>
-            </div>
+      {/* ═══ TOPBAR — wg design-preview/v2/01-hk-live.html ═══ */}
+      <header className="cc-hkl-topbar">
+        <div className="cc-hkl-topbar-info">
+          <div className="cc-hkl-crumb">
+            <span className="cc-hkl-crumb-pill">Pokoje</span>
+            <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+            <span>HK Live</span>
           </div>
-
-          {/* v2 STATUS BAR — 5 stat cells */}
-          <div style={{ display: "flex", gap: 0, flexWrap: "wrap", border: `1px solid ${dark ? "var(--dark-border)" : "var(--border-light)"}`, borderRadius: 10, overflow: "hidden" }}>
-            {[
-              ["Czeka",      stats.W,           "#A89DAE", "rgba(168,157,174,.10)", "rgba(168,157,174,.30)"],
-              ["W trakcie",  stats.czyszczenie, "#60a5fa", "rgba(96,165,250,.10)",  "rgba(96,165,250,.30)"],
-              ["Gotowe",     stats.czyste,      "#34d399", "rgba(52,211,153,.10)",  "rgba(52,211,153,.30)"],
-              ["Puste",      totalVacated,      "#f59e0b", "rgba(245,158,11,.10)",  "rgba(245,158,11,.30)"],
-              ["Pominięte",  stats["pominięte"],"#a78bfa", "rgba(167,139,250,.10)", "rgba(167,139,250,.30)"],
-            ].map(([lbl, cnt, col, bg, bc], i, arr) => (
-              <div key={lbl} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 14px", borderRight: i < arr.length - 1 ? `1px solid ${dark ? "var(--dark-border)" : "var(--border-light)"}` : "none", background: dark ? "var(--dark-card)" : "transparent" }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: bg, border: `1px solid ${bc}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ color: col, fontWeight: 800, fontSize: 14 }}>{cnt}</span>
-                </div>
-                <div style={{ fontSize: 9.5, color: muted, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", fontFamily: "'DM Serif Display', serif" }}>{lbl}</div>
-              </div>
-            ))}
+          <h1 className="cc-hkl-title">
+            Housekeeping na żywo
+            <span className="v2-live-pill">Live · SSE 3737</span>
+          </h1>
+          <div className="cc-hkl-meta">
+            <span>Pracownice: <b>{totalWorkersOnline}</b></span>
+            <span>Pokoje: <b>{totalDone}/{totalRooms}</b></span>
+            <span>Postęp: <b className="cc-hkl-meta-success">{progressPct}%</b></span>
+            <span>Data: <b>{date}</b></span>
           </div>
         </div>
-      </div>
+
+        {/* ═══ STATUS BAR — 5 stat cells na cc-* tokens ═══ */}
+        <div className="cc-hkl-statbar" role="list" aria-label="Statystyki pokoi">
+          {[
+            ["Czeka",      stats.W,            "wait"],
+            ["W trakcie",  stats.czyszczenie,  "info"],
+            ["Gotowe",     stats.czyste,       "success"],
+            ["Puste",      totalVacated,       "warning"],
+            ["Pominięte",  stats["pominięte"], "violet"],
+          ].map(([lbl, cnt, variant]) => (
+            <div key={lbl} className={`cc-hkl-statcell cc-hkl-statcell--${variant}`} role="listitem">
+              <div className="cc-hkl-statcell-badge" aria-hidden="true">
+                <span className="cc-hkl-statcell-num">{cnt}</span>
+              </div>
+              <div className="cc-hkl-statcell-lbl">{lbl}</div>
+            </div>
+          ))}
+        </div>
+      </header>
 
       {/* Body */}
       <div className="hk-live-body">
-        {/* v2 Sidebar — z aubergine active state + glow */}
-        <div className="hk-live-sidebar" style={{ background: dark ? "var(--dark-bg)" : "#f8fafc", borderRight: `1px solid ${dark ? "var(--dark-border)" : "var(--border-light)"}` }}>
+        {/* Sidebar — aubergine active state + glow */}
+        <nav className="hk-live-sidebar cc-hkl-sidebar" role="tablist" aria-label="HK Live nawigacja">
           {TABS.map(tab => {
             const pendingCheckouts = tab.id === "monitor"
               ? HK_ALL.filter(r => (hkData?.[r.no]?.status === "W" || hkData?.[r.no]?.status === "WP") && !rooms[r.no]?.vacated).length
               : 0;
             const openTasks = tab.id === "zadania" ? tasks.filter(t => t.status === "open").length : 0;
             const badge = pendingCheckouts > 0 ? pendingCheckouts : openTasks > 0 ? openTasks : 0;
-            const badgeColor = tab.id === "monitor" ? "#f59e0b" : "var(--plum)";
-            const badgeBg   = tab.id === "monitor" ? "rgba(245,158,11,.18)" : "var(--plum-bright-bg)";
+            const badgeVariant = tab.id === "monitor" ? "warning" : "brand";
             const isActive = activeTab === tab.id;
             return (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)} className="hk-live-tab-btn"
-                style={{
-                  background: isActive ? (dark ? "var(--plum-bright-bg)" : "rgba(90,29,74,.08)") : "transparent",
-                  color: isActive ? "var(--plum)" : muted,
-                  fontWeight: isActive ? 800 : 600,
-                  borderLeft: isActive ? `3px solid var(--plum)` : `3px solid transparent`,
-                  boxShadow: isActive && dark ? "var(--plum-bright-glow)" : "none",
-                  transition: "all .15s cubic-bezier(.4,0,.2,1)"
-                }}>
-                <span style={{ fontSize: 14 }}>{tab.icon}</span>
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.id)}
+                className={`hk-live-tab-btn cc-hkl-tab${isActive ? " cc-hkl-tab--active" : ""}`}>
+                <span className="cc-hkl-tab-icon" aria-hidden="true">{tab.icon}</span>
                 <span className="hk-live-tab-label">{tab.label}</span>
                 {badge > 0 && (
-                  <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 900, color: badgeColor, background: badgeBg, borderRadius: 999, padding: "1px 6px", flexShrink: 0, border: `1px solid ${tab.id === "monitor" ? "rgba(245,158,11,.3)" : "var(--plum-bright-border)"}` }}>
-                    {badge}
-                  </span>
+                  <span className={`cc-hkl-tab-badge cc-hkl-tab-badge--${badgeVariant}`}>{badge}</span>
                 )}
               </button>
             );
           })}
-        </div>
+        </nav>
 
         {/* Content */}
         <div className="hk-live-content">
