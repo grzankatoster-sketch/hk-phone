@@ -3030,9 +3030,78 @@ button:focus:not(:focus-visible) { outline: none; }
   .modal { padding: 16px; border-radius: var(--radius-lg); }
   .topbar h1 { font-size: 19px; }
 }
+/* ═══ PRINT STYLESHEET (sekcja 34) ════════════════════════════════════════════
+   Wymusza light na druku — niezależnie od trybu aplikacji.
+   Ukrywa interaktywne elementy (sidebary, topbar, banery, toasty, modale,
+   przyciski akcji). Zachowuje treść główną w wysokim kontraście.
+   ═══════════════════════════════════════════════════════════════════════════ */
 @media print {
-  .app-shell { padding: 0; background: #fff !important; }
-  .sidebar-nav, .btn, .actions { display: none !important; }
+  /* Force light scheme + brand tokens */
+  :root, html, html.theme-dark, body, body.app-dark {
+    color-scheme: light !important;
+    --cc-bg: #ffffff !important;
+    --cc-bg-elevated: #ffffff !important;
+    --cc-surface: #ffffff !important;
+    --cc-surface-elevated: #ffffff !important;
+    --cc-text: #000000 !important;
+    --cc-text-secondary: #1a1a1a !important;
+    --cc-text-muted: #444444 !important;
+    --cc-text-faint: #777777 !important;
+    --cc-border: #cccccc !important;
+    --cc-border-strong: #999999 !important;
+    --cc-shadow-sm: none !important;
+    --cc-shadow-md: none !important;
+    --cc-shadow-lg: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide interactive chrome */
+  .cc-shell-topbar,
+  .nsb,
+  .worker-sidebar-rail,
+  .cc-mgr-toggle-bar,
+  .cc-hkl-sidebar,
+  .sidebar-nav,
+  .toast-container,
+  .modal-backdrop,
+  .cc-update-banner,
+  .v2-live-pill,
+  .cc-flow-status,
+  .cc-shell-topbar-roletoggle,
+  .cc-shell-topbar-iconbtn,
+  .cc-cash-card-actions,
+  .cc-task-card-meta .cc-task-card-hot,
+  .actions,
+  button.btn,
+  .btn,
+  .nsb-icon-btn,
+  .nsb-finish-btn { display: none !important; }
+
+  .app-shell, .worker-content, .container, .main {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  /* Cards lose shadows + use neutral borders */
+  .panel, .card, .cc-cash-card, .cc-task-card, .cc-flow-card,
+  .cc-compose-card, .cc-dash-card, .cc-inbox-card, .cc-hk-floor-card {
+    box-shadow: none !important;
+    border-color: #cccccc !important;
+    background: #ffffff !important;
+    page-break-inside: avoid;
+  }
+
+  /* Headings remain readable */
+  h1, h2, h3, .v2-dash-title, .cc-shell-topbar-title,
+  .cc-cash-card-title, .cc-task-card-title {
+    color: #000000 !important;
+  }
+
+  a { color: #000000 !important; text-decoration: underline; }
 }
 
 /* ─── Admin Sidebar Layout ────────────────────────────────────────────────── */
