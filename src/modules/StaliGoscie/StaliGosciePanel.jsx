@@ -82,43 +82,56 @@ export default function StaliGosciePanel({dark,isAdmin,currentManager,addAudit})
   const dp=dark?"dark-panel":"";
   const inp=dark?"input dark-input":"input";
 
+  /* ═══ Guest row v2 — avatar + info + stats + flag (wg v2/08-stali-goscie) ═══ */
+  const avatarGradient = (name) => {
+    // Hash name to one of 8 gradient pairs (consistent per guest)
+    const palettes = [
+      "linear-gradient(135deg, var(--cc-brand), var(--cc-brand-deep))",
+      "linear-gradient(135deg, var(--cc-accent-gold), color-mix(in srgb, var(--cc-accent-gold) 60%, black))",
+      "linear-gradient(135deg, var(--cc-info), color-mix(in srgb, var(--cc-info) 55%, black))",
+      "linear-gradient(135deg, var(--cc-success), color-mix(in srgb, var(--cc-success) 55%, black))",
+      "linear-gradient(135deg, var(--cc-danger), color-mix(in srgb, var(--cc-danger) 60%, black))",
+      "linear-gradient(135deg, var(--cc-warning), color-mix(in srgb, var(--cc-warning) 55%, black))",
+      "linear-gradient(135deg, #7c3aed, #5b21b6)",
+      "linear-gradient(135deg, #0e7490, #155e75)",
+    ];
+    const hash = [...(name||"?")].reduce((s,c)=>s+c.charCodeAt(0),0);
+    return palettes[hash % palettes.length];
+  };
+
   const GuestCard=({g})=>{
     const isOpen=expanded===g.id;
     const hasFV=g.hasFV||!!g.company;
+    const initial=(g.name||"?").charAt(0).toUpperCase();
     return(
-      <div style={{borderRadius:"var(--radius-md)",overflow:"hidden",
-                   border:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,
-                   marginBottom:6,
-                   background:dark?"rgba(255,255,255,.03)":"var(--bg-card)"}}>
-        {/* Row header */}
-        <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer"}}
-             onClick={()=>setExpanded(isOpen?null:g.id)}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-              <span style={{fontSize:13.5,fontWeight:700,color:dark?"var(--dark-text)":"var(--text-primary)"}}>{g.name}</span>
-              {hasFV&&g.company&&(
-                <span style={{fontSize:10,padding:"2px 8px",borderRadius:999,
-                              background:"var(--plum-soft)",
-                              color:"var(--plum)",fontWeight:700}}>
-                  FV: {g.company.length>30?g.company.slice(0,30)+"…":g.company}
-                </span>
-              )}
-              {g.room&&(
-                <span style={{fontSize:10,padding:"1px 7px",borderRadius:999,
-                              background:dark?"rgba(255,255,255,.06)":"var(--bg-secondary)",
-                              color:"var(--text-muted)",fontWeight:500}}>
-                  pok. {g.room}
-                </span>
-              )}
+      <div className={`cc-guest${isOpen?" cc-guest--expanded":""}`}>
+        {/* Row header v2 */}
+        <div className="cc-guest-head" onClick={()=>setExpanded(isOpen?null:g.id)}>
+          <div className="cc-guest-avatar" style={{background:avatarGradient(g.name)}}>{initial}</div>
+          <div className="cc-guest-info">
+            <div className="cc-guest-name">
+              {g.name}
+              {hasFV&&<span className="cc-guest-flag cc-guest-flag--fv">FV</span>}
             </div>
-            {g.priceSeason&&!isOpen&&(
-              <div style={{fontSize:11,color:"var(--text-muted)",marginTop:2,
-                           whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                Sezon: {g.priceSeason.slice(0,60)}{g.priceSeason.length>60?"…":""}
-              </div>
+            {g.company&&(
+              <div className="cc-guest-company">{g.company}</div>
+            )}
+            {g.room&&(
+              <div className="cc-guest-room">Pokój: <b>{g.room}</b></div>
+            )}
+            {g.priceSeason&&!isOpen&&!g.company&&(
+              <div className="cc-guest-room">Sezon: {g.priceSeason.slice(0,50)}{g.priceSeason.length>50?"…":""}</div>
             )}
           </div>
-          <span style={{color:"var(--text-muted)",fontSize:12,flexShrink:0}}>{isOpen?"▲":"▼"}</span>
+          <div className="cc-guest-stats">
+            {g.priceSeason&&<span className="cc-guest-price">{g.priceSeason.length<20?g.priceSeason:g.priceSeason.slice(0,20)+"…"}</span>}
+            <span className={`cc-guest-flag cc-guest-flag--${g.category==="company"?"company":"private"}`}>
+              {g.category==="company"?"Firma":"Prywatny"}
+            </span>
+          </div>
+          <button type="button" className="cc-guest-expand-btn" aria-label={isOpen?"Zwiń":"Rozwiń"}>
+            {isOpen?"▲":"▼"}
+          </button>
         </div>
         {/* Expanded */}
         {isOpen&&(
@@ -165,27 +178,40 @@ export default function StaliGosciePanel({dark,isAdmin,currentManager,addAudit})
     );
   };
 
+  const fvCount = guests.filter(g=>g.hasFV||g.company).length;
+
   return(
     <div className="stack">
-      {/* Topbar: wyszukiwanie + filtry + dodaj */}
+      {/* ═══ KPI ROW v2 wg v2/08-stali-goscie ═══ */}
+      <div className="cc-guests-kpi-row">
+        <div className="cc-guests-kpi">
+          <div className="cc-guests-kpi-lbl">Łącznie gości</div>
+          <div className="cc-guests-kpi-val">{guests.length}</div>
+          <div className="cc-guests-kpi-sub">aktywna baza</div>
+        </div>
+        <div className="cc-guests-kpi">
+          <div className="cc-guests-kpi-lbl">Prywatni</div>
+          <div className="cc-guests-kpi-val cc-guests-kpi-val--violet">{privateGuests.length}</div>
+          <div className="cc-guests-kpi-sub">{guests.length>0?Math.round(privateGuests.length/guests.length*100):0}% bazy</div>
+        </div>
+        <div className="cc-guests-kpi">
+          <div className="cc-guests-kpi-lbl">Firmy</div>
+          <div className="cc-guests-kpi-val cc-guests-kpi-val--teal">{companyGuests.length}</div>
+          <div className="cc-guests-kpi-sub">B2B kontrakty</div>
+        </div>
+        <div className="cc-guests-kpi">
+          <div className="cc-guests-kpi-lbl">Z fakturą</div>
+          <div className="cc-guests-kpi-val cc-guests-kpi-val--gold">{fvCount}</div>
+          <div className="cc-guests-kpi-sub">{guests.length>0?Math.round(fvCount/guests.length*100):0}% generuje FV</div>
+        </div>
+      </div>
+
+      {/* List card head + toolbar v2 */}
       <div className={`panel${dark?" dark-panel":""}`}>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center",marginBottom:12}}>
-          <div style={{position:"relative",flex:1,minWidth:200}}>
-            <Search size={14} style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"var(--text-muted)"}}/>
-            <input className={inp} placeholder="Szukaj gościa, firmy, uwag…"
-                   value={search} onChange={e=>setSearch(e.target.value)}
-                   style={{paddingLeft:32}}/>
-          </div>
-          <div style={{display:"flex",gap:5}}>
-            {[["all","Wszyscy"],["private","Osoby prywatne"],["company","Firmy"]].map(([v,l])=>(
-              <button key={v} onClick={()=>setFilter(v)}
-                style={{fontSize:12,padding:"5px 12px",borderRadius:"var(--cc-radius-md)",cursor:"pointer",
-                        border:`1px solid ${filter===v?"var(--cc-info)":"var(--cc-border)"}`,
-                        background:filter===v?"color-mix(in srgb, var(--cc-info) 12%, transparent)":"transparent",
-                        color:filter===v?"var(--cc-info)":"var(--cc-text-muted)",fontWeight:filter===v?600:400}}>
-                {l}
-              </button>
-            ))}
+        <div className="cc-guests-card-head">
+          <div className="cc-guests-card-headline">
+            <Users size={15} className="cc-guests-card-icon"/>
+            <h2 className="cc-guests-card-title">Baza stałych gości</h2>
           </div>
           {isAdmin&&(
             <button className="btn btn-emerald" style={{fontSize:12.5,flexShrink:0}}
@@ -194,12 +220,22 @@ export default function StaliGosciePanel({dark,isAdmin,currentManager,addAudit})
             </button>
           )}
         </div>
-        {/* Statystyki */}
-        <div style={{display:"flex",gap:14,fontSize:12,color:"var(--text-muted)"}}>
-          <span>Łącznie: <strong style={{color:dark?"var(--dark-text)":"var(--text-primary)"}}>{guests.length}</strong></span>
-          <span>Osoby prywatne: <strong>{guests.filter(g=>g.category==="private").length}</strong></span>
-          <span>Firmy: <strong>{guests.filter(g=>g.category==="company").length}</strong></span>
-          <span>Z FV: <strong style={{color:"var(--sky)"}}>{guests.filter(g=>g.hasFV||g.company).length}</strong></span>
+        <div className="cc-guests-toolbar">
+          {[
+            ["all","Wszyscy",guests.length],
+            ["private","Prywatni",privateGuests.length],
+            ["company","Firmy",companyGuests.length],
+          ].map(([v,l,cnt])=>(
+            <button key={v} type="button" onClick={()=>setFilter(v)}
+              className={`cc-guests-tab${filter===v?" cc-guests-tab--on":""}`}>
+              <span>{l}</span>
+              <span className="cc-guests-tab-cnt">{cnt}</span>
+            </button>
+          ))}
+          <div className="cc-guests-search">
+            <Search size={13}/>
+            <input placeholder="Imię, firma, uwagi…" value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
         </div>
       </div>
 
