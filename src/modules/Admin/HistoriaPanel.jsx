@@ -29,7 +29,7 @@ export default function HistoriaPanel({
       {/* Niezakończone zmiany */}
       {incidentLog.filter(i=>!i.resolved).length>0&&(
         <div className="panel" style={{borderLeft:"4px solid var(--rose)",background:"var(--rose-light)"}}>
-          <div style={{fontSize:15,fontWeight:400,color:"var(--rose)",marginBottom:12,display:"flex",alignItems:"center",gap:8,fontFamily:"'DM Serif Display',serif"}}>
+          <div style={{fontSize:15,fontWeight:400,color:"var(--rose)",marginBottom:12,display:"flex",alignItems:"center",gap:8,fontFamily:"var(--cc-font-display)"}}>
             <AlertTriangle size={18}/> Niezakończone zmiany bez raportu ({incidentLog.filter(i=>!i.resolved).length})
           </div>
           <div style={{display:"grid",gap:8}}>
@@ -37,7 +37,7 @@ export default function HistoriaPanel({
               <div key={inc.id} style={{background:"var(--bg-card)",border:"1px solid var(--rose-border)",borderLeft:"3px solid var(--rose)",borderRadius:"var(--radius-md)",padding:"12px 15px",display:"flex",gap:12,alignItems:"flex-start"}}>
                 <div style={{flex:1}}>
                   <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:5,alignItems:"center"}}>
-                    <span style={{fontSize:13.5,fontWeight:700,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif"}}>{inc.employee}</span>
+                    <span style={{fontSize:13.5,fontWeight:700,color:"var(--text-primary)",fontFamily:"var(--cc-font-display)"}}>{inc.employee}</span>
                     <span style={{fontSize:10.5,padding:"2px 9px",borderRadius:999,background:"var(--rose)",color:"#fff",fontWeight:800,letterSpacing:".04em",textTransform:"uppercase"}}>{SHIFT_SHORT_LABELS[inc.shift]||inc.shift}</span>
                   </div>
                   <div style={{fontSize:12,color:"var(--text-muted)"}}>Zalogował(a): {inc.startedAt} · Opuścił(a) bez raportu: {inc.abandonedAt}</div>

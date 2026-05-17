@@ -57,7 +57,7 @@ export default function StatystykiPanel({
           ].map(s=>(
             <div key={s.label} style={{background:"var(--bg-card)",borderRadius:"var(--radius-md)",border:"1px solid var(--border-light)",borderLeft:`4px solid ${s.accent}`,padding:"16px 18px"}}>
               <div style={{fontSize:11,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:8,fontWeight:700}}>{s.label}</div>
-              <div style={{fontSize:32,fontWeight:400,color:"var(--text-primary)",lineHeight:1,fontFamily:"'DM Serif Display',serif"}}>{s.value}</div>
+              <div style={{fontSize:32,fontWeight:400,color:"var(--text-primary)",lineHeight:1,fontFamily:"var(--cc-font-display)"}}>{s.value}</div>
             </div>
           ))}
         </div>
@@ -67,7 +67,7 @@ export default function StatystykiPanel({
             <div style={{width:44,height:44,borderRadius:"50%",background:"var(--plum)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:16,fontWeight:800,flexShrink:0}}>{(weeklyStats.topEmp.name||"?")[0]}</div>
             <div>
               <div style={{fontSize:11,color:"var(--plum)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:3,fontWeight:700}}>Najbardziej aktywny pracownik</div>
-              <div style={{fontSize:17,fontWeight:400,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif"}}>
+              <div style={{fontSize:17,fontWeight:400,color:"var(--text-primary)",fontFamily:"var(--cc-font-display)"}}>
                 {weeklyStats.topEmp.name} <span style={{fontSize:12,color:"var(--text-muted)",fontWeight:400,fontFamily:"Inter"}}>({weeklyStats.topEmp.count} zmian)</span>
               </div>
             </div>

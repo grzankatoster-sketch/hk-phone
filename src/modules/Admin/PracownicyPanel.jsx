@@ -53,7 +53,7 @@ export default function PracownicyPanel({
                     <div style={{display:"flex",alignItems:"center",gap:12,flex:1}}>
                       <div style={{width:38,height:38,borderRadius:"50%",background:"var(--plum)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:800,flexShrink:0}}>{employee[0]}</div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{color:"var(--dark-text)",fontFamily:"'DM Serif Display',serif",fontSize:16,lineHeight:1.2}}>{employee}</div>
+                        <div style={{color:"var(--dark-text)",fontFamily:"var(--cc-font-display)",fontSize:16,lineHeight:1.2}}>{employee}</div>
                         <div style={{display:"flex",gap:12,marginTop:3,fontSize:11.5,color:"var(--dark-text-muted)"}}>
                           <span>&#128197; <strong style={{color:"var(--gold)"}}>{total}</strong> zmian/mc</span>
                           {total>0&&<span style={{color:pct>=80?"var(--emerald)":pct>=50?"var(--gold)":"var(--rose)"}}>&#9679; {pct}% zakończeń</span>}

@@ -46,7 +46,7 @@ export default function WiadomosciPanel({
             <div style={{display:"flex",alignItems:"center",gap:10,marginTop:6}}>
               <div style={{width:36,height:36,borderRadius:"50%",background:"var(--plum)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,flexShrink:0}}>{(weeklyStats.topEmp.name||"?")[0]}</div>
               <div>
-                <div style={{fontFamily:"'DM Serif Display',serif",fontSize:17,color:"var(--dark-text)"}}>{weeklyStats.topEmp.name}</div>
+                <div style={{fontFamily:"var(--cc-font-display)",fontSize:17,color:"var(--dark-text)"}}>{weeklyStats.topEmp.name}</div>
                 <div style={{fontSize:11,color:"var(--text-muted)",marginTop:1}}>{weeklyStats.topEmp.count} zmian</div>
               </div>
             </div>

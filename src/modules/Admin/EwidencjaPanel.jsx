@@ -45,7 +45,7 @@ export default function EwidencjaPanel({
         </div>
         {filteredEvidenceLog.length>0&&(
           <div style={{marginTop:12,fontSize:13,color:"var(--text-muted)"}}>
-            Łącznie wpisów: <strong style={{color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif",fontSize:15}}>{filteredEvidenceLog.length}</strong>
+            Łącznie wpisów: <strong style={{color:"var(--text-primary)",fontFamily:"var(--cc-font-display)",fontSize:15}}>{filteredEvidenceLog.length}</strong>
           </div>
         )}
       </div>

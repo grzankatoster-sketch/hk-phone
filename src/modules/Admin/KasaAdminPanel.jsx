@@ -22,7 +22,7 @@ export default function KasaAdminPanel({
         <div className="panel-title"><Settings size={16}/> Stała kasowa — zarządzanie</div>
         <div style={{textAlign:"center",padding:"20px 0 12px",background:"var(--plum-soft)",borderRadius:"var(--radius-md)",margin:"0 -4px 18px",border:"1px solid var(--plum-border)"}}>
           <div style={{fontSize:11,color:"var(--plum)",textTransform:"uppercase",letterSpacing:".08em",marginBottom:8,fontWeight:800}}>Aktualna stała kasowa</div>
-          <div style={{fontSize:46,fontWeight:400,color:"var(--plum)",letterSpacing:"-1.5px",lineHeight:1,fontFamily:"'DM Serif Display',serif"}}>{fmtMoney(stalaKasowa)}</div>
+          <div style={{fontSize:46,fontWeight:400,color:"var(--plum)",letterSpacing:"-1.5px",lineHeight:1,fontFamily:"var(--cc-font-display)"}}>{fmtMoney(stalaKasowa)}</div>
         </div>
         <div style={{display:"grid",gap:10,marginTop:4}}>
           <div style={{fontSize:12.5,color:"var(--text-muted)"}}>Zmień stałą kasową (tylko kierownik):</div>

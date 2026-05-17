@@ -82,7 +82,7 @@ export default function KorektyPanel({
                   <div style={{background:c.done?"var(--emerald-light)":"var(--gold-soft, var(--gold-bg))",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,borderBottom:"1px solid var(--border-light)"}}>
                     <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                       <span style={{fontSize:10.5,padding:"2px 10px",borderRadius:999,background:c.done?"var(--emerald)":"var(--gold)",color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:".06em"}}>{c.docType||"dokument"}</span>
-                      <span style={{fontSize:14.5,fontWeight:700,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif"}}>{c.reservation}</span>
+                      <span style={{fontSize:14.5,fontWeight:700,color:"var(--text-primary)",fontFamily:"var(--cc-font-display)"}}>{c.reservation}</span>
                       {c.done&&Object.entries(c.approvals||{}).filter(([,v])=>v?.at).map(([mgr])=>(
                         <span key={mgr} style={{fontSize:10.5,padding:"2px 9px",borderRadius:999,background:"var(--emerald-light)",color:"var(--emerald)",fontWeight:700,border:"1px solid var(--emerald-border)"}}>&#10003; {mgr}</span>
                       ))}
@@ -127,7 +127,7 @@ export default function KorektyPanel({
                   onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.borderLeftWidth="3px";}}>
                   <span style={{fontSize:13,color:c.done?"var(--emerald)":"var(--gold)",fontWeight:800}}>{c.done?"✓":"⚠"}</span>
                   <span style={{fontSize:10,padding:"2px 9px",borderRadius:999,background:c.done?"var(--emerald)":"var(--gold)",color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:".05em"}}>{c.docType||"dok"}</span>
-                  <span style={{fontSize:14,fontWeight:700,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif",minWidth:120}}>{c.reservation||"—"}</span>
+                  <span style={{fontSize:14,fontWeight:700,color:"var(--text-primary)",fontFamily:"var(--cc-font-display)",minWidth:120}}>{c.reservation||"—"}</span>
                   <span style={{fontSize:12,color:"var(--text-secondary)"}}>{getFullName(c.submittedBy)}</span>
                   <span style={{fontSize:11.5,color:"var(--text-muted)",marginLeft:"auto"}}>{(c.submittedAt||"").split(",")[0]}</span>
                   <span style={{fontSize:11,color:"var(--plum)",fontWeight:700}}>&#9658;</span>
