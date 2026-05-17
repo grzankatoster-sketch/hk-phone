@@ -32,14 +32,14 @@ export default function SignatureCanvas({onSave,label="Podpisz tutaj myszką",he
       <canvas ref={canvasRef} width={520} height={height}
         onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
         onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
-        style={{width:"100%",height:height,borderRadius:8,background:"#fff",
-                border:`1.5px solid ${dark?"#766A7E":"var(--border-light)"}`,
+        style={{width:"100%",height:height,borderRadius:"var(--cc-radius-sm)",background:"#fff",
+                border:`1.5px solid var(--cc-border-strong)`,
                 cursor:"crosshair",touchAction:"none",display:"block"}}/>
       <button type="button" onClick={clear}
-        style={{alignSelf:"flex-start",fontSize:11,padding:"3px 10px",borderRadius:6,
-                border:`1px solid ${dark?"#766A7E":"var(--border-light)"}`,
+        style={{alignSelf:"flex-start",fontSize:11,padding:"3px 10px",borderRadius:"var(--cc-radius-sm)",
+                border:`1px solid var(--cc-border)`,
                 background:"transparent",cursor:"pointer",
-                color:dark?"var(--dark-text-muted)":"var(--text-muted)"}}>
+                color:"var(--cc-text-muted)"}}>
         ✕ Wyczyść podpis
       </button>
     </div>
