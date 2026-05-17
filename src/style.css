@@ -4504,6 +4504,209 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ Inbox/Informacje Card (sekcja 11 — wg v2/10-informacje) ═══════════════
+   Card z header + 3 tab bar (alerts/standing/wiki) + body z listą.
+   Zastępuje masywne inline styles w InboxPanel.jsx.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-inbox-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-lg);
+  overflow: hidden;
+}
+.cc-inbox-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--cc-border);
+}
+.cc-inbox-head-icon {
+  color: var(--cc-brand);
+  flex-shrink: 0;
+}
+.cc-inbox-head-text {
+  min-width: 0;
+}
+.cc-inbox-head-title {
+  font-family: var(--cc-font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cc-text);
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -.005em;
+}
+.cc-inbox-head-sub {
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  margin-top: 2px;
+}
+
+/* Tabs */
+.cc-inbox-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--cc-border);
+  background: var(--cc-bg-elevated);
+  overflow-x: auto;
+}
+.cc-inbox-tabs::-webkit-scrollbar { height: 0; }
+.cc-inbox-tab {
+  flex: 1;
+  min-width: 110px;
+  padding: 14px 16px;
+  border: none;
+  background: transparent;
+  border-bottom: 3px solid transparent;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  color: var(--cc-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  font-family: var(--cc-font-body);
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-inbox-tab:hover {
+  color: var(--cc-text);
+  background: var(--cc-surface);
+}
+.cc-inbox-tab:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: -2px;
+}
+.cc-inbox-tab--active {
+  background: var(--cc-surface);
+  font-weight: 700;
+}
+.cc-inbox-tab--rose.cc-inbox-tab--active {
+  color: var(--cc-danger);
+  border-bottom-color: var(--cc-danger);
+}
+.cc-inbox-tab--gold.cc-inbox-tab--active {
+  color: var(--cc-accent-gold);
+  border-bottom-color: var(--cc-accent-gold);
+}
+.cc-inbox-tab--brand.cc-inbox-tab--active {
+  color: var(--cc-brand);
+  border-bottom-color: var(--cc-brand);
+}
+.cc-inbox-tab-label {
+  font-family: var(--cc-font-display);
+  font-weight: 700;
+}
+.cc-inbox-tab-badge {
+  color: #fff;
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.cc-inbox-tab--rose .cc-inbox-tab-badge { background: var(--cc-danger); }
+.cc-inbox-tab--gold .cc-inbox-tab-badge { background: var(--cc-accent-gold); }
+.cc-inbox-tab--brand .cc-inbox-tab-badge { background: var(--cc-brand); }
+
+.cc-inbox-body {
+  padding: 16px 18px;
+  max-height: min(32rem, calc(100dvh - 18rem));
+  overflow-y: auto;
+}
+
+/* Empty state */
+.cc-inbox-empty {
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--cc-text-muted);
+}
+.cc-inbox-empty-svg {
+  opacity: .25;
+  margin: 0 auto 14px;
+  display: block;
+}
+.cc-inbox-empty-title {
+  font-family: var(--cc-font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--cc-text-secondary);
+  margin-bottom: 4px;
+}
+.cc-inbox-empty-sub {
+  font-size: 12px;
+  opacity: .7;
+  line-height: 1.5;
+}
+.cc-inbox-empty-action {
+  margin-top: 14px;
+  padding: 8px 18px;
+  border: 1px solid var(--cc-brand);
+  background: transparent;
+  color: var(--cc-brand);
+  border-radius: var(--cc-radius-sm);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-inbox-empty-action:hover {
+  background: var(--cc-brand-soft);
+}
+.cc-inbox-empty-action:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
+/* Wiki actions */
+.cc-inbox-wiki-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.cc-inbox-mark-read {
+  padding: 6px 14px;
+  border: 1px solid var(--cc-border-strong);
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text-secondary);
+  border-radius: var(--cc-radius-sm);
+  font-weight: 600;
+  font-size: 11.5px;
+  cursor: pointer;
+  font-family: var(--cc-font-body);
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-inbox-mark-read:hover {
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border-color: var(--cc-brand);
+}
+.cc-inbox-mark-read:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
+/* "NOWE" pill in wiki entries */
+.cc-inbox-new-pill {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--cc-brand);
+  color: var(--cc-text-on-brand);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
 /* ═══ HK Live (sekcja 10) — topbar + status bar + sidebar tabs na cc-* ═══════
    Wg design-preview/v2/01-hk-live.html.
    Zastępuje masywne inline styles w HKLivePanel.jsx.

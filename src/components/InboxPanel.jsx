@@ -4,12 +4,12 @@ import { STORAGE_KEYS, loadJson } from "../lib/storage";
 
 function EmptyState({icon,title,sub,action}){
   return(
-    <div style={{padding:"44px 20px",textAlign:"center",color:"var(--text-muted)"}}>
-      <svg width="52" height="52" viewBox="0 0 52 52" fill="none" style={{opacity:.25,marginBottom:14,display:"block",margin:"0 auto 14px"}}>
+    <div className="cc-inbox-empty">
+      <svg width="52" height="52" viewBox="0 0 52 52" fill="none" className="cc-inbox-empty-svg" aria-hidden="true">
         {icon}
       </svg>
-      <div style={{fontSize:13.5,fontWeight:700,color:"var(--text-secondary)",marginBottom:4}}>{title}</div>
-      {sub&&<div style={{fontSize:12,opacity:.7,lineHeight:1.5}}>{sub}</div>}
+      <div className="cc-inbox-empty-title">{title}</div>
+      {sub&&<div className="cc-inbox-empty-sub">{sub}</div>}
       {action}
     </div>
   );
@@ -72,10 +72,16 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
   });
   const markWikiSeen=()=>localStorage.setItem(wikiLastSeenKey,String(Date.now()));
 
-  const tabBtn=(id,label,count,color)=>(
-    <button key={id} onClick={()=>setTab(id)}
-      style={{flex:1,padding:"14px 16px",border:"none",background:tab===id?"var(--bg-card)":"transparent",borderBottom:tab===id?`3px solid ${color}`:"3px solid transparent",fontWeight:tab===id?700:600,fontSize:13.5,cursor:"pointer",color:tab===id?color:"var(--text-muted)",display:"flex",alignItems:"center",justifyContent:"center",gap:9,letterSpacing:".02em",textTransform:"uppercase",fontFamily:"inherit"}}>
-      {label}{count>0&&<span style={{background:color,color:"#fff",fontSize:10,fontWeight:800,minWidth:20,height:20,borderRadius:999,padding:"0 7px",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{count}</span>}
+  const tabBtn=(id,label,count,variant)=>(
+    <button
+      key={id}
+      type="button"
+      role="tab"
+      aria-selected={tab===id}
+      onClick={()=>setTab(id)}
+      className={`cc-inbox-tab cc-inbox-tab--${variant}${tab===id?" cc-inbox-tab--active":""}`}>
+      <span className="cc-inbox-tab-label">{label}</span>
+      {count>0&&<span className="cc-inbox-tab-badge">{count}</span>}
     </button>
   );
 
@@ -91,20 +97,20 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
   },[alerts]);
 
   return (
-    <div className="panel" style={{padding:0,overflow:"hidden"}}>
-      <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border-light)",display:"flex",alignItems:"center",gap:10}}>
-        <BellRing size={18} style={{color:"var(--plum)"}}/>
-        <div>
-          <div style={{fontSize:16,fontWeight:700,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif"}}>Informacje</div>
-          <div style={{fontSize:12,color:"var(--text-muted)",marginTop:1}}>Pilne wiadomosci, stale przypomnienia i nowosci w Wiki</div>
+    <section className="cc-inbox-card" aria-labelledby="cc-inbox-title">
+      <header className="cc-inbox-head">
+        <BellRing size={18} className="cc-inbox-head-icon" aria-hidden="true"/>
+        <div className="cc-inbox-head-text">
+          <h2 id="cc-inbox-title" className="cc-inbox-head-title">Informacje</h2>
+          <div className="cc-inbox-head-sub">Pilne wiadomości, stałe przypomnienia i nowości w Wiki</div>
         </div>
+      </header>
+      <div className="cc-inbox-tabs" role="tablist" aria-label="Sekcje informacji">
+        {tabBtn("alerts","Pilne",alerts.length,"rose")}
+        {tabBtn("standing","Stałe",reminders.length,"gold")}
+        {tabBtn("wiki","Nowe w Wiki",newWiki.length,"brand")}
       </div>
-      <div style={{display:"flex",borderBottom:"1px solid var(--border-light)",background:"var(--bg-secondary)",overflowX:"auto"}}>
-        {tabBtn("alerts","Pilne",alerts.length,"var(--rose)")}
-        {tabBtn("standing","Stale",reminders.length,"var(--gold)")}
-        {tabBtn("wiki","Nowe w Wiki",newWiki.length,"var(--plum)")}
-      </div>
-      <div style={{padding:"16px 18px",maxHeight:"min(32rem, calc(100dvh - 18rem))",overflowY:"auto"}}>
+      <div className="cc-inbox-body">
 
         {tab==="alerts"&&(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -170,21 +176,23 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
                 title="Brak nowosci w Wiki"
                 sub="Nie ma nowych ani zmienionych tematow od ostatniego logowania."
                 action={
-                  <button onClick={onOpenWiki} style={{marginTop:14,padding:"8px 18px",border:"1px solid var(--plum)",background:"transparent",color:"var(--plum)",borderRadius:8,fontWeight:700,fontSize:12.5,cursor:"pointer"}}>
-                    Otworz Wiki &rarr;
+                  <button type="button" onClick={onOpenWiki} className="cc-inbox-empty-action">
+                    Otwórz Wiki →
                   </button>
                 }
               />
             ):(
               <>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}>
-                  <button onClick={()=>{markWikiSeen();window.location.reload();}} style={{padding:"6px 14px",border:"1px solid var(--border-medium)",background:"var(--bg-card)",color:"var(--text-secondary)",borderRadius:7,fontWeight:600,fontSize:11.5,cursor:"pointer"}}>Oznacz wszystkie jako przeczytane</button>
+                <div className="cc-inbox-wiki-actions">
+                  <button type="button" onClick={()=>{markWikiSeen();window.location.reload();}} className="cc-inbox-mark-read">
+                    Oznacz wszystkie jako przeczytane
+                  </button>
                 </div>
                 {newWiki.map(w=>(
-                  <div key={w.id} className="cc-preshift-item" style={{borderLeftColor:"var(--plum)"}}>
+                  <div key={w.id} className="cc-preshift-item" style={{borderLeftColor:"var(--cc-brand)"}}>
                     <div className="cc-preshift-item-head">
                       <div className="cc-preshift-item-title">{w.topic}</div>
-                      <span style={{fontSize:10,padding:"2px 7px",borderRadius:999,background:"var(--plum)",color:"#fff",fontWeight:800,letterSpacing:".04em"}}>NOWE</span>
+                      <span className="cc-inbox-new-pill">NOWE</span>
                     </div>
                     <div className="cc-preshift-item-body" style={{maxHeight:200,overflow:"auto"}}>{w.content}</div>
                     <div className="cc-preshift-item-meta">Zaktualizowano: {w.updatedAt}</div>
@@ -196,6 +204,6 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
         )}
 
       </div>
-    </div>
+    </section>
   );
 }
