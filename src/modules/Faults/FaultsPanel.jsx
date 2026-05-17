@@ -133,11 +133,48 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
         <button className="btn btn-primary" onClick={() => setShowForm(true)}><Plus size={14} /> Zgłoś usterkę</button>
       </div>
 
-      <div className="fault-stats">
-        <div className="fstat"><div className="fstat-num" style={{ color: "var(--rose)" }}>{urgentCount}</div><div><div className="fstat-label">Pilne</div><div className="fstat-sub">wymaga akcji</div></div></div>
-        <div className="fstat"><div className="fstat-num" style={{ color: "var(--amber)" }}>{activeCount - urgentCount}</div><div><div className="fstat-label">Normalne</div><div className="fstat-sub">aktywne zgłoszenia</div></div></div>
-        <div className="fstat"><div className="fstat-num" style={{ color: "var(--teal)" }}>{doneCount}</div><div><div className="fstat-label">Rozwiązane</div><div className="fstat-sub">łącznie w bazie</div></div></div>
-        <div className="fstat"><div className="fstat-num" style={{ color: "var(--text-1)" }}>{spaceFaults.length}</div><div><div className="fstat-label">Widoczne</div><div className="fstat-sub">po filtrach</div></div></div>
+      {/* ═══ KPI row v2 wg v2/03-faults — 4 cards z color-coded icons ═══ */}
+      <div className="cc-faults-kpi-row">
+        <div className="cc-faults-kpi">
+          <div className="cc-faults-kpi-ic cc-faults-kpi-ic--rose" aria-hidden="true">
+            <AlertTriangle size={17}/>
+          </div>
+          <div className="cc-faults-kpi-info">
+            <div className="cc-faults-kpi-lbl">Pilne</div>
+            <div className="cc-faults-kpi-val">{urgentCount}</div>
+            <div className="cc-faults-kpi-sub">wymaga akcji</div>
+          </div>
+        </div>
+        <div className="cc-faults-kpi">
+          <div className="cc-faults-kpi-ic cc-faults-kpi-ic--amber" aria-hidden="true">
+            <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          </div>
+          <div className="cc-faults-kpi-info">
+            <div className="cc-faults-kpi-lbl">Normalne</div>
+            <div className="cc-faults-kpi-val">{activeCount - urgentCount}</div>
+            <div className="cc-faults-kpi-sub">aktywne zgłoszenia</div>
+          </div>
+        </div>
+        <div className="cc-faults-kpi">
+          <div className="cc-faults-kpi-ic cc-faults-kpi-ic--teal" aria-hidden="true">
+            <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div className="cc-faults-kpi-info">
+            <div className="cc-faults-kpi-lbl">Rozwiązane</div>
+            <div className="cc-faults-kpi-val">{doneCount}</div>
+            <div className="cc-faults-kpi-sub">łącznie w bazie</div>
+          </div>
+        </div>
+        <div className="cc-faults-kpi">
+          <div className="cc-faults-kpi-ic cc-faults-kpi-ic--sky" aria-hidden="true">
+            <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </div>
+          <div className="cc-faults-kpi-info">
+            <div className="cc-faults-kpi-lbl">Widoczne</div>
+            <div className="cc-faults-kpi-val">{spaceFaults.length}</div>
+            <div className="cc-faults-kpi-sub">po filtrach</div>
+          </div>
+        </div>
       </div>
 
       <div className="data-card" style={{ marginBottom: 16 }}>
@@ -166,43 +203,68 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
       </div>
 
       {spaceFaults.length === 0 ? (
-        <div className="dp-empty"><AlertTriangle size={24} /><div style={{ marginTop: 8 }}>Brak usterek w wybranym zakresie.</div></div>
+        <div className="cc-faults-empty">
+          <AlertTriangle size={24} className="cc-faults-empty-icon"/>
+          <div>Brak usterek w wybranym zakresie.</div>
+        </div>
       ) : (
-        <div className="fault-list">
+        /* ═══ Fault list v2 — grid rows wg v2/03-faults .fault pattern ═══ */
+        <ul className="cc-faults-list" role="list">
           {spaceFaults.map(f => {
             const fl = floors.find(x => x.key === f.floor);
             const spaceLabel = fl?.key === "parter" ? (fl.spaces.find(s => s.id === f.space_id)?.label || f.space_id) : f.space_id;
             const done = f.status === "done";
             const priority = done ? "done" : f.priority === "urgent" ? "urgent" : f.priority === "low" ? "low" : "normal";
-            const statusLabel = { open: "Nowa", in_progress: "W trakcie", done: "Rozwiązane" }[f.status] || f.status;
+            const priLabel = priority === "urgent" ? "P1" : priority === "low" ? "P3" : "P2";
+            const statusLabel = { open: "Otwarta", in_progress: "W trakcie", done: "Rozwiązana" }[f.status] || f.status;
             const initials = (f.assigned_to || "HK").split(/\s+/).map(p => p[0]).join("").slice(0, 2).toUpperCase();
+            const reportedShort = new Date(f.reported_at).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+            const elapsedMin = Math.floor((Date.now() - new Date(f.reported_at).getTime()) / 60000);
+            const elapsedLabel = elapsedMin < 60 ? `${elapsedMin}m` : elapsedMin < 1440 ? `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m` : `${Math.floor(elapsedMin/1440)}d`;
             return (
-              <div key={f.id} className={`fault-card ${priority === "urgent" ? "urgent" : ""} ${done ? "done" : ""}`}>
-                <div className={`fault-priority-bar ${priority}`} />
-                <div className="fault-body">
-                  <div className="fault-main" onClick={() => setShowDetails(f)} style={{ cursor: "pointer" }}>
-                    <div className="fault-header-row">
-                      <div className="fault-room">{spaceLabel}</div>
-                      <div className="fault-title">{f.category || "Usterka"}</div>
-                    </div>
-                    <div className="fault-desc">{f.description}</div>
-                    <div className="fault-meta">
-                      <span className={`fault-badge ${done ? "badge-done" : priority === "urgent" ? "badge-urgent" : "badge-normal"}`}>{priority === "urgent" ? "Pilne" : statusLabel}</span>
-                      <span className="fault-badge badge-floor">{fl?.label || f.floor}</span>
-                      <span className="fault-date">Zgłoszono: {new Date(f.reported_at).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
-                      <span className="fault-reported">Zgłosił(a): {f.reported_by || "Recepcja"}</span>
-                    </div>
-                  </div>
-                  <div className="fault-actions">
-                    <div className="fault-assignee"><div className="assignee-avatar cc-fault-assignee-avatar">{initials}</div>{f.assigned_to || "Nieprzypisane"}</div>
-                    {!done && <button className="fault-action-btn cc-fault-resolve-btn" onClick={() => updateFault(f.id, { status: "done", resolved_at: new Date().toISOString() })}>Rozwiąż</button>}
-                    <button className="fault-action-btn" onClick={() => setShowDetails(f)}>Szczegóły</button>
+              <li
+                key={f.id}
+                className={`cc-fault-row cc-fault-row--${priority}${done ? " cc-fault-row--done" : ""}`}
+                onClick={() => setShowDetails(f)}>
+                <div className={`cc-fault-pri cc-fault-pri--${priority}`} aria-label={`Priorytet ${priLabel}`}>{priLabel}</div>
+                <div className="cc-fault-room">
+                  <div className="cc-fault-room-num">{spaceLabel}</div>
+                  <div className="cc-fault-room-sub">{fl?.label || f.floor}</div>
+                </div>
+                <div className="cc-fault-info">
+                  <div className="cc-fault-cat">{f.category || "Usterka"}</div>
+                  <div className="cc-fault-desc">{f.description}</div>
+                  <div className="cc-fault-meta">
+                    <span>Zgłosił(a): <b>{f.reported_by || "Recepcja"}</b></span>
+                    <span>{reportedShort}</span>
                   </div>
                 </div>
-              </div>
+                <div className="cc-fault-status">
+                  <span className={`cc-fault-badge cc-fault-badge--${done ? "done" : f.status === "in_progress" ? "progress" : "open"}`}>{statusLabel}</span>
+                  <span className="cc-fault-time">{elapsedLabel}</span>
+                </div>
+                <div className="cc-fault-assigned">
+                  <span className="cc-fault-avatar">{initials}</span>
+                  <div className="cc-fault-assigned-info">
+                    <div className="cc-fault-assigned-role">Konserw.</div>
+                    <div className="cc-fault-assigned-name">{f.assigned_to || "—"}</div>
+                  </div>
+                </div>
+                <div className="cc-fault-actions" onClick={e => e.stopPropagation()}>
+                  {!done && (
+                    <button
+                      type="button"
+                      className="cc-fault-resolve-btn"
+                      onClick={() => updateFault(f.id, { status: "done", resolved_at: new Date().toISOString() })}
+                      title="Oznacz jako rozwiązaną">
+                      ✓
+                    </button>
+                  )}
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       {isManager && (
