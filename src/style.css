@@ -4504,6 +4504,13 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ Vouchers (sekcja 15) — mark-used button ═══════════════════════════════ */
+.cc-voucher-mark-used-btn {
+  background: color-mix(in srgb, var(--cc-success) 12%, transparent) !important;
+  color: var(--cc-success) !important;
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent) !important;
+}
+
 /* ═══ Faults Panel (sekcja 12) — targeted improvements ══════════════════════ */
 .cc-fault-assignee-avatar {
   background: color-mix(in srgb, var(--cc-accent-gold) 18%, transparent) !important;

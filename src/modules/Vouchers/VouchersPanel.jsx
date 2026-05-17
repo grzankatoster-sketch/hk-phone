@@ -133,7 +133,7 @@ function VouchersPanel({ employeeName, isManager, showToast }) {
                   <div className="v-actions">
                     <button className="v-btn" onClick={() => setFullscreenCode(v)}><Eye size={11} /> Kod</button>
                     <button className="v-btn" onClick={() => downloadVoucherPDF(v)}><FileDown size={11} /> PDF</button>
-                    {v.status === "issued" && <button className="v-btn" style={{ background: "var(--teal-dim)", color: "var(--teal)", borderColor: "rgba(43,212,160,.3)" }} onClick={() => markUsed(v.id)}><CheckCircle size={11} /> Oddany</button>}
+                    {v.status === "issued" && <button className="v-btn cc-voucher-mark-used-btn" onClick={() => markUsed(v.id)}><CheckCircle size={11} /> Oddany</button>}
                     {isManager && <button className="v-btn" style={{ color: "var(--rose)", borderColor: "var(--rose-border)" }} onClick={() => deleteVoucher(v.id)}><Trash2 size={11} /> Usuń</button>}
                   </div>
                 </div>
