@@ -194,8 +194,8 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
                     </div>
                   </div>
                   <div className="fault-actions">
-                    <div className="fault-assignee"><div className="assignee-avatar" style={{ background: "rgba(232,148,58,.18)", color: "var(--ember)" }}>{initials}</div>{f.assigned_to || "Nieprzypisane"}</div>
-                    {!done && <button className="fault-action-btn" style={{ background: "var(--teal-dim)", color: "var(--teal)", borderColor: "rgba(43,212,160,.3)" }} onClick={() => updateFault(f.id, { status: "done", resolved_at: new Date().toISOString() })}>Rozwiąż</button>}
+                    <div className="fault-assignee"><div className="assignee-avatar cc-fault-assignee-avatar">{initials}</div>{f.assigned_to || "Nieprzypisane"}</div>
+                    {!done && <button className="fault-action-btn cc-fault-resolve-btn" onClick={() => updateFault(f.id, { status: "done", resolved_at: new Date().toISOString() })}>Rozwiąż</button>}
                     <button className="fault-action-btn" onClick={() => setShowDetails(f)}>Szczegóły</button>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
             <div className="data-card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><QrCode size={18} /> Kody QR - Konserwatorzy</div>
           </div>
           {!hasElectron && (
-            <div style={{ margin: 16, fontSize: 12, padding: "10px 12px", background: "rgba(245,158,11,.09)", border: "1px solid rgba(245,158,11,.25)", borderRadius: 8, color: "var(--amber)" }}>
+            <div className="cc-fault-hint">
               QR kody dostępne tylko w aplikacji Electron.
             </div>
           )}

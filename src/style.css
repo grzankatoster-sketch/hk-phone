@@ -4504,6 +4504,26 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ Faults Panel (sekcja 12) — targeted improvements ══════════════════════ */
+.cc-fault-assignee-avatar {
+  background: color-mix(in srgb, var(--cc-accent-gold) 18%, transparent) !important;
+  color: var(--cc-accent-gold) !important;
+}
+.cc-fault-resolve-btn {
+  background: color-mix(in srgb, var(--cc-success) 12%, transparent) !important;
+  color: var(--cc-success) !important;
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent) !important;
+}
+.cc-fault-hint {
+  margin: 16px;
+  font-size: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--cc-warning) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc-warning) 25%, transparent);
+  border-radius: var(--cc-radius-sm);
+  color: var(--cc-warning);
+}
+
 /* ═══ Inbox/Informacje Card (sekcja 11 — wg v2/10-informacje) ═══════════════
    Card z header + 3 tab bar (alerts/standing/wiki) + body z listą.
    Zastępuje masywne inline styles w InboxPanel.jsx.
