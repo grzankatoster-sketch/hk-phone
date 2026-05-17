@@ -347,12 +347,12 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
       <div className="panel" style={{ padding: "18px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
 
-          {/* B.com score â€“ duzy */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "14px 24px", borderRadius: 16, background: "#D1FAE5", border: "2px solid #6EE7B7", minWidth: 110, textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#065F46", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 2 }}>Booking.com</div>
-            <div style={{ fontSize: 40, fontWeight: 900, color: "#065F46", fontFamily: "'DM Serif Display',serif", lineHeight: 1 }}>{bookingScore}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#065F46", marginTop: 2 }}>Wyjatkowy</div>
-            <div style={{ fontSize: 10, color: "#6EE7B7", marginTop: 1 }}>{bookingTotal.toLocaleString("pl-PL")} opinii</div>
+          {/* B.com score — duzy */}
+          <div className="cc-review-booking-score">
+            <div className="cc-review-booking-label">Booking.com</div>
+            <div className="cc-review-booking-num">{bookingScore}</div>
+            <div className="cc-review-booking-grade">Wyjątkowy</div>
+            <div className="cc-review-booking-count">{bookingTotal.toLocaleString("pl-PL")} opinii</div>
           </div>
 
           <div style={{ flex: 1, minWidth: 200 }}>
@@ -473,8 +473,8 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
                         {r.country && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{r.country}</span>}
                         {r.title && <span style={{ fontSize: 12, fontStyle: "italic", color: "var(--text-secondary)" }}>"{r.title}"</span>}
                         {r.responded_at
-                          ? <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: "#D1FAE5", color: "#065F46", fontWeight: 700 }}>Odpowiedziano</span>
-                          : <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 999, background: "var(--rose-light)", color: "var(--rose)", fontWeight: 700 }}>Bez odpowiedzi</span>
+                          ? <span className="cc-review-pill cc-review-pill--ok">Odpowiedziano</span>
+                          : <span className="cc-review-pill cc-review-pill--err">Bez odpowiedzi</span>
                         }
                       </div>
                       {/* Meta */}

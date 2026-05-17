@@ -4504,6 +4504,61 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   font-weight: 500;
 }
 
+/* ═══ Reviews (sekcja 16) — Booking score card + replied pills ═══════════════ */
+.cc-review-booking-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 24px;
+  border-radius: var(--cc-radius-xl);
+  background: color-mix(in srgb, var(--cc-success) 18%, transparent);
+  border: 2px solid color-mix(in srgb, var(--cc-success) 40%, transparent);
+  min-width: 110px;
+  text-align: center;
+}
+.cc-review-booking-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cc-success);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 2px;
+  font-family: var(--cc-font-display);
+}
+.cc-review-booking-num {
+  font-size: 40px;
+  font-weight: 900;
+  color: var(--cc-success);
+  font-family: var(--cc-font-display);
+  line-height: 1;
+}
+.cc-review-booking-grade {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cc-success);
+  margin-top: 2px;
+}
+.cc-review-booking-count {
+  font-size: 10px;
+  color: color-mix(in srgb, var(--cc-success) 55%, var(--cc-text-muted));
+  margin-top: 1px;
+}
+.cc-review-pill {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-family: var(--cc-font-display);
+}
+.cc-review-pill--ok {
+  background: color-mix(in srgb, var(--cc-success) 18%, transparent);
+  color: var(--cc-success);
+}
+.cc-review-pill--err {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+  color: var(--cc-danger);
+}
+
 /* ═══ Vouchers (sekcja 15) — mark-used button ═══════════════════════════════ */
 .cc-voucher-mark-used-btn {
   background: color-mix(in srgb, var(--cc-success) 12%, transparent) !important;
