@@ -194,9 +194,9 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
             <div className="panel-title" style={{margin:0}}>🚗 Lista parkingowa</div>
             <div style={{fontSize:12,color:"var(--text-muted)",marginTop:4,display:"flex",gap:14,flexWrap:"wrap"}}>
               <span><strong style={{color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif",fontSize:14}}>{active.length}</strong> aktywnych</span>
-              <span style={{color:"#185FA5"}}>● {active.filter(r=>r.type==="abonament").length} abonament</span>
-              <span style={{color:"#1E6B3C"}}>● {active.filter(r=>r.type==="pracownik").length} pracownicy</span>
-              <span style={{color:"#854F0B"}}>● {active.filter(r=>r.type==="krotki").length} krótki najem</span>
+              <span style={{color:"var(--cc-info)"}}>● {active.filter(r=>r.type==="abonament").length} abonament</span>
+              <span style={{color:"var(--cc-success)"}}>● {active.filter(r=>r.type==="pracownik").length} pracownicy</span>
+              <span style={{color:"var(--cc-warning)"}}>● {active.filter(r=>r.type==="krotki").length} krótki najem</span>
             </div>
           </div>
           {!isAdmin && (
@@ -404,7 +404,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
       {isAdmin && history.length > 0 && (filter==="all"||filter==="krotki") && (
         <div className={panel}>
           <div className="panel-title" style={{marginBottom:8}}>
-            <span style={{background:dark?"rgba(130,79,10,.2)":"#FAEEDA",color:"var(--amber)",padding:"2px 10px",borderRadius:999,fontSize:11,fontWeight:700}}>
+            <span style={{background:"color-mix(in srgb, var(--cc-warning) 14%, transparent)",color:"var(--cc-warning)",padding:"2px 10px",borderRadius:999,fontSize:11,fontWeight:700}}>
               HISTORIA — krótkie najmy
             </span>
             <span style={{fontSize:11,color:"var(--text-muted)",marginLeft:8}}>{history.length} wpisów</span>
