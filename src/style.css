@@ -4628,7 +4628,328 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   color: var(--cc-danger);
 }
 
-/* ═══ Vouchers (sekcja 15) — mark-used button ═══════════════════════════════ */
+/* ═══ Vouchers v2 (sekcja 15 v2) — KPI + flat list rows wg v2/04-vouchers ═══ */
+.cc-vouchers-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 900px) { .cc-vouchers-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .cc-vouchers-kpi-row { grid-template-columns: 1fr; } }
+.cc-vouchers-kpi {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  padding: 14px 16px;
+  transition: border-color 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-vouchers-kpi:hover { border-color: var(--cc-border-strong); }
+.cc-vouchers-kpi-lbl {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted);
+  margin-bottom: 8px;
+}
+.cc-vouchers-kpi-val {
+  font-family: var(--cc-font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--cc-text);
+  letter-spacing: -.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cc-vouchers-kpi-val--ember { color: var(--cc-brand); }
+.cc-vouchers-kpi-val--teal { color: var(--cc-success); }
+.cc-vouchers-kpi-val--rose { color: var(--cc-danger); }
+.cc-vouchers-kpi-unit {
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cc-text-muted);
+}
+.cc-vouchers-kpi-sub {
+  font-size: 11px;
+  color: var(--cc-text-faint);
+  margin-top: 6px;
+}
+
+/* Toolbar */
+.cc-vouchers-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.cc-vouchers-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-bg-elevated);
+  border: 1px solid var(--cc-border);
+  font-family: var(--cc-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-vouchers-tab:hover {
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-vouchers-tab--on {
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+  border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent);
+}
+.cc-vouchers-tab-cnt {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  opacity: .7;
+  font-variant-numeric: tabular-nums;
+}
+.cc-vouchers-tab--on .cc-vouchers-tab-cnt { opacity: 1; }
+.cc-vouchers-typetab {
+  padding: 6px 10px;
+  border-radius: var(--cc-radius-sm);
+  background: transparent;
+  border: 1px solid var(--cc-border);
+  font-family: var(--cc-font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-vouchers-typetab:hover {
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-vouchers-typetab--on {
+  background: color-mix(in srgb, var(--cc-accent-gold) 12%, transparent);
+  color: var(--cc-accent-gold);
+  border-color: color-mix(in srgb, var(--cc-accent-gold) 30%, transparent);
+}
+.cc-vouchers-new-btn {
+  margin-left: auto;
+}
+
+.cc-vouchers-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 56px 24px;
+  background: var(--cc-surface);
+  border: 1px dashed var(--cc-border-strong);
+  border-radius: var(--cc-radius-lg);
+  color: var(--cc-text-muted);
+  font-size: 13px;
+}
+.cc-vouchers-empty-icon { font-size: 32px; opacity: .55; }
+
+/* Voucher row */
+.cc-vouchers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cc-vouchers-row {
+  display: grid;
+  grid-template-columns: 110px 80px 80px minmax(0, 1.4fr) 100px 90px 90px 130px;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-left-width: 4px;
+  border-radius: var(--cc-radius-md);
+  transition: border-color 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-vouchers-row:hover { border-color: var(--cc-border-strong); }
+.cc-vouchers-row--active { border-left-color: var(--cc-brand); }
+.cc-vouchers-row--used {
+  border-left-color: var(--cc-success);
+  opacity: .8;
+}
+.cc-vouchers-row--expired {
+  border-left-color: var(--cc-danger);
+  opacity: .7;
+}
+.cc-vouchers-row-code {
+  font-family: var(--cc-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cc-text);
+  letter-spacing: .04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-vouchers-row-type {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 99px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  text-align: center;
+  border: 1px solid transparent;
+}
+.cc-vouchers-row-type--voucher {
+  background: color-mix(in srgb, var(--cc-brand) 12%, transparent);
+  color: var(--cc-brand);
+  border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent);
+}
+.cc-vouchers-row-type--cashback {
+  background: color-mix(in srgb, var(--cc-success) 12%, transparent);
+  color: var(--cc-success);
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent);
+}
+.cc-vouchers-row-amount {
+  font-family: var(--cc-font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--cc-brand);
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.cc-vouchers-row-amount--muted { color: var(--cc-text-muted); }
+.cc-vouchers-row-amount-unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cc-text-muted);
+}
+.cc-vouchers-row-recipient { min-width: 0; }
+.cc-vouchers-row-recipient-name {
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-vouchers-row-recipient-sub {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+  margin-top: 2px;
+}
+.cc-vouchers-row-date {
+  font-family: var(--cc-font-mono);
+  font-size: 11px;
+  color: var(--cc-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cc-vouchers-row-issuer {
+  font-size: 11.5px;
+  color: var(--cc-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-vouchers-row-status {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 99px;
+  text-align: center;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.cc-vouchers-row-status--active {
+  background: color-mix(in srgb, var(--cc-brand) 12%, transparent);
+  color: var(--cc-brand);
+  border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent);
+}
+.cc-vouchers-row-status--used {
+  background: color-mix(in srgb, var(--cc-success) 14%, transparent);
+  color: var(--cc-success);
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent);
+}
+.cc-vouchers-row-status--expired {
+  background: color-mix(in srgb, var(--cc-danger) 12%, transparent);
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 30%, transparent);
+}
+.cc-vouchers-row-actions {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+.cc-vouchers-action-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--cc-radius-sm);
+  border: 1px solid var(--cc-border);
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-vouchers-action-btn:hover {
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-vouchers-action-btn--ok {
+  color: var(--cc-success);
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent);
+}
+.cc-vouchers-action-btn--ok:hover {
+  background: var(--cc-success);
+  color: var(--cc-text-on-brand);
+}
+.cc-vouchers-action-btn--danger {
+  color: var(--cc-danger);
+  border-color: color-mix(in srgb, var(--cc-danger) 30%, transparent);
+}
+.cc-vouchers-action-btn--danger:hover {
+  background: var(--cc-danger);
+  color: #fff;
+}
+.cc-vouchers-action-btn:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+  .cc-vouchers-row {
+    grid-template-columns: 100px 70px 80px minmax(0, 1fr) 90px 130px;
+    grid-template-areas:
+      "code  type   amount    recip    status   actions"
+      "code  type   amount    recip    status   actions"
+      "date  date   issuer    issuer   issuer   actions";
+    row-gap: 6px;
+  }
+  .cc-vouchers-row-code { grid-area: code; }
+  .cc-vouchers-row-type { grid-area: type; }
+  .cc-vouchers-row-amount { grid-area: amount; }
+  .cc-vouchers-row-recipient { grid-area: recip; }
+  .cc-vouchers-row-status { grid-area: status; }
+  .cc-vouchers-row-actions { grid-area: actions; }
+  .cc-vouchers-row-date { grid-area: date; }
+  .cc-vouchers-row-issuer { grid-area: issuer; }
+}
+
+/* Legacy mark-used button class (Vouchers sekcja 15 v1) */
 .cc-voucher-mark-used-btn {
   background: color-mix(in srgb, var(--cc-success) 12%, transparent) !important;
   color: var(--cc-success) !important;

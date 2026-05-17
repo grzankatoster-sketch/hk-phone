@@ -81,66 +81,133 @@ function VouchersPanel({ employeeName, isManager, showToast }) {
 
   return (
     <div className="voucher-layout">
-      <div className="toolbar">
-        <div className="filter-tabs">
-          {[["issued", `Aktywne (${issuedCount})`], ["used", `Zrealizowane (${usedCount})`], ["", "Wszystkie"]].map(([k, lbl]) => (
-            <button key={k || "all"} className={`filter-tab${filter === k ? " active" : ""}`} onClick={() => setFilter(k)}>{lbl}</button>
-          ))}
+      {/* ═══ KPI ROW v2 wg v2/04-vouchers ═══ */}
+      <div className="cc-vouchers-kpi-row">
+        <div className="cc-vouchers-kpi">
+          <div className="cc-vouchers-kpi-lbl">Aktywne</div>
+          <div className="cc-vouchers-kpi-val cc-vouchers-kpi-val--ember">{issuedCount}</div>
+          <div className="cc-vouchers-kpi-sub">do realizacji</div>
         </div>
-        <div style={{ display: "flex", gap: 6, marginLeft: 8, flexWrap: "wrap" }}>
-          <button className={`btn btn-ghost${typeFilter === "voucher" ? " active" : ""}`} style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setTypeFilter(typeFilter === "voucher" ? "" : "voucher")}>Voucher restauracyjny</button>
-          <button className={`btn btn-ghost${typeFilter === "cashback" ? " active" : ""}`} style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setTypeFilter(typeFilter === "cashback" ? "" : "cashback")}>Cashback</button>
+        <div className="cc-vouchers-kpi">
+          <div className="cc-vouchers-kpi-lbl">Wartość aktywnych</div>
+          <div className="cc-vouchers-kpi-val">
+            {activeValue.toLocaleString("pl-PL")}<span className="cc-vouchers-kpi-unit"> zł</span>
+          </div>
+          <div className="cc-vouchers-kpi-sub">{issuedCount>0?`śr. ${Math.round(activeValue/issuedCount).toLocaleString("pl-PL")} zł / voucher`:"łącznie"}</div>
         </div>
-        <div className="spacer" />
-        <button className="btn btn-primary" onClick={() => setShowForm(true)}><Plus size={14} /> Wystaw voucher</button>
+        <div className="cc-vouchers-kpi">
+          <div className="cc-vouchers-kpi-lbl">Wykorzystane</div>
+          <div className="cc-vouchers-kpi-val cc-vouchers-kpi-val--teal">{usedCount}</div>
+          <div className="cc-vouchers-kpi-sub">{(issuedCount+usedCount)>0?`${Math.round(usedCount/(issuedCount+usedCount)*100)}% redemption`:"w bazie"}</div>
+        </div>
+        <div className="cc-vouchers-kpi">
+          <div className="cc-vouchers-kpi-lbl">Wygasłe</div>
+          <div className="cc-vouchers-kpi-val cc-vouchers-kpi-val--rose">{expiredCount}</div>
+          <div className="cc-vouchers-kpi-sub">do weryfikacji</div>
+        </div>
       </div>
 
-      <div className="stats-row">
-        <div className="stat-mini"><div className="stat-num" style={{ color: "var(--gold)" }}>{issuedCount}</div><div><div className="stat-label">Aktywne</div><div className="stat-sub">do realizacji</div></div></div>
-        <div className="stat-mini"><div className="stat-num" style={{ color: "var(--teal)" }}>{usedCount}</div><div><div className="stat-label">Zrealizowane</div><div className="stat-sub">w bazie</div></div></div>
-        <div className="stat-mini"><div className="stat-num" style={{ color: "var(--ember)" }}>{activeValue.toLocaleString("pl-PL")} zł</div><div><div className="stat-label">Wartość aktywnych</div><div className="stat-sub">łącznie</div></div></div>
-        <div className="stat-mini"><div className="stat-num" style={{ color: "var(--text-1)" }}>{expiredCount}</div><div><div className="stat-label">Wygasłe</div><div className="stat-sub">do weryfikacji</div></div></div>
+      {/* Toolbar v2 */}
+      <div className="cc-vouchers-toolbar">
+        {[
+          ["issued", "Aktywne", issuedCount],
+          ["used", "Zrealizowane", usedCount],
+          ["expired", "Wygasłe", expiredCount],
+          ["", "Wszystkie", visibleVouchers.length],
+        ].map(([k, lbl, cnt]) => (
+          <button
+            key={k || "all"}
+            type="button"
+            className={`cc-vouchers-tab${filter === k ? " cc-vouchers-tab--on" : ""}`}
+            onClick={() => setFilter(k)}>
+            <span>{lbl}</span>
+            <span className="cc-vouchers-tab-cnt">{cnt}</span>
+          </button>
+        ))}
+        <div style={{display:"flex",gap:6}}>
+          <button
+            type="button"
+            className={`cc-vouchers-typetab${typeFilter === "voucher" ? " cc-vouchers-typetab--on" : ""}`}
+            onClick={() => setTypeFilter(typeFilter === "voucher" ? "" : "voucher")}>
+            Restauracja
+          </button>
+          <button
+            type="button"
+            className={`cc-vouchers-typetab${typeFilter === "cashback" ? " cc-vouchers-typetab--on" : ""}`}
+            onClick={() => setTypeFilter(typeFilter === "cashback" ? "" : "cashback")}>
+            Cashback
+          </button>
+        </div>
+        <button className="btn btn-primary cc-vouchers-new-btn" onClick={() => setShowForm(true)}>
+          <Plus size={14} /> Wystaw voucher
+        </button>
       </div>
 
       {visible.length === 0 ? (
-        <div className="dp-empty">Brak voucherów w wybranym zakresie.</div>
+        <div className="cc-vouchers-empty">
+          <div className="cc-vouchers-empty-icon">🎟</div>
+          <div>Brak voucherów w wybranym zakresie.</div>
+        </div>
       ) : (
-        <div className="voucher-grid">
+        /* ═══ Voucher list v2 — flat rows wg v2/04-vouchers .vt-row ═══ */
+        <ul className="cc-vouchers-list" role="list">
           {visible.map(v => {
             const isCashback = v.type === "cashback";
             const isUsed = v.status === "used";
-            const cardClass = isUsed ? "used" : isCashback ? "cashback" : v.status === "expired" ? "expired" : "active";
+            const isExpired = v.status === "expired";
             const typeLabel = VOUCHER_TYPE_LABELS[v.type] || v.type;
+            const typeClass = isCashback ? "cashback" : "voucher";
+            const statusClass = isUsed ? "used" : isExpired ? "expired" : "active";
             return (
-              <div key={v.id} className={`voucher-card ${cardClass}`}>
-                <div className="v-top">
-                  <div className={`v-type-badge ${isCashback ? "badge-cashback" : isUsed ? "badge-used" : "badge-voucher"}`}>{typeLabel}</div>
-                  <div className={`v-status-chip ${isUsed ? "chip-used" : "chip-active"}`}>{STATUS_LABELS[v.status] || v.status}</div>
-                  <div className={`v-amount ${isUsed ? "muted" : isCashback ? "teal" : "gold"}`}>{v.value} {v.value_unit}</div>
-                  <div className="v-amount-label">{isCashback ? "zwrot gotówkowy do rozliczenia" : "voucher na usługi restauracyjne"}</div>
+              <li key={v.id} className={`cc-vouchers-row cc-vouchers-row--${statusClass}`}>
+                <div className="cc-vouchers-row-code">{v.code}</div>
+                <span className={`cc-vouchers-row-type cc-vouchers-row-type--${typeClass}`}>{typeLabel}</span>
+                <div className={`cc-vouchers-row-amount${isUsed?" cc-vouchers-row-amount--muted":""}`}>
+                  {v.value}<span className="cc-vouchers-row-amount-unit"> {v.value_unit||""}</span>
                 </div>
-                <div className="ticket-holes"><div className="hole" /><div className="hole" /></div>
-                <div className="v-bottom">
-                  <div className="v-meta">
-                    <div className="v-code">{v.code}</div>
-                    <div className="v-who">Wystawił(a): {v.issued_by || "Recepcja"}{v.guest_name ? ` · Gość: ${v.guest_name}` : ""}</div>
-                    <div className="v-dates">
-                      {v.used_at ? `Zrealizowano: ${new Date(v.used_at).toLocaleDateString("pl-PL")}` : `Ważny do: ${v.expires_at ? new Date(v.expires_at).toLocaleDateString("pl-PL") : "bez terminu"}`}
-                      {v.reservation_no ? ` · Rez: ${v.reservation_no}` : ""}
-                      {v.kw_no ? ` · KW: ${v.kw_no}` : ""}
+                <div className="cc-vouchers-row-recipient">
+                  <div className="cc-vouchers-row-recipient-name">{v.guest_name || "—"}</div>
+                  {(v.reservation_no || v.kw_no) && (
+                    <div className="cc-vouchers-row-recipient-sub">
+                      {v.reservation_no && `Rez: ${v.reservation_no}`}
+                      {v.reservation_no && v.kw_no && " · "}
+                      {v.kw_no && `KW: ${v.kw_no}`}
                     </div>
-                  </div>
-                  <div className="v-actions">
-                    <button className="v-btn" onClick={() => setFullscreenCode(v)}><Eye size={11} /> Kod</button>
-                    <button className="v-btn" onClick={() => downloadVoucherPDF(v)}><FileDown size={11} /> PDF</button>
-                    {v.status === "issued" && <button className="v-btn cc-voucher-mark-used-btn" onClick={() => markUsed(v.id)}><CheckCircle size={11} /> Oddany</button>}
-                    {isManager && <button className="v-btn" style={{ color: "var(--rose)", borderColor: "var(--rose-border)" }} onClick={() => deleteVoucher(v.id)}><Trash2 size={11} /> Usuń</button>}
-                  </div>
+                  )}
                 </div>
-              </div>
+                <div className="cc-vouchers-row-date">
+                  {v.used_at
+                    ? `✓ ${new Date(v.used_at).toLocaleDateString("pl-PL", { day:"2-digit", month:"short" })}`
+                    : v.expires_at
+                      ? `do ${new Date(v.expires_at).toLocaleDateString("pl-PL", { day:"2-digit", month:"short" })}`
+                      : "—"}
+                </div>
+                <div className="cc-vouchers-row-issuer">{v.issued_by || "Recepcja"}</div>
+                <span className={`cc-vouchers-row-status cc-vouchers-row-status--${statusClass}`}>
+                  {STATUS_LABELS[v.status] || v.status}
+                </span>
+                <div className="cc-vouchers-row-actions">
+                  <button type="button" className="cc-vouchers-action-btn" onClick={() => setFullscreenCode(v)} title="Pokaż kod">
+                    <Eye size={12}/>
+                  </button>
+                  <button type="button" className="cc-vouchers-action-btn" onClick={() => downloadVoucherPDF(v)} title="PDF">
+                    <FileDown size={12}/>
+                  </button>
+                  {v.status === "issued" && (
+                    <button type="button" className="cc-vouchers-action-btn cc-vouchers-action-btn--ok" onClick={() => markUsed(v.id)} title="Oznacz jako wykorzystany">
+                      <CheckCircle size={12}/>
+                    </button>
+                  )}
+                  {isManager && (
+                    <button type="button" className="cc-vouchers-action-btn cc-vouchers-action-btn--danger" onClick={() => deleteVoucher(v.id)} title="Usuń">
+                      <Trash2 size={12}/>
+                    </button>
+                  )}
+                </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
       {fullscreenCode && (
