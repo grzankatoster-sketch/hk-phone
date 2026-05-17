@@ -179,10 +179,10 @@ export default function StaliGosciePanel({dark,isAdmin,currentManager,addAudit})
           <div style={{display:"flex",gap:5}}>
             {[["all","Wszyscy"],["private","Osoby prywatne"],["company","Firmy"]].map(([v,l])=>(
               <button key={v} onClick={()=>setFilter(v)}
-                style={{fontSize:12,padding:"5px 12px",borderRadius:"var(--radius-md)",cursor:"pointer",
-                        border:`1px solid ${filter===v?"var(--sky)":"var(--border-light)"}`,
-                        background:filter===v?dark?"rgba(88,166,255,.15)":"#E6F1FB":"transparent",
-                        color:filter===v?"var(--sky)":"var(--text-muted)",fontWeight:filter===v?600:400}}>
+                style={{fontSize:12,padding:"5px 12px",borderRadius:"var(--cc-radius-md)",cursor:"pointer",
+                        border:`1px solid ${filter===v?"var(--cc-info)":"var(--cc-border)"}`,
+                        background:filter===v?"color-mix(in srgb, var(--cc-info) 12%, transparent)":"transparent",
+                        color:filter===v?"var(--cc-info)":"var(--cc-text-muted)",fontWeight:filter===v?600:400}}>
                 {l}
               </button>
             ))}
