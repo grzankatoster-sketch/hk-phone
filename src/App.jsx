@@ -697,7 +697,17 @@ export default function App(){
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.messages,JSON.stringify(messages));},[messages]);
   useEffect(()=>{setUnreadMsgCount(messages.filter(m=>!m.readByAdmin).length);},[messages]);
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.adminDark,adminDark);},[adminDark]);
-  useEffect(()=>{const dark=(isAdmin&&showAdminPanel)?adminDark:workerDark;document.body.classList.toggle("app-dark",dark);},[isAdmin,showAdminPanel,adminDark,workerDark]);
+  // Theme toggle (sekcja 35) — sync 3 things:
+  // 1. body.app-dark (legacy mechanizm — niektóre reguły CSS jeszcze tego używają)
+  // 2. html.theme-dark / html.theme-light (nowy mechanizm — sekcja 1 tokeny)
+  // 3. localStorage["cc.theme"] (persistencja, czytana przy starcie aplikacji)
+  useEffect(()=>{
+    const dark=(isAdmin&&showAdminPanel)?adminDark:workerDark;
+    document.body.classList.toggle("app-dark",dark);
+    document.documentElement.classList.toggle("theme-dark",dark);
+    document.documentElement.classList.toggle("theme-light",!dark);
+    try{localStorage.setItem("cc.theme",dark?"dark":"light");}catch{}
+  },[isAdmin,showAdminPanel,adminDark,workerDark]);
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.soundEnabled,soundEnabled);},[soundEnabled]);
 
   const showToast=useCallback((msg,type="info",duration=4500)=>{
