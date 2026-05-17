@@ -31,7 +31,7 @@ export default function MessageModal({onClose,employeeName,employees,messages,se
             <AlertCircle size={20} style={{color:"var(--plum)"}}/>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontSize:18,fontWeight:400,color:dark?"var(--dark-text)":"var(--text-primary)",fontFamily:"'DM Serif Display',serif",letterSpacing:".005em"}}>
+            <div style={{fontSize:18,fontWeight:400,color:dark?"var(--dark-text)":"var(--text-primary)",fontFamily:"var(--cc-font-display)",letterSpacing:".005em"}}>
               Wiadomość do kierownika
             </div>
             <div style={{fontSize:12,color:"var(--text-muted)",marginTop:2}}>
