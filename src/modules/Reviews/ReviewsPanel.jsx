@@ -344,81 +344,94 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
       {/* â”€â”€ Oficjalny wynik B.com â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      <div className="panel" style={{ padding: "18px 20px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-
-          {/* B.com score — duzy */}
-          <div className="cc-review-booking-score">
-            <div className="cc-review-booking-label">Booking.com</div>
-            <div className="cc-review-booking-num">{bookingScore}</div>
-            <div className="cc-review-booking-grade">Wyjątkowy</div>
-            <div className="cc-review-booking-count">{bookingTotal.toLocaleString("pl-PL")} opinii</div>
+      {/* ═══ HERO v2 wg v2/05-reviews — Score card + Meta info ═══ */}
+      <div className="cc-reviews-hero">
+        <div className="cc-reviews-score-card">
+          <div className="cc-reviews-score-top">
+            <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Średnia Booking.com
           </div>
-
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'DM Serif Display',serif", color: "var(--text-primary)", marginBottom: 4 }}>
-              Opinie gosci - Hotel Conrad Comfort
-            </div>
-            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.8 }}>
-              <div>
-                Zakres: <strong style={{ color: "var(--text-primary)" }}>{reviewRangeLabel(rangeFilter)}</strong>
-                {" - "}<strong>{forStats.length}</strong> opinii w systemie
-                {unansweredCount > 0 && <>{" - "}<strong style={{ color: "var(--rose)" }}>{unansweredCount}</strong> bez odpowiedzi</>}
-              </div>
-              <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 2 }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: syncColor, fontWeight: 700 }}>
-                  <Wifi size={11} />
-                  {syncLabel}
-                </span>
-                {" - "}ostatnio: {lastRefresh.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}
-                {syncMessage && <>{" - "}{syncMessage}</>}
-                &nbsp;
-                <button disabled={syncState === "syncing"} onClick={handleManualRefresh} style={{ background: "none", border: "none", cursor: syncState === "syncing" ? "wait" : "pointer", color: "var(--plum)", fontSize: 10.5, padding: 0, textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 3, opacity: syncState === "syncing" ? .65 : 1 }}>
-                  <RefreshCw size={10} />
-                  Odswiez Booking
-                </button>
-              </div>
-            </div>
+          <div className="cc-reviews-score-val">
+            {bookingScore}<span className="cc-reviews-score-max">/10</span>
           </div>
-
-          {isManager && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <button className="btn btn-outline" style={{ fontSize: 12, padding: "7px 12px", color: openaiKey ? "var(--emerald)" : "var(--text-muted)", borderColor: openaiKey ? "var(--emerald)" : "var(--border-medium)" }}
-                onClick={() => { setKeyDraft(openaiKey); setShowKeyPanel(v => !v); }}>
-                <KeyRound size={13} /> {openaiKey ? "AI aktywne" : "Klucz AI"}
-              </button>
-              <button className="btn btn-rose" onClick={() => setShowForm(true)}>
-                <Plus size={15} /> Dodaj opinie
-              </button>
-            </div>
-          )}
+          <div className="cc-reviews-score-stars" aria-hidden="true">
+            {[1,2,3,4,5].map(i=>{
+              const filled=Math.round(bookingScore/2)>=i;
+              return (
+                <svg key={i} className={filled?"":"cc-reviews-star-empty"} width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              );
+            })}
+          </div>
+          <div className="cc-reviews-score-sub">
+            Na podstawie <b>{bookingTotal.toLocaleString("pl-PL")} opinii</b>
+            {unansweredCount > 0 && (<><br/><b style={{color:"var(--cc-danger)"}}>{unansweredCount} bez odpowiedzi</b></>)}
+          </div>
+          <div className="cc-reviews-sync">
+            <span className="cc-reviews-sync-label" style={{color:syncColor}}>
+              <Wifi size={10}/>{syncLabel}
+            </span>
+            <button type="button" disabled={syncState === "syncing"} onClick={handleManualRefresh} className="cc-reviews-sync-btn">
+              <RefreshCw size={10}/> Odśwież
+            </button>
+          </div>
         </div>
 
-        {/* Panel klucza OpenAI */}
-        {isManager && showKeyPanel && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border-light)", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: ".07em", display: "flex", alignItems: "center", gap: 6 }}>
-              <Sparkles size={11} style={{ color: "var(--plum)" }} /> OpenAI API Key (GPT-4o mini)
+        <div className="cc-reviews-meta-card">
+          <div className="cc-reviews-meta-head">
+            <div className="cc-reviews-meta-info">
+              <h2 className="cc-reviews-meta-title">Opinie gości</h2>
+              <div className="cc-reviews-meta-sub">
+                Zakres: <b>{reviewRangeLabel(rangeFilter)}</b> · <b>{forStats.length}</b> w systemie
+                {" "}· ost. odśw. {lastRefresh.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}
+                {syncMessage && <> · {syncMessage}</>}
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <div style={{ position: "relative", flex: 1 }}>
-                <input className="input" type={showKeyText ? "text" : "password"}
-                  value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
-                  placeholder="sk-..." style={{ fontFamily: "monospace", fontSize: 12, paddingRight: 36 }} />
-                <button onClick={() => setShowKeyText(v => !v)}
-                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 0, display: "flex" }}>
-                  {showKeyText ? <EyeOff size={14} /> : <Eye size={14} />}
+            {isManager && (
+              <div className="cc-reviews-meta-actions">
+                <button className="btn btn-outline" style={{ fontSize: 12, padding: "7px 12px", color: openaiKey ? "var(--cc-success)" : "var(--cc-text-muted)", borderColor: openaiKey ? "color-mix(in srgb, var(--cc-success) 35%, transparent)" : "var(--cc-border-strong)" }}
+                  onClick={() => { setKeyDraft(openaiKey); setShowKeyPanel(v => !v); }}>
+                  <KeyRound size={13} /> {openaiKey ? "AI aktywne" : "Klucz AI"}
+                </button>
+                <button className="btn btn-rose" onClick={() => setShowForm(true)}>
+                  <Plus size={15} /> Dodaj opinię
                 </button>
               </div>
-              <button className="btn btn-rose" style={{ fontSize: 12, whiteSpace: "nowrap" }} onClick={saveKey}>Zapisz</button>
-              {openaiKey && <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={() => { setOpenaiKey(""); localStorage.removeItem(STORAGE_KEYS.openaiKey); sessionStorage.removeItem(STORAGE_KEYS.openaiKey); setKeyDraft(""); setShowKeyPanel(false); showToast && showToast("Klucz OpenAI usuniety.", "info"); }}>Usun klucz</button>}
-            </div>
-            <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
-              Klucz jest przechowywany tylko do zamkniÄ™cia tej sesji. Nie zapisujemy go trwale w localStorage.
-            </div>
+            )}
           </div>
-        )}
+          <select className="input cc-reviews-range-select"
+            value={rangeFilter} onChange={e => setRangeFilter(e.target.value)}>
+            <option value={REVIEW_RANGE_LAST_6_MONTHS}>Ostatnie 6 mies.</option>
+            <option value={`year:${THIS_YEAR}`}>{THIS_YEAR}</option>
+            {availableYears.filter(y => y !== THIS_YEAR).map(y => <option key={y} value={`year:${y}`}>{y}</option>)}
+            <option value={REVIEW_RANGE_ALL}>Wszystkie lata</option>
+          </select>
+        </div>
       </div>
+
+      {/* Manager-only: AI key panel */}
+      {isManager && showKeyPanel && (
+        <div className="panel" style={{ padding: "14px 18px" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--cc-text-muted)", textTransform: "uppercase", letterSpacing: ".07em", display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <Sparkles size={11} style={{ color: "var(--cc-brand)" }} /> OpenAI API Key (GPT-4o mini)
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <input className="input" type={showKeyText ? "text" : "password"}
+                value={keyDraft} onChange={e => setKeyDraft(e.target.value)}
+                placeholder="sk-..." style={{ fontFamily: "var(--cc-font-mono)", fontSize: 12, paddingRight: 36 }} />
+              <button onClick={() => setShowKeyText(v => !v)}
+                style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--cc-text-muted)", padding: 0, display: "flex" }}>
+                {showKeyText ? <EyeOff size={14} /> : <Eye size={14} />}
+              </button>
+            </div>
+            <button className="btn btn-rose" style={{ fontSize: 12, whiteSpace: "nowrap" }} onClick={saveKey}>Zapisz</button>
+            {openaiKey && <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={() => { setOpenaiKey(""); localStorage.removeItem(STORAGE_KEYS.openaiKey); sessionStorage.removeItem(STORAGE_KEYS.openaiKey); setKeyDraft(""); setShowKeyPanel(false); showToast && showToast("Klucz OpenAI usunięty.", "info"); }}>Usuń klucz</button>}
+          </div>
+          <div style={{ fontSize: 10.5, color: "var(--cc-text-muted)", marginTop: 8 }}>
+            Klucz przechowywany do zamknięcia sesji.
+          </div>
+        </div>
+      )}
 
       {/* â”€â”€ Lista â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="panel" style={{ padding: "14px 18px" }}>
