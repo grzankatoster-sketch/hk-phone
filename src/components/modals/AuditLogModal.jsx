@@ -31,7 +31,7 @@ export default function AuditLogModal({onClose}){
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                 <div style={{display:"flex",alignItems:"center",gap:10}}>
                   <div style={{width:30,height:30,borderRadius:"50%",background:"var(--gold)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--plum-deep)",fontSize:12,fontWeight:800}}>{entry.manager?.[0]||"?"}</div>
-                  <span style={{fontWeight:700,color:"var(--gold)",fontSize:13.5,fontFamily:"'DM Serif Display',serif"}}>{entry.manager}</span>
+                  <span style={{fontWeight:700,color:"var(--gold)",fontSize:13.5,fontFamily:"var(--cc-font-display)"}}>{entry.manager}</span>
                 </div>
                 <span style={{fontSize:11,color:"var(--dark-text-muted)"}}>{entry.at}</span>
               </div>

@@ -33,7 +33,7 @@ export default function EmployeeReportModal({employees,dark,onClose,currentEmplo
       <motion.div initial={{opacity:0,scale:.96}} animate={{opacity:1,scale:1}} exit={{opacity:0}} className={"modal large-modal "+(dark?"dark-modal":"")} onClick={e=>e.stopPropagation()} style={{maxWidth:620}}>
         <div style={{background:"var(--plum)",borderRadius:"var(--radius-lg) var(--radius-lg) 0 0",margin:"-26px -26px 22px",padding:"18px 26px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
-            <div style={{color:"#fff",fontWeight:400,fontSize:20,display:"flex",alignItems:"center",gap:10,fontFamily:"'DM Serif Display',serif",letterSpacing:".005em"}}>
+            <div style={{color:"#fff",fontWeight:400,fontSize:20,display:"flex",alignItems:"center",gap:10,fontFamily:"var(--cc-font-display)",letterSpacing:".005em"}}>
               <FileText size={18}/> Notatka służbowa
             </div>
             <div style={{color:"rgba(255,255,255,.7)",fontSize:12,marginTop:3}}>Wypełnij formularz i pobierz PDF</div>
