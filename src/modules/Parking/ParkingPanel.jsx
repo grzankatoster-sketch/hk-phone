@@ -187,17 +187,48 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
           </div>
         </div>
       )}
-      {/* Header */}
+      {/* ═══ KPI ROW v2 wg v2/07-parking ═══ */}
+      {(()=>{
+        const abonamentCount=active.filter(r=>r.type==="abonament").length;
+        const pracownikCount=active.filter(r=>r.type==="pracownik").length;
+        const krotkiCount=active.filter(r=>r.type==="krotki").length;
+        const expiringSoon=active.filter(r=>{const dl=daysLeft(r.paidTo);return dl!==null&&dl<=3;}).length;
+        const monthlyRevenue=active.filter(r=>r.type==="abonament"&&r.price).reduce((s,r)=>{const n=parseFloat(String(r.price).replace(/[^\d.]/g,""))||0;return s+n;},0);
+        return (
+          <div className="cc-parking-kpi-row">
+            <div className="cc-parking-kpi">
+              <div className="cc-parking-kpi-lbl">Aktywne wpisy</div>
+              <div className="cc-parking-kpi-val">{active.length}</div>
+              <div className="cc-parking-kpi-sub">{abonamentCount} abonament · {pracownikCount} pracown.</div>
+            </div>
+            <div className="cc-parking-kpi">
+              <div className="cc-parking-kpi-lbl">Przychód mies.</div>
+              <div className="cc-parking-kpi-val cc-parking-kpi-val--brand">{monthlyRevenue.toLocaleString("pl-PL")}<span className="cc-parking-kpi-unit"> PLN</span></div>
+              <div className="cc-parking-kpi-sub">{abonamentCount} abon. × ~{abonamentCount>0?Math.round(monthlyRevenue/abonamentCount):0} PLN</div>
+            </div>
+            <div className="cc-parking-kpi">
+              <div className="cc-parking-kpi-lbl">Wygasające ≤3 dni</div>
+              <div className={`cc-parking-kpi-val${expiringSoon>0?" cc-parking-kpi-val--warn":""}`}>{expiringSoon}</div>
+              <div className="cc-parking-kpi-sub">{expiringSoon>0?"wymaga uwagi":"wszystko OK"}</div>
+            </div>
+            <div className="cc-parking-kpi">
+              <div className="cc-parking-kpi-lbl">Krótkoterminowe</div>
+              <div className="cc-parking-kpi-val">{krotkiCount}</div>
+              <div className="cc-parking-kpi-sub">Auto-expire o północy</div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Header + filter tabs v2 */}
       <div className={panel}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:10}}>
           <div>
-            <div className="panel-title" style={{margin:0}}>🚗 Lista parkingowa</div>
-            <div style={{fontSize:12,color:"var(--text-muted)",marginTop:4,display:"flex",gap:14,flexWrap:"wrap"}}>
-              <span><strong style={{color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif",fontSize:14}}>{active.length}</strong> aktywnych</span>
-              <span style={{color:"var(--cc-info)"}}>● {active.filter(r=>r.type==="abonament").length} abonament</span>
-              <span style={{color:"var(--cc-success)"}}>● {active.filter(r=>r.type==="pracownik").length} pracownicy</span>
-              <span style={{color:"var(--cc-warning)"}}>● {active.filter(r=>r.type==="krotki").length} krótki najem</span>
+            <div className="panel-title" style={{margin:0,display:"flex",alignItems:"center",gap:8}}>
+              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" style={{color:"var(--cc-brand)"}}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Rejestr parking
             </div>
+            <div className="cc-parking-subtitle">{active.length} aktywnych · {history.length} w historii</div>
           </div>
           {!isAdmin && (
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
@@ -207,20 +238,28 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
             </div>
           )}
         </div>
-        {/* Filters */}
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-          {[["all","Wszyscy"],["abonament","Abonament"],["pracownik","Pracownicy"],["krotki","Krótki najem"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setFilter(v)}
-              style={{fontSize:11.5,padding:"5px 12px",borderRadius:"var(--radius-md)",cursor:"pointer",
-                      border:`1px solid ${filter===v?"var(--plum)":"var(--border-light)"}`,
-                      background:filter===v?"var(--plum-soft)":"transparent",
-                      color:filter===v?"var(--plum)":"var(--text-muted)",fontWeight:filter===v?700:500}}>
-              {l}
+        {/* Filter tabs v2 */}
+        <div className="cc-parking-toolbar">
+          {[
+            ["all","Wszyscy",active.length,"all"],
+            ["abonament","Abonament",active.filter(r=>r.type==="abonament").length,"abonament"],
+            ["pracownik","Pracownicy",active.filter(r=>r.type==="pracownik").length,"pracownik"],
+            ["krotki","Krótki najem",active.filter(r=>r.type==="krotki").length,"krotki"],
+          ].map(([v,l,cnt,dotClass])=>(
+            <button
+              key={v}
+              type="button"
+              onClick={()=>setFilter(v)}
+              className={`cc-parking-tab${filter===v?" cc-parking-tab--on":""}`}>
+              {dotClass!=="all"&&<span className={`cc-parking-tab-dot cc-parking-tab-dot--${dotClass}`} aria-hidden="true"/>}
+              <span>{l}</span>
+              <span className="cc-parking-tab-cnt">{cnt}</span>
             </button>
           ))}
-          <input className={inp} placeholder="Szukaj tablicy, nazwiska..." value={search}
-            onChange={e=>setSearch(e.target.value)}
-            style={{marginLeft:"auto",width:220,fontSize:11.5}}/>
+          <div className="cc-parking-search">
+            <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input placeholder="Tablica, imię, telefon..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          </div>
         </div>
       </div>
 
@@ -301,60 +340,63 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
         const dl = daysLeft(rec.paidTo);
         const alert = needsAlert(rec);
         const isOpen = expanded === rec.id;
+        const ageClass = alert ? "danger" : (dl !== null && dl <= 7 ? "warn" : (dl !== null && dl > 0 ? "ok" : "muted"));
         return (
-          <div key={rec.id} style={{
-            borderRadius:"var(--radius-md)",overflow:"hidden",marginBottom:5,
-            border:`1.5px solid ${alert?"var(--rose)":dark?"var(--dark-border)":"var(--border-light)"}`,
-            background:alert?(dark?"rgba(154,48,64,.08)":"#FEF2F2"):(dark?"rgba(255,255,255,.03)":"var(--bg-card)"),
-          }}>
-            {/* Row */}
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",cursor:"pointer"}}
-              onClick={()=>setExpanded(isOpen?null:rec.id)}>
-              {/* Alert badge */}
-              {alert && <span style={{fontSize:16,flexShrink:0}} title="Wymaga opłaty">⚠️</span>}
-              {/* Plate */}
-              <div style={{fontFamily:"monospace",fontWeight:700,fontSize:13,
-                           background:dark?"rgba(255,255,255,.07)":"#f0f4ff",padding:"2px 8px",
-                           borderRadius:4,flexShrink:0,minWidth:80,textAlign:"center",
-                           color:dark?"var(--dark-text)":"var(--text-primary)"}}>
+          <div
+            key={rec.id}
+            className={`cc-parking-row cc-parking-row--${rec.type}${alert?" cc-parking-row--alert":""}${isOpen?" cc-parking-row--open":""}`}>
+            {/* Header row (clickable) */}
+            <div className="cc-parking-row-head" onClick={()=>setExpanded(isOpen?null:rec.id)}>
+              <div className={`cc-parking-plate${alert?" cc-parking-plate--alert":""}`}>
                 {displayValue(rec.plate)}
               </div>
-              {/* Name */}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:dark?"var(--dark-text)":"var(--text-primary)",
-                             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                  {rec.name}
-                </div>
-                <div style={{fontSize:11,color:"var(--text-muted)"}}>{rec.status}</div>
+              <div className="cc-parking-owner">
+                <div className="cc-parking-owner-name">{rec.name}</div>
+                {(rec.phone||rec.status)&&(
+                  <div className="cc-parking-owner-sub">
+                    {rec.phone&&<span><b>📞 {rec.phone}</b></span>}
+                    {rec.phone&&rec.status&&<span> · </span>}
+                    {rec.status&&<span>{rec.status}</span>}
+                  </div>
+                )}
+                {rec.note&&<div className="cc-parking-owner-note">{rec.note}</div>}
               </div>
-              {/* Type badge */}
-              <span style={{fontSize:10.5,padding:"2px 8px",borderRadius:999,flexShrink:0,fontWeight:600,
-                            background:typeBg[rec.type]||"transparent",color:typeColor[rec.type]||"var(--text-muted)"}}>
+              <span className={`cc-parking-tag cc-parking-tag--${rec.type}`}>
                 {typeLabel[rec.type]||rec.type}
               </span>
-              {/* Days left badge */}
-              {rec.paidTo && dl !== null && (
-                <span style={{fontSize:11,padding:"2px 8px",borderRadius:999,flexShrink:0,fontWeight:700,
-                              background:dl<=3?"rgba(154,48,64,.15)":dl<=7?"rgba(245,158,11,.15)":"rgba(30,107,60,.12)",
-                              color:dl<=3?"var(--rose)":dl<=7?"var(--amber)":"var(--emerald)"}}>
-                  {dl>0?`${dl}d`:"Wygasło"}
-                </span>
-              )}
-              {/* Krótki najem — End button */}
-              {rec.type==="krotki" && !isAdmin && (
-                <button className="btn btn-amber" style={{fontSize:11,padding:"3px 9px",flexShrink:0}}
-                  onClick={e=>{e.stopPropagation();endShort(rec);}}>
-                  Zakończ
+              <div className={`cc-parking-paid cc-parking-paid--${ageClass}`}>
+                {rec.paidTo?(
+                  <>
+                    <div className="cc-parking-paid-date"><b>{rec.paidTo}</b></div>
+                    {rec.docNr&&<div className="cc-parking-paid-doc">{rec.docNr}{rec.paidOn&&` · ${rec.paidOn}`}</div>}
+                  </>
+                ):rec.shortUntil?(
+                  <>
+                    <div className="cc-parking-paid-date"><b>do: {rec.shortUntil}</b></div>
+                    {rec.shortStarted&&<div className="cc-parking-paid-doc">od: {rec.shortStarted}</div>}
+                  </>
+                ):(
+                  <span className="cc-parking-paid-empty">—</span>
+                )}
+              </div>
+              <span className={`cc-parking-days cc-parking-days--${ageClass}`}>
+                {rec.type==="pracownik"?"stały":(rec.paidTo&&dl!==null)?(dl>0?`${dl}d`:dl===0?"dziś":`${dl}`):"—"}
+              </span>
+              <div className="cc-parking-row-actions" onClick={e=>e.stopPropagation()}>
+                {rec.type==="krotki" && !isAdmin && (
+                  <button type="button" className="cc-parking-action-btn cc-parking-action-btn--end" onClick={()=>endShort(rec)} title="Zakończ najem">
+                    ✕
+                  </button>
+                )}
+                {rec.type==="abonament" && alert && (
+                  <button type="button" className="cc-parking-action-btn cc-parking-action-btn--pay" onClick={()=>setPayModal(rec.id)} title="Oznacz jako opłacone">
+                    💰
+                  </button>
+                )}
+                <button type="button" className="cc-parking-action-btn" onClick={()=>setExpanded(isOpen?null:rec.id)} title={isOpen?"Zwiń":"Rozwiń"}>
+                  {isOpen?"▲":"▼"}
                 </button>
-              )}
-              {/* Pay button for abonament */}
-              {rec.type==="abonament" && alert && (
-                <button className="btn btn-rose" style={{fontSize:11,padding:"3px 9px",flexShrink:0}}
-                  onClick={e=>{e.stopPropagation();setPayModal(rec.id);}}>
-                  Opłać
-                </button>
-              )}
-              <span style={{color:"var(--text-muted)",fontSize:11}}>{isOpen?"▲":"▼"}</span>
+              </div>
             </div>
             {/* Expanded */}
             {isOpen && (

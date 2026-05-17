@@ -4635,6 +4635,353 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   border-color: color-mix(in srgb, var(--cc-success) 30%, transparent) !important;
 }
 
+/* ═══ Parking v2 (sekcja 13 v2) — KPI strip + filter tabs + row grid ════════
+   Wzorzec: design-preview/v2/07-parking.html
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cc-parking-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 900px) { .cc-parking-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .cc-parking-kpi-row { grid-template-columns: 1fr; } }
+.cc-parking-kpi {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  padding: 14px 16px;
+  transition: border-color 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-parking-kpi:hover { border-color: var(--cc-border-strong); }
+.cc-parking-kpi-lbl {
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--cc-text-muted);
+  margin-bottom: 8px;
+}
+.cc-parking-kpi-val {
+  font-family: var(--cc-font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--cc-text);
+  letter-spacing: -.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cc-parking-kpi-val--brand { color: var(--cc-brand); }
+.cc-parking-kpi-val--warn { color: var(--cc-warning); }
+.cc-parking-kpi-unit {
+  font-family: var(--cc-font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cc-text-muted);
+}
+.cc-parking-kpi-sub {
+  font-size: 11px;
+  color: var(--cc-text-faint);
+  margin-top: 6px;
+}
+
+.cc-parking-subtitle {
+  font-family: var(--cc-font-mono);
+  font-size: 12px;
+  color: var(--cc-text-faint);
+  margin-top: 4px;
+}
+
+/* Toolbar (filter tabs + search) */
+.cc-parking-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.cc-parking-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-bg-elevated);
+  border: 1px solid var(--cc-border);
+  font-family: var(--cc-font-body);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-parking-tab:hover {
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-parking-tab--on {
+  background: var(--cc-brand-soft);
+  color: var(--cc-brand);
+  border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent);
+}
+.cc-parking-tab-cnt {
+  font-family: var(--cc-font-mono);
+  font-size: 10.5px;
+  opacity: .65;
+  font-variant-numeric: tabular-nums;
+}
+.cc-parking-tab--on .cc-parking-tab-cnt { opacity: 1; }
+.cc-parking-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.cc-parking-tab-dot--abonament { background: var(--cc-info); }
+.cc-parking-tab-dot--pracownik { background: var(--cc-success); }
+.cc-parking-tab-dot--krotki { background: var(--cc-warning); }
+
+.cc-parking-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  background: var(--cc-bg-elevated);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-sm);
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--cc-text-muted);
+  min-width: 200px;
+}
+.cc-parking-search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--cc-text);
+  font: 500 12px var(--cc-font-body);
+  min-width: 80px;
+}
+.cc-parking-search input::placeholder { color: var(--cc-text-faint); }
+.cc-parking-search:focus-within { border-color: var(--cc-border-strong); }
+
+/* Record row v2 */
+.cc-parking-row {
+  border-radius: var(--cc-radius-md);
+  overflow: hidden;
+  margin-bottom: 6px;
+  border: 1.5px solid var(--cc-border);
+  background: var(--cc-surface);
+  transition: border-color 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-parking-row:hover {
+  border-color: var(--cc-border-strong);
+}
+.cc-parking-row--alert {
+  border-color: var(--cc-danger);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--cc-danger) 5%, transparent), var(--cc-surface) 40%);
+}
+.cc-parking-row-head {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) 110px 140px 70px 80px;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+@media (max-width: 900px) {
+  .cc-parking-row-head {
+    grid-template-columns: 90px minmax(0, 1fr) 70px;
+    grid-template-areas:
+      "plate owner   actions"
+      "tag   paid    paid"
+      "tag   days    days";
+    row-gap: 8px;
+  }
+  .cc-parking-plate { grid-area: plate; }
+  .cc-parking-owner { grid-area: owner; }
+  .cc-parking-tag { grid-area: tag; justify-self: start; }
+  .cc-parking-paid { grid-area: paid; }
+  .cc-parking-days { grid-area: days; justify-self: end; }
+  .cc-parking-row-actions { grid-area: actions; justify-self: end; }
+}
+
+.cc-parking-plate {
+  font-family: var(--cc-font-mono);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--cc-text);
+  background: var(--cc-bg-elevated);
+  border: 1px solid var(--cc-border);
+  padding: 6px 10px;
+  border-radius: var(--cc-radius-sm);
+  text-align: center;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.cc-parking-plate--alert {
+  border-color: color-mix(in srgb, var(--cc-danger) 40%, transparent);
+  color: var(--cc-danger);
+  background: color-mix(in srgb, var(--cc-danger) 8%, transparent);
+}
+
+.cc-parking-owner { min-width: 0; }
+.cc-parking-owner-name {
+  font-family: var(--cc-font-body);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--cc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-parking-owner-sub {
+  font-size: 11.5px;
+  color: var(--cc-text-muted);
+  margin-top: 2px;
+}
+.cc-parking-owner-sub b {
+  color: var(--cc-text);
+  font-weight: 600;
+}
+.cc-parking-owner-note {
+  font-size: 11px;
+  color: var(--cc-text-faint);
+  font-style: italic;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cc-parking-tag {
+  display: inline-block;
+  font-family: var(--cc-font-display);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border: 1px solid transparent;
+  text-align: center;
+  white-space: nowrap;
+}
+.cc-parking-tag--abonament {
+  background: color-mix(in srgb, var(--cc-info) 12%, transparent);
+  color: var(--cc-info);
+  border-color: color-mix(in srgb, var(--cc-info) 30%, transparent);
+}
+.cc-parking-tag--pracownik {
+  background: color-mix(in srgb, var(--cc-success) 12%, transparent);
+  color: var(--cc-success);
+  border-color: color-mix(in srgb, var(--cc-success) 30%, transparent);
+}
+.cc-parking-tag--krotki {
+  background: color-mix(in srgb, var(--cc-warning) 12%, transparent);
+  color: var(--cc-warning);
+  border-color: color-mix(in srgb, var(--cc-warning) 30%, transparent);
+}
+
+.cc-parking-paid {
+  min-width: 0;
+  font-size: 12px;
+}
+.cc-parking-paid-date {
+  font-family: var(--cc-font-mono);
+  color: var(--cc-text);
+  font-variant-numeric: tabular-nums;
+}
+.cc-parking-paid-doc {
+  font-size: 10.5px;
+  color: var(--cc-text-faint);
+  margin-top: 2px;
+  font-family: var(--cc-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cc-parking-paid-empty { color: var(--cc-text-faint); }
+.cc-parking-paid--danger .cc-parking-paid-date { color: var(--cc-danger); }
+.cc-parking-paid--warn .cc-parking-paid-date { color: var(--cc-warning); }
+.cc-parking-paid--ok .cc-parking-paid-date { color: var(--cc-success); }
+
+.cc-parking-days {
+  font-family: var(--cc-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cc-parking-days--danger {
+  background: color-mix(in srgb, var(--cc-danger) 14%, transparent);
+  color: var(--cc-danger);
+}
+.cc-parking-days--warn {
+  background: color-mix(in srgb, var(--cc-warning) 14%, transparent);
+  color: var(--cc-warning);
+}
+.cc-parking-days--ok {
+  background: color-mix(in srgb, var(--cc-success) 12%, transparent);
+  color: var(--cc-success);
+}
+.cc-parking-days--muted {
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text-muted);
+}
+
+.cc-parking-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.cc-parking-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--cc-radius-sm);
+  border: 1px solid var(--cc-border);
+  background: var(--cc-bg-elevated);
+  color: var(--cc-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all 80ms cubic-bezier(.4,0,.2,1);
+}
+.cc-parking-action-btn:hover {
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  border-color: var(--cc-border-strong);
+}
+.cc-parking-action-btn--pay {
+  border-color: color-mix(in srgb, var(--cc-success) 35%, transparent);
+  color: var(--cc-success);
+  background: color-mix(in srgb, var(--cc-success) 10%, transparent);
+}
+.cc-parking-action-btn--pay:hover {
+  background: var(--cc-success);
+  color: var(--cc-text-on-brand);
+}
+.cc-parking-action-btn--end {
+  border-color: color-mix(in srgb, var(--cc-danger) 35%, transparent);
+  color: var(--cc-danger);
+  background: color-mix(in srgb, var(--cc-danger) 10%, transparent);
+}
+.cc-parking-action-btn--end:hover {
+  background: var(--cc-danger);
+  color: #fff;
+}
+.cc-parking-action-btn:focus-visible {
+  outline: 2px solid var(--cc-focus);
+  outline-offset: 2px;
+}
+
 /* ═══ Faults Panel v2 (sekcja 12 v2) — KPI row + fault list grid wg v2/03-faults ═══
    KPI: 4 cards z color-coded ic-wrap (rose/amber/teal/sky).
    Fault list: grid rows (pri-badge | room | info | status | assigned | actions).
