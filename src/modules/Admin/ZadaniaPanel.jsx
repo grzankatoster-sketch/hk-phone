@@ -22,8 +22,29 @@ export default function ZadaniaPanel({
   addManagerTask,
   removeGlobalNotification,
 }) {
+  const allTasks = SHIFT_OPTIONS.flatMap(s=>(tasks[s]||[])).filter(Boolean);
+  const urgentTasks = allTasks.filter(t=>t.urgent).length;
   return (
     <motion.div key="za" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row cc-kpi-row--3">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Zadania zmian</div>
+          <div className="cc-kpi-val">{allTasks.length}</div>
+          <div className="cc-kpi-sub">na {SHIFT_OPTIONS.length} zmianach</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Pilne</div>
+          <div className={`cc-kpi-val${urgentTasks>0?" cc-kpi-val--danger":""}`}>{urgentTasks}</div>
+          <div className="cc-kpi-sub">czerwona ramka u pracownika</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Powiadomienia globalne</div>
+          <div className="cc-kpi-val cc-kpi-val--gold">{globalNotifications.length}</div>
+          <div className="cc-kpi-sub">na ekranie startowym</div>
+        </div>
+      </div>
+
       {/* Zarządzanie zadaniami zmian */}
       <div className="panel glass dark-panel">
         <div className="panel-title"><Settings size={16}/> Zarządzanie zadaniami zmian</div>
