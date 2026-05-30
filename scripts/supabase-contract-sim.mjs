@@ -48,7 +48,24 @@ function makeMock({ schema, forbidDelete = [] }) {
 }
 
 const TENANT = "00000000-0000-0000-0000-000000000001";
-const schema = { faults: FAULTS_COLS };
+
+// 0002 schematy
+const MANAGER_ALERTS_COLS = new Set(["id","tenant_id","title","body","priority","pinned","target_shift","expires_at","created_by","created_at"]);
+const STANDING_REMINDERS_COLS = new Set(["id","tenant_id","title","body","active","created_by","created_at","category"]); // category dodane w 0005
+// Żywy schemat tabel HK (z kodu app/telefon — NIE z 0001, które jest nieaktualne)
+const HK_ROOMS_COLS  = new Set(["id","date","room","worker","status","started_at","done_at","report","vacated"]);
+const HK_PLAN_COLS   = new Set(["id","date","assignments","pm_assignments","room_types","pm_room_types","updated_at"]);
+const HK_LOGS_COLS   = new Set(["id","date","log_time","worker","action","room","extra"]);
+const HK_TASKS_COLS  = new Set(["id","date","text","room","target","status","done_by","done_at","created_by"]);
+const HK_WORKERS_COLS= new Set(["id","name"]);
+
+const schema = {
+  faults: FAULTS_COLS,
+  manager_alerts: MANAGER_ALERTS_COLS,
+  standing_reminders: STANDING_REMINDERS_COLS,
+  hk_rooms: HK_ROOMS_COLS, hk_plan: HK_PLAN_COLS, hk_logs: HK_LOGS_COLS,
+  hk_tasks: HK_TASKS_COLS, hk_workers: HK_WORKERS_COLS,
+};
 
 // ════════════════════════════════════════════════════════════════════════════
 section("FAULTS · payloady z telefonu HK (public/hk-phone/index.html)");
@@ -94,6 +111,39 @@ section("FAULTS · niezmiennosc (brak DELETE w calym kodzie)");
 {
   // Statyczny sanity: po Fazie 5 nigdzie nie ma faults.delete()
   ok("IMM1 modelowo: zaden przeplyw nie usuwa usterki", true);
+}
+
+section("MANAGER_ALERTS · AlertsAdminPanel (insert + patch)");
+{
+  const sb = makeMock({ schema });
+  sb.from("manager_alerts").insert({ id:"a1", tenant_id:TENANT, title:"Awaria windy", body:"...", priority:"urgent", pinned:true, target_shift:null, expires_at:null, created_by:"Kierownik", created_at:new Date().toISOString() });
+  sb.from("manager_alerts").update({ pinned:false }).eq();
+  sb.from("manager_alerts").update({ priority:"normal" }).eq();
+  ok("MA1 alerty: insert+patch zgodne ze schematem", true);
+}
+
+section("STANDING_REMINDERS · StandingRemindersPanel (insert)");
+{
+  const sb = makeMock({ schema });
+  sb.from("standing_reminders").insert({ id:"r1", tenant_id:TENANT, title:"Weryfikacja dokumentów", body:"...", category:"check-in", active:true, created_by:"Kierownik", created_at:new Date().toISOString() });
+  sb.from("standing_reminders").update({ active:false }).eq();
+  ok("SR1 przypomnienia: insert zgodny ze schematem", true);
+}
+
+section("HK · żywy schemat (telefon + HKLivePanel + App.jsx) — spójność");
+{
+  const sb = makeMock({ schema });
+  // telefon: startRoom / doneRoom / skipRoom
+  sb.from("hk_rooms").upsert({ date:"2026-05-30", room:"101", worker:"Anna", status:"czyszczenie", started_at:new Date().toISOString() });
+  sb.from("hk_rooms").upsert({ date:"2026-05-30", room:"101", worker:"Anna", status:"czyste", done_at:new Date().toISOString(), report:{} });
+  sb.from("hk_logs").insert({ date:"2026-05-30", log_time:"10:00", worker:"Anna", action:"start", room:"101", extra:null });
+  // HKLivePanel: plan upsert + reassign + task
+  sb.from("hk_plan").upsert({ date:"2026-05-30", assignments:{Anna:["101"]}, pm_assignments:{}, room_types:{}, pm_room_types:{}, updated_at:new Date().toISOString() });
+  sb.from("hk_rooms").upsert({ date:"2026-05-30", room:"102", worker:"Bartek", status:"W" });
+  sb.from("hk_tasks").insert({ date:"2026-05-30", text:"Sprawdź 5p", room:null, target:"all", created_by:"Recepcja" });
+  sb.from("hk_tasks").update({ status:"done", done_by:"Anna", done_at:new Date().toISOString() }).eq();
+  sb.from("hk_workers").insert({ name:"Nowa" });
+  ok("HK1 wszystkie payloady HK zgodne ze spójnym żywym schematem", true);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
