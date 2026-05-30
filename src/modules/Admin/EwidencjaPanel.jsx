@@ -11,11 +11,35 @@ export default function EwidencjaPanel({
   resetEvidenceMonth,
   resetAllEvidence,
 }) {
+  const doneCount = filteredEvidenceLog.filter(i=>i.logoutAt).length;
+  const activeCount = filteredEvidenceLog.length - doneCount;
   return (
     <motion.div key="ew" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row cc-kpi-row--3">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Wpisy ({evidenceMonth})</div>
+          <div className="cc-kpi-val">{filteredEvidenceLog.length}</div>
+          <div className="cc-kpi-sub">zmian w miesiącu</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Zakończone</div>
+          <div className="cc-kpi-val cc-kpi-val--success">{doneCount}</div>
+          <div className="cc-kpi-sub">z wylogowaniem</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Trwające</div>
+          <div className={`cc-kpi-val${activeCount>0?" cc-kpi-val--gold":""}`}>{activeCount}</div>
+          <div className="cc-kpi-sub">{activeCount>0?"bez wylogowania":"brak otwartych"}</div>
+        </div>
+      </div>
+
       <div className="panel glass dark-panel">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:12}}>
-          <div className="panel-title" style={{margin:0}}><History size={16}/> Ewidencja godzin pracowników</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:12}}>
+          <div>
+            <div className="panel-title" style={{margin:0}}><History size={16}/> Ewidencja godzin pracowników</div>
+            <div className="cc-vsub">{filteredEvidenceLog.length} wpisów · {evidenceMonth}</div>
+          </div>
           <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
             <select value={evidenceMonth} onChange={e=>setEvidenceMonth(e.target.value)} className="input dark-input" style={{width:"auto",minWidth:140,padding:"7px 12px"}}>
               {availableMonths.map(m=><option key={m} value={m}>{m}</option>)}
@@ -25,28 +49,23 @@ export default function EwidencjaPanel({
             <button className="btn btn-danger-outline" style={{fontSize:12.5}} onClick={resetAllEvidence}><Trash2 size={13}/> Resetuj wszystko</button>
           </div>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Pracownik</th><th>Zmiana</th><th>Rozpoczęcie</th><th>Zakończenie</th></tr></thead>
-            <tbody>
-              {filteredEvidenceLog.length
-                ? filteredEvidenceLog.map(item=>(
-                    <tr key={item.id}>
-                      <td>{item.employee}</td>
-                      <td>{SHIFT_LABELS_PL[item.shift]||item.shift}</td>
-                      <td>{item.loginAt}</td>
-                      <td>{item.logoutAt||<span style={{color:"var(--gold)",fontWeight:700}}>&#9679; Trwa zmiana</span>}</td>
-                    </tr>
-                  ))
-                : <tr><td colSpan={4} className="center muted">Brak ewidencji za wybrany miesiąc.</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        {filteredEvidenceLog.length>0&&(
-          <div style={{marginTop:12,fontSize:13,color:"var(--text-muted)"}}>
-            Łącznie wpisów: <strong style={{color:"var(--text-primary)",fontFamily:"var(--cc-font-display)",fontSize:15}}>{filteredEvidenceLog.length}</strong>
+        {filteredEvidenceLog.length ? (
+          <div>
+            {filteredEvidenceLog.map(item=>(
+              <div key={item.id} className={`cc-vrow${item.logoutAt?"":" cc-vrow--warn"}`}>
+                <div className="cc-vrow-dot" style={{background:item.logoutAt?"var(--cc-success)":"var(--cc-warning)"}}/>
+                <div className="cc-vrow-main">
+                  <div className="cc-vrow-title">{item.employee} <span style={{fontWeight:400,color:"var(--cc-text-muted)",fontSize:12}}>· {SHIFT_LABELS_PL[item.shift]||item.shift}</span></div>
+                  <div className="cc-vrow-sub">{item.loginAt}{item.logoutAt?` → ${item.logoutAt}`:""}</div>
+                </div>
+                {item.logoutAt
+                  ? <span className="cc-vrow-badge" style={{background:"color-mix(in srgb,var(--cc-success) 18%,transparent)",color:"var(--cc-success)"}}>Zakończona</span>
+                  : <span className="cc-vrow-badge" style={{background:"color-mix(in srgb,var(--cc-warning) 18%,transparent)",color:"var(--cc-warning)"}}>● Trwa</span>}
+              </div>
+            ))}
           </div>
+        ) : (
+          <div className="empty-box empty-box-dark">Brak ewidencji za wybrany miesiąc.</div>
         )}
       </div>
     </motion.div>
