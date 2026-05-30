@@ -3,8 +3,10 @@ import QRCode from "qrcode";
 import { supabase, phoneUrl } from "../../lib/supabase";
 import { HK_ALL, HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_LIVE_COLORS } from "../../lib/constants";
 import { loadJson, saveJson } from "../../lib/storage";
+import { suggestReassignments } from "../../lib/hkAgent";
 
 const TODAY = () => new Date().toISOString().split("T")[0];
+const sugKey = (s) => `${s.from}->${s.to}:${s.rooms.join(",")}`;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const workerColor = (i) => HK_LIVE_COLORS[i % HK_LIVE_COLORS.length];
@@ -1252,6 +1254,51 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   const totalVacated = roomVals.filter(r => r.vacated && r.status === "W").length;
   const progressPct = totalRooms ? Math.round((totalDone / totalRooms) * 100) : 0;
 
+  // ─── Liczba pokoi z maila (raport KWHotel) — z lokalnego źródła Electron ────
+  const [mailRooms, setMailRooms] = React.useState(null);
+  React.useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.hkAutomationGetSource) { setMailRooms(null); return; }
+    let stop = false;
+    const fetchSrc = async () => {
+      try {
+        const r = await api.hkAutomationGetSource(date);
+        if (stop) return;
+        const src = r?.ok ? r.source : null;
+        if (!src) { setMailRooms(null); return; }
+        const n = Array.isArray(src.rows) ? src.rows.filter(x => x?.status).length
+          : (src.summary?.plannedRooms ?? null);
+        setMailRooms(n);
+      } catch { if (!stop) setMailRooms(null); }
+    };
+    fetchSrc();
+    const id = setInterval(fetchSrc, 60000);
+    return () => { stop = true; clearInterval(id); };
+  }, [date]);
+
+  // ─── Agent regułowy: sugestie zamian pokoi (recepcja zatwierdza) ───────────
+  const [dismissedSug, setDismissedSug] = React.useState([]);
+  const agentSuggestions = React.useMemo(
+    () => suggestReassignments({ assignments, roomStates: rooms }).filter(s => !dismissedSug.includes(sugKey(s))),
+    [assignments, rooms, dismissedSug],
+  );
+  const applySuggestion = async (s) => {
+    const fromRooms = (assignments[s.from] || []).filter(r => !s.rooms.includes(r));
+    const toRooms   = [...new Set([...(assignments[s.to] || []), ...s.rooms])];
+    const newAssignments = { ...assignments, [s.from]: fromRooms, [s.to]: toRooms };
+    const { error } = await supabase.from("hk_plan")
+      .update({ assignments: newAssignments, updated_at: new Date().toISOString() }).eq("date", date);
+    if (error) { showToast("Błąd zamiany: " + error.message, "error"); return; }
+    await Promise.all(s.rooms.map(no =>
+      supabase.from("hk_rooms").upsert({ date, room: no, worker: s.to, status: "W" }, { onConflict: "date,room" })));
+    await supabase.from("hk_logs").insert({
+      date, log_time: new Date().toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }),
+      worker: employeeName || "Recepcja", action: "reassign", room: null, extra: `${s.from}→${s.to}: ${s.rooms.join(", ")}`,
+    });
+    setDismissedSug(prev => [...prev, sugKey(s)]);
+    showToast(`Przeniesiono ${s.rooms.length} pok.: ${s.from} → ${s.to}`, "success");
+  };
+
   return (
     <div className="hk-live-wrap cc-hkl-wrap">
 
@@ -1278,6 +1325,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
         {/* ═══ STATUS BAR — 5 stat cells na cc-* tokens ═══ */}
         <div className="cc-hkl-statbar" role="list" aria-label="Statystyki pokoi">
           {[
+            ...(mailRooms != null ? [["Z maila", mailRooms, "info"]] : []),
             ["Czeka",      stats.W,            "wait"],
             ["W trakcie",  stats.czyszczenie,  "info"],
             ["Gotowe",     stats.czyste,       "success"],
@@ -1293,6 +1341,27 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
           ))}
         </div>
       </header>
+
+      {/* Agent — sugestie zamian pokoi (recepcja zatwierdza) */}
+      {agentSuggestions.length > 0 && (
+        <div style={{ margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+          {agentSuggestions.map((s) => (
+            <div key={sugKey(s)} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "10px 14px", borderRadius: 10, background: "var(--plum-soft, rgba(109,40,217,.08))", border: "1px solid var(--plum-border, rgba(109,40,217,.25))" }}>
+              <span style={{ fontSize: 18 }} aria-hidden="true">🤖</span>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                  Przenieś {s.rooms.length} pok. ({s.rooms.join(", ")}): <strong>{s.from}</strong> → <strong>{s.to}</strong>
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{s.reason}</div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn btn-outline" style={{ fontSize: 12.5 }} onClick={() => setDismissedSug(prev => [...prev, sugKey(s)])}>Odrzuć</button>
+                <button className="btn btn-rose" style={{ fontSize: 12.5 }} onClick={() => applySuggestion(s)}>Zastosuj</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Body */}
       <div className="hk-live-body">
