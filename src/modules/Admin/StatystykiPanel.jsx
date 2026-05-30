@@ -41,25 +41,42 @@ export default function StatystykiPanel({
 
   return (
     <motion.div key="st" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+      {/* ═══ KPI ROW v2 (wspólny wzorzec) ═══ */}
+      <div className="cc-kpi-row cc-kpi-row--5">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Zmian w tygodniu</div>
+          <div className="cc-kpi-val">{weeklyStats.totalShifts}</div>
+          <div className="cc-kpi-sub">pon–nd</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Zakończonych</div>
+          <div className="cc-kpi-val cc-kpi-val--success">{weeklyStats.completedShifts}</div>
+          <div className="cc-kpi-sub">z raportem</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Wskaźnik zakończeń</div>
+          <div className={`cc-kpi-val${weeklyStats.completionRate>=80?" cc-kpi-val--success":" cc-kpi-val--warn"}`}>{weeklyStats.completionRate}<span className="cc-kpi-unit">%</span></div>
+          <div className="cc-kpi-sub">{weeklyStats.completionRate>=80?"dobry poziom":"do poprawy"}</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Raportów PDF</div>
+          <div className="cc-kpi-val cc-kpi-val--brand">{weeklyStats.reportsCount}</div>
+          <div className="cc-kpi-sub">wygenerowanych</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Korekty łącznie</div>
+          <div className="cc-kpi-val cc-kpi-val--gold">{paymentCorrections.length}</div>
+          <div className="cc-kpi-sub">płatności</div>
+        </div>
+      </div>
+
       <div className="panel glass dark-panel">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
-          <div className="panel-title" style={{margin:0}}><BarChart2 size={16}/> Statystyki tygodniowe</div>
+          <div>
+            <div className="panel-title" style={{margin:0}}><BarChart2 size={16}/> Statystyki tygodniowe</div>
+            <div className="cc-vsub">bieżący tydzień · dane z ewidencji</div>
+          </div>
           <button className="btn btn-danger-outline" style={{fontSize:12.5}} onClick={handleResetAll}><Trash2 size={13}/> Resetuj statystyki</button>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:14,marginBottom:20}}>
-          {[
-            {label:"Zmian w tym tygodniu",value:weeklyStats.totalShifts,accent:"var(--plum)"},
-            {label:"Zakończonych zmian",value:weeklyStats.completedShifts,accent:"var(--emerald)"},
-            {label:"Wskaźnik zakończeń",value:weeklyStats.completionRate+"%",accent:weeklyStats.completionRate>=80?"var(--emerald)":"var(--rose)"},
-            {label:"Raportów PDF",value:weeklyStats.reportsCount,accent:"var(--plum)"},
-            {label:"Korekty łącznie",value:paymentCorrections.length,accent:"var(--gold)"},
-          ].map(s=>(
-            <div key={s.label} style={{background:"var(--bg-card)",borderRadius:"var(--radius-md)",border:"1px solid var(--border-light)",borderLeft:`4px solid ${s.accent}`,padding:"16px 18px"}}>
-              <div style={{fontSize:11,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:8,fontWeight:700}}>{s.label}</div>
-              <div style={{fontSize:32,fontWeight:400,color:"var(--text-primary)",lineHeight:1,fontFamily:"var(--cc-font-display)"}}>{s.value}</div>
-            </div>
-          ))}
         </div>
 
         {weeklyStats.topEmp&&weeklyStats.topEmp.name&&(
@@ -93,15 +110,15 @@ export default function StatystykiPanel({
                 onClick={()=>setActivityDay(todayKey())}>Dziś</button>
             </div>
           </div>
-          <div className="stack">
+          <div>
             {dayLog.map(item=>(
-              <div key={item.id} style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.07)",borderRadius:"var(--radius-md)",padding:"9px 12px"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:item.logoutAt?"#2d8659":"#d4a83a",flexShrink:0}}/>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,fontWeight:600,color:"#e8e4de"}}>{item.employee} — {SHIFT_SHORT_LABELS[item.shift]||item.shift}</div>
-                  <div style={{fontSize:11,color:"#5f5a54"}}>{item.loginAt}{item.logoutAt?` → ${item.logoutAt}`:""}</div>
+              <div key={item.id} className={`cc-vrow${item.logoutAt?" cc-vrow--success":" cc-vrow--warn"}`}>
+                <div className="cc-vrow-dot" style={{background:item.logoutAt?"var(--cc-success)":"var(--cc-warning)"}}/>
+                <div className="cc-vrow-main">
+                  <div className="cc-vrow-title">{item.employee} — {SHIFT_SHORT_LABELS[item.shift]||item.shift}</div>
+                  <div className="cc-vrow-sub">{item.loginAt}{item.logoutAt?` → ${item.logoutAt}`:""}</div>
                 </div>
-                <span style={{fontSize:11,padding:"2px 8px",borderRadius:999,background:item.logoutAt?"rgba(45,134,89,.2)":"rgba(212,168,58,.15)",color:item.logoutAt?"#2d8659":"#d4a83a",fontWeight:600}}>
+                <span className="cc-vrow-badge" style={{background:item.logoutAt?"color-mix(in srgb,var(--cc-success) 18%,transparent)":"color-mix(in srgb,var(--cc-warning) 18%,transparent)",color:item.logoutAt?"var(--cc-success)":"var(--cc-warning)"}}>
                   {item.logoutAt?"Zakończona":"Trwa"}
                 </span>
               </div>

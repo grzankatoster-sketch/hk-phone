@@ -7789,4 +7789,46 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   flex-shrink: 0;
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   Wspólny wzorzec v2 dla paneli Admin — KPI strip + filter tabs + flat rows.
+   Modelowany na cc-parking-* (redesign 13–17), reużywalny bez per-panel CSS.
+   ════════════════════════════════════════════════════════════════════════ */
+.cc-kpi-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.cc-kpi-row--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cc-kpi-row--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .cc-kpi-row--5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .cc-kpi-row, .cc-kpi-row--3, .cc-kpi-row--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .cc-kpi-row, .cc-kpi-row--3, .cc-kpi-row--5 { grid-template-columns: 1fr; } }
+.cc-kpi { background: var(--cc-bg-elevated); border: 1px solid var(--cc-border); border-radius: var(--cc-radius-md); padding: 14px 16px; }
+.cc-kpi:hover { border-color: var(--cc-border-strong); }
+.cc-kpi-lbl { font-family: var(--cc-font-display); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--cc-text-muted); margin-bottom: 8px; }
+.cc-kpi-val { font-family: var(--cc-font-mono); font-size: 26px; font-weight: 700; color: var(--cc-text); letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+.cc-kpi-val--brand { color: var(--cc-brand); }
+.cc-kpi-val--warn { color: var(--cc-warning); }
+.cc-kpi-val--success { color: var(--cc-success); }
+.cc-kpi-val--danger { color: var(--cc-danger); }
+.cc-kpi-val--gold { color: var(--cc-accent-gold, var(--gold)); }
+.cc-kpi-unit { font-family: var(--cc-font-body); font-size: 13px; font-weight: 500; color: var(--cc-text-muted); }
+.cc-kpi-sub { font-size: 11px; color: var(--cc-text-faint); margin-top: 6px; }
+
+.cc-vsub { font-family: var(--cc-font-mono); font-size: 12px; color: var(--cc-text-faint); margin-top: 4px; }
+.cc-vtabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.cc-vtab { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--cc-border); background: var(--cc-bg-elevated); color: var(--cc-text-muted); font: 700 12px var(--cc-font-body); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
+.cc-vtab:hover { border-color: var(--cc-border-strong); }
+.cc-vtab--on { background: var(--cc-brand-soft); color: var(--cc-brand); border-color: color-mix(in srgb, var(--cc-brand) 30%, transparent); }
+.cc-vtab-cnt { font-family: var(--cc-font-mono); font-size: 10.5px; opacity: .65; font-variant-numeric: tabular-nums; }
+.cc-vtab--on .cc-vtab-cnt { opacity: 1; }
+
+/* Płaski wiersz listy v2 (ewidencja, korekty, historia, …) */
+.cc-vrow { display: flex; align-items: center; gap: 12px; padding: 11px 14px; background: var(--cc-bg-elevated); border: 1px solid var(--cc-border); border-radius: var(--cc-radius-md); margin-bottom: 7px; }
+.cc-vrow:hover { border-color: var(--cc-border-strong); }
+.cc-vrow--accent { border-left: 3px solid var(--cc-brand); }
+.cc-vrow--warn { border-left: 3px solid var(--cc-warning); }
+.cc-vrow--success { border-left: 3px solid var(--cc-success); }
+.cc-vrow-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cc-vrow-main { flex: 1; min-width: 0; }
+.cc-vrow-title { font-size: 13.5px; font-weight: 600; color: var(--cc-text); }
+.cc-vrow-sub { font-size: 11px; color: var(--cc-text-faint); margin-top: 2px; font-family: var(--cc-font-mono); }
+.cc-vrow-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+
 
