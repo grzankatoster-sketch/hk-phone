@@ -15,8 +15,34 @@ export default function HistoriaPanel({
   saveJson,
   STORAGE_KEYS,
 }) {
+  const activeCarry = Object.values(carryOverTasks||{}).flat().filter(t=>t&&!t.done).length;
+  const unresolvedInc = incidentLog.filter(i=>!i.resolved).length;
   return (
     <motion.div key="hist" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Przekazane aktywne</div>
+          <div className="cc-kpi-val cc-kpi-val--brand">{activeCarry}</div>
+          <div className="cc-kpi-sub">zadań do wykonania</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Zmiany bez raportu</div>
+          <div className={`cc-kpi-val${unresolvedInc>0?" cc-kpi-val--danger":" cc-kpi-val--success"}`}>{unresolvedInc}</div>
+          <div className="cc-kpi-sub">{unresolvedInc>0?"wymaga wyjaśnienia":"wszystko OK"}</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Historia przekazań</div>
+          <div className="cc-kpi-val">{handoverLog.length}</div>
+          <div className="cc-kpi-sub">wpisów w logu</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Incydenty łącznie</div>
+          <div className="cc-kpi-val cc-kpi-val--gold">{incidentLog.length}</div>
+          <div className="cc-kpi-sub">{incidentLog.filter(i=>i.resolved).length} wyjaśnionych</div>
+        </div>
+      </div>
+
       {/* Ręczne generowanie raportu dobowego */}
       <div className="panel glass dark-panel">
         <div className="panel-title" style={{margin:0,marginBottom:12}}><FileDown size={16}/> Generuj raport dobowy</div>
