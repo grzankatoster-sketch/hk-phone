@@ -82,7 +82,28 @@ export default function StandingRemindersPanel({ currentManager, showToast, addA
   const active = reminders.filter(r => r.active !== false);
   const inactive = reminders.filter(r => r.active === false);
 
+  const catCount = new Set(active.map(r => r.category).filter(Boolean)).size;
   return (
+    <>
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row cc-kpi-row--3">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Aktywne przypomnienia</div>
+          <div className="cc-kpi-val cc-kpi-val--gold">{active.length}</div>
+          <div className="cc-kpi-sub">widoczne na każdej zmianie</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Nieaktywne</div>
+          <div className="cc-kpi-val">{inactive.length}</div>
+          <div className="cc-kpi-sub">ukryte przed pracownikami</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Kategorie</div>
+          <div className="cc-kpi-val cc-kpi-val--brand">{catCount}</div>
+          <div className="cc-kpi-sub">w użyciu</div>
+        </div>
+      </div>
+
     <div className="panel glass dark-panel">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <div className="panel-title"><BellRing size={16} /> Stale przypomnienia dla pracownikow</div>
@@ -177,5 +198,6 @@ export default function StandingRemindersPanel({ currentManager, showToast, addA
         </div>
       )}
     </div>
+    </>
   );
 }
