@@ -42,14 +42,33 @@ export default function KorektyPanel({
 
   return (
     <motion.div key="ko" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
+      {/* ═══ KPI ROW v2 ═══ */}
+      {(()=>{const doneCount=paymentCorrections.filter(c=>c.done).length;return(
+        <div className="cc-kpi-row cc-kpi-row--3">
+          <div className="cc-kpi">
+            <div className="cc-kpi-lbl">Korekty łącznie</div>
+            <div className="cc-kpi-val">{paymentCorrections.length}</div>
+            <div className="cc-kpi-sub">w historii</div>
+          </div>
+          <div className="cc-kpi">
+            <div className="cc-kpi-lbl">Nierozpatrzone</div>
+            <div className={`cc-kpi-val${pendingCorrections.length>0?" cc-kpi-val--gold":" cc-kpi-val--success"}`}>{pendingCorrections.length}</div>
+            <div className="cc-kpi-sub">{pendingCorrections.length>0?"wymaga podpisu":"wszystko podpisane"}</div>
+          </div>
+          <div className="cc-kpi">
+            <div className="cc-kpi-lbl">Załatwione</div>
+            <div className="cc-kpi-val cc-kpi-val--success">{doneCount}</div>
+            <div className="cc-kpi-sub">z podpisem kierownika</div>
+          </div>
+        </div>
+      );})()}
+
       {/* Lista korekt */}
       <div className="panel glass dark-panel">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
           <div>
             <div className="panel-title" style={{margin:0}}><FileText size={16}/> Korekty płatności</div>
-            <div style={{fontSize:12.5,color:"var(--text-muted)",marginTop:3}}>
-              {paymentCorrections.length} łącznie · <span style={{color:pendingCorrections.length>0?"var(--gold)":"var(--emerald)",fontWeight:700}}>{pendingCorrections.length} nierozpatrzonych</span>
-            </div>
+            <div className="cc-vsub">{paymentCorrections.length} łącznie · {pendingCorrections.length} nierozpatrzonych</div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {pendingCorrections.length>0&&(
@@ -58,14 +77,11 @@ export default function KorektyPanel({
           </div>
         </div>
 
-        {/* Filtry */}
-        <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-          {["wszystkie","nierozpatrzone","załatwione"].map(f=>(
-            <button key={f} onClick={()=>setCorrectionFilter(f)}
-              style={{padding:"6px 14px",borderRadius:9,border:"1px solid",fontWeight:700,fontSize:12.5,cursor:"pointer",
-                      borderColor:correctionFilter===f?"var(--plum)":"var(--border-medium)",
-                      background:correctionFilter===f?"var(--plum-soft)":"transparent",
-                      color:correctionFilter===f?"var(--plum)":"var(--text-muted)",textTransform:"capitalize"}}>{f}
+        {/* Filtry v2 */}
+        <div className="cc-vtabs" style={{marginBottom:16}}>
+          {[["wszystkie","Wszystkie",paymentCorrections.length],["nierozpatrzone","Nierozpatrzone",pendingCorrections.length],["załatwione","Załatwione",paymentCorrections.filter(c=>c.done).length]].map(([f,lbl,cnt])=>(
+            <button key={f} type="button" onClick={()=>setCorrectionFilter(f)} className={`cc-vtab${correctionFilter===f?" cc-vtab--on":""}`}>
+              <span>{lbl}</span><span className="cc-vtab-cnt">{cnt}</span>
             </button>
           ))}
         </div>
@@ -120,17 +136,15 @@ export default function KorektyPanel({
                   </div>
                 </div>
               ) : (
-                <div key={c.id}
-                  onClick={()=>setExpandedCorrection(c.id)}
-                  style={{cursor:"pointer",padding:"10px 16px",borderRadius:"var(--radius-md)",border:"1px solid var(--border-light)",borderLeft:`3px solid ${c.done?"var(--emerald)":"var(--gold)"}`,background:"var(--bg-card)",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",transition:"all .15s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.boxShadow="var(--shadow-sm)";e.currentTarget.style.borderLeftWidth="4px";}}
-                  onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.borderLeftWidth="3px";}}>
-                  <span style={{fontSize:13,color:c.done?"var(--emerald)":"var(--gold)",fontWeight:800}}>{c.done?"✓":"⚠"}</span>
-                  <span style={{fontSize:10,padding:"2px 9px",borderRadius:999,background:c.done?"var(--emerald)":"var(--gold)",color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:".05em"}}>{c.docType||"dok"}</span>
-                  <span style={{fontSize:14,fontWeight:700,color:"var(--text-primary)",fontFamily:"var(--cc-font-display)",minWidth:120}}>{c.reservation||"—"}</span>
-                  <span style={{fontSize:12,color:"var(--text-secondary)"}}>{getFullName(c.submittedBy)}</span>
-                  <span style={{fontSize:11.5,color:"var(--text-muted)",marginLeft:"auto"}}>{(c.submittedAt||"").split(",")[0]}</span>
-                  <span style={{fontSize:11,color:"var(--plum)",fontWeight:700}}>&#9658;</span>
+                <div key={c.id} onClick={()=>setExpandedCorrection(c.id)} style={{cursor:"pointer",marginBottom:0}}
+                  className={`cc-vrow ${c.done?"cc-vrow--success":"cc-vrow--warn"}`}>
+                  <span style={{fontSize:10,padding:"2px 9px",borderRadius:999,background:c.done?"var(--cc-success)":"var(--cc-warning)",color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:".05em",flexShrink:0}}>{c.docType||"dok"}</span>
+                  <div className="cc-vrow-main">
+                    <div className="cc-vrow-title">{c.reservation||"—"} <span style={{fontWeight:400,color:"var(--cc-text-muted)",fontSize:12}}>· {getFullName(c.submittedBy)}</span></div>
+                    <div className="cc-vrow-sub">{(c.submittedAt||"").split(",")[0]}</div>
+                  </div>
+                  <span className="cc-vrow-badge" style={{background:c.done?"color-mix(in srgb,var(--cc-success) 18%,transparent)":"color-mix(in srgb,var(--cc-warning) 18%,transparent)",color:c.done?"var(--cc-success)":"var(--cc-warning)"}}>{c.done?"✓ Załatwione":"⚠ Czeka"}</span>
+                  <span style={{fontSize:11,color:"var(--cc-brand)",fontWeight:700,flexShrink:0}}>&#9658;</span>
                 </div>
               );
             })}
