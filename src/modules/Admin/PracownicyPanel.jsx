@@ -14,8 +14,35 @@ export default function PracownicyPanel({
   removeEmployee,
   employeeActivityLog,
 }) {
+  const month = monthKey();
+  const monthLogs = employeeActivityLog.filter(item=>{
+    if(!item.loginAt)return false;
+    const p=item.loginAt.split(".");if(p.length<3)return false;
+    const y=p[2]?.split(",")[0]?.trim();const m=p[1]?.padStart(2,"0");
+    return`${y}-${m}`===month;
+  });
+  const activeEmps = new Set(monthLogs.map(i=>i.employee)).size;
   return (
     <motion.div key="pr" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row cc-kpi-row--3">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Pracownicy</div>
+          <div className="cc-kpi-val">{employees.length}</div>
+          <div className="cc-kpi-sub">na liście</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Aktywni w mc</div>
+          <div className="cc-kpi-val cc-kpi-val--success">{activeEmps}</div>
+          <div className="cc-kpi-sub">{month}</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Zmian w mc</div>
+          <div className="cc-kpi-val cc-kpi-val--brand">{monthLogs.length}</div>
+          <div className="cc-kpi-sub">{monthLogs.filter(i=>i.logoutAt).length} zakończonych</div>
+        </div>
+      </div>
+
       <div className="panel glass dark-panel">
         <div className="panel-title"><Users size={16}/> Zarządzanie pracownikami</div>
         <div className="input-row" style={{marginBottom:14}}>
