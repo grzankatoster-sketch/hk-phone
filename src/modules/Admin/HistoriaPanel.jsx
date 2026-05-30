@@ -90,23 +90,23 @@ export default function HistoriaPanel({
           if(!allCarry.length)return <div className="empty-box empty-box-dark">Brak przekazanych zadań.</div>;
           const removeTask=(t)=>{const u={...carryOverTasks,[t.shift]:(carryOverTasks[t.shift]||[]).filter(x=>x.id!==t.id&&x.text!==t.text)};setCarryOverTasks(u);saveJson(STORAGE_KEYS.carry,u);showToast("Zadanie usunięte.","info");};
           return(
-            <div style={{display:"grid",gap:8}}>
-              {active.length>0&&<div style={{fontSize:11,color:"var(--dark-text-muted)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:2}}>Aktywne ({active.length})</div>}
+            <div>
+              {active.length>0&&<div style={{fontSize:11,color:"var(--dark-text-muted)",textTransform:"uppercase",letterSpacing:".07em",marginBottom:6}}>Aktywne ({active.length})</div>}
               {active.map((t,i)=>(
-                <div key={t.id||i} style={{display:"flex",gap:10,alignItems:"flex-start",background:"rgba(255,255,255,.04)",border:"1px solid rgba(45,106,79,.25)",borderRadius:"var(--radius-md)",padding:"10px 13px"}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:13,color:"var(--dark-text)",fontWeight:600,marginBottom:3}}>{t.text}</div>
-                    <div style={{fontSize:11,color:"var(--dark-text-muted)"}}>Zmiana: {SHIFT_SHORT_LABELS[t.shift]||t.shift} · Dodane przez: {t.createdBy||"—"} · {t.createdAt||""}</div>
+                <div key={t.id||i} className="cc-vrow cc-vrow--success">
+                  <div className="cc-vrow-main">
+                    <div className="cc-vrow-title">{t.text}</div>
+                    <div className="cc-vrow-sub">Zmiana: {SHIFT_SHORT_LABELS[t.shift]||t.shift} · {t.createdBy||"—"} · {t.createdAt||""}</div>
                   </div>
                   <button className="btn btn-danger-outline" style={{fontSize:11.5,flexShrink:0}} onClick={()=>removeTask(t)}>Usuń</button>
                 </div>
               ))}
-              {done.length>0&&<div style={{fontSize:11,color:"var(--dark-text-muted)",textTransform:"uppercase",letterSpacing:".07em",marginTop:6,marginBottom:2}}>Wykonane ({done.length})</div>}
+              {done.length>0&&<div style={{fontSize:11,color:"var(--dark-text-muted)",textTransform:"uppercase",letterSpacing:".07em",marginTop:8,marginBottom:6}}>Wykonane ({done.length})</div>}
               {done.map((t,i)=>(
-                <div key={(t.id||i)+'d'} style={{display:"flex",gap:10,alignItems:"flex-start",background:"rgba(45,106,79,.06)",border:"1px solid rgba(45,106,79,.2)",borderRadius:"var(--radius-md)",padding:"10px 13px",opacity:.75}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:13,color:"var(--dark-text-muted)",textDecoration:"line-through"}}>{t.text}</div>
-                    <div style={{fontSize:11,color:"var(--dark-text-muted)"}}>Zmiana: {SHIFT_SHORT_LABELS[t.shift]||t.shift} · {t.doneBy&&`Wykonane: ${t.doneBy}`}</div>
+                <div key={(t.id||i)+'d'} className="cc-vrow" style={{opacity:.7}}>
+                  <div className="cc-vrow-main">
+                    <div className="cc-vrow-title" style={{textDecoration:"line-through",color:"var(--cc-text-muted)"}}>{t.text}</div>
+                    <div className="cc-vrow-sub">Zmiana: {SHIFT_SHORT_LABELS[t.shift]||t.shift} · {t.doneBy&&`Wykonane: ${t.doneBy}`}</div>
                   </div>
                   <button className="btn btn-danger-outline" style={{fontSize:11.5,flexShrink:0}} onClick={()=>removeTask(t)}>Usuń</button>
                 </div>

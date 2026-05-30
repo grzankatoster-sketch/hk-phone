@@ -61,11 +61,13 @@ export default function KasaAdminPanel({
         {kasaLog.length===0?(
           <div className="empty-box empty-box-dark">Brak operacji.</div>
         ):(
-          <div style={{display:"grid",gap:6,maxHeight:280,overflowY:"auto"}}>
+          <div style={{maxHeight:280,overflowY:"auto"}}>
             {kasaLog.slice(0,20).map(e=>(
-              <div key={e.id} style={{background:e.type==="post_wplata"?"rgba(160,116,40,.08)":"rgba(255,255,255,.04)",border:"1px solid var(--dark-border)",borderRadius:"var(--radius-md)",padding:"9px 13px"}}>
-                <div style={{fontSize:12.5,color:"var(--dark-text)",lineHeight:1.5}}>{e.text}</div>
-                <div style={{fontSize:11,color:"#635e57",marginTop:2}}>{e.from} · {SHIFT_SHORT_LABELS[e.shift]||e.shift} · {e.createdAt}</div>
+              <div key={e.id} className={`cc-vrow${e.type==="post_wplata"?" cc-vrow--warn":""}`}>
+                <div className="cc-vrow-main">
+                  <div className="cc-vrow-title" style={{fontWeight:500,fontSize:12.5}}>{e.text}</div>
+                  <div className="cc-vrow-sub">{e.from} · {SHIFT_SHORT_LABELS[e.shift]||e.shift} · {e.createdAt}</div>
+                </div>
               </div>
             ))}
           </div>
@@ -78,12 +80,12 @@ export default function KasaAdminPanel({
         {stalaLog.length===0?(
           <div className="empty-box empty-box-dark">Brak historii zmian.</div>
         ):(
-          <div style={{display:"grid",gap:7,maxHeight:320,overflowY:"auto"}}>
+          <div style={{maxHeight:320,overflowY:"auto"}}>
             {stalaLog.slice(0,10).map(entry=>(
-              <div key={entry.id} style={{background:"rgba(255,255,255,.04)",border:"1px solid var(--dark-border)",borderRadius:"var(--radius-md)",padding:"10px 13px",display:"flex",alignItems:"center",gap:12}}>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:13,color:"var(--dark-text)",fontWeight:600}}>{fmtMoney(entry.from)} → {fmtMoney(entry.to)}</div>
-                  <div style={{fontSize:11,color:"#635e57",marginTop:2}}>{entry.changedBy} · {entry.changedAt}</div>
+              <div key={entry.id} className="cc-vrow cc-vrow--accent">
+                <div className="cc-vrow-main">
+                  <div className="cc-vrow-title">{fmtMoney(entry.from)} → {fmtMoney(entry.to)}</div>
+                  <div className="cc-vrow-sub">{entry.changedBy} · {entry.changedAt}</div>
                 </div>
               </div>
             ))}
@@ -97,11 +99,13 @@ export default function KasaAdminPanel({
         {discrepancies.length===0?(
           <div className="empty-box empty-box-dark">Brak zgłoszonych niezgodności.</div>
         ):(
-          <div style={{display:"grid",gap:8,maxHeight:400,overflowY:"auto"}}>
+          <div style={{maxHeight:400,overflowY:"auto"}}>
             {discrepancies.map(m=>(
-              <div key={m.id} style={{background:"rgba(154,48,64,.07)",border:"1px solid rgba(154,48,64,.25)",borderRadius:"var(--radius-md)",padding:"11px 14px"}}>
-                <div style={{fontSize:13,color:"var(--dark-text)",lineHeight:1.55,marginBottom:4}}>{m.text}</div>
-                <div style={{fontSize:11,color:"#635e57"}}>{m.from} · {SHIFT_SHORT_LABELS[m.shift]||m.shift} · {m.createdAt}</div>
+              <div key={m.id} className="cc-vrow" style={{borderLeft:"3px solid var(--cc-danger)"}}>
+                <div className="cc-vrow-main">
+                  <div className="cc-vrow-title" style={{fontWeight:500,fontSize:12.5,lineHeight:1.5}}>{m.text}</div>
+                  <div className="cc-vrow-sub">{m.from||m.sender} · {SHIFT_SHORT_LABELS[m.shift]||m.shift} · {m.createdAt||m.sentAt}</div>
+                </div>
               </div>
             ))}
           </div>
