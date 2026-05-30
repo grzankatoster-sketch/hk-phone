@@ -1115,8 +1115,15 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           <button className="btn btn-outline" onClick={()=>downloadHKExcel(hkDate,hkStaff,hkData)}>
             <FileDown size={14}/> Excel
           </button>
-          {autoSource&&(
+          {autoSource&&(()=>{
+            const s=autoSource.summary||{};
+            const mailRoomCount=(Array.isArray(autoSource.rows)?autoSource.rows.filter(r=>r?.status).length:0)
+              || ((s.departures||0)+(s.turnarounds||0)+(s.arrivals||0)+(s.generatedStayovers||0));
+            return (
             <div style={{marginLeft:"auto",textAlign:"right",lineHeight:1.5}}>
+              <div style={{fontSize:11.5,fontWeight:800,color:dark?"var(--dark-text)":"var(--text-primary)"}}>
+                Pokoi z maila: <span style={{color:"#5a1d4a"}}>{mailRoomCount}</span>
+              </div>
               <div style={{fontSize:10,fontWeight:600,color:dark?"var(--dark-text-secondary)":"var(--text-secondary)"}}>
                 KWH: {autoSource.savedAt?new Date(autoSource.savedAt).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):""}
                 {autoSource.historyReportCount?` · hist: ${autoSource.historyReportCount}`:""}
@@ -1137,7 +1144,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
                 )}
               </div>
             </div>
-          )}
+            );})()}
         </div>
       </div>
 
