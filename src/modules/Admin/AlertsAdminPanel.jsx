@@ -90,7 +90,34 @@ export default function AlertsAdminPanel({ currentManager, showToast, addAudit }
   const active = alerts.filter(a => !a.expires_at || new Date(a.expires_at).getTime() > now);
   const expired = alerts.filter(a => a.expires_at && new Date(a.expires_at).getTime() <= now);
 
+  const urgentActive = active.filter(a => a.priority === "urgent").length;
+  const pinnedActive = active.filter(a => a.pinned).length;
   return (
+    <>
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Aktywne alerty</div>
+          <div className="cc-kpi-val cc-kpi-val--brand">{active.length}</div>
+          <div className="cc-kpi-sub">widoczne dla pracowników</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Pilne</div>
+          <div className={`cc-kpi-val${urgentActive>0?" cc-kpi-val--danger":""}`}>{urgentActive}</div>
+          <div className="cc-kpi-sub">oznaczone PILNE</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Przypięte</div>
+          <div className="cc-kpi-val cc-kpi-val--gold">{pinnedActive}</div>
+          <div className="cc-kpi-sub">na górze listy</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Wygasłe</div>
+          <div className="cc-kpi-val">{expired.length}</div>
+          <div className="cc-kpi-sub">do usunięcia</div>
+        </div>
+      </div>
+
     <div className="panel glass dark-panel">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
         <div className="panel-title"><AlertCircle size={16} /> Pilne informacje dla pracownikow</div>
@@ -220,5 +247,6 @@ export default function AlertsAdminPanel({ currentManager, showToast, addAudit }
         </div>
       )}
     </div>
+    </>
   );
 }
