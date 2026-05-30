@@ -3,34 +3,7 @@ import { motion } from "framer-motion";
 import { Settings, Download, RefreshCw } from "lucide-react";
 import UpdateBanner from "../../UpdateBanner";
 
-function RailwaySettings() {
-  const [url, setUrl] = React.useState("");
-  const [status, setStatus] = React.useState("idle");
-  React.useEffect(() => {
-    window.electronAPI?.remoteGetUrl?.().then(r => { if (r) setUrl(r); }).catch(() => {});
-  }, []);
-  const save = async () => {
-    if (!url.trim()) return;
-    await window.electronAPI?.remoteSetUrl?.(url.trim());
-    setStatus("checking");
-    const r = await window.electronAPI?.remoteTest?.();
-    setStatus(r?.ok ? "ok" : "error");
-  };
-  return (
-    <div className="panel glass dark-panel">
-      <div className="panel-title" style={{color:"#34d399"}}>&#127760; Serwer Railway (HK)</div>
-      <div style={{fontSize:12,color:"#948e85",marginBottom:10}}>Adres serwera Railway — wymagany do działania QR kodów i aplikacji mobilnej pokojówek.</div>
-      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-        <input value={url} onChange={e=>setUrl(e.target.value)}
-          placeholder="https://hk-server-production.up.railway.app"
-          style={{flex:1,padding:"8px 10px",borderRadius:7,border:`1px solid ${status==="ok"?"rgba(52,211,153,.4)":status==="error"?"rgba(220,60,60,.4)":"var(--dark-border)"}`,background:"rgba(255,255,255,.04)",color:"#e6edf3",fontSize:12,fontFamily:"monospace"}}/>
-        <button onClick={save} style={{padding:"8px 16px",borderRadius:7,border:"none",background:"var(--plum)",color:"#0B0810",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",boxShadow:"var(--plum-bright-glow)"}}>Zapisz i testuj</button>
-      </div>
-      {status==="ok"&&<div style={{marginTop:8,fontSize:12,color:"#34d399",fontWeight:600}}>&#10003; Połączenie działa</div>}
-      {status==="error"&&<div style={{marginTop:8,fontSize:12,color:"#f87171",fontWeight:600}}>&#10007; Nie można połączyć — sprawdź adres</div>}
-    </div>
-  );
-}
+// Panel "Serwer Railway (HK)" usunięty — synchronizacja HK działa przez Supabase.
 
 export default function UstawieniaPanel({
   adminDark, setAdminDark,
@@ -83,8 +56,6 @@ export default function UstawieniaPanel({
           ))}
         </div>
       </div>
-
-      {!!window.electronAPI && <RailwaySettings/>}
     </motion.div>
   );
 }
