@@ -17,6 +17,25 @@ export default function KasaAdminPanel({
 
   return (
     <motion.div key="kasa-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
+      {/* ═══ KPI ROW v2 ═══ */}
+      <div className="cc-kpi-row cc-kpi-row--3">
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Stała kasowa</div>
+          <div className="cc-kpi-val cc-kpi-val--brand">{fmtMoney(stalaKasowa)}</div>
+          <div className="cc-kpi-sub">aktualna wartość</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Operacje kasowe</div>
+          <div className="cc-kpi-val">{kasaLog.length}</div>
+          <div className="cc-kpi-sub">{stalaLog.length} zmian stałej</div>
+        </div>
+        <div className="cc-kpi">
+          <div className="cc-kpi-lbl">Niezgodności</div>
+          <div className={`cc-kpi-val${discrepancies.length>0?" cc-kpi-val--danger":" cc-kpi-val--success"}`}>{discrepancies.length}</div>
+          <div className="cc-kpi-sub">{discrepancies.length>0?"zgłoszone do weryfikacji":"brak zgłoszeń"}</div>
+        </div>
+      </div>
+
       {/* Stała kasowa */}
       <div className="panel glass dark-panel">
         <div className="panel-title"><Settings size={16}/> Stała kasowa — zarządzanie</div>
