@@ -206,7 +206,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   // ─── Sync plan to Supabase when hkData changes ───────────────────────────
   React.useEffect(() => {
     if (!hkData) return;
-    // Only sync when hkData actually contains person assignments (Electron app data, not empty Railway state)
+    // Only sync when hkData actually contains person assignments (Electron app data, not empty Supabase state)
     if (!Object.values(hkData).some(rd => rd.person)) return;
     const sync = async () => {
       const rt = {};

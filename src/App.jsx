@@ -27,6 +27,7 @@ import ConfirmModal from "./components/modals/ConfirmModal";
 import GlobalSearchModal from "./components/modals/GlobalSearchModal";
 import EmployeeReportModal from "./components/modals/EmployeeReportModal";
 import PreShiftModal from "./components/modals/PreShiftModal";
+import IdentityConfirmModal from "./components/modals/IdentityConfirmModal";
 import AuditLogModal from "./components/modals/AuditLogModal";
 import MessageModal from "./components/modals/MessageModal";
 import CorrectionApprovalModal from "./components/modals/CorrectionApprovalModal";
@@ -48,11 +49,11 @@ import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers } from "./lib/stora
 import { verifyOrCreateAdminPassword, hasAdminPassword, verifyBootstrapPassword, createManagerPassword } from "./lib/adminAuth";
 import {
   ADMIN_MANAGERS, SHIFT_OPTIONS,
-  SHIFT_LABELS, SHIFT_LABELS_PL, SHIFT_SHORT_LABELS,
+  SHIFT_LABELS, SHIFT_LABELS_PL, SHIFT_SHORT_LABELS, SHIFT_NAME_PL, NEXT_SHIFT,
   defaultEmployees, defaultTasks, getDefaultWikiEntries, emptyCarryOver,
   HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_ALL, TENANT_ID,
 } from "./lib/constants";
-import { fmt, fmtA, todayKey, monthKey, autoDetectShift, shiftFromSchedule } from "./lib/dates";
+import { fmt, fmtA, todayKey, monthKey, autoDetectShift, shiftFromSchedule, shiftStartMinutes, getScheduleDayEntry } from "./lib/dates";
 import { normalizeToShift } from "./lib/excel";
 import { pl, plR, normTask, buildShiftFn, buildEmpFn, fmtMoney } from "./lib/format";
 import { mkPDF_header, mkPDF_section, mkPDF_kv, mkPDF_paragraph, mkPDF_item, mkPDF_footer, savePDF } from "./lib/pdf";
@@ -433,6 +434,82 @@ export default function App(){
     setPendingAutoStart(true);
     setShowWelcomeOverlay(true);
   },[resolveLoginShift,selectedShift]);
+  // ── Identity confirm na wczesnym logowaniu (do 30 min przed startem zmiany) ──
+  const [identityConfirm,setIdentityConfirm]=useState(null);
+  const attemptWorkerLogin=useCallback((name)=>{
+    const empName=name||employeeName;
+    const currentSchedule=loadJson(STORAGE_KEYS.schedule,schedule);
+    const startMin=shiftStartMinutes(currentSchedule,empName);
+    if(startMin!=null){
+      const now=new Date();
+      const nowMin=now.getHours()*60+now.getMinutes();
+      const diff=startMin-nowMin; // dodatni = pracownik loguje się przed startem
+      if(diff>0&&diff<=30){
+        const entry=getScheduleDayEntry(currentSchedule,empName);
+        const shiftKey=entry?.shift||null;
+        const raw=entry?.raw;
+        let hours="";
+        if(raw&&typeof raw==="object"){
+          const st=raw.start??raw.startTime??raw.start_time??raw.from??raw.from_time;
+          const en=raw.end??raw.endTime??raw.end_time??raw.to??raw.to_time;
+          hours=[st,en].filter(Boolean).join("–");
+        }else if(typeof raw==="string"&&/\d\s*[-–—]\s*\d/.test(raw)){
+          hours=raw.replace(/\s*[-–—]\s*/,"–");
+        }
+        const pad=n=>String(n).padStart(2,"0");
+        setIdentityConfirm({
+          employeeName:empName,
+          shiftLabel:shiftKey?`${(SHIFT_NAME_PL[shiftKey]||shiftKey)}${hours?" "+hours:""}`:(hours||""),
+          startLabel:`${pad(Math.floor(startMin/60))}:${pad(startMin%60)}`,
+          nowLabel:`${pad(now.getHours())}:${pad(now.getMinutes())}`,
+        });
+        return;
+      }
+    }
+    completeLogin();
+  },[employeeName,schedule,completeLogin]);
+  // Godziny + typ zmiany wpisane przez kierownika w grafiku (zalogowana osoba, dziś).
+  const scheduledEntry=useMemo(()=>{
+    if(!employeeName)return{hours:"",shift:null};
+    const e=getScheduleDayEntry(schedule,employeeName);
+    const raw=e?.raw;
+    let hours="";
+    if(raw&&typeof raw==="object"){
+      const start=raw.start??raw.startTime??raw.start_time??raw.from??raw.from_time;
+      const end=raw.end??raw.endTime??raw.end_time??raw.to??raw.to_time;
+      hours=[start,end].filter(Boolean).join("–");
+    }else if(typeof raw==="string"&&/\d\s*[-–—]\s*\d/.test(raw)){
+      hours=raw.replace(/\s*[-–—]\s*/,"–");
+    }
+    return{hours,shift:e?.shift||null};
+  },[employeeName,schedule]);
+  // Godziny doklejamy do etykiety TYLKO gdy pokazywany typ zmiany zgadza się z
+  // grafikiem — po ręcznej zmianie zmiany przy logowaniu wracamy do sztywnej etykiety.
+  const shiftFullLabel=useCallback((key)=>{
+    if(!key)return"—";
+    const useHours=scheduledEntry.hours&&key===scheduledEntry.shift;
+    return useHours?`${SHIFT_NAME_PL[key]||key} ${scheduledEntry.hours}`:(SHIFT_LABELS_PL[key]||key);
+  },[scheduledEntry]);
+  const shiftShortLabel=useCallback((key)=>{
+    if(!key)return"—";
+    const useHours=scheduledEntry.hours&&key===scheduledEntry.shift;
+    const name=(SHIFT_NAME_PL[key]||key).replace(/^Zmiana\s+/i,"");
+    return useHours?`${name.charAt(0).toUpperCase()}${name.slice(1)} ${scheduledEntry.hours}`:(SHIFT_SHORT_LABELS[key]||key);
+  },[scheduledEntry]);
+  // Domyślny cel przekazania = następna zmiana po obecnej (a nie sztywno "nocna").
+  // Ustawiamy przy logowaniu; pracownik może później zmienić ręcznie w UI.
+  useEffect(()=>{
+    if(selectedShift&&NEXT_SHIFT[selectedShift]){
+      setCarryOverTarget(NEXT_SHIFT[selectedShift]);
+      setNewReminderShift(selectedShift);
+    }
+  },[selectedShift]);
+  // Odrzucenia przypomnień/powiadomień utrwalamy per pracownik + dzień, żeby nie
+  // wracały po ponownym logowaniu tego samego dnia (reset następuje naturalnie jutro).
+  const dismissStoreKey=useCallback((name)=>`reception-dismissed-reminders-${name||"_"}-${todayKey()}`,[]);
+  useEffect(()=>{
+    if(employeeName&&started)saveJson(dismissStoreKey(employeeName),dismissedReminderKeys);
+  },[dismissedReminderKeys,employeeName,started,dismissStoreKey]);
   // ── Pre-shift modal (B5) ────────────────────────────────────────────────
   const [showPreShiftModal,setShowPreShiftModal]=useState(false);
   // Switch top-bar po zalogowaniu kierownika
@@ -519,7 +596,7 @@ export default function App(){
     });
     return preserved;
   });
-  // Sync hkData → Supabase hk_plan so Railway/web live panel can load assignments
+  // Sync hkData → Supabase hk_plan so the web live panel can load assignments
   useEffect(()=>{
     const buildPlanPayload=(date,data)=>{
       if(!data||!date||Object.keys(data).length===0)return null;
@@ -888,7 +965,7 @@ export default function App(){
 
   const todayDatedReminders=useMemo(()=>{
     if(!started||!selectedShift||!currentSessionDate)return[];
-    return datedReminders.filter(r=>r.targetDate===currentSessionDate&&r.targetShift===selectedShift&&!dismissedReminderKeys.includes(`dated-${r.id}`));
+    return datedReminders.filter(r=>r.targetDate===currentSessionDate&&(!r.targetShift||r.targetShift===selectedShift)&&!dismissedReminderKeys.includes(`dated-${r.id}`));
   },[started,selectedShift,currentSessionDate,datedReminders,dismissedReminderKeys]);
 
   // Licznik usterek (aktywne)
@@ -924,7 +1001,7 @@ export default function App(){
 
   const futureDatedReminders=useMemo(()=>{
     const today=todayKey();
-    return[...datedReminders].filter(r=>r.targetDate>=today).sort((a,b)=>a.targetDate.localeCompare(b.targetDate)||a.targetShift.localeCompare(b.targetShift));
+    return[...datedReminders].filter(r=>r.targetDate>=today).sort((a,b)=>a.targetDate.localeCompare(b.targetDate)||(a.targetShift||"").localeCompare(b.targetShift||""));
   },[datedReminders]);
 
   const filteredEvidenceLog=useMemo(()=>employeeActivityLog.filter(item=>{if(!item.loginAt)return false;const parts=item.loginAt.split(".");if(parts.length<3)return false;const year=parts[2]?.split(",")[0]?.trim();const month=parts[1]?.padStart(2,"0");return`${year}-${month}`===evidenceMonth;}),[employeeActivityLog,evidenceMonth]);
@@ -1006,10 +1083,14 @@ export default function App(){
     const ackBase=`ack-${ackN}-${dayK}-${shiftKey}`;
     // Auto-ACK puste kategorie — żeby nie pokazywać pustych checkboxów w modalu
     const nowMs=Date.now();
-    const hasAlerts=loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>{
+    const relevantAlerts=loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>{
       const notExp=!a.expires_at||new Date(a.expires_at).getTime()>nowMs;
       return notExp&&(!a.target_shift||a.target_shift===shiftKey);
-    }).length>0;
+    });
+    const hasAlerts=relevantAlerts.length>0;
+    // Hash zbioru alertów — nowy alert zmienia hash i unieważnia poprzedni ACK,
+    // więc okno startowe pokaże się ponownie (analogicznie do stałych przypomnień).
+    const alertsHash=relevantAlerts.map(a=>a.id).sort().join(",");
     const hasReminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false).length>0;
     const wikiLastSeen=parseInt(localStorage.getItem(`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`)||"0");
     const hasNewWiki=wikiEntries.filter(w=>(w.updatedAt?new Date(w.updatedAt).getTime():0)>wikiLastSeen).length>0;
@@ -1022,7 +1103,8 @@ export default function App(){
       const sHash=rems.map(r=>r.id).sort().join(",");
       if(sHash&&localStorage.getItem(`ack-sh-${ackN}-${sHash}`)==="1")localStorage.setItem(`${ackBase}-standing`,"1");
     }
-    const allAck=localStorage.getItem(`${ackBase}-alerts`)==="1"
+    const alertsAcked=!hasAlerts||localStorage.getItem(`ack-al-${ackN}-${alertsHash}`)==="1";
+    const allAck=alertsAcked
               &&localStorage.getItem(`${ackBase}-standing`)==="1"
               &&localStorage.getItem(`${ackBase}-wiki`)==="1";
     if(allAck||inboxCount===0){actualStartShift();return;}
@@ -1036,7 +1118,7 @@ export default function App(){
     const shiftLabel=SHIFT_SHORT_LABELS[shiftKey]||shiftKey;
     const init={};(tasks[shiftKey]||[]).forEach((_,i)=>{init[i]=false;});setCompleted(init);
     const updated=[{id:crypto.randomUUID(),employee:employeeName,shift:shiftKey,loginAt:fmtA(),logoutAt:""},...employeeActivityLog];
-    setEmployeeActivityLog(updated);saveJson(STORAGE_KEYS.employeeLog,updated);setCurrentSessionDate(todayKey());setDismissedReminderKeys([]);
+    setEmployeeActivityLog(updated);saveJson(STORAGE_KEYS.employeeLog,updated);setCurrentSessionDate(todayKey());setDismissedReminderKeys(loadJson(dismissStoreKey(employeeName),[]));
     const cleanedCarry={...carryOverTasks,[shiftKey]:(carryOverTasks[shiftKey]||[]).filter(t=>!t.done)};
     setCarryOverTasks(cleanedCarry);saveJson(STORAGE_KEYS.carry,cleanedCarry);setShiftStartTime(new Date());setStarted(true);setWorkerTab("zadania");
     setCashOpeningAmount(String(stalaKasowa));
@@ -1132,10 +1214,10 @@ export default function App(){
     setNewReminderText("");showToast(entryType==="task"?"Ogólne zadanie dodane.":"Ogólne powiadomienie dodane — widoczne na ekranie startowym.","success");
   };
 
-  const addDatedReminder=(entryType="reminder")=>{if(!newReminderText.trim()||!newReminderShift||!newReminderDate){showToast("Wypełnij wszystkie pola.","error");return;}const isAdminCreated=!!(isAdmin&&showAdminPanel);const ne={id:crypto.randomUUID(),text:newReminderText.trim(),targetShift:newReminderShift,targetDate:newReminderDate,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),entryType,source:isAdminCreated?"admin":"worker"};const updated=[ne,...datedReminders];setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);
+  const addDatedReminder=(entryType="reminder")=>{if(!newReminderText.trim()||!newReminderDate){showToast("Wypełnij treść i datę.","error");return;}const isAdminCreated=!!(isAdmin&&showAdminPanel);const ne={id:crypto.randomUUID(),text:newReminderText.trim(),targetShift:newReminderShift||null,targetDate:newReminderDate,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),entryType,source:isAdminCreated?"admin":"worker"};const updated=[ne,...datedReminders];setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);
     const logEntry={id:crypto.randomUUID(),type:entryType,from:employeeName||currentManager||"recepcja",fromShift:selectedShift||"—",toShift:newReminderShift,text:newReminderText.trim(),targetDate:newReminderDate,createdAt:fmtA()};
     const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
-    setNewReminderText("");showToast(entryType==="task"?`Zadanie ustawione na ${newReminderDate}.`:`Przypomnienie ustawione na ${newReminderDate} (${SHIFT_SHORT_LABELS[newReminderShift]}).`,"success");};
+    setNewReminderText("");showToast(entryType==="task"?`Zadanie ustawione na ${newReminderDate}.`:`Przypomnienie ustawione na ${newReminderDate} (${newReminderShift?SHIFT_SHORT_LABELS[newReminderShift]:"wszystkie zmiany"}).`,"success");};
   const deleteDatedReminder=(id)=>{const updated=datedReminders.filter(r=>r.id!==id);setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);showToast("Przypomnienie usunięte.","info");};
   const dismissDatedReminder=(id)=>setDismissedReminderKeys(prev=>[...prev,`dated-${id}`]);
   const closeEmpEntry=()=>{const updated=employeeActivityLog.map(item=>item.employee===employeeName&&item.shift===selectedShift&&!item.logoutAt?{...item,logoutAt:fmtA()}:item);setEmployeeActivityLog(updated);saveJson(STORAGE_KEYS.employeeLog,updated);};
@@ -1887,7 +1969,7 @@ export default function App(){
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
                             <div>
                               <div style={{fontSize:11,color:"var(--text-muted)",fontWeight:700,textTransform:"uppercase",letterSpacing:".07em",marginBottom:4}}>Twoja zmiana</div>
-                              <div style={{fontSize:18,fontWeight:400,fontFamily:"'DM Serif Display',serif",color:"var(--text-primary)",letterSpacing:".005em"}}>{SHIFT_LABELS_PL[selectedShift]||"—"}</div>
+                              <div style={{fontSize:18,fontWeight:400,fontFamily:"'DM Serif Display',serif",color:"var(--text-primary)",letterSpacing:".005em"}}>{shiftFullLabel(selectedShift)}</div>
                             </div>
                             {loginShiftSource==="schedule"?(
                               <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
@@ -1990,7 +2072,7 @@ export default function App(){
                     </div>
                     <h1 className="v2-dash-title">
                       {(()=>{const h=new Date().getHours();return h<10?"Dzień dobry":h<18?"Dobre popołudnie":"Dobry wieczór";})()}, {employeeName}
-                      <span className="v2-live-pill">Live · {SHIFT_SHORT_LABELS[selectedShift]||selectedShift||"zmiana"}</span>
+                      <span className="v2-live-pill">Live · {shiftShortLabel(selectedShift)}</span>
                     </h1>
                     <div className="v2-dash-meta">
                       <span>Start: <b>{shiftStartTime?new Date(shiftStartTime).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}):"—"}</b></span>
@@ -2057,7 +2139,7 @@ export default function App(){
                       <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" style={{color:"var(--plum)"}}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
                     <div className="v2-kpi-value v2-kpi-mono">{shiftElapsed||"—"}</div>
-                    <div className="v2-kpi-sub">{SHIFT_LABELS_PL[selectedShift]||SHIFT_SHORT_LABELS[selectedShift]||selectedShift||"—"}</div>
+                    <div className="v2-kpi-sub">{shiftFullLabel(selectedShift)}</div>
                   </div>
 
                   <div
@@ -2402,7 +2484,7 @@ export default function App(){
                     {employeeName}
                     <span className="cc-flow-name-tag">· ty</span>
                   </div>
-                  <div className="cc-flow-meta">{SHIFT_LABELS_PL[selectedShift]||selectedShift||"—"}</div>
+                  <div className="cc-flow-meta">{shiftFullLabel(selectedShift)}</div>
                 </div>
               </div>
               <div className="cc-flow-arrow" aria-hidden="true">→</div>
@@ -2522,13 +2604,13 @@ export default function App(){
                 onKeyDown={e=>e.key==="Enter"&&(reminderMode==="general"?addGeneralReminder():addDatedReminder())}/>
               {reminderMode==="dated"&&(
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                  <div><label>Docelowa zmiana</label><select className="input" value={newReminderShift} onChange={e=>setNewReminderShift(e.target.value)}>{SHIFT_OPTIONS.map(s=><option key={s} value={s}>{SHIFT_LABELS_PL[s]}</option>)}</select></div>
+                  <div><label>Docelowa zmiana</label><select className="input" value={newReminderShift} onChange={e=>setNewReminderShift(e.target.value)}><option value="">Wszystkie zmiany</option>{SHIFT_OPTIONS.map(s=><option key={s} value={s}>{SHIFT_LABELS_PL[s]}</option>)}</select></div>
                   <div><label>Data</label><input className="input" type="date" value={newReminderDate} onChange={e=>setNewReminderDate(e.target.value)}/></div>
                 </div>
               )}
               <button className="btn btn-sky full"
                 onClick={reminderMode==="general"?()=>addGeneralReminder("reminder"):()=>addDatedReminder("reminder")}
-                disabled={!newReminderText.trim()||(reminderMode==="dated"&&(!newReminderShift||!newReminderDate))}>
+                disabled={!newReminderText.trim()||(reminderMode==="dated"&&!newReminderDate)}>
                 <Bell size={14}/>
                 {reminderMode==="general"?"Dodaj ogólne powiadomienie":"Ustaw przypomnienie na wybrany dzień"}
               </button>
@@ -2540,7 +2622,7 @@ export default function App(){
                       <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
                         {r.entryType==="task"?<CheckSquare size={13} style={{color:"var(--amber)",flexShrink:0}}/>:<Bell size={13} style={{color:"var(--sky)",flexShrink:0}}/>}
                         <div className="dated-future-date">{r.targetDate}</div>
-                        <div><div style={{fontWeight:600,fontSize:13.5}}>{r.text}</div><div className="tiny muted">{SHIFT_LABELS_PL[r.targetShift]} · {r.createdBy}</div></div>
+                        <div><div style={{fontWeight:600,fontSize:13.5}}>{r.text}</div><div className="tiny muted">{r.targetShift?SHIFT_LABELS_PL[r.targetShift]:"Wszystkie zmiany"} · {r.createdBy}</div></div>
                       </div>
                       {(!r.source||r.source!=="admin"||isAdmin)&&<button className="icon-btn icon-btn-danger" onClick={()=>deleteDatedReminder(r.id)} title="Usuń"><Trash2 size={13}/></button>}
                     </div>
@@ -2718,7 +2800,7 @@ export default function App(){
         <div style={{marginBottom:16}}><Logo variant="icon" tone="dark" width={56} height={56}/></div>
         <div className="lock-title">Sesja zablokowana</div>
         <div className="lock-sub">
-          {started&&employeeName&&<span style={{color:"var(--gold)",fontWeight:700,display:"block",marginBottom:6}}>{employeeName} · {SHIFT_SHORT_LABELS[selectedShift]||selectedShift}</span>}
+          {started&&employeeName&&<span style={{color:"var(--gold)",fontWeight:700,display:"block",marginBottom:6}}>{employeeName} · {shiftShortLabel(selectedShift)}</span>}
           Brak aktywności przez 15 minut.
         </div>
         <button className="lock-emp-btn" onClick={unlock} style={{marginTop:12}}>Kliknij aby odblokować</button>
@@ -2811,7 +2893,7 @@ export default function App(){
                     const trimmed=canonicalizePersonName(employeeName);
                     setEmployeeName(trimmed);
                     if(isManagerName(trimmed,customManagers)) setLoginStep(hasAdminPassword()?"password":"admincheck");
-                    else completeLogin();
+                    else attemptWorkerLogin(trimmed);
                   }
                 }}
               />
@@ -2826,7 +2908,7 @@ export default function App(){
                   const trimmed=canonicalizePersonName(employeeName);
                   setEmployeeName(trimmed);
                   if(isManagerName(trimmed,customManagers)) setLoginStep(hasAdminPassword()?"password":"admincheck");
-                  else completeLogin();
+                  else attemptWorkerLogin(trimmed);
                 }}>
                 Dalej →
               </button>
@@ -3145,7 +3227,8 @@ export default function App(){
       <AnimatePresence>{showMsgModal&&<MessageModal key="msgm" onClose={()=>setShowMsgModal(false)} employeeName={employeeName} employees={employees} messages={messages} setMessages={setMessages} dark={dark}/>}</AnimatePresence>
       <AnimatePresence>{showSearch&&<GlobalSearchModal key="gs" onClose={()=>setShowSearch(false)} dark={dark}/>}</AnimatePresence>
       {finishModal}
-      <AnimatePresence>{showPreShiftModal&&<PreShiftModal key="preshift" employeeName={employeeName} selectedShift={selectedShift} onCancel={()=>setShowPreShiftModal(false)} onConfirm={actualStartShift}/>}</AnimatePresence>
+      <AnimatePresence>{showPreShiftModal&&<PreShiftModal key="preshift" employeeName={employeeName} selectedShift={selectedShift} shiftLabel={shiftFullLabel(selectedShift)} onCancel={()=>setShowPreShiftModal(false)} onConfirm={actualStartShift}/>}</AnimatePresence>
+      {identityConfirm&&<IdentityConfirmModal {...identityConfirm} onConfirm={()=>{setIdentityConfirm(null);completeLogin();}} onCancel={()=>setIdentityConfirm(null)}/>}
       <AnimatePresence>{showAuditLog&&<AuditLogModal key="audit" onClose={()=>setShowAuditLog(false)}/>}</AnimatePresence>
       <AnimatePresence>{showEmpReport&&<EmployeeReportModal key="er" employees={employees} dark={dark} onClose={()=>setShowEmpReport(false)} currentEmployeeName={employeeName} onDownload={downloadEmployeeReportPDF}/>}</AnimatePresence>
       {confirmDialog&&<ConfirmModal message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onClose={()=>setConfirmDialog(null)}/>}
@@ -3188,7 +3271,7 @@ export default function App(){
             {employeeName?(
               <div style={{background:"var(--plum-soft)",border:"1px solid var(--plum-border)",borderLeft:"3px solid var(--plum)",borderRadius:"var(--radius-md)",padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:12}}>
                 <div style={{width:36,height:36,borderRadius:"50%",background:"var(--plum)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:14,fontWeight:800,flexShrink:0}}>{employeeName[0]}</div>
-                <div><div style={{fontSize:14,fontWeight:700,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif"}}>{employeeName}</div><div style={{fontSize:11.5,color:"var(--text-muted)",marginTop:1}}>{SHIFT_SHORT_LABELS[selectedShift]||selectedShift||"—"} · {fmtA()}</div></div>
+                <div><div style={{fontSize:14,fontWeight:700,color:"var(--text-primary)",fontFamily:"'DM Serif Display',serif"}}>{employeeName}</div><div style={{fontSize:11.5,color:"var(--text-muted)",marginTop:1}}>{shiftShortLabel(selectedShift)} · {fmtA()}</div></div>
               </div>
             ):(
               <div style={{marginBottom:16}}>

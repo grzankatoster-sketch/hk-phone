@@ -1,17 +1,68 @@
+// Copyright © 2026 Conrad Comfort. All rights reserved. UNLICENSED.
 // ─── electron/main.cjs ───────────────────────────────────────────────────────
-// Główny proces Electrona — obsługuje okno aplikacji + auto-aktualizacje
-// ─────────────────────────────────────────────────────────────────────────────
-
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
 const { autoUpdater } = require("electron-updater");
-const path = require("path");
-const fs   = require("fs");
-const cp   = require("child_process");
+const path    = require("path");
+const fs      = require("fs");
+const QRCode  = require("qrcode");
+const cp      = require("child_process");
+
+// ─── .env (wbudowany w asar przy buildzie) ────────────────────────────────────
+// W trybie dev czytamy z katalogu projektu; w packaged — z resourcesPath/.env
+// (electron-builder kopiuje .env tam przez extraResources w package.json).
+try {
+  const envCandidates = [
+    path.join(__dirname, "..", ".env"),
+    process.resourcesPath ? path.join(process.resourcesPath, ".env") : null,
+  ].filter(Boolean);
+  for (const envPath of envCandidates) {
+    if (fs.existsSync(envPath)) {
+      require("dotenv").config({ path: envPath });
+      break;
+    }
+  }
+} catch (_) { /* dotenv jest opcjonalny w dev bez .env */ }
+
 const kwhotel      = require("./kwhotel.cjs");
 const hkserver     = require("./hkserver.cjs");
-const remoteServer = require("./remoteserver.cjs");
+const hkAutomation = require("./hkAutomation.cjs");
+const { fetchBookingReviews } = require("./bookingReviews.cjs");
 
-// ─── Reguła zapory dla serwera HK ────────────────────────────────────────────
+const APP_CREATOR = "grzankatoster-sketch";
+const APP_COPYRIGHT = "Copyright © 2026 Conrad Comfort. Wszelkie prawa zastrzeżone.";
+
+function sanitizePdfFilename(filename) {
+  const base    = path.basename(String(filename || "raport.pdf"));
+  const cleaned = base.replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").replace(/\s+/g, " ").trim();
+  return (cleaned || "raport.pdf").replace(/\.pdf$/i, "") + ".pdf";
+}
+
+const isDev = !app.isPackaged && process.env.ELECTRON_IS_DEV === "true";
+
+if (isDev) app.commandLine.appendSwitch("disable-http-cache");
+
+autoUpdater.autoDownload        = false;
+autoUpdater.autoInstallOnAppQuit = true;
+autoUpdater.logger              = require("electron-log");
+autoUpdater.logger.transports.file.level = "info";
+
+let mainWindow = null;
+let updateDownloadInProgress = false;
+let updateDownloaded = false;
+
+function sendUpdateEvent(channel, payload) {
+  mainWindow?.webContents.send(channel, payload);
+}
+
+function toUpdateInfo(info = {}) {
+  return {
+    version: info.version || "",
+    currentVersion: app.getVersion(),
+    releaseNotes: info.releaseNotes || "",
+    releaseDate: info.releaseDate || "",
+  };
+}
+
 function ensureFirewallRule() {
   const ruleName = "Panel Recepcji HK Server";
   const port = "3737";
@@ -19,38 +70,20 @@ function ensureFirewallRule() {
     const check = cp.execSync(`netsh advfirewall firewall show rule name="${ruleName}"`, { timeout: 3000 }).toString();
     if (check.includes(ruleName)) return;
   } catch (_) {}
-  // Otwórz widoczne okno cmd jako Administrator — użytkownik musi zatwierdzić UAC
   const cmd = `netsh advfirewall firewall add rule name="${ruleName}" dir=in action=allow protocol=TCP localport=${port} profile=any && echo OK - regula dodana && pause`;
   cp.exec(
     `powershell -Command "Start-Process cmd -Verb RunAs -ArgumentList '/c ${cmd}'"`,
-    (err) => { if (err) console.warn("[Firewall] Błąd:", err.message); }
+    (err) => { if (err) autoUpdater.logger.warn("[Firewall]", err.message); },
   );
 }
 
-const isDev = !app.isPackaged && process.env.ELECTRON_IS_DEV === 'true';
-
-// ─── Konfiguracja auto-updater ────────────────────────────────────────────────
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = true;
-autoUpdater.logger = require("electron-log");
-autoUpdater.logger.transports.file.level = "info";
-
-let mainWindow = null;
-
-// ─── Tworzenie okna ───────────────────────────────────────────────────────────
 function createWindow() {
-  // Ścieżka do ikony — opcjonalna (nie crashuje bez niej)
-  const iconPath = path.join(__dirname, "../public/icon.ico");
+  const iconPath   = path.join(__dirname, "../public/icon.ico");
   const iconExists = fs.existsSync(iconPath);
-
-  // Ukryj natywne menu (File / Edit / View)
   Menu.setApplicationMenu(null);
 
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 900,
-    minHeight: 600,
+    width: 1280, height: 800, minWidth: 900, minHeight: 600,
     title: "Panel Recepcji — Conrad Comfort",
     autoHideMenuBar: true,
     ...(iconExists ? { icon: iconPath } : {}),
@@ -58,108 +91,149 @@ function createWindow() {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      // file:// + Vite ES modules (crossorigin) wymaga wyłączenia webSecurity
-      webSecurity: false,
+      webSecurity: true,
     },
   });
   mainWindow.setMenuBarVisibility(false);
 
-  // Załaduj aplikację
   if (isDev) {
-    mainWindow.loadURL("http://localhost:5173");
+    mainWindow.webContents.session.clearCache().then(() => {
+      mainWindow.loadURL("http://localhost:5173");
+    });
     mainWindow.webContents.openDevTools();
   } else {
-    // app.getAppPath() jest bardziej niezawodny niż __dirname w spakowanej aplikacji
     const indexPath = path.join(app.getAppPath(), "dist", "index.html");
     mainWindow.loadFile(indexPath).catch(err => {
       autoUpdater.logger.error("loadFile failed:", err);
-      dialog.showErrorBox("Błąd ładowania", `Nie można załadować pliku:\n${indexPath}\n\n${err.message}`);
+      dialog.showErrorBox("Błąd ładowania", `Nie można załadować:\n${indexPath}\n\n${err.message}`);
     });
   }
 
-  // Diagnostyka błędów ładowania — widoczna w logu
-  mainWindow.webContents.on("did-fail-load", (_evt, code, desc, url) => {
+  mainWindow.webContents.on("did-fail-load", (_e, code, desc, url) => {
     autoUpdater.logger.error(`did-fail-load [${code}] ${desc} — ${url}`);
   });
-
   mainWindow.on("closed", () => { mainWindow = null; });
 }
 
-// ─── Eventy auto-updater ──────────────────────────────────────────────────────
-
+// ─── Auto-updater events ──────────────────────────────────────────────────────
 autoUpdater.on("update-available", (info) => {
-  mainWindow?.webContents.send("update-available", {
-    version: info.version,
-    releaseNotes: info.releaseNotes || "",
-    releaseDate: info.releaseDate || "",
-  });
+  updateDownloaded = false;
+  sendUpdateEvent("update-available", toUpdateInfo(info));
 });
-
-autoUpdater.on("update-not-available", () => {
-  mainWindow?.webContents.send("update-not-available");
+autoUpdater.on("update-not-available", () => sendUpdateEvent("update-not-available"));
+autoUpdater.on("download-progress", (progress) => sendUpdateEvent("update-progress", {
+  percent: Math.round(progress.percent || 0),
+  transferred: Math.round((progress.transferred || 0) / 1024),
+  total: Math.round((progress.total || 0) / 1024),
+  speed: Math.round((progress.bytesPerSecond || 0) / 1024),
+}));
+autoUpdater.on("update-downloaded", (info) => {
+  updateDownloadInProgress = false;
+  updateDownloaded = true;
+  sendUpdateEvent("update-downloaded", toUpdateInfo(info));
 });
-
-autoUpdater.on("download-progress", (progress) => {
-  mainWindow?.webContents.send("update-progress", {
-    percent: Math.round(progress.percent),
-    transferred: Math.round(progress.transferred / 1024),
-    total: Math.round(progress.total / 1024),
-    speed: Math.round(progress.bytesPerSecond / 1024),
-  });
-});
-
-autoUpdater.on("update-downloaded", () => {
-  mainWindow?.webContents.send("update-downloaded");
-});
-
 autoUpdater.on("error", (err) => {
-  mainWindow?.webContents.send("update-error", err.message);
+  updateDownloadInProgress = false;
+  sendUpdateEvent("update-error", err.message);
 });
 
-// ─── IPC — komunikacja React ↔ Electron ──────────────────────────────────────
-
+// ─── IPC ──────────────────────────────────────────────────────────────────────
 ipcMain.handle("check-for-updates", async () => {
   if (isDev) return { isDev: true };
+  try { await autoUpdater.checkForUpdates(); return { checking: true }; }
+  catch (e) { return { error: e.message }; }
+});
+ipcMain.handle("download-update", async () => {
+  if (isDev) return { isDev: true };
+  if (updateDownloaded) return { downloaded: true };
+  if (updateDownloadInProgress) return { downloading: true };
+  updateDownloadInProgress = true;
   try {
-    await autoUpdater.checkForUpdates();
-    return { checking: true };
+    await autoUpdater.downloadUpdate();
+    return { downloaded: true };
   } catch (e) {
+    updateDownloadInProgress = false;
     return { error: e.message };
   }
 });
-
-ipcMain.handle("download-update", () => {
-  autoUpdater.downloadUpdate();
-});
-
 ipcMain.handle("install-update", () => {
-  autoUpdater.quitAndInstall(false, true);
+  if (!updateDownloaded) return { error: "Aktualizacja nie została jeszcze pobrana." };
+  autoUpdater.quitAndInstall(true, true);
+  return { installing: true };
+});
+ipcMain.handle("get-app-version",  () => app.getVersion());
+ipcMain.handle("get-app-info",  () => ({
+  name: app.getName(),
+  version: app.getVersion(),
+  creator: APP_CREATOR,
+  copyright: APP_COPYRIGHT,
+}));
+const BOOKING_CACHE_PATH = path.join(app.getPath("userData"), ".hk-booking-cache.json");
+ipcMain.handle("booking-reviews-sync", async () => {
+  try {
+    const result = await fetchBookingReviews();
+    if (result?.ok && Array.isArray(result.reviews) && result.reviews.length > 0) {
+      try {
+        fs.writeFileSync(BOOKING_CACHE_PATH, JSON.stringify({ savedAt: new Date().toISOString(), reviews: result.reviews }, null, 2), "utf8");
+      } catch (writeErr) {
+        autoUpdater.logger.warn("[booking-reviews-sync] cache write failed:", writeErr.message);
+      }
+    }
+    return result;
+  } catch (e) {
+    autoUpdater.logger.error("[booking-reviews-sync]", e.message);
+    let cachedReviews = [];
+    try {
+      if (fs.existsSync(BOOKING_CACHE_PATH)) {
+        const cached = JSON.parse(fs.readFileSync(BOOKING_CACHE_PATH, "utf8"));
+        if (Array.isArray(cached?.reviews)) cachedReviews = cached.reviews;
+      }
+    } catch {}
+    return { ok: false, reviews: cachedReviews, error: e.message, fromCache: cachedReviews.length > 0 };
+  }
 });
 
-ipcMain.handle("get-app-version", () => {
-  return app.getVersion();
-});
-
-// ─── KWHotel API ──────────────────────────────────────────────────────────────
+// KWHotel API
 ipcMain.handle("kwhotel-test",       async (_, { username, password }) => kwhotel.testConnection(username, password));
 ipcMain.handle("kwhotel-login",      async (_, { username, password }) => kwhotel.login(username, password));
 ipcMain.handle("kwhotel-arrivals",   async (_, { date }) => kwhotel.getArrivals(date));
 ipcMain.handle("kwhotel-departures", async (_, { date }) => kwhotel.getDepartures(date));
 ipcMain.handle("kwhotel-rooms",      async (_, { date }) => kwhotel.getRoomStatus(date));
 
-// ─── Zapis PDF do dysku ────────────────────────────────────────────────────────
+// HK Live Server
+ipcMain.handle("hk-fix-firewall", () => {
+  ensureFirewallRule();
+  return { ok: true };
+});
+ipcMain.handle("hk-get-url", () => hkserver.getBaseURL());
+ipcMain.handle("hk-get-ip", () => hkserver.getLocalIP());
+ipcMain.handle("hk-get-all-ips", () => hkserver.getAllIPs());
+ipcMain.handle("hk-set-assignments", (_, assignments, date, roomTypes, pmAssignments, pmRoomTypes) => {
+  hkserver.setAssignments(assignments, date, roomTypes, pmAssignments, pmRoomTypes);
+  return { ok: true };
+});
+ipcMain.handle("hk-vacate-room", (_, room) => {
+  hkserver.vacateRoom(room);
+  return { ok: true };
+});
+ipcMain.handle("hk-get-state", () => hkserver.getState());
+ipcMain.handle("hk-reset-day", (_, date) => { hkserver.resetDay(date); return { ok: true }; });
+
+// ─── Zapis PDF ────────────────────────────────────────────────────────────────
 const PDF_DIRS = {
-  "raporty dzienne":  "C:\\zmiany i raporty\\raporty dzienne",
-  "raporty dobowe":   "C:\\zmiany i raporty\\raporty dobowe",
-  "korekty i raporty":"C:\\zmiany i raporty\\korekty i raporty",
-  "hk":               "C:\\zmiany i raporty\\hk",
+  "raporty dzienne":   "C:\\zmiany i raporty\\raporty dzienne",
+  "raporty dobowe":    "C:\\zmiany i raporty\\raporty dobowe",
+  "korekty i raporty": "C:\\zmiany i raporty\\korekty i raporty",
+  "hk":                "C:\\zmiany i raporty\\hk",
 };
 ipcMain.handle("save-pdf", async (_, { filename, dataBase64, folder }) => {
   try {
     const dir = PDF_DIRS[folder] || PDF_DIRS["raporty dzienne"];
     fs.mkdirSync(dir, { recursive: true });
+    if (!/^[A-Za-z0-9+/=]+$/.test(String(dataBase64 || ""))) throw new Error("Nieprawidłowy payload PDF");
     const buf = Buffer.from(dataBase64, "base64");
-    fs.writeFileSync(path.join(dir, filename), buf);
+    if (buf.length < 4 || buf.slice(0, 4).toString("latin1") !== "%PDF") throw new Error("Nieprawidłowy plik PDF");
+    fs.writeFileSync(path.join(dir, sanitizePdfFilename(filename)), buf);
     return { ok: true };
   } catch (e) {
     autoUpdater.logger.error("[save-pdf]", e.message);
@@ -167,52 +241,77 @@ ipcMain.handle("save-pdf", async (_, { filename, dataBase64, folder }) => {
   }
 });
 
-// ─── Remote Server IPC ───────────────────────────────────────────────────────
-ipcMain.handle("remote-get-url",    ()          => remoteServer.getUrl());
-ipcMain.handle("remote-set-url",    (_, url)    => { remoteServer.setUrl(url); return { ok: true }; });
-ipcMain.handle("remote-test",       ()          => remoteServer.testConnection());
-
-// ─── HKServer IPC ─────────────────────────────────────────────────────────────
-ipcMain.handle("hk-fix-firewall", () => {
-  ensureFirewallRule();
-  return { ok: true };
-});
-ipcMain.handle("hk-get-url",          ()          => hkserver.getBaseURL());
-ipcMain.handle("hk-get-ip",           ()          => hkserver.getLocalIP());
-ipcMain.handle("hk-get-all-ips",      ()          => hkserver.getAllIPs());
-ipcMain.handle("hk-get-qr",           (_, name, overrideIp, baseUrl, pm) => hkserver.getQR(name, overrideIp, baseUrl, pm));
-ipcMain.handle("hk-set-assignments",  (_, a, d, t, pm, pmt) => { hkserver.setAssignments(a, d, t, pm, pmt); remoteServer.pushState(hkserver.getState()).catch(()=>{}); return { ok: true }; });
-ipcMain.handle("hk-vacate-room",      (_, room)   => { hkserver.vacateRoom(room); remoteServer.pushVacate(room).catch(()=>{}); return { ok: true }; });
-ipcMain.handle("hk-get-state",        ()          => hkserver.getState());
-ipcMain.handle("hk-reset-day",        (_, date)   => { hkserver.resetDay(date); return { ok: true }; });
-
-// ─── Start aplikacji ──────────────────────────────────────────────────────────
-app.whenReady().then(() => {
-  createWindow();
-  hkserver.start();
-  ensureFirewallRule();
-  // Powiadamiaj React o zmianach stanu HK (pokojówka kliknęła "gotowe" itp.)
-  hkserver.setOnStateChange((state) => {
-    mainWindow?.webContents.send("hk-state-changed", state);
-    remoteServer.pushState(state).catch(() => {});
-  });
-
-  // Pobieraj stan z Railway co 5s — aktualizuj gdy pracownicy zmieniają status
-  remoteServer.startPolling((remoteState) => {
-    hkserver.mergeRemoteRooms(remoteState);
-  });
-
-  if (!isDev) {
-    setTimeout(() => {
-      autoUpdater.checkForUpdates().catch(() => {});
-    }, 5000);
+// ─── QR kody (Supabase Storage) ───────────────────────────────────────────────
+// Automatyczne plany HK z KWHotel
+const HK_AUTOMATION_DIR = process.env.HK_AUTOMATION_DIR || "C:\\zmiany i raporty\\hk-automation";
+const isDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+ipcMain.handle("hk-automation-get-plan", async (_, dateKey) => {
+  try {
+    if (!isDateKey(dateKey)) return { ok: false, error: "Nieprawidlowa data." };
+    const filePath = path.join(HK_AUTOMATION_DIR, "plans", `hk-plan-${dateKey}.json`);
+    if (!fs.existsSync(filePath)) return { ok: true, plan: null };
+    const plan = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!plan || plan.meta?.source !== "kwhotel-mail" || !plan.data || typeof plan.data !== "object") {
+      return { ok: false, error: "Nieprawidlowy format planu HK." };
+    }
+    return { ok: true, plan };
+  } catch (e) {
+    autoUpdater.logger.error("[hk-automation-get-plan]", e.message);
+    return { ok: false, error: e.message };
   }
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+ipcMain.handle("hk-automation-get-source", async (_, dateKey) => {
+  try {
+    if (!isDateKey(dateKey)) return { ok: false, error: "Nieprawidlowa data." };
+    const filePath = path.join(HK_AUTOMATION_DIR, "sources", `kwhotel-source-${dateKey}.json`);
+    if (!fs.existsSync(filePath)) return { ok: true, source: null };
+    const source = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (!source || source.source !== "kwhotel-mail-source" || typeof source !== "object") {
+      return { ok: false, error: "Nieprawidlowy format zrodla HK." };
+    }
+    return { ok: true, source };
+  } catch (e) {
+    autoUpdater.logger.error("[hk-automation-get-source]", e.message);
+    return { ok: false, error: e.message };
+  }
 });
 
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+ipcMain.handle("hk-get-qr", async (_, name, overrideIp, baseUrl, pm) => {
+  return hkserver.getQR(name, overrideIp, baseUrl, pm);
 });
+
+// HK Automation (wbudowany serwis IMAP → plany)
+ipcMain.handle("hk-automation-status",  () => hkAutomation.getStatus());
+ipcMain.handle("hk-automation-run-now", () => hkAutomation.runNow());
+
+ipcMain.handle("hk-get-konserwator-qr", async (_, name, faults) => {
+  const safeName = String(name || "").slice(0, 60);
+  hkserver.setKonserwatorFaults(safeName, faults);
+  const base = hkserver.getBaseURL();
+  const url = `${base}/konserwator/${encodeURIComponent(safeName)}`;
+  try {
+    const dataURL = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#000000", light: "#ffffff" } });
+    return { dataURL, url };
+  } catch (e) {
+    return { dataURL: null, url, error: e.message };
+  }
+});
+
+// ─── Start ────────────────────────────────────────────────────────────────────
+app.whenReady().then(() => {
+  if (app.isPackaged) {
+    autoUpdater.logger.info(`[START] ${app.getName()} v${app.getVersion()} | ${APP_COPYRIGHT}`);
+  }
+  createWindow();
+  hkserver.start();
+  ensureFirewallRule();
+  hkserver.setOnStateChange((state) => {
+    mainWindow?.webContents.send("hk-state-changed", state);
+  });
+  hkAutomation.start();
+  if (!isDev) setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5000);
+});
+
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
+app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
