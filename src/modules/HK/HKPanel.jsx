@@ -898,6 +898,8 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     const cls=statusClass(rd);
     const isCheckout=(rd.status==="W"||rd.status==="WP");
     const isVacated=isCheckout&&!!vacatedRooms[room.no]?.vacated;
+    const wIdx=rd.person?hkStaff.findIndex(s=>s.name===rd.person):-1;
+    const wColor=wIdx>=0?CHIP_COLORS[wIdx%CHIP_COLORS.length]:"#94a3b8";
     return(
       <div key={room.no} className={`room-card ${cls}`} onClick={(e)=>handleRoomCardClick(room.no,e)} style={{position:"relative"}}>
         {isCheckout?(
@@ -912,6 +914,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           <div className={`room-status-dot ${cls}`}/>
         )}
         <div className="room-num">{room.no}</div>
+        {rd.person&&<div className="cc-hk-room-worker" style={{color:wColor,borderColor:wColor}} title={rd.person}>{rd.person.split(" ")[0]}</div>}
         <div className="room-card-actions">
           {room.apt?(
             <input type="text" value={rd.apartmentNote||""} placeholder="D+T, D+D, SOFA…"
@@ -926,7 +929,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         </div>
       </div>
     );
-  },[hkData,vacatedRooms,handleRoomCardClick,setRoom,markVacatedFromPlan,unmarkVacated]);
+  },[hkData,vacatedRooms,handleRoomCardClick,setRoom,markVacatedFromPlan,unmarkVacated,hkStaff]);
   const renderFloorCards=React.useCallback((rooms,label,range)=>(
     <div className="floor-section" key={label}>
       <div className="floor-label">
