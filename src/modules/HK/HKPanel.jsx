@@ -456,6 +456,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         if(!generatedAt||localStorage.getItem(appliedKey)===generatedAt)return;
         const entries=Object.entries(res.plan.data).filter(([,rd])=>rd?.status);
         if(!entries.length){localStorage.setItem(appliedKey,generatedAt);return;}
+        const planRooms=new Set(entries.map(([no])=>no));
         let changedCount=0;
         setHkData(prev=>{
           const next={...prev};
@@ -471,6 +472,16 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
               autoSource:"kwhotel-mail",
               autoUpdatedAt:generatedAt,
             };
+          });
+          // Rekoncyliacja: pokoje wcześniej ustawione AUTOMATYCZNIE, których NIE MA
+          // już w świeżym planie (gość zmienił rezerwację) -> wyczyść status, by nie
+          // zawyżały licznika. Ręczne nadpisania (manualOverride) zostają nietknięte.
+          Object.keys(next).forEach(no=>{
+            const cur=next[no];
+            if(cur&&cur.status&&cur.autoSource==="kwhotel-mail"&&!cur.manualOverride&&!planRooms.has(no)){
+              next[no]={...cur,status:undefined,autoSource:undefined,autoUpdatedAt:undefined};
+              changedCount+=1;
+            }
           });
           return changedCount?next:prev;
         });
