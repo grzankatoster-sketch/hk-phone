@@ -500,6 +500,14 @@ export default function App(){
     const name=(SHIFT_NAME_PL[key]||key).replace(/^Zmiana\s+/i,"");
     return useHours?`${name.charAt(0).toUpperCase()}${name.slice(1)} ${scheduledEntry.hours}`:(SHIFT_SHORT_LABELS[key]||key);
   },[scheduledEntry]);
+  // Zamknij rozwijane "Zmień" (np. cel przekazania, wybór zmiany) po kliknięciu poza nim.
+  useEffect(()=>{
+    const onDown=(e)=>{
+      document.querySelectorAll("details.cc-flow-pick[open]").forEach(d=>{ if(!d.contains(e.target)) d.removeAttribute("open"); });
+    };
+    document.addEventListener("mousedown",onDown);
+    return()=>document.removeEventListener("mousedown",onDown);
+  },[]);
   // Domyślny cel przekazania = następna zmiana po obecnej (a nie sztywno "nocna").
   // Ustawiamy przy logowaniu; pracownik może później zmienić ręcznie w UI.
   useEffect(()=>{

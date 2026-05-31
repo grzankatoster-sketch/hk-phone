@@ -48,6 +48,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .extra-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .extra-row input{flex:1;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:7px 10px;color:#e6edf3;font-size:13px;font-family:inherit}
 .add-extra{background:#21262d;border:1px solid #30363d;border-radius:7px;padding:7px 14px;color:#8b949e;font-size:12px;cursor:pointer;font-family:inherit}
+.num-input{width:100%;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:8px 6px;color:#e6edf3;font-size:16px;font-weight:800;text-align:center;font-family:inherit}
+.num-input:focus{outline:none;border-color:#6366f1}
+.fault-box{margin-top:14px;border-top:1px solid #30363d;padding-top:12px}
+.fault-title{font-size:11px;font-weight:800;color:#f87171;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.fault-box textarea{width:100%;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px;color:#e6edf3;font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
+.fault-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid #30363d}
+.fault-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.fault-thumb button{position:absolute;top:0;right:0;background:rgba(0,0,0,.65);border:none;color:#f87171;font-size:13px;font-weight:900;width:20px;height:20px;cursor:pointer;line-height:1}
+.fault-add{display:block;width:100%;background:#21262d;border:1px dashed #484f58;border-radius:8px;padding:11px;color:#8b949e;font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
+.fault-add input{display:none}
+.btn-fault{background:#7f1d1d;color:#fecaca}
 .task-card{background:#1c2128;border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid #f59e0b}
 .task-text{font-size:14px;font-weight:700;margin-bottom:6px}
 .task-meta{font-size:11px;color:#484f58;margin-bottom:8px}
@@ -92,6 +104,8 @@ const app = document.getElementById("app");
 const params  = new URLSearchParams(location.search);
 const WORKER  = params.get("w") || "";
 const TODAY   = new Date().toISOString().split("T")[0];
+// Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
+const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 
 const COLORS  = ["#6366f1","#f59e0b","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c","#2dd4bf","#e879f9","#facc15"];
 const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
@@ -114,6 +128,8 @@ let tasks      = [];
 let openRoom   = null;
 let reports    = {};
 let extraItems = {};
+let faultDrafts = {}; // room -> {desc, photos:[dataUrl...]}
+const MAX_FAULT_PHOTOS = 5;
 let isPm       = false;
 let pmRoomTypes = {};
 let activeTab  = "rooms";
@@ -194,12 +210,8 @@ async function doneTask(id, text) {
 // ─── Report helpers ──────────────────────────────────────────────────────────
 function getReport(room) { return reports[room] || (reports[room]={}); }
 function getExtra(room)  { return extraItems[room] || (extraItems[room]=[]); }
+function getFaultDraft(room) { return faultDrafts[room] || (faultDrafts[room]={desc:"",photos:[]}); }
 
-function changeCount(room, key, delta) {
-  const r = getReport(room);
-  r[key] = Math.max(0, (r[key]||0) + delta);
-  renderReportPanel(room);
-}
 function addExtraRow(room) {
   getExtra(room).push({name:"",count:1});
   renderReportPanel(room);
@@ -209,111 +221,8 @@ function removeExtraRow(room, idx) {
   renderReportPanel(room);
 }
 
-// ─── Exchange logic ───────────────────────────────────────────────────────────
-function parsePendingExchanges(logs) {
-  const requests = {};
-  const resolved = new Set();
-  logs.forEach(l => {
-    try {
-      if (l.action === "exchange_request") {
-        const d = JSON.parse(l.extra||"{}");
-        if (d.id) requests[d.id] = {...d, worker: l.worker, log_time: l.log_time};
-      }
-      if (l.action === "exchange_accept" || l.action === "exchange_reject") {
-        const d = JSON.parse(l.extra||"{}");
-        if (d.id) resolved.add(d.id);
-      }
-    } catch {}
-  });
-  return Object.values(requests).filter(r => !resolved.has(r.id));
-}
-
-// Tetiana clicks "Przekaż wolne do Kasia" — instant transfer
-async function transferRooms(toWorker) {
-  if (!confirm(`Przekazać wolne pokoje do ${toWorker}?`)) return;
-  const waitingRooms = (allAssignments[WORKER]||[]).filter(no => {
-    const s = allRoomStates[no];
-    return !s || s.status === "W";
-  });
-  if (!waitingRooms.length) { toast("Brak wolnych pokoi","#f87171"); return; }
-
-  const newFromRooms = (allAssignments[WORKER]||[]).filter(no => !waitingRooms.includes(no));
-  const newToRooms   = [...new Set([...(allAssignments[toWorker]||[]), ...waitingRooms])];
-
-  const newAssignments = {...allAssignments, [WORKER]: newFromRooms, [toWorker]: newToRooms};
-
-  // Update hk_plan assignments
-  const {error} = await sb.from("hk_plan")
-    .update({ assignments: newAssignments, updated_at: new Date().toISOString() })
-    .eq("date", TODAY);
-  if (error) { toast("Błąd: "+error.message, "#f87171"); return; }
-
-  // Update hk_rooms worker field for transferred rooms
-  await Promise.all(waitingRooms.map(no =>
-    sb.from("hk_rooms").upsert({ date:TODAY, room:no, worker:toWorker, status:"W" }, {onConflict:"date,room"})
-  ));
-
-  const exId = uid();
-  await addLog("exchange_accept", null, JSON.stringify({id:exId, from:WORKER, to:toWorker, rooms:waitingRooms, note:`${WORKER}→${toWorker} (${waitingRooms.length} pok.)`}));
-
-  toast(`Przekazano ${waitingRooms.length} pokoi do ${toWorker} ✓`);
-  allAssignments = newAssignments;
-  renderTeam();
-}
-
-// Kasia clicks "Poproś Tetianę o pokoje" — sends a request notification
-async function requestRooms(fromWorker) {
-  if (!confirm(`Poprosić ${fromWorker} o przekazanie wolnych pokoi?`)) return;
-  const exId = uid();
-  await sb.from("hk_logs").insert({
-    date: TODAY,
-    log_time: now(),
-    worker: WORKER,
-    action: "exchange_request",
-    room: null,
-    extra: JSON.stringify({ id: exId, from: fromWorker, to: WORKER, requestedBy: WORKER })
-  });
-  toast(`Prośba wysłana do ${fromWorker}`,"#60a5fa");
-}
-
-// Tetiana clicks "Akceptuj" on a request from Kasia
-async function acceptRequest(exId, fromWorker, toWorker) {
-  const waitingRooms = (allAssignments[fromWorker]||[]).filter(no => {
-    const s = allRoomStates[no];
-    return !s || s.status === "W";
-  });
-  if (!waitingRooms.length) { toast("Brak wolnych pokoi","#f87171"); return; }
-
-  const newFromRooms = (allAssignments[fromWorker]||[]).filter(no => !waitingRooms.includes(no));
-  const newToRooms   = [...new Set([...(allAssignments[toWorker]||[]), ...waitingRooms])];
-  const newAssignments = {...allAssignments, [fromWorker]: newFromRooms, [toWorker]: newToRooms};
-
-  const {error} = await sb.from("hk_plan")
-    .update({ assignments: newAssignments, updated_at: new Date().toISOString() })
-    .eq("date", TODAY);
-  if (error) { toast("Błąd: "+error.message,"#f87171"); return; }
-
-  await Promise.all(waitingRooms.map(no =>
-    sb.from("hk_rooms").upsert({ date:TODAY, room:no, worker:toWorker, status:"W" }, {onConflict:"date,room"})
-  ));
-
-  await sb.from("hk_logs").insert({
-    date: TODAY, log_time: now(), worker: WORKER, action: "exchange_accept", room: null,
-    extra: JSON.stringify({ id: exId, from: fromWorker, to: toWorker, rooms: waitingRooms })
-  });
-  toast(`Przekazano pokoje do ${toWorker} ✓`);
-  allAssignments = newAssignments;
-  renderTeam();
-}
-
-async function rejectRequest(exId) {
-  await sb.from("hk_logs").insert({
-    date: TODAY, log_time: now(), worker: WORKER, action: "exchange_reject", room: null,
-    extra: JSON.stringify({ id: exId })
-  });
-  toast("Prośba odrzucona");
-  renderTeam();
-}
+// Wymiana pokoi między pracownikami została USUNIĘTA — przypisaniami zarządza
+// wyłącznie recepcja (z pomocą agenta sugestii). Telefon tylko odzwierciedla plan.
 
 // ─── Rooms tab render ─────────────────────────────────────────────────────────
 function render() {
@@ -327,9 +236,6 @@ function render() {
   const vacated   = allRooms.filter(r => roomStates[r]?.vacated && roomStates[r]?.status==="W");
   const myTasks   = tasks.filter(t=>t.status==="open"&&(t.target==="all"||t.target==="morning"||t.target===WORKER||(isPm&&t.target==="pm")));
 
-  const pending = parsePendingExchanges(allLogs);
-  const myPending = pending.filter(e => e.from === WORKER || e.to === WORKER);
-
   let html = `
   <div class="header">
     <div class="avatar" style="background:${WCOLOR}">${WORKER.charAt(0).toUpperCase()}</div>
@@ -338,7 +244,7 @@ function render() {
   </div>
   <div class="tabs">
     <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
-    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">👥 Zespół${myPending.length?`<span class="tab-badge">${myPending.length}</span>`:""}</button>
+    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">👥 Zespół</button>
   </div>`;
 
   if (activeTab === "team") {
@@ -402,55 +308,7 @@ function render() {
 function renderTeam() { render(); }
 
 function renderTeamHtml() {
-  const pending = parsePendingExchanges(allLogs);
-
-  // Exchanges for me
-  const forMe     = pending.filter(e => e.from === WORKER && e.requestedBy && e.requestedBy !== WORKER);
-  const sentByMe  = pending.filter(e => e.requestedBy === WORKER);
-  const myWaiting = (allAssignments[WORKER]||[]).filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; });
-
   let html = `<div class="sections" style="padding-top:10px">`;
-
-  // ── Pending requests ──
-  if (forMe.length || sentByMe.length) {
-    html += `<div class="section-title">⇄ Wymiany</div>`;
-    forMe.forEach(ex => {
-      html += `<div class="ex-card">
-        <div class="ex-title">← ${escHtml(ex.requestedBy)} prosi o Twoje wolne pokoje</div>
-        <div style="font-size:12px;color:#8b949e">Masz ${myWaiting.length} wolnych pokoi</div>
-        <div class="ex-btns">
-          <button class="ex-accept" onclick="acceptRequest('${escHtml(ex.id)}','${escHtml(WORKER)}','${escHtml(ex.requestedBy)}')">✓ Oddaj pokoje</button>
-          <button class="ex-reject" onclick="rejectRequest('${escHtml(ex.id)}')">✕ Odmów</button>
-        </div></div>`;
-    });
-    sentByMe.forEach(ex => {
-      html += `<div style="background:#1c2128;border:1.5px solid rgba(96,165,250,.3);border-radius:12px;padding:12px 14px;margin-bottom:10px">
-        <div style="font-size:13px;font-weight:700;color:#60a5fa">⏳ Czekasz na odpowiedź od ${escHtml(ex.from)}</div></div>`;
-    });
-  }
-
-  // ── Transfer buttons (I have free rooms) ──
-  if (!sentByMe.length && myWaiting.length > 0) {
-    html += `<div class="section-title">Przekaż wolne pokoje</div>`;
-    Object.keys(allAssignments).filter(w => w !== WORKER).forEach(w => {
-      html += `<button class="transfer-btn" onclick="transferRooms('${escHtml(w)}')">→ Przekaż do ${escHtml(w)} (${myWaiting.length} pok. wolnych)</button>`;
-    });
-  }
-
-  // ── Request buttons (I have 0 free rooms) ──
-  if (!sentByMe.length && myWaiting.length === 0) {
-    const workersWithFree = Object.entries(allAssignments).filter(([w, rooms]) => {
-      if (w === WORKER) return false;
-      return rooms.some(no => { const s=allRoomStates[no]; return !s||s.status==="W"; });
-    });
-    if (workersWithFree.length) {
-      html += `<div class="section-title">Poproś o pokoje</div>`;
-      workersWithFree.forEach(([w, rooms]) => {
-        const free = rooms.filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; }).length;
-        html += `<button class="request-btn" onclick="requestRooms('${escHtml(w)}')">← Poproś ${escHtml(w)} o pokoje (ma ${free} wolnych)</button>`;
-      });
-    }
-  }
 
   // ── Worker progress ──
   html += `<div class="section-title">Postęp zespołu</div><div class="team-section">`;
@@ -550,8 +408,9 @@ function roomCard(no, status) {
   } else if (status === "czyszczenie") {
     buttons = `
       <button class="btn btn-green" style="margin-bottom:8px" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>
-      <div id="rp-${no}" class="report-panel"></div>
-      <button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
+      <div id="rp-${no}" class="report-panel"></div>`;
+    // "Goście nie chcieli" tylko dla pokoi PGZ (nie PG, nie wyjazdy).
+    if (pmt === "PGZ") buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
   }
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
@@ -582,15 +441,14 @@ function renderReportPanel(room) {
   const r = getReport(room);
   const ex = getExtra(room);
 
+  const fd = getFaultDraft(room);
+
   let html = `<div class="report-grid">`;
   LINEN.forEach(f => {
     html += `<div class="report-item">
       <div class="report-label">${f.label}</div>
-      <div class="report-ctrl">
-        <button onclick="changeCount('${room}','${f.key}',-1)">−</button>
-        <span>${r[f.key]||0}</span>
-        <button onclick="changeCount('${room}','${f.key}',1)">+</button>
-      </div>
+      <input class="num-input" type="number" inputmode="numeric" min="0" value="${r[f.key]||0}"
+        onfocus="this.select()" oninput="getReport('${room}')['${f.key}']=Math.max(0,parseInt(this.value)||0)">
     </div>`;
   });
   html += `</div>`;
@@ -599,17 +457,75 @@ function renderReportPanel(room) {
   ex.forEach((it,idx) => {
     html += `<div class="extra-row">
       <input placeholder="Nazwa…" value="${escHtml(it.name)}" oninput="getExtra('${room}')[${idx}].name=this.value"/>
-      <div class="report-ctrl" style="flex-shrink:0">
-        <button onclick="getExtra('${room}')[${idx}].count=Math.max(0,(getExtra('${room}')[${idx}].count||1)-1);renderReportPanel('${room}')">−</button>
-        <span>${it.count||0}</span>
-        <button onclick="getExtra('${room}')[${idx}].count=(getExtra('${room}')[${idx}].count||0)+1;renderReportPanel('${room}')">+</button>
-      </div>
+      <input class="num-input" style="flex:0 0 70px" type="number" inputmode="numeric" min="0" value="${it.count||0}"
+        onfocus="this.select()" oninput="getExtra('${room}')[${idx}].count=Math.max(0,parseInt(this.value)||0)">
       <button onclick="removeExtraRow('${room}',${idx})" style="background:#21262d;border:1px solid #30363d;border-radius:7px;padding:6px 10px;color:#f87171;cursor:pointer">✕</button>
     </div>`;
   });
   html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
   html += `<button class="btn btn-green" onclick="doneRoom('${room}')">✓ Gotowe — zatwierdź raport</button>`;
+
+  // ── Usterka (na dole pokoju) ──
+  html += `<div class="fault-box">
+    <div class="fault-title">⚠ Zgłoś usterkę</div>
+    <textarea placeholder="Co się stało? Opisz usterkę…" oninput="getFaultDraft('${room}').desc=this.value">${escHtml(fd.desc)}</textarea>
+    <div class="fault-thumbs">`;
+  fd.photos.forEach((p,idx) => {
+    html += `<div class="fault-thumb"><img src="${p}"/><button onclick="removeFaultPhoto('${room}',${idx})">✕</button></div>`;
+  });
+  html += `</div>
+    <label class="fault-add">📷 Dodaj zdjęcie (aparat lub galeria)
+      <input type="file" accept="image/*" capture="environment" multiple onchange="addFaultPhotos('${room}',this)">
+    </label>
+    <button class="btn btn-fault" onclick="reportFault('${room}')">⚠ Wyślij zgłoszenie usterki</button>
+  </div>`;
+
   panel.innerHTML = html;
+}
+
+// ─── Usterki (zdjęcia → Supabase Storage, wpis → tabela faults) ─────────────────
+async function compressImage(file) {
+  const dataUrl = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(file); });
+  const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=dataUrl; });
+  const max=1600; let w=img.width, h=img.height;
+  if (w>max||h>max) { const s=max/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+  const c=document.createElement("canvas"); c.width=w; c.height=h;
+  c.getContext("2d").drawImage(img,0,0,w,h);
+  return c.toDataURL("image/jpeg",0.7);
+}
+async function addFaultPhotos(room, input) {
+  const fd=getFaultDraft(room);
+  for (const f of [...(input.files||[])]) {
+    if (fd.photos.length>=MAX_FAULT_PHOTOS) { toast("Maks. "+MAX_FAULT_PHOTOS+" zdjęć","#f59e0b"); break; }
+    try { fd.photos.push(await compressImage(f)); } catch { toast("Nie udało się wczytać zdjęcia","#f87171"); }
+  }
+  input.value="";
+  renderReportPanel(room);
+}
+function removeFaultPhoto(room, idx) { getFaultDraft(room).photos.splice(idx,1); renderReportPanel(room); }
+async function reportFault(room) {
+  const fd=getFaultDraft(room);
+  if (!fd.desc.trim()) { toast("Opisz usterkę","#f87171"); return; }
+  if (!sb) { toast("Brak połączenia","#f87171"); return; }
+  toast("Wysyłanie usterki…","#60a5fa");
+  const urls=[];
+  for (const dataUrl of fd.photos) {
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const path = `${TODAY}/${uid()}.jpg`;
+      const { error } = await sb.storage.from("hk-faults").upload(path, blob, { contentType:"image/jpeg", upsert:false });
+      if (!error) urls.push(sb.storage.from("hk-faults").getPublicUrl(path).data.publicUrl);
+    } catch {}
+  }
+  const { error } = await sb.from("faults").insert({
+    tenant_id:TENANT_ID, source:"hk", floor:"hk", space_id:room, room,
+    description:fd.desc.trim(), reported_by:WORKER, status:"open", priority:"normal", photos:urls
+  });
+  if (error) { toast("Błąd zapisu usterki","#f87171"); return; }
+  await addLog("usterka", room, fd.desc.trim().slice(0,120));
+  faultDrafts[room]={desc:"",photos:[]};
+  toast("Usterka zgłoszona ✓","#34d399");
+  renderReportPanel(room);
 }
 
 // ─── Team data load ───────────────────────────────────────────────────────────
@@ -700,13 +616,6 @@ async function init() {
     .on("postgres_changes",{event:"INSERT",schema:"public",table:"hk_logs",filter:`date=eq.${TODAY}`}, ({new:row})=>{
       if (!row) return;
       allLogs = [...allLogs, row];
-      // Powiadomienie o prośbie wymiany
-      if (row.action==="exchange_request") {
-        try {
-          const d = JSON.parse(row.extra||"{}");
-          if (d.from === WORKER) toast(`${escHtml(row.worker)} prosi Cię o pokoje!`,"#f59e0b");
-        } catch {}
-      }
       render();
     })
     .subscribe();
