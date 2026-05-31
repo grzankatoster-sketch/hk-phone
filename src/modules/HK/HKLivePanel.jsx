@@ -464,6 +464,16 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
       return { bg: dark ? "rgba(255,255,255,.03)" : "rgba(0,0,0,.03)", bc: dark ? "#30363d" : "#d1d5db" };
     };
 
+    // Filtr siatki wg klikniętego kafelka. "Czyste" pokazuje też sprzątane.
+    const matchMon = (no) => {
+      if (!monFilter) return true;
+      const st = rooms[no]?.status;
+      if (monFilter === "czyste") return st === "czyste" || st === "czyszczenie";
+      if (monFilter === "sprzata") return st === "czyszczenie";
+      if (monFilter === "czeka") return !st || st === "W";
+      return true;
+    };
+
     const FLOORS = [
       { label: "I piętro",   rooms: HK_FLOOR1 },
       { label: "II piętro",  rooms: HK_FLOOR2 },
@@ -545,20 +555,26 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
           );
         })()}
 
-        {/* Stats strip */}
+        {/* Stats strip — klikalne filtry (klik = filtruj siatkę, klik ponownie = wyczyść) */}
         <div style={{ display: "flex", gap: 6 }}>
           {[
-            { l: "Łącznie",   v: gTotal,                              c: text },
-            { l: "Czyste",    v: gDone,                               c: "#34d399" },
-            { l: "Sprząta",   v: gClean,                              c: "#60a5fa" },
-            { l: "Pominięte", v: gSkipped,                            c: "#a78bfa" },
-            { l: "Czeka",     v: gTotal - gDone - gClean - gSkipped,  c: "#8b949e" },
-          ].map(s => (
-            <div key={s.l} style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, background: dark ? "rgba(255,255,255,.04)" : "var(--bg-secondary)", border: `1px solid ${dark ? "#21262d" : "var(--border-light)"}` }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
-              <div style={{ fontSize: 9, color: muted, fontWeight: 700, marginTop: 2, textTransform: "uppercase", letterSpacing: ".04em" }}>{s.l}</div>
-            </div>
-          ))}
+            { l: "Łącznie", v: gTotal,                      c: text,      key: null },
+            { l: "Czyste",  v: gDone,                       c: "#34d399", key: "czyste" },
+            { l: "Sprząta", v: gClean,                      c: "#60a5fa", key: "sprzata" },
+            { l: "Czeka",   v: gTotal - gDone - gClean - gSkipped, c: "#8b949e", key: "czeka" },
+          ].map(s => {
+            const active = monFilter === s.key && s.key !== null;
+            return (
+              <button key={s.l} type="button"
+                onClick={() => setMonFilter(s.key === null ? null : (monFilter === s.key ? null : s.key))}
+                style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, cursor: "pointer", fontFamily: "inherit",
+                  background: active ? (dark ? "rgba(99,102,241,.15)" : "var(--plum-soft,#f3e8f1)") : (dark ? "rgba(255,255,255,.04)" : "var(--bg-secondary)"),
+                  border: `1px solid ${active ? "#6366f1" : (dark ? "#21262d" : "var(--border-light)")}` }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
+                <div style={{ fontSize: 9, color: muted, fontWeight: 700, marginTop: 2, textTransform: "uppercase", letterSpacing: ".04em" }}>{s.l}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Worker scoreboard */}
@@ -586,7 +602,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
 
         {/* Floor grids */}
         {FLOORS.map(floor => {
-          const assigned = floor.rooms.filter(r => roomWorkerMap[r.no] || rooms[r.no]);
+          const assigned = floor.rooms.filter(r => (roomWorkerMap[r.no] || rooms[r.no]) && matchMon(r.no));
           if (!assigned.length) return null;
           return (
             <div key={floor.label} style={{ ...card, overflow: "hidden" }}>
@@ -595,7 +611,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
               </div>
               <div style={{ padding: "8px 10px", display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {floor.rooms.map(({ no }) => {
-                  if (!roomWorkerMap[no] && !rooms[no]) return null;
+                  if ((!roomWorkerMap[no] && !rooms[no]) || !matchMon(no)) return null;
                   const { bg, bc } = cellCfg(no);
                   const wa = roomWorkerMap[no];
                   const wIdx = wa ? allWNames.indexOf(wa.worker) : -1;
@@ -1240,6 +1256,8 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   const totalVacated = roomVals.filter(r => r.vacated && r.status === "W").length;
   const progressPct = totalRooms ? Math.round((totalDone / totalRooms) * 100) : 0;
 
+  // Filtr monitora — klik w kafelek statystyk filtruje siatkę pokoi.
+  const [monFilter, setMonFilter] = React.useState(null); // null|'czyste'|'czeka'|'sprzata'
   // ─── Liczba pokoi z maila (raport KWHotel) — z lokalnego źródła Electron ────
   const [mailRooms, setMailRooms] = React.useState(null);
   React.useEffect(() => {
