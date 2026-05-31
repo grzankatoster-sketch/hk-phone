@@ -422,7 +422,6 @@ html.theme-light {
   border-color: var(--cc-brand);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--cc-brand) 18%, transparent);
 }
-.cc-login-input:focus-visible,
 .cc-login-btn:focus-visible,
 .cc-login-btn-ghost:focus-visible {
   outline: 2px solid var(--cc-focus);

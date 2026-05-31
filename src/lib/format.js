@@ -40,3 +40,10 @@ export const buildEmpFn = (author, date = new Date()) => {
   const d = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   return `raport_pracownika_${author.replace(/\s+/g, "_")}_${d}.pdf`;
 };
+
+export const EMPTY_LABEL = "—";
+export const displayValue = (v, fallback = EMPTY_LABEL) =>
+  (v === null || v === undefined || v === "") ? fallback : v;
+
+export const fmtMoney = (n) =>
+  Number(n).toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " zł";

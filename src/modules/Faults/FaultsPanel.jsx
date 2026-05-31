@@ -28,6 +28,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
     { ...FAULT_FLOORS[1], rooms: floors1 },
     { ...FAULT_FLOORS[2], rooms: floors2 },
     { ...FAULT_FLOORS[3], rooms: floors3 },
+    { key: "hk", label: "📱 HK", spaces: [], rooms: [] }, // usterki zgłoszone z telefonów HK
   ], [floors1, floors2, floors3]);
 
   React.useEffect(() => { saveJson(STORAGE_KEYS.faults, faults); }, [faults]);
@@ -102,14 +103,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
       if (error) showToast?.("Blad Supabase: " + error.message, "warning");
     }
   };
-  const deleteFault = async (id) => {
-    setFaults(prev => prev.filter(f => f.id !== id));
-    showToast?.("Usterka usunięta.", "info");
-    if (supabase) {
-      const { error } = await supabase.from(TABLE).delete().eq("id", id);
-      if (error) showToast?.("Blad Supabase: " + error.message, "warning");
-    }
-  };
+  // Usuwanie usterek jest ZABLOKOWANE (wymóg: dane trwałe w chmurze, RLS bez DELETE).
 
   return (
     <div className="fault-layout">
@@ -192,7 +186,11 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
           </div>
         </div>
         <div style={{ padding: 18 }}>
-          <FloorMap floor={selectedFloorObj} faults={faults} onSelectSpace={setSelectedSpace} selectedSpace={selectedSpace} />
+          {activeFloor === "hk" ? (
+            <div className="cc-fault-hint" style={{ textAlign: "center" }}>📱 Usterki zgłoszone z telefonów HK (ze zdjęciami) — lista poniżej.</div>
+          ) : (
+            <FloorMap floor={selectedFloorObj} faults={faults} onSelectSpace={setSelectedSpace} selectedSpace={selectedSpace} />
+          )}
           {selectedSpace && (
             <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", textAlign: "center" }}>
               Pokazuję: <strong style={{ color: "var(--text-0)" }}>{selectedSpace}</strong>
@@ -310,7 +308,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
         {showForm && <FaultFormModal key="ff" employeeName={employeeName} floors={floors} initialFloor={activeFloor} initialSpace={selectedSpace} onClose={() => setShowForm(false)} onSave={addFault} />}
       </AnimatePresence>
       <AnimatePresence>
-        {showDetails && <FaultDetailsModal key="fd" fault={showDetails} floors={floors} onClose={() => setShowDetails(null)} onUpdate={updateFault} onDelete={deleteFault} employeeName={employeeName} isManager={isManager} />}
+        {showDetails && <FaultDetailsModal key="fd" fault={showDetails} floors={floors} onClose={() => setShowDetails(null)} onUpdate={updateFault} employeeName={employeeName} isManager={isManager} />}
       </AnimatePresence>
     </div>
   );

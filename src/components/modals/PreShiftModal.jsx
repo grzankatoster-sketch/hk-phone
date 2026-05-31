@@ -8,7 +8,7 @@ import Logo from "../../ui/Logo";
 const transliterate = (s) =>
   (s || "").toLowerCase().replace(/[ąćęłńóśźż]/g, (c) => "acelnoszzz"["ąćęłńóśźż".indexOf(c)]);
 
-export default function PreShiftModal({ employeeName, selectedShift, onCancel, onConfirm }) {
+export default function PreShiftModal({ employeeName, selectedShift, shiftLabel, onCancel, onConfirm }) {
   const now = new Date();
   const dayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const ackName = transliterate(employeeName);
@@ -31,11 +31,16 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
   const standingHash    = reminders.map(r => r.id).sort().join(",");
   const standingHashKey = `ack-sh-${ackName}-${standingHash}`;
 
+  // Alert-set hash — ack jest powiązany z konkretnym zbiorem alertów, więc nowy
+  // alert kierownika ponownie wymaga potwierdzenia (nie chowa się po starym ACK).
+  const alertsHash    = alerts.map(a => a.id).sort().join(",");
+  const alertsHashKey = `ack-al-${ackName}-${alertsHash}`;
+
   const counts = { alerts: alerts.length, standing: reminders.length, wiki: newWiki.length };
 
   // ── Initial ack state ─────────────────────────────────────────────────────
   const initAcks = {
-    alerts:  counts.alerts  === 0 || localStorage.getItem(`${ackKeyBase}-alerts`)  === "1",
+    alerts:  counts.alerts  === 0 || (alertsHash && localStorage.getItem(alertsHashKey) === "1"),
     standing: counts.standing === 0 || localStorage.getItem(`${ackKeyBase}-standing`) === "1"
               || (standingHash && localStorage.getItem(standingHashKey) === "1"),
     wiki:    counts.wiki    === 0 || localStorage.getItem(`${ackKeyBase}-wiki`)    === "1",
@@ -57,6 +62,8 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
       localStorage.setItem(`${ackKeyBase}-${key}`, "1");
       // Save permanent hash for standing so same set doesn't require re-ack next day
       if (key === "standing" && standingHash) localStorage.setItem(standingHashKey, "1");
+      // Save alert-set hash so the SAME set isn't re-prompted, but a new alert is.
+      if (key === "alerts" && alertsHash) localStorage.setItem(alertsHashKey, "1");
     } else {
       localStorage.removeItem(`${ackKeyBase}-${key}`);
     }
@@ -116,7 +123,7 @@ export default function PreShiftModal({ employeeName, selectedShift, onCancel, o
           <div style={{ flex: 1 }}>
             <div className="cc-preshift-title" id="cc-preshift-title-id">Zanim rozpoczniesz zmianę</div>
             <div className="cc-preshift-sub">
-              <strong>{employeeName}</strong> · {SHIFT_LABELS_PL[selectedShift] || selectedShift}
+              <strong>{employeeName}</strong> · {shiftLabel || SHIFT_LABELS_PL[selectedShift] || selectedShift}
             </div>
           </div>
           <button className="cc-preshift-close" onClick={onCancel} title="Anuluj">

@@ -1,13 +1,14 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { X, AlertTriangle, Trash2 } from "lucide-react";
+import { X, AlertTriangle } from "lucide-react";
 import { KONSERWATOR_WORKERS } from "../../lib/constants";
 
-export default function FaultDetailsModal({fault,floors,onClose,onUpdate,onDelete,employeeName,isManager}){
+export default function FaultDetailsModal({fault,floors,onClose,onUpdate,employeeName,isManager}){
   const [note,setNote]=React.useState(fault.completion_note||"");
   const [assignedTo,setAssignedTo]=React.useState(fault.assigned_to||"");
   const fl=floors.find(f=>f.key===fault.floor);
-  const label=fl?.key==="parter"?(fl.spaces.find(s=>s.id===fault.space_id)?.label||fault.space_id):fault.space_id;
+  const label=fl?.key==="parter"?(fl.spaces.find(s=>s.id===fault.space_id)?.label||fault.space_id):(fault.room||fault.space_id);
+  const photos=[...(fault.photos||[]),...(fault.photo_url&&!(fault.photos||[]).includes(fault.photo_url)?[fault.photo_url]:[])];
   const statusLabel={open:"Nowa",in_progress:"W trakcie",done:"Zakończona"}[fault.status];
   const statusColor={open:"var(--rose)",in_progress:"var(--amber)",done:"var(--emerald)"}[fault.status];
   return (
@@ -31,10 +32,16 @@ export default function FaultDetailsModal({fault,floors,onClose,onUpdate,onDelet
             <div style={{fontSize:11,fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Opis</div>
             <div style={{fontSize:14,lineHeight:1.5,color:"var(--text-primary)"}}>{fault.description}</div>
           </div>
-          {fault.photo_url&&(
+          {photos.length>0&&(
             <div>
-              <div style={{fontSize:11,fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Zdjęcie</div>
-              <img src={fault.photo_url} alt="usterka" style={{maxWidth:"100%",maxHeight:300,borderRadius:10,border:"1px solid var(--border-light)"}}/>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--text-muted)",textTransform:"uppercase",letterSpacing:".06em",marginBottom:4}}>Zdjęcia ({photos.length})</div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                {photos.map((p,i)=>(
+                  <a key={i} href={p} target="_blank" rel="noreferrer">
+                    <img src={p} alt={`usterka ${i+1}`} style={{width:120,height:120,objectFit:"cover",borderRadius:10,border:"1px solid var(--border-light)"}}/>
+                  </a>
+                ))}
+              </div>
             </div>
           )}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,fontSize:12}}>
@@ -61,9 +68,7 @@ export default function FaultDetailsModal({fault,floors,onClose,onUpdate,onDelet
           )}
         </div>
         <div className="cc-preshift-footer">
-          <button className="btn btn-danger-outline" onClick={()=>{if(confirm("Usunąć tę usterkę?")){onDelete(fault.id);onClose();}}}>
-            <Trash2 size={13}/> Usuń
-          </button>
+          <div style={{fontSize:11,color:"var(--text-muted)"}}>Usterek nie można usuwać — zapis trwały.</div>
           <div style={{display:"flex",gap:8}}>
             {fault.status==="open"&&(
               <button className="btn btn-amber" onClick={()=>{onUpdate(fault.id,{status:"in_progress",started_at:new Date().toISOString()});onClose();}}>

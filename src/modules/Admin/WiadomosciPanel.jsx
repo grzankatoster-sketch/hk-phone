@@ -63,7 +63,7 @@ export default function WiadomosciPanel({
               <div style={{fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>Brak wiadomości.</div>
             ):messages.slice(0,4).map(m=>(
               <div key={m.id} style={{padding:"7px 10px",fontSize:12,background:m.readByAdmin?"transparent":"var(--rose-light)",borderRadius:6,borderLeft:`2px solid ${m.type==="bug"?"var(--rose)":"var(--plum)"}`}}>
-                <strong>{m.sender}</strong>: {m.text.slice(0,60)}{m.text.length>60?"…":""}
+                <strong>{m.sender||m.from||"—"}</strong>: {m.text.slice(0,60)}{m.text.length>60?"…":""}
               </div>
             ))}
           </div>

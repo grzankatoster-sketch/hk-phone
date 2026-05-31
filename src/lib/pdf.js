@@ -25,30 +25,30 @@ export function mkPDF_section(doc, pw, ml, cw, y, title) {
 }
 
 export function mkPDF_kv(doc, ml, y, label, value, chk) {
-  if (chk) chk(8);
+  if (chk) { const ny = chk(8); if (ny != null) y = ny; }
   doc.setFont("helvetica", "bold"); doc.setFontSize(8.5); doc.setTextColor(80, 72, 58);
   doc.text(pl(label) + ":", ml, y);
   doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.setTextColor(14, 12, 10);
-  doc.text(pl(String(value || "-")), ml + 54, y);
+  doc.text(pl(String(value ?? "-")), ml + 54, y);
   return y + 8;
 }
 
 export function mkPDF_paragraph(doc, ml, cw, y, text, size = 10, chk) {
   doc.setFont("helvetica", "normal"); doc.setFontSize(size); doc.setTextColor(14, 12, 10);
-  const lines = doc.splitTextToSize(pl(String(text || "")), cw);
-  lines.forEach((l, i) => { if (chk) chk(7); doc.text(l, ml, y + i * 6.5); });
-  return y + lines.length * 6.5 + 3;
+  const lines = doc.splitTextToSize(pl(String(text ?? "")), cw);
+  lines.forEach((l) => { if (chk) { const ny = chk(7); if (ny != null) y = ny; } doc.text(l, ml, y); y += 6.5; });
+  return y + 3;
 }
 
 export function mkPDF_item(doc, ml, cw, y, status, text, chk) {
   // Punktor z prefiksem statusu - bez specjalnych symboli
-  if (chk) chk(10);
+  if (chk) { const ny = chk(10); if (ny != null) y = ny; }
   const pfx = status === "[OK]" ? "[OK] " : status === "[X]" ? "[X]  " : "  -  ";
   const clr = status === "[OK]" ? [38, 95, 60] : status === "[X]" ? [148, 42, 58] : [70, 68, 64];
   doc.setFont("helvetica", "bold"); doc.setFontSize(8); doc.setTextColor(clr[0], clr[1], clr[2]);
   doc.text(pfx, ml, y);
   doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(14, 12, 10);
-  const lines = doc.splitTextToSize(pl(String(text || "")), cw - 18);
+  const lines = doc.splitTextToSize(pl(String(text ?? "")), cw - 18);
   lines.forEach((l, i) => doc.text(l, ml + 18, y + i * 6));
   return y + Math.max(lines.length * 6, 7) + 2;
 }

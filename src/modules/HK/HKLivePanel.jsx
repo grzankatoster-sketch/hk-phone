@@ -190,19 +190,6 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     return () => { active = false; clearInterval(id); };
   }, [date]);
 
-  // ─── Poll hkserver for exchange state (only in Czat tab) ─────────────────
-  React.useEffect(() => {
-    const poll = () => {
-      fetch("http://localhost:3737/hk/team")
-        .then(r => r.json())
-        .then(d => { if (d.exchanges) setExchanges(d.exchanges); })
-        .catch(() => {});
-    };
-    poll();
-    const id = setInterval(poll, 1000);
-    return () => clearInterval(id);
-  }, []);
-
   // ─── Sync plan to Supabase when hkData changes ───────────────────────────
   React.useEffect(() => {
     if (!hkData) return;
@@ -415,7 +402,6 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     { id: "pranie",      label: "Pranie",     icon: "🧺" },
     { id: "pracownicy",  label: "Pracownicy", icon: "👥" },
     { id: "historia",    label: "Historia",   icon: "📋" },
-    { id: "czat",        label: "Czat/Zespół", icon: "💬" },
   ];
 
   // ─── Render helpers ───────────────────────────────────────────────────────
@@ -1400,7 +1386,6 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
           {activeTab === "pranie"     && renderPranie()}
           {activeTab === "pracownicy" && renderPracownicy()}
           {activeTab === "historia"   && renderHistoria()}
-          {activeTab === "czat"       && renderCzat()}
         </div>
       </div>
 

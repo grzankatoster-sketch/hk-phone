@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Download, Upload, Clock } from "lucide-react";
 import {
-  weekMonday, weekDays, dateKey, exportScheduleXlsx, importScheduleXlsx, SHIFT_CODE, normalizeToShift,
+  weekMonday, weekDays, dateKey, exportScheduleXlsx, importScheduleXlsx, SHIFT_CODE, parseHoursToShift,
 } from "../../lib/excel";
 import { autoDetectShift, getScheduleDayEntry } from "../../lib/dates";
 import { SHIFT_SHORT_LABELS, SHIFT_OPTIONS } from "../../lib/constants";
@@ -17,21 +17,43 @@ const SHIFT_COLORS = {
 const DAY_PL_FULL = ["Poniedzialek", "Wtorek", "Sroda", "Czwartek", "Piatek", "Sobota", "Niedziela"];
 const DAY_PL_SHORT = ["Pon", "Wt", "Sr", "Cz", "Pt", "Sb", "Nd"];
 
-function CellInput({ value, onCommit, colors, shiftCode }) {
-  const [local, setLocal] = useState(value || "");
-  useEffect(() => { setLocal(value || ""); }, [value]);
+// Hours + manual shift selection. The manager types the working hours and picks
+// the shift type from the dropdown (the type is suggested from the hours but the
+// manager always has the final say — morning shifts can be 7-14, 7-15, 7-16, …).
+function CellInput({ hours, shiftKey, onCommit, colors }) {
+  const [h, setH] = useState(hours || "");
+  const [s, setS] = useState(shiftKey || "");
+  useEffect(() => { setH(hours || ""); }, [hours]);
+  useEffect(() => { setS(shiftKey || ""); }, [shiftKey]);
+
+  const handleHoursBlur = () => {
+    const trimmed = h.trim();
+    let nextShift = s;
+    // Suggest a shift only when the manager hasn't chosen one yet.
+    if (!s && trimmed) {
+      const guess = parseHoursToShift(trimmed);
+      if (guess) { nextShift = guess; setS(guess); }
+    }
+    onCommit(trimmed, nextShift);
+  };
+
+  const handleShiftChange = (e) => {
+    setS(e.target.value);
+    onCommit(h.trim(), e.target.value);
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 3 }}>
       <input
         type="text"
-        value={local}
-        onChange={e => setLocal(e.target.value)}
-        onBlur={() => onCommit(local.trim())}
+        value={h}
+        onChange={e => setH(e.target.value)}
+        onBlur={handleHoursBlur}
         onKeyDown={e => { if (e.key === "Enter") e.target.blur(); }}
         placeholder="7-15"
         style={{
           fontSize: 11.5,
-          fontWeight: local ? 700 : 400,
+          fontWeight: h ? 700 : 400,
           border: `1px solid ${colors ? colors.border : "var(--border-light)"}`,
           borderRadius: 6,
           background: colors ? colors.bg : "transparent",
@@ -43,13 +65,44 @@ function CellInput({ value, onCommit, colors, shiftCode }) {
           minWidth: 62,
         }}
       />
-      {shiftCode && (
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: colors?.color, lineHeight: 1 }}>
-          {shiftCode}
-        </span>
-      )}
+      <select
+        value={s}
+        onChange={handleShiftChange}
+        title="Wybierz zmianę"
+        style={{
+          fontSize: 10,
+          fontWeight: s ? 700 : 400,
+          border: `1px solid ${colors ? colors.border : "var(--border-light)"}`,
+          borderRadius: 6,
+          background: colors ? colors.bg : "var(--bg-card)",
+          color: colors ? colors.color : "var(--text-muted)",
+          padding: "2px 3px",
+          width: "100%",
+          outline: "none",
+          textAlign: "center",
+          cursor: "pointer",
+        }}
+      >
+        <option value="">— zmiana —</option>
+        {SHIFT_OPTIONS.map(opt => (
+          <option key={opt} value={opt}>{SHIFT_CODE[opt]} · {opt}</option>
+        ))}
+      </select>
     </div>
   );
+}
+
+// Extracts the working-hours text ("15-22") from a raw schedule entry, ignoring
+// entries that only store a shift key/code.
+function rawHours(raw) {
+  if (!raw) return "";
+  if (typeof raw === "object") {
+    const start = raw.start ?? raw.startTime ?? raw.start_time ?? raw.from ?? raw.from_time;
+    const end = raw.end ?? raw.endTime ?? raw.end_time ?? raw.to ?? raw.to_time;
+    return [start, end].filter(Boolean).join("-");
+  }
+  const s = String(raw);
+  return /\d\s*[-–—]\s*\d/.test(s) ? s : "";
 }
 
 function shiftBadge(shift) {
@@ -66,15 +119,6 @@ function shiftBadge(shift) {
   );
 }
 
-function displayScheduleValue(raw) {
-  if (!raw || typeof raw !== "object") return raw || "";
-  const start = raw.start ?? raw.startTime ?? raw.start_time ?? raw.from ?? raw.from_time;
-  const end = raw.end ?? raw.endTime ?? raw.end_time ?? raw.to ?? raw.to_time;
-  if (start || end) return [start, end].filter(Boolean).join("-");
-  const shiftKey = normalizeToShift(raw);
-  return shiftKey ? (SHIFT_CODE[shiftKey] || shiftKey) : "";
-}
-
 export default function ScheduleAdminPanel({ schedule, setSchedule, employees, dark, showToast }) {
   const [monday, setMonday] = useState(() => weekMonday());
   const fileRef = useRef(null);
@@ -84,15 +128,20 @@ export default function ScheduleAdminPanel({ schedule, setSchedule, employees, d
   const activeShift = autoDetectShift();
 
   const getShiftEntry = (day, emp) => getScheduleDayEntry(schedule, emp, day);
-  const getShift = (day, emp) => displayScheduleValue(getShiftEntry(day, emp)?.raw);
 
-  const setShift = (day, emp, value) => {
+  const setShift = (day, emp, hours, shift) => {
     const dk = dateKey(day);
     const existingKey = getShiftEntry(day, emp)?.employeeKey;
     setSchedule(prev => {
       const nextDay = { ...(prev[dk] || {}) };
       if (existingKey && existingKey !== emp) delete nextDay[existingKey];
-      nextDay[emp] = value || null;
+      const h = (hours || "").trim();
+      if (!h && !shift) {
+        nextDay[emp] = null;
+      } else {
+        const parts = h.split(/\s*[-–—]\s*/);
+        nextDay[emp] = { start: parts[0] || "", end: parts[1] || "", shift: shift || null };
+      }
       return {
         ...prev,
         [dk]: nextDay,
@@ -241,16 +290,17 @@ export default function ScheduleAdminPanel({ schedule, setSchedule, employees, d
                   {days.map((d) => {
                     const dk = dateKey(d);
                     const isToday = dk === todayStr;
-                    const rawVal = getShift(d, emp);
-                    const shiftKey = normalizeToShift(rawVal);
+                    const entry = getShiftEntry(d, emp);
+                    const shiftKey = entry?.shift || null;
+                    const hours = rawHours(entry?.raw);
                     const c = shiftKey ? SHIFT_COLORS[shiftKey] : null;
                     return (
                       <td key={dk} style={cellStyle(dark, isToday, !!shiftKey)}>
                         <CellInput
-                          value={rawVal}
-                          onCommit={val => setShift(d, emp, val)}
+                          hours={hours}
+                          shiftKey={shiftKey}
+                          onCommit={(hh, ss) => setShift(d, emp, hh, ss)}
                           colors={c}
-                          shiftCode={shiftKey ? SHIFT_CODE[shiftKey] : null}
                         />
                       </td>
                     );

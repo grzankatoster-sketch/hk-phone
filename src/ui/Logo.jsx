@@ -61,16 +61,22 @@ function DotsOnly({ tone, width, height, className, ariaLabel, style }) {
 function IconLogo({ tone, width, height, className, ariaLabel, style }) {
   const { bg, fg } = colors(tone);
   const showBg = bg !== "transparent";
+  const dots = [
+    { cx: 28, delay: "0s"   },
+    { cx: 36, delay: "0.7s" },
+    { cx: 44, delay: "1.4s" },
+    { cx: 52, delay: "2.1s" },
+  ];
   return (
     <svg viewBox="0 0 80 80" width={width} height={height} className={className} style={style}
          role="img" aria-label={ariaLabel} xmlns="http://www.w3.org/2000/svg">
       {showBg && <rect width="80" height="80" rx="12" fill={bg}/>}
-      <g fill={fg}>
-        <circle cx="28" cy="22" r="2.6"/>
-        <circle cx="36" cy="22" r="2.6"/>
-        <circle cx="44" cy="22" r="2.6"/>
-        <circle cx="52" cy="22" r="2.6"/>
-      </g>
+      {dots.map(({ cx, delay }) => (
+        <circle key={cx} cx={cx} cy="22" r="2.6" fill={fg}>
+          <animate attributeName="r" values="2.6;3.8;2.6" dur="4s" begin={delay} repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+          <animate attributeName="opacity" values="0.6;1;0.6" dur="4s" begin={delay} repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+        </circle>
+      ))}
       <text x="40" y="56" fontFamily="'DM Serif Display', serif" fontSize="26"
             fontWeight="400" textAnchor="middle" fill={fg} letterSpacing="0.06em">CC</text>
     </svg>
@@ -80,17 +86,24 @@ function IconLogo({ tone, width, height, className, ariaLabel, style }) {
 function FullLogo({ tone, width, height, className, ariaLabel, style }) {
   const { bg, fg } = colors(tone);
   const showBg = bg !== "transparent";
+  // Staggered breathing: each dot peaks at a different phase of the 4s cycle
+  const dots = [
+    { cx: 92,  delay: "0s"    },
+    { cx: 100, delay: "0.7s"  },
+    { cx: 120, delay: "1.4s"  },
+    { cx: 128, delay: "2.1s"  },
+  ];
   return (
     <svg viewBox="0 0 220 110" width={width} height={height} className={className} style={style}
          role="img" aria-label={ariaLabel} xmlns="http://www.w3.org/2000/svg">
       {showBg && <rect width="220" height="110" rx="6" fill={bg}/>}
-      {/* 4 kropki nad napisem */}
-      <g fill={fg}>
-        <circle cx="92" cy="30" r="2.6"/>
-        <circle cx="100" cy="30" r="2.6"/>
-        <circle cx="120" cy="30" r="2.6"/>
-        <circle cx="128" cy="30" r="2.6"/>
-      </g>
+      {/* 4 kropki z animacja */}
+      {dots.map(({ cx, delay }) => (
+        <circle key={cx} cx={cx} cy="30" r="2.6" fill={fg}>
+          <animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin={delay} repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+          <animate attributeName="opacity" values="0.75;1;0.75" dur="4s" begin={delay} repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+        </circle>
+      ))}
       {/* CONRAD */}
       <text x="110" y="62" fontFamily="'DM Serif Display', serif"
             fontSize="22" fontWeight="400" letterSpacing="0.18em"

@@ -24,11 +24,26 @@ export const STORAGE_KEYS = Object.freeze({
   faults: "reception-faults",
   adhocTasks: "reception-hk-adhoc-tasks",
   adhocThresholds: "reception-hk-adhoc-thresholds",
+  schedule: "reception-schedule",
+  vouchers: "reception-vouchers",
+  reviews: "reception-reviews",
+  openaiKey: "reception-openai-key",
+  adminPasswordHash: "reception-admin-password-hash",
+  customManagers: "reception-custom-managers",
+  parking: "reception-parking",
+  parkingHistory: "reception-parking-history",
+  staliGoscie: "reception-stali-goscie",
+  kwhotelCreds: "reception-kwhotel-creds",
+  reviewsSeedVer: "reception-reviews-seed-v",
+  bookingMeta: "reception-booking-reviews-meta",
 });
 
 export const loadJson = (key, fallback) => {
-  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; }
+  try { const r = localStorage.getItem(key); if (!r) return fallback; const v = JSON.parse(r); return v ?? fallback; }
   catch { return fallback; }
 };
 
 export const saveJson = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+
+export const getCustomManagers = () => loadJson(STORAGE_KEYS.customManagers, []);
+export const setCustomManagers = (list) => saveJson(STORAGE_KEYS.customManagers, list);

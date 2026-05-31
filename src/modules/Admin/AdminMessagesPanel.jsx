@@ -65,17 +65,22 @@ function AdminMessagesPanel({messages,setMessages,dark}){
           <ul className="cc-msgs-list" role="list">
             {messages.map(m=>{
               const isBug = m.type==="bug";
-              const initial = (m.sender||"?").charAt(0).toUpperCase();
+              // Wiadomości od pracownika mają {sender,sentAt}, a systemowe (np.
+              // niezgodność kasy) {from,createdAt} — normalizujemy, by nie gubić
+              // nadawcy ("?") ani godziny.
+              const sender = m.sender||m.from||"";
+              const sentAt = m.sentAt||m.createdAt||"";
+              const initial = (sender||"?").charAt(0).toUpperCase();
               return (
                 <li key={m.id} className={`cc-msg-row cc-msg-row--${isBug?"bug":"msg"}${!m.readByAdmin?" cc-msg-row--unread":""}`}>
-                  <div className="cc-msg-avatar" style={{background:avatarGradient(m.sender)}}>{initial}</div>
+                  <div className="cc-msg-avatar" style={{background:avatarGradient(sender)}}>{initial}</div>
                   <div className="cc-msg-body">
                     <div className="cc-msg-headline">
-                      <span className="cc-msg-sender">{m.sender}</span>
+                      <span className="cc-msg-sender">{sender}</span>
                       <span className={`cc-msg-type cc-msg-type--${isBug?"bug":"msg"}`}>
                         {isBug?"🐛 Błąd":"💬 Wiadomość"}
                       </span>
-                      <time className="cc-msg-time">{m.sentAt}</time>
+                      <time className="cc-msg-time">{sentAt}</time>
                     </div>
                     <div className="cc-msg-text">{m.text}</div>
                   </div>

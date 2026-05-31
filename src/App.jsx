@@ -319,7 +319,7 @@ function WelcomeOverlayScreen({name,onDone}){
     return()=>{clearTimeout(t1);clearTimeout(t2);};
   },[]);
   const h=new Date().getHours();
-  const greeting=h<10?"Dzień dobry,":h<18?"Dobre popołudnie,":"Dobry wieczór,";
+  const greeting=h<18?"Dzień dobry,":"Dobry wieczór,";
   return(
     <div className="cc-welcome-overlay" style={{opacity:out?0:1}} role="status" aria-live="polite">
       <motion.div
@@ -2072,7 +2072,7 @@ export default function App(){
                       <span>Przegląd</span>
                     </div>
                     <h1 className="v2-dash-title">
-                      {(()=>{const h=new Date().getHours();return h<10?"Dzień dobry":h<18?"Dobre popołudnie":"Dobry wieczór";})()}, {employeeName}
+                      {(()=>{const h=new Date().getHours();return h<18?"Dzień dobry":"Dobry wieczór";})()}, {employeeName}
                       <span className="v2-live-pill">Live · {shiftShortLabel(selectedShift)}</span>
                     </h1>
                     <div className="v2-dash-meta">
@@ -2511,10 +2511,6 @@ export default function App(){
                   </details>
                 </div>
               </div>
-              <div className="cc-flow-status cc-flow-status--draft" role="status">
-                <span className="cc-flow-status-dot" aria-hidden="true"/>
-                Szkic · niesygnowany
-              </div>
             </section>
 
             {/* ═══ AUTOSAVE recovery (inline pill, gdy istnieje) ═══ */}
@@ -2866,22 +2862,6 @@ export default function App(){
           {loginStep==="name"&&(
             <div className="cc-login-card cc-fade-up">
               <div className="cc-login-label">Witamy w Panelu Recepcji</div>
-              {!employeeName&&employeeActivityLog?.[0]?.employee&&(
-                <button
-                  type="button"
-                  onClick={()=>setEmployeeName(canonicalizePersonName(employeeActivityLog[0].employee))}
-                  style={{
-                    background:"rgba(201,153,80,.12)",border:"1px solid rgba(201,153,80,.35)",
-                    color:"#f5e6c8",borderRadius:"var(--radius-md)",
-                    padding:"8px 12px",marginBottom:10,fontSize:12.5,
-                    cursor:"pointer",display:"flex",alignItems:"center",gap:8,
-                    width:"100%",textAlign:"left"
-                  }}
-                  title="Kliknij aby wybrać"
-                >
-                  <History size={14}/> Ostatnio jako: <strong style={{marginLeft:2}}>{employeeActivityLog[0].employee}</strong>
-                </button>
-              )}
               <input
                 className="cc-login-input"
                 placeholder="Wpisz swoje imię…"
