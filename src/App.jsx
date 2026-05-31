@@ -606,10 +606,14 @@ export default function App(){
       if(!data||!date||Object.keys(data).length===0)return null;
       const rt={};
       HK_ALL.forEach(r=>{rt[r.no]=r.type;});
-      const asgn={};const pmAsgn={};const pmRt={};
+      const asgn={};const pmAsgn={};const pmRt={};const plannedRooms=[];
       Object.entries(data).forEach(([no,rd])=>{
-        if(rd.status==="W"||rd.status==="WP"||rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs){
+        const needsClean=rd.status==="W"||rd.status==="WP"||rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs;
+        if(needsClean){
           pmRt[no]=rd.status==="W"?"W":rd.status==="WP"?"WP":rd.status==="PG"?"PG":rd.status==="PGZ"?"PGZ":rd.br?"BR":"ZS";
+          // Zasiej KAŻDY pokój do sprzątania (nawet bez przypisanej osoby), by monitor
+          // pokazywał pełen plan z maila, nie tylko pokoje dotknięte przez HK.
+          plannedRooms.push({date,room:no,worker:rd.person||null,status:"W"});
         }
         if(!rd.person)return;
         if(rd.status==="W"||rd.status==="WP"){
@@ -620,20 +624,17 @@ export default function App(){
           pmAsgn[rd.person].push(no);
         }
       });
-      if(!Object.keys(asgn).length&&!Object.keys(pmAsgn).length&&!Object.keys(pmRt).length)return null;
+      if(!Object.keys(asgn).length&&!Object.keys(pmAsgn).length&&!Object.keys(pmRt).length&&!plannedRooms.length)return null;
       return {
         date,assignments:asgn,pm_assignments:pmAsgn,
-        room_types:rt,pm_room_types:pmRt,updated_at:new Date().toISOString()
+        room_types:rt,pm_room_types:pmRt,updated_at:new Date().toISOString(),plannedRooms
       };
     };
     const syncPayload=payload=>{
       if(!payload)return;
-      supabase.from("hk_plan").upsert(payload,{onConflict:"date"});
-      const allPlanned=[
-        ...Object.entries(payload.assignments).flatMap(([w,rms])=>rms.map(r=>({date:payload.date,room:r,worker:w,status:"W"}))),
-        ...Object.entries(payload.pm_assignments).flatMap(([w,rms])=>rms.map(r=>({date:payload.date,room:r,worker:w,status:"W"}))),
-      ];
-      if(allPlanned.length)supabase.from("hk_rooms").upsert(allPlanned,{onConflict:"date,room",ignoreDuplicates:true});
+      const {plannedRooms,...planRow}=payload;
+      supabase.from("hk_plan").upsert(planRow,{onConflict:"date"});
+      if(plannedRooms&&plannedRooms.length)supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true});
     };
     syncPayload(buildPlanPayload(hkDate,hkData));
     const api=window.electronAPI;
@@ -675,10 +676,12 @@ export default function App(){
       if(!data||!date||Object.keys(data).length===0)return null;
       const rt={};
       HK_ALL_LOCAL.forEach(r=>{rt[r.no]=r.type;});
-      const asgn={};const pmAsgn={};const pmRt={};
+      const asgn={};const pmAsgn={};const pmRt={};const plannedRooms=[];
       Object.entries(data).forEach(([no,rd])=>{
-        if(rd.status==="W"||rd.status==="WP"||rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs){
+        const needsClean=rd.status==="W"||rd.status==="WP"||rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs;
+        if(needsClean){
           pmRt[no]=rd.status==="W"?"W":rd.status==="WP"?"WP":rd.status==="PG"?"PG":rd.status==="PGZ"?"PGZ":rd.br?"BR":"ZS";
+          plannedRooms.push({date,room:no,worker:rd.person||null,status:"W"});
         }
         if(!rd.person)return;
         if(rd.status==="W"||rd.status==="WP"){
@@ -689,8 +692,8 @@ export default function App(){
           pmAsgn[rd.person].push(no);
         }
       });
-      if(!Object.keys(asgn).length&&!Object.keys(pmAsgn).length&&!Object.keys(pmRt).length)return null;
-      return {date,assignments:asgn,pm_assignments:pmAsgn,room_types:rt,pm_room_types:pmRt,updated_at:new Date().toISOString()};
+      if(!Object.keys(asgn).length&&!Object.keys(pmAsgn).length&&!Object.keys(pmRt).length&&!plannedRooms.length)return null;
+      return {date,assignments:asgn,pm_assignments:pmAsgn,room_types:rt,pm_room_types:pmRt,updated_at:new Date().toISOString(),plannedRooms};
     };
     const run=async()=>{
       try{
@@ -709,7 +712,11 @@ export default function App(){
           }
           if(!data)continue;
           const payload=buildPayload(date,data);
-          if(payload)supabase.from("hk_plan").upsert(payload,{onConflict:"date"});
+          if(payload){
+            const {plannedRooms,...planRow}=payload;
+            supabase.from("hk_plan").upsert(planRow,{onConflict:"date"});
+            if(plannedRooms&&plannedRooms.length)supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true});
+          }
         }
       }catch{}
     };
