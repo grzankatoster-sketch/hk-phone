@@ -288,8 +288,10 @@ ipcMain.handle("hk-automation-run-now", () => hkAutomation.runNow());
 ipcMain.handle("hk-get-konserwator-qr", async (_, name, faults) => {
   const safeName = String(name || "").slice(0, 60);
   hkserver.setKonserwatorFaults(safeName, faults);
-  const base = hkserver.getBaseURL();
-  const url = `${base}/konserwator/${encodeURIComponent(safeName)}`;
+  // QR prowadzi na wdrożoną stronę konserwacji (Supabase/GitHub Pages), nie na
+  // lokalny serwer LAN — dzięki temu działa z każdego telefonu, nie tylko z sieci hotelu.
+  const KONS_BASE = process.env.VITE_KONSERWACJA_URL || "https://grzankatoster-sketch.github.io/hk-phone/konserwacja.html";
+  const url = `${KONS_BASE}?k=${encodeURIComponent(safeName)}`;
   try {
     const dataURL = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#000000", light: "#ffffff" } });
     return { dataURL, url };
