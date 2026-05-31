@@ -52,6 +52,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
   const [expanded, setExpanded] = React.useState(null);
   const [payModal, setPayModal] = React.useState(null); // record id
   const [payDoc, setPayDoc] = React.useState("");
+  const [editRec, setEditRec] = React.useState(null); // edytowany rekord (kopia)
   const [history, setHistory] = React.useState(() => loadJson(STORAGE_KEYS.parkingHistory, []));
 
   const save = (updated) => { setRecords(updated); saveJson(STORAGE_KEYS.parking, updated); };
@@ -153,6 +154,14 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
     save(records.map(r => r.id === id ? {...r, active: false} : r));
     showToast("Usunięto z aktywnej listy.", "info");
   };
+
+  const saveEdit = () => {
+    if (!editRec) return;
+    save(records.map(r => r.id === editRec.id ? { ...editRec } : r));
+    setEditRec(null);
+    showToast("Zmiany zapisane.", "success");
+  };
+  const setEF = (k, v) => setEditRec(p => ({ ...p, [k]: v }));
 
   const inp = dark ? "input dark-input" : "input";
   const panel = `panel${dark ? " dark-panel" : ""}`;
@@ -332,6 +341,31 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
         </div>
       )}
 
+      {/* Edit modal */}
+      {editRec && (
+        <div className="modal-backdrop" onClick={()=>setEditRec(null)}>
+          <div className={`modal${dark?" dark-modal":""}`} style={{maxWidth:520}} onClick={e=>e.stopPropagation()}>
+            <div className="modal-header"><h2>Edytuj wpis parkingowy</h2></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              <div><label>Nr rejestracyjny</label><input className={inp} value={editRec.plate||""} onChange={e=>setEF("plate",e.target.value.toUpperCase())} style={{textTransform:"uppercase"}}/></div>
+              <div><label>Imię i nazwisko</label><input className={inp} value={editRec.name||""} onChange={e=>setEF("name",e.target.value)}/></div>
+              <div><label>Telefon</label><input className={inp} value={editRec.phone||""} onChange={e=>setEF("phone",e.target.value)}/></div>
+              <div><label>Status / firma</label><input className={inp} value={editRec.status||""} onChange={e=>setEF("status",e.target.value)}/></div>
+              <div><label>Opłacony do</label><input className={inp} type="date" value={editRec.paidTo||""} onChange={e=>setEF("paidTo",e.target.value)}/></div>
+              <div><label>Data wpłaty</label><input className={inp} type="date" value={editRec.paidOn||""} onChange={e=>setEF("paidOn",e.target.value)}/></div>
+              {editRec.type==="krotki" && <div><label>Krótki najem do</label><input className={inp} type="date" value={editRec.shortUntil||""} onChange={e=>setEF("shortUntil",e.target.value)}/></div>}
+              <div><label>Nr dokumentu</label><input className={inp} value={editRec.docNr||""} onChange={e=>setEF("docNr",e.target.value)}/></div>
+              <div><label>Cena / stawka</label><input className={inp} value={editRec.price||""} onChange={e=>setEF("price",e.target.value)}/></div>
+              <div style={{gridColumn:"span 2"}}><label>Uwagi</label><input className={inp} value={editRec.note||""} onChange={e=>setEF("note",e.target.value)}/></div>
+            </div>
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn btn-outline" onClick={()=>setEditRec(null)}>Anuluj</button>
+              <button className="btn btn-sky" onClick={saveEdit}>✓ Zapisz zmiany</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Records list */}
       {filtered.length === 0 && (
         <div className={panel}><div className={`empty-box${dark?" empty-box-dark":""}`}>Brak wyników.</div></div>
@@ -432,6 +466,9 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
                       💰 Zarejestruj płatność
                     </button>
                   )}
+                  <button className="btn btn-outline" style={{fontSize:12}} onClick={()=>setEditRec({...rec})}>
+                    ✎ Edytuj
+                  </button>
                   <button className="btn btn-danger-outline" style={{fontSize:12}} onClick={()=>deleteRecord(rec.id)}>
                     <Trash2 size={12}/> Usuń
                   </button>
