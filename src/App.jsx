@@ -412,10 +412,11 @@ export default function App(){
   useEffect(()=>{saveJson(STORAGE_KEYS.schedule,schedule);},[schedule]);
   const [lastView,setLastView]=useState(()=>localStorage.getItem("reception-last-view")||"worker"); // worker | manager
   const [mgrToggleMini,setMgrToggleMini]=useState(()=>localStorage.getItem("reception-mgr-toggle-mini")==="1");
-  const resolveLoginShift=useCallback(()=>{
+  const resolveLoginShift=useCallback((name)=>{
+    const emp=name||employeeName; // przekazane imię ma priorytet (stan może być jeszcze niezaktualizowany)
     const currentSchedule=loadJson(STORAGE_KEYS.schedule,schedule);
     setSchedule(currentSchedule);
-    const scheduledShift=shiftFromSchedule(currentSchedule,employeeName);
+    const scheduledShift=shiftFromSchedule(currentSchedule,emp);
     setLoginShiftSource(scheduledShift?"schedule":"clock");
     return scheduledShift||autoDetectShift();
   },[employeeName,schedule]);
@@ -430,8 +431,8 @@ export default function App(){
       }
     }
   },[loginStep, selectedShift, resolveLoginShift]);
-  const completeLogin=useCallback(()=>{
-    const normalizedShift=normalizeToShift(selectedShift)||resolveLoginShift();
+  const completeLogin=useCallback((name)=>{
+    const normalizedShift=normalizeToShift(selectedShift)||resolveLoginShift(name);
     setSelectedShift(normalizedShift);
     setLoginStep("ready");
     setPendingAutoStart(true);
@@ -469,7 +470,7 @@ export default function App(){
         return;
       }
     }
-    completeLogin();
+    completeLogin(empName);
   },[employeeName,schedule,completeLogin]);
   // Godziny + typ zmiany wpisane przez kierownika w grafiku (zalogowana osoba, dziś).
   const scheduledEntry=useMemo(()=>{
@@ -3208,7 +3209,7 @@ export default function App(){
       <AnimatePresence>{showSearch&&<GlobalSearchModal key="gs" onClose={()=>setShowSearch(false)} dark={dark}/>}</AnimatePresence>
       {finishModal}
       <AnimatePresence>{showPreShiftModal&&<PreShiftModal key="preshift" employeeName={employeeName} selectedShift={selectedShift} shiftLabel={shiftFullLabel(selectedShift)} onCancel={()=>setShowPreShiftModal(false)} onConfirm={actualStartShift}/>}</AnimatePresence>
-      {identityConfirm&&<IdentityConfirmModal {...identityConfirm} onConfirm={()=>{setIdentityConfirm(null);completeLogin();}} onCancel={()=>setIdentityConfirm(null)}/>}
+      {identityConfirm&&<IdentityConfirmModal {...identityConfirm} onConfirm={()=>{const n=identityConfirm.employeeName;setIdentityConfirm(null);completeLogin(n);}} onCancel={()=>setIdentityConfirm(null)}/>}
       <AnimatePresence>{showAuditLog&&<AuditLogModal key="audit" onClose={()=>setShowAuditLog(false)}/>}</AnimatePresence>
       <AnimatePresence>{showEmpReport&&<EmployeeReportModal key="er" employees={employees} dark={dark} onClose={()=>setShowEmpReport(false)} currentEmployeeName={employeeName} onDownload={downloadEmployeeReportPDF}/>}</AnimatePresence>
       {confirmDialog&&<ConfirmModal message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onClose={()=>setConfirmDialog(null)}/>}
