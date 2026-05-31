@@ -45,7 +45,7 @@ import {
   BarChart2, TrendingUp, MessageSquare, RefreshCw, AlertCircle, Send,
   Eye, EyeOff, Maximize2, Minimize2,
 } from "lucide-react";
-import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers } from "./lib/storage";
+import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers, setCustomManagers as persistCustomManagers } from "./lib/storage";
 import { verifyOrCreateAdminPassword, hasAdminPassword, verifyBootstrapPassword, createManagerPassword } from "./lib/adminAuth";
 import {
   ADMIN_MANAGERS, SHIFT_OPTIONS,
@@ -363,7 +363,10 @@ const ADMIN_TAB_LABELS = {
 };
 
 export default function App(){
-  const customManagers=React.useMemo(()=>{const m=getCustomManagers();return m.length>0?m:ADMIN_MANAGERS;},[]);
+  const [customManagers,setCustomManagersState]=useState(()=>{const m=getCustomManagers();return m.length>0?m:ADMIN_MANAGERS;});
+  // Promocja pracownika na kierownika = dodanie do listy kierowników (wspólne hasło admina).
+  const promoteToManager=(name)=>{const n=canonicalizePersonName(name);setCustomManagersState(prev=>{const next=prev.includes(n)?prev:[...prev,n];persistCustomManagers(next);return next;});showToast(`${n} ma teraz dostęp do panelu kierownika (wspólne hasło).`,"success");};
+  const demoteManager=(name)=>{setCustomManagersState(prev=>{const next=prev.filter(m=>m!==name);persistCustomManagers(next);return next;});showToast(`${name} cofnięty(a) do roli pracownika.`,"info");};
   const [tasks,setTasks]=useState(defaultTasks);
   const [employees,setEmployees]=useState(defaultEmployees);
   const [employeeName,setEmployeeName]=useState("");
@@ -1789,6 +1792,9 @@ export default function App(){
             startEditEmployee={startEditEmployee}
             removeEmployee={removeEmployee}
             employeeActivityLog={employeeActivityLog}
+            customManagers={customManagers}
+            promoteToManager={promoteToManager}
+            demoteManager={demoteManager}
           />
         )}
         {adminTab==="grafik"&&(

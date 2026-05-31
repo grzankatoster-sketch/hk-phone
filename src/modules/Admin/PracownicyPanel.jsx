@@ -13,6 +13,7 @@ export default function PracownicyPanel({
   startEditEmployee,
   removeEmployee,
   employeeActivityLog,
+  customManagers = [], promoteToManager, demoteManager,
 }) {
   const month = monthKey();
   const monthLogs = employeeActivityLog.filter(item=>{
@@ -89,6 +90,9 @@ export default function PracownicyPanel({
                     </div>
                     <div className="actions">
                       <button className="btn btn-outline-dark" onClick={()=>startEditEmployee(index)}>Edytuj</button>
+                      {customManagers.includes(employee)
+                        ? <button className="btn btn-outline-dark" onClick={()=>demoteManager?.(employee)} title="Cofnij do roli pracownika">↓ Pracownik</button>
+                        : <button className="btn btn-gold" onClick={()=>promoteToManager?.(employee)} title="Nadaj dostęp do panelu kierownika (wspólne hasło)">↑ Na kierownika</button>}
                       <button className="btn btn-danger-outline" onClick={()=>removeEmployee(index)}>Usuń</button>
                     </div>
                   </>
