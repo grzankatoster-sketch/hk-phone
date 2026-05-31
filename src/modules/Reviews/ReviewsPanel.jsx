@@ -21,21 +21,21 @@ function scoreColor(s) {
 }
 
 function scoreLabel(s) {
-  if (s >= 9)   return "Wyjatkowy";
+  if (s >= 9)   return "Wyjątkowy";
   if (s >= 8)   return "Bardzo dobry";
   if (s >= 7)   return "Dobry";
   if (s >= 6)   return "Przyjemny";
-  if (s >= 5)   return "Przecietny";
-  return              "Slaby";
+  if (s >= 5)   return "Przeciętny";
+  return              "Słaby";
 }
 
 const REPLY_TEMPLATES = {
   positive: (name, score) =>
-    `Szanowny Gosciu ${name},\n\nDziekujemy serdecznie za wystawienie nam oceny ${score}/10 i za mile slowa! Cieszymy sie, ze pobyt w Conrad Comfort spelnil Panstwa oczekiwania. Bedzie nam milo goscic Panstwa ponownie.\n\nZ powazaniem,\nZespol Conrad Comfort`,
+    `Szanowny Gościu ${name},\n\nDziękujemy serdecznie za wystawienie nam oceny ${score}/10 i za miłe słowa! Cieszymy się, że pobyt w Conrad Comfort spełnił Państwa oczekiwania. Będzie nam miło gościć Państwa ponownie.\n\nZ poważaniem,\nZespół Conrad Comfort`,
   neutral: (name) =>
-    `Szanowny Gosciu ${name},\n\nDziekujemy za opinie i za wybranie Conrad Comfort. Cieszymy sie z pozytywnych spostrzezen i przyjmujemy do wiadomosci uwagi. Pracujemy stale nad poprawa jakosci uslug. Zapraszamy ponownie.\n\nZ powazaniem,\nZespol Conrad Comfort`,
+    `Szanowny Gościu ${name},\n\nDziękujemy za opinię i za wybranie Conrad Comfort. Cieszymy się z pozytywnych spostrzeżeń i przyjmujemy do wiadomości uwagi. Pracujemy stale nad poprawą jakości usług. Zapraszamy ponownie.\n\nZ poważaniem,\nZespół Conrad Comfort`,
   negative: (name) =>
-    `Szanowny Gosciu ${name},\n\nDziekujemy za szczerost w opinii. Przepraszamy za wszelkie niedogodnosci, jakie napotkali Panstwo podczas pobytu. Panstwa uwagi zostaly przekazane odpowiednim dzialomm i prosimy o kontakt bezposredni - chcemy to naprawic. Mamy nadzieje na kolejna szanse.\n\nZ powazaniem,\nZespol Conrad Comfort`,
+    `Szanowny Gościu ${name},\n\nDziękujemy za szczerość w opinii. Przepraszamy za wszelkie niedogodności, jakie napotkali Państwo podczas pobytu. Państwa uwagi zostały przekazane odpowiednim działom i prosimy o kontakt bezpośredni — chcemy to naprawić. Mamy nadzieję na kolejną szansę.\n\nZ poważaniem,\nZespół Conrad Comfort`,
 };
 
 function generateReply(review) {
@@ -172,7 +172,7 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
       applyLocalRefresh();
       setSyncState("local");
       setSyncMessage("");
-      if (manual) showToast && showToast("Odswiezono zapisane opinie.", "info");
+      if (manual) showToast && showToast("Odświeżono zapisane opinie.", "info");
       return;
     }
 
@@ -206,14 +206,13 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
         if (manual) showToast && showToast(`Booking.com: pobrano ${incoming.length} opinii.`, "success");
       } else {
         setSyncState("local");
-        setSyncMessage("");
-        if (manual) showToast && showToast("Booking.com nie udostepnil teraz danych. Pokazuje zapisane opinie.", "info");
+        setSyncMessage("Pokazuję zapisane opinie — automatyczne odświeżanie co 15 min.");
+        // bez alarmującego toastu; status widać w nagłówku panelu
       }
     } catch (err) {
       applyLocalRefresh();
       setSyncState("local");
-      setSyncMessage("");
-      if (manual) showToast && showToast("Odswiezono zapisane opinie.", "info");
+      setSyncMessage("Pokazuję zapisane opinie — automatyczne odświeżanie co 15 min.");
     } finally {
       syncInFlight.current = false;
     }
@@ -307,7 +306,7 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
       const data = await res.json();
       if (data.error) throw new Error(data.error.message || "Blad API");
       const reply = data.choices?.[0]?.message?.content?.trim() || "";
-      if (!reply) throw new Error("Pusta odpowiedz AI");
+      if (!reply) throw new Error("Pusta odpowiedź AI");
       setReplyDrafts(prev => ({ ...prev, [id]: reply }));
       showToast && showToast("Odpowiedz AI wygenerowana.", "success");
     } catch (err) {
@@ -539,7 +538,7 @@ function ReviewsPanel({ dark, employeeName, isManager, showToast }) {
                       <textarea className="input" rows={5} style={{ fontSize: 12.5, resize: "vertical" }}
                         value={draft}
                         onChange={e => setReplyDrafts(prev => ({ ...prev, [r.id]: e.target.value }))}
-                        placeholder="Wpisz lub wygeneruj odpowiedz do skopiowania na Booking.com..." />
+                        placeholder="Wpisz lub wygeneruj odpowiedź do skopiowania na Booking.com..." />
                       {r.responded_at && (
                         <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>
                           Zapisano: {new Date(r.responded_at).toLocaleDateString("pl-PL")} Â· {r.responded_by}
