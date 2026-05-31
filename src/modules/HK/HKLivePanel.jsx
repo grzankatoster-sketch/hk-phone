@@ -1316,7 +1316,6 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
             ["W trakcie",  stats.czyszczenie,  "info"],
             ["Gotowe",     stats.czyste,       "success"],
             ["Puste",      totalVacated,       "warning"],
-            ["Pominięte",  stats["pominięte"], "violet"],
           ].map(([lbl, cnt, variant]) => (
             <div key={lbl} className={`cc-hkl-statcell cc-hkl-statcell--${variant}`} role="listitem">
               <div className="cc-hkl-statcell-badge" aria-hidden="true">
