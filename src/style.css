@@ -6096,13 +6096,16 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   color: var(--cc-text-muted);
   border-color: var(--cc-border);
 }
-.cc-fault-room { min-width: 0; }
+.cc-fault-room { min-width: 0; overflow: hidden; }
 .cc-fault-room-num {
   font-family: var(--cc-font-display);
   font-size: 18px;
   font-weight: 800;
   color: var(--cc-text);
   letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .cc-fault-room-sub {
   font-family: var(--cc-font-mono);
@@ -6240,7 +6243,7 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   outline: 2px solid var(--cc-focus);
   outline-offset: 2px;
 }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .cc-fault-row {
     grid-template-columns: 50px 1fr 44px;
     grid-template-areas:
