@@ -631,7 +631,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
                       </div>
                       {isSelected && (
                         <div style={{ position: "absolute", top: 48, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: dark ? "#1c2128" : "#fff", border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, borderRadius: 9, padding: "8px 10px", boxShadow: "0 4px 20px rgba(0,0,0,.25)", minWidth: 130, display: "flex", flexDirection: "column", gap: 5 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: muted, marginBottom: 2 }}>Pokój {no}</div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: muted, marginBottom: 2 }}>Pokój {no}{wName ? ` · ${wName}` : ""}</div>
                           {canVacate && (
                             <button onClick={(e) => { e.stopPropagation(); markVacated(no); setMonitorPopover(null); }}
                               style={{ padding: "5px 10px", borderRadius: 6, border: "1px solid rgba(245,158,11,.4)", background: "rgba(245,158,11,.1)", color: "#f59e0b", fontWeight: 700, fontSize: 11, cursor: "pointer", textAlign: "left" }}>
