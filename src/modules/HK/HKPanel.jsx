@@ -1211,6 +1211,9 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
               const cntReg=myRooms.filter(([k])=>!HK_APTS.includes(k)).length;
               const cntApt=myRooms.filter(([k])=>HK_APTS.includes(k)).length;
               const cnt=cntReg+cntApt*3;
+              // Rozdzielenie: wyjazdy (W/WP = pełne sprzątanie) vs pobyty (PG/PGZ = lekkie)
+              const cntWyj=myRooms.filter(([,v])=>v.status==="W"||v.status==="WP").length;
+              const cntPob=myRooms.filter(([,v])=>v.status==="PG"||v.status==="PGZ").length;
               const isDuty=s.name===dutyPerson;
               const isAfternoon=s.name===afternoonPerson;
               const chipColor=CHIP_COLORS[i%CHIP_COLORS.length];
@@ -1227,7 +1230,11 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
                       {s.name}
                     </div>
                     <div style={{fontSize:11,color:dark?"var(--dark-text-muted)":"var(--text-muted)",marginTop:1}}>
-                      {cntReg>0&&cntApt>0?`${cntReg}pok + ${cntApt}apt`:cntReg>0?`${cntReg} pok`:cntApt>0?`${cntApt} apt`:"0 pok"} · w:{cnt}
+                      {(myRooms.length===0)?"0 pok":[
+                        cntWyj>0?`${cntWyj} wyj`:null,
+                        cntPob>0?`${cntPob} pob`:null,
+                        cntApt>0?`${cntApt} apt`:null,
+                      ].filter(Boolean).join(" · ")} · w:{cnt}
                     </div>
                   </div>
                   <div style={{display:"flex",gap:3,alignItems:"center"}}>
