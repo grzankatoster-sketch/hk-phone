@@ -140,16 +140,7 @@ export default function WorkerSidebar({
           <span className="nsb-item-icon"><FileText size={16} /></span>
           <span className="nsb-item-label">Korekta płatności</span>
         </button>
-        {isAdmin && (
-          <button className="nsb-item" onClick={() => setShowAdminPanel(true)}>
-            <span className="nsb-item-icon">
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-            </span>
-            <span className="nsb-item-label">Panel kierownika</span>
-          </button>
-        )}
+        {/* "Panel kierownika" usunięty z paska narzędzi — przełącznik jest na górnym pasku. */}
       </nav>
 
       {/* Finish shift button */}

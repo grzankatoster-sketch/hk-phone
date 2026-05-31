@@ -3181,8 +3181,7 @@ button:focus:not(:focus-visible) { outline: none; }
   width: 244px;
   flex-shrink: 0;
   height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden; /* tylko .nsb-nav się przewija; dolny pasek (zegar) zawsze widoczny */
   display: flex;
   flex-direction: column;
   background: var(--cc-bg-elevated);

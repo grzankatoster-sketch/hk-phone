@@ -3160,22 +3160,8 @@ export default function App(){
               </button>
             </div>
           )}
-          {isAdmin&&(
-            <>
-              <button
-                className="cc-shell-topbar-iconbtn"
-                onClick={()=>{const v=!mgrToggleMini;setMgrToggleMini(v);localStorage.setItem("reception-mgr-toggle-mini",v?"1":"0");}}
-                title={mgrToggleMini?"Rozwiń pasek":"Zwiń do mini"}>
-                {mgrToggleMini?<Maximize2 size={14}/>:<Minimize2 size={14}/>}
-              </button>
-              <button
-                className="cc-shell-topbar-iconbtn cc-shell-topbar-iconbtn--danger"
-                onClick={handleAdminLogout}
-                title="Wyloguj kierownika">
-                <LogOut size={14}/>
-              </button>
-            </>
-          )}
+          {/* Mini-toggle paska i "Wyloguj kierownika" usunięte z górnego paska —
+              wylogowanie jest w sidebarze panelu kierownika. */}
         </div>
       </header>
       <div className="app-layout worker-layout">
