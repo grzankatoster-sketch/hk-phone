@@ -2,7 +2,8 @@ import React from "react";
 import { AnimatePresence } from "framer-motion";
 import { AlertTriangle, Plus, QrCode } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
-import { FAULT_FLOORS, KONSERWATOR_WORKERS, TENANT_ID } from "../../lib/constants";
+import { FAULT_FLOORS, TENANT_ID } from "../../lib/constants";
+import { getKonserwatorzy, setKonserwatorzy } from "../../lib/konserwatorzy";
 import { supabase } from "../../lib/supabase";
 import FloorMap from "../../components/FloorMap";
 import FaultFormModal from "../../components/modals/FaultFormModal";
@@ -22,6 +23,10 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
   const [search, setSearch] = React.useState("");
   const [qrCodes, setQrCodes] = React.useState({});
   const [generatingQr, setGeneratingQr] = React.useState(null);
+  const [konserwatorzy, setKons] = React.useState(getKonserwatorzy);
+  const [newKons, setNewKons] = React.useState("");
+  const addKons = () => { const n = newKons.trim(); if (!n || konserwatorzy.includes(n)) { setNewKons(""); return; } const next = [...konserwatorzy, n]; setKons(next); setKonserwatorzy(next); setNewKons(""); showToast?.("Dodano konserwatora.", "success"); };
+  const removeKons = (name) => { const next = konserwatorzy.filter(k => k !== name); setKons(next); setKonserwatorzy(next); showToast?.("Usunięto konserwatora.", "info"); };
 
   const floors = React.useMemo(() => [
     FAULT_FLOORS[0],
@@ -118,7 +123,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
         <div className="spacer" />
         <select className="input" value={workerFilter} onChange={e => setWorkerFilter(e.target.value)} style={{ width: 178, height: 34, fontSize: 12 }}>
           <option value="">Konserwator: wszyscy</option>
-          {KONSERWATOR_WORKERS.map(w => <option key={w} value={w}>{w}</option>)}
+          {konserwatorzy.map(w => <option key={w} value={w}>{w}</option>)}
         </select>
         <div className="search-wrap">
           <svg className="search-icon" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -268,7 +273,14 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
       {isManager && (
         <div className="data-card" style={{ marginTop: 16 }}>
           <div className="data-card-head">
-            <div className="data-card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><QrCode size={18} /> Kody QR - Konserwatorzy</div>
+            <div className="data-card-title" style={{ display: "flex", alignItems: "center", gap: 8 }}><QrCode size={18} /> Konserwatorzy — lista i kody QR</div>
+          </div>
+          {/* Edycja listy konserwatorów */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", padding: "12px 16px 0" }}>
+            <input className="input" value={newKons} onChange={e => setNewKons(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && addKons()} placeholder="Imię nowego konserwatora"
+              style={{ maxWidth: 220, height: 34, fontSize: 13 }} />
+            <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={addKons}><Plus size={13} /> Dodaj konserwatora</button>
           </div>
           {!hasElectron && (
             <div className="cc-fault-hint">
@@ -276,7 +288,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
             </div>
           )}
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", padding: 16 }}>
-            {KONSERWATOR_WORKERS.map(name => {
+            {konserwatorzy.map(name => {
               const count = faults.filter(f => f.assigned_to === name && f.status !== "done").length;
               return (
                 <div key={name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "14px 18px", borderRadius: 12, background: "var(--bg-1)", border: "1px solid var(--border)", minWidth: 140 }}>
@@ -294,12 +306,16 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
                       Brak QR
                     </div>
                   )}
-                  <button className="btn btn-ghost" style={{ fontSize: 11, padding: "5px 12px" }} onClick={() => generateKonserwatorQr(name)} disabled={!hasElectron || generatingQr === name}>
-                    {generatingQr === name ? "Generuję..." : qrCodes[name] ? "Odśwież QR" : "Generuj QR"}
-                  </button>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button className="btn btn-ghost" style={{ fontSize: 11, padding: "5px 12px" }} onClick={() => generateKonserwatorQr(name)} disabled={!hasElectron || generatingQr === name}>
+                      {generatingQr === name ? "Generuję..." : qrCodes[name] ? "Odśwież QR" : "Generuj QR"}
+                    </button>
+                    <button className="btn btn-danger-outline" style={{ fontSize: 11, padding: "5px 10px" }} onClick={() => removeKons(name)} title="Usuń konserwatora">✕</button>
+                  </div>
                 </div>
               );
             })}
+            {konserwatorzy.length === 0 && <div style={{ fontSize: 12, color: "var(--text-2)", padding: 8 }}>Brak konserwatorów — dodaj powyżej.</div>}
           </div>
         </div>
       )}

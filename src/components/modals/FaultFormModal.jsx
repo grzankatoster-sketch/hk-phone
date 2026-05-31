@@ -1,7 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, X } from "lucide-react";
-import { FAULT_CATEGORIES, KONSERWATOR_WORKERS } from "../../lib/constants";
+import { FAULT_CATEGORIES } from "../../lib/constants";
+import { getKonserwatorzy } from "../../lib/konserwatorzy";
 
 export default function FaultFormModal({onClose,onSave,employeeName,floors,initialSpace,initialFloor}){
   const [floor,setFloor]=React.useState(initialFloor||"parter");
@@ -96,7 +97,7 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
               <label>Przypisz do (opcjonalnie)</label>
               <select className="input" value={assignedTo} onChange={e=>setAssignedTo(e.target.value)}>
                 <option value="">— brak —</option>
-                {KONSERWATOR_WORKERS.map(w=><option key={w} value={w}>{w}</option>)}
+                {getKonserwatorzy().map(w=><option key={w} value={w}>{w}</option>)}
               </select>
             </div>
           </div>

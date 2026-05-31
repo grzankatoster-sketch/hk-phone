@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { X, AlertTriangle } from "lucide-react";
-import { KONSERWATOR_WORKERS } from "../../lib/constants";
+import { getKonserwatorzy } from "../../lib/konserwatorzy";
 
 export default function FaultDetailsModal({fault,floors,onClose,onUpdate,employeeName,isManager}){
   const [note,setNote]=React.useState(fault.completion_note||"");
@@ -55,7 +55,7 @@ export default function FaultDetailsModal({fault,floors,onClose,onUpdate,employe
               {isManager?(
                 <select className="input" style={{marginTop:4,fontSize:12}} value={assignedTo} onChange={e=>{setAssignedTo(e.target.value);onUpdate(fault.id,{assigned_to:e.target.value||null});}}>
                   <option value="">— brak —</option>
-                  {KONSERWATOR_WORKERS.map(w=><option key={w} value={w}>{w}</option>)}
+                  {getKonserwatorzy().map(w=><option key={w} value={w}>{w}</option>)}
                 </select>
               ):(assignedTo||"—")}
             </div>
