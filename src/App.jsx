@@ -504,12 +504,9 @@ export default function App(){
       setNewReminderShift(selectedShift);
     }
   },[selectedShift]);
-  // Odrzucenia przypomnień/powiadomień utrwalamy per pracownik + dzień, żeby nie
-  // wracały po ponownym logowaniu tego samego dnia (reset następuje naturalnie jutro).
+  // Odrzucenia przypomnień/powiadomień utrwalamy per pracownik + dzień (klucz tu,
+  // efekt zapisujący niżej — po deklaracji dismissedReminderKeys, by uniknąć TDZ).
   const dismissStoreKey=useCallback((name)=>`reception-dismissed-reminders-${name||"_"}-${todayKey()}`,[]);
-  useEffect(()=>{
-    if(employeeName&&started)saveJson(dismissStoreKey(employeeName),dismissedReminderKeys);
-  },[dismissedReminderKeys,employeeName,started,dismissStoreKey]);
   // ── Pre-shift modal (B5) ────────────────────────────────────────────────
   const [showPreShiftModal,setShowPreShiftModal]=useState(false);
   // Switch top-bar po zalogowaniu kierownika
@@ -533,6 +530,10 @@ export default function App(){
   const [safeConfirmStep,setSafeConfirmStep]=useState(false); // true = pokazuj ekran potwierdzenia sejfu
   const [showEmpReport,setShowEmpReport]=useState(false);
   const [dismissedReminderKeys,setDismissedReminderKeys]=useState([]);
+  // Utrwalanie odrzuceń (po deklaracji powyżej — unika TDZ).
+  useEffect(()=>{
+    if(employeeName&&started)saveJson(dismissStoreKey(employeeName),dismissedReminderKeys);
+  },[dismissedReminderKeys,employeeName,started,dismissStoreKey]);
   const [workerTab,setWorkerTab]=useState("zmiana");
   const [adminTab,setAdminTab]=useState("ewidencja");
   const [evidenceMonth,setEvidenceMonth]=useState(monthKey());
