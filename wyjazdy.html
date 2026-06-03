@@ -32,7 +32,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .sync{font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
 .legend{padding:12px 16px 4px;color:var(--muted);font-size:11px;line-height:1.6}
 .days{padding:10px 12px;display:flex;flex-direction:column;gap:9px;padding-bottom:40px}
-.day{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 2px rgba(90,29,74,.04)}
+.day{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:0;box-shadow:0 1px 2px rgba(90,29,74,.04)}
+.drow{display:flex;align-items:center;gap:14px}
+.obsada-btn{margin-top:11px;width:100%;background:rgba(90,29,74,.06);border:1px solid var(--line);border-radius:10px;padding:9px;color:var(--plum);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit}
+.planner{margin-top:10px;border-top:1px dashed var(--line-strong);padding-top:11px;display:flex;flex-direction:column;gap:7px}
+.rost-head{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.rost-row{display:flex;align-items:center;gap:8px}
+.rost-name{flex:1;font-weight:700;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rost-role{font-size:12px;padding:5px 6px;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:inherit}
+.rost-load{min-width:56px;text-align:center;font-weight:900;font-size:15px;color:var(--plum);font-variant-numeric:tabular-nums}
+.rost-x{background:none;border:none;color:#c2708a;font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.rost-empty{font-size:12px;color:var(--muted);padding:4px 0}
+.rost-add{display:flex;gap:7px;margin-top:3px}
+.rost-inp{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
+.rost-addbtn{padding:8px 14px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
 .day.today{border-color:var(--plum);background:linear-gradient(180deg,rgba(90,29,74,.06) 0%,var(--paper) 100%)}
 .day.tomorrow{border-color:var(--line-strong)}
 .day.empty{opacity:.55}
@@ -53,7 +66,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .pill.zero{opacity:.4}
 .foot{text-align:center;color:var(--muted);font-size:11px;padding:10px}
 @media (max-width:420px){
-  .day{align-items:stretch;flex-direction:column;gap:10px}
+  .drow{align-items:stretch;flex-direction:column;gap:10px}
   .dright{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .pill{min-width:0;padding:8px 3px}
   .pill .pl{font-size:8px}
@@ -160,7 +173,78 @@ async function fetchPlans() {
   return m;
 }
 
+// ── Obsada + podział na żywo (jak Auto-przypisz: apartament = waga 3 pokoi) ──
+let expandedDay = null;
+let lastByDate = {};
+const escapeHtml = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const rosterKey = d => "hk-roster-"+d;
+const getRoster = d => { try { return JSON.parse(localStorage.getItem(rosterKey(d))||"[]"); } catch { return []; } };
+const setRoster = (d,arr) => localStorage.setItem(rosterKey(d), JSON.stringify(arr));
+const capitalize = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
+
+// Dzieli `reg` pokoi i `apt` apartamentów między pracowników. Apartament liczy się
+// jak 3 pokoje (waga), apartamenty rozdawane round-robin, pokoje wyrównują obciążenie.
+function splitWorkload(reg, apt, workers) {
+  const n = workers.length;
+  if (!n) return [];
+  const aptArr = new Array(n).fill(0);
+  for (let i=0;i<apt;i++) aptArr[i%n]++;
+  const totalWeight = reg + apt*3;
+  const targetW = totalWeight/n;
+  const ideal = aptArr.map(a=>Math.max(0,targetW - a*3));
+  const idealSum = ideal.reduce((s,x)=>s+x,0) || 1;
+  const regArr = ideal.map(x=>Math.floor(x*reg/idealSum));
+  let leftover = reg - regArr.reduce((s,x)=>s+x,0);
+  while (leftover>0){ let mi=0,mv=Infinity; for(let i=0;i<n;i++){const w=regArr[i]+aptArr[i]*3; if(w<mv){mv=w;mi=i;}} regArr[mi]++; leftover--; }
+  return workers.map((w,i)=>({ name:w.name, role:w.role, reg:regArr[i], apt:aptArr[i] }));
+}
+
+// Globalne handlery — inline onclick przetrwa rebuild innerHTML
+window.toggleDay = (iso)=>{ expandedDay = expandedDay===iso ? null : iso; render(lastByDate); };
+window.addRosterWorker = (iso)=>{
+  const inp = document.getElementById("rost-input-"+iso);
+  const name = (inp && inp.value || "").trim();
+  if (!name) return;
+  const arr = getRoster(iso); arr.push({ name: capitalize(name), role:"poranna" });
+  setRoster(iso, arr); render(lastByDate);
+  const ni = document.getElementById("rost-input-"+iso); if (ni) ni.focus();
+};
+window.removeRosterWorker = (iso, idx)=>{ const arr=getRoster(iso); arr.splice(idx,1); setRoster(iso,arr); render(lastByDate); };
+window.setRosterRole = (iso, idx, role)=>{ const arr=getRoster(iso); if(arr[idx]){ arr[idx].role=role; setRoster(iso,arr); render(lastByDate); } };
+
+function plannerHtml(iso, counts) {
+  const roster = getRoster(iso);
+  const morning = roster.filter(w=>w.role!=="popoludnie");
+  const split = splitWorkload(counts.w.reg, counts.w.apt, morning);
+  let mi = 0;
+  const rows = roster.map((w, idx)=>{
+    let load;
+    if (w.role==="popoludnie") load = "popoł.";
+    else { const s = split[mi++]; load = s ? (s.apt ? s.reg+"+"+s.apt : ""+s.reg) : "0"; }
+    return `<div class="rost-row">
+      <span class="rost-name">${escapeHtml(w.name)}</span>
+      <select class="rost-role" onchange="setRosterRole('${iso}',${idx},this.value)">
+        <option value="poranna"${w.role==="poranna"?" selected":""}>Poranna</option>
+        <option value="dyzur"${w.role==="dyzur"?" selected":""}>Dyżur</option>
+        <option value="popoludnie"${w.role==="popoludnie"?" selected":""}>Popołudnie</option>
+      </select>
+      <span class="rost-load">${load}</span>
+      <button class="rost-x" onclick="removeRosterWorker('${iso}',${idx})" aria-label="Usuń">×</button>
+    </div>`;
+  }).join("");
+  return `<div class="planner">
+    <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału</div>
+    ${rows || '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>'}
+    <div class="rost-add">
+      <input id="rost-input-${iso}" class="rost-inp" placeholder="Imię pracownika" autocomplete="off"
+        onkeydown="if(event.key==='Enter')addRosterWorker('${iso}')"/>
+      <button class="rost-addbtn" onclick="addRosterWorker('${iso}')">Dodaj</button>
+    </div>
+  </div>`;
+}
+
 function render(byDate) {
+  lastByDate = byDate;
   const range = buildRange();
   const todayIso = range[0], tomorrowIso = range[1];
   const c = document.getElementById("days");
@@ -174,13 +258,18 @@ function render(byDate) {
     const wZero = counts.w.total===0 ? " zero" : "";
     const pgZero = counts.pg===0 ? " zero" : "";
     const pgzZero = counts.pgz===0 ? " zero" : "";
+    const rosterCount = getRoster(iso).length;
     const div = document.createElement("div");
     div.className = "day "+cls+empty;
     div.innerHTML =
-      `<div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>`+
-      `<div class="dright"><div class="pill w${wZero}"><div class="pl">Wyjazd</div><div class="pv">${fmtWP(counts.w.reg, counts.w.apt)}</div></div>`+
-      `<div class="pill pg${pgZero}"><div class="pl">PG</div><div class="pv">${counts.pg}</div></div>`+
-      `<div class="pill pgz${pgzZero}"><div class="pl">PGZ</div><div class="pv">${counts.pgz}</div></div></div>`;
+      `<div class="drow">`+
+        `<div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>`+
+        `<div class="dright"><div class="pill w${wZero}"><div class="pl">Wyjazd</div><div class="pv">${fmtWP(counts.w.reg, counts.w.apt)}</div></div>`+
+        `<div class="pill pg${pgZero}"><div class="pl">PG</div><div class="pv">${counts.pg}</div></div>`+
+        `<div class="pill pgz${pgzZero}"><div class="pl">PGZ</div><div class="pv">${counts.pgz}</div></div></div>`+
+      `</div>`+
+      `<button class="obsada-btn" onclick="toggleDay('${iso}')">${expandedDay===iso?"▲ Ukryj obsadę":"▼ Obsada"+(rosterCount?` (${rosterCount})`:"")}</button>`+
+      (expandedDay===iso ? plannerHtml(iso, counts) : "");
     c.appendChild(div);
   });
   document.getElementById("lastUpd").textContent = "Aktualizacja: "+new Date().toLocaleTimeString("pl-PL");
@@ -190,9 +279,14 @@ async function tick() {
   const dot = document.getElementById("dot");
   try {
     const m = await fetchPlans();
+    lastByDate = m;
     dot.className = "dot";
     document.getElementById("sync").textContent = new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-    render(m);
+    // Nie przerysowuj, gdy menadżer planuje obsadę (otwarty planer / wpisuje) — inaczej
+    // zniknąłby wpisywany tekst i rozwinięty dzień. Liczby odświeżą się po zamknięciu.
+    const ae = document.activeElement;
+    const typing = ae && /^(INPUT|SELECT)$/.test(ae.tagName);
+    if (!expandedDay && !typing) render(m);
   } catch (e) {
     dot.className = "dot off";
   }
