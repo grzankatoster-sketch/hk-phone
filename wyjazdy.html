@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#5a1d4a"/>
 <title>Wyjazdy • HK</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -99,6 +100,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 <script>
 const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
 const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 const DAYS = 3;
 const APT_ROOMS = ["106","206","218","306","318"];
 const DOW = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
@@ -197,7 +199,7 @@ function splitWorkload(reg, apt, workers, dutyName) {
   const n = workers.length;
   if (!n) return [];
   const dutyIdx = workers.findIndex(w => w.name === dutyName);
-  const DUTY_RATIO = 0.7;
+  const DUTY_RATIO = 0.85; // dyżurny tylko nieco mniej (bardziej fair)
   const totalWeight = reg + apt*3;
   const rawRatios = workers.map((_,i)=> (i===dutyIdx && dutyIdx>=0) ? DUTY_RATIO : 1.0);
   const ratioSum = rawRatios.reduce((s,v)=>s+v,0) || 1;
@@ -250,15 +252,15 @@ window.setRosterRole = (iso, idx, role)=>{ const arr=getRoster(iso); if(arr[idx]
 window.sendRoster = async (iso)=>{
   const roster = getRoster(iso);
   if (!roster.length){ toast("Dodaj najpierw pracowników.", "#f59ea6"); return; }
+  if (!sb){ toast("Brak biblioteki Supabase — odśwież stronę.", "#f59ea6"); return; }
   try{
-    const res = await fetch(SB_URL+"/rest/v1/hk_roster?on_conflict=tenant_id,date", {
-      method:"POST",
-      headers:{ apikey:SB_KEY, Authorization:"Bearer "+SB_KEY, "content-type":"application/json", Prefer:"resolution=merge-duplicates,return=minimal" },
-      body: JSON.stringify({ tenant_id:TENANT_ID, date:iso, roster, updated_at:new Date().toISOString() }),
-    });
-    if (res.ok) toast("Obsada wysłana do recepcji ✓");
-    else toast("Błąd wysyłki ("+res.status+")", "#f59ea6");
-  }catch(e){ toast("Brak połączenia", "#f59ea6"); }
+    const { error } = await sb.from("hk_roster").upsert(
+      { tenant_id:TENANT_ID, date:iso, roster, updated_at:new Date().toISOString() },
+      { onConflict:"tenant_id,date" }
+    );
+    if (!error) toast("Obsada wysłana do recepcji ✓");
+    else toast("Błąd: "+error.message, "#f59ea6");
+  }catch(e){ toast("Błąd: "+(e&&e.message||e), "#f59ea6"); }
 };
 
 function plannerHtml(iso, counts) {
