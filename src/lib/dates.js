@@ -57,9 +57,23 @@ export function getScheduleDayEntry(schedule, empName, date = new Date()) {
   }
 
   const normalizedTarget = normalizeScheduleEmployeeName(empName);
-  const matchedKey = Object.keys(daySchedule).find(
+  let matchedKey = Object.keys(daySchedule).find(
     (key) => normalizeScheduleEmployeeName(key) === normalizedTarget,
   );
+
+  // Fallback: dopasuj po PIERWSZYM imieniu, gdy w grafiku jest "Imię Nazwisko",
+  // a logowanie to samo "Imię" (lub odwrotnie). Inaczej godziny z grafiku nie są
+  // czytane i wpada sztywna etykieta zmiany (np. 14:00–23:00 zamiast 14–22).
+  if (!matchedKey) {
+    const targetFirst = normalizedTarget.split(" ")[0];
+    if (targetFirst) {
+      const firstMatches = Object.keys(daySchedule).filter(
+        (key) => normalizeScheduleEmployeeName(key).split(" ")[0] === targetFirst,
+      );
+      // tylko gdy jednoznaczne (jedna osoba o tym imieniu w grafiku) — bez kolizji
+      if (firstMatches.length === 1) matchedKey = firstMatches[0];
+    }
+  }
   if (!matchedKey) return null;
 
   const raw = daySchedule[matchedKey];

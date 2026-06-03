@@ -27,13 +27,15 @@ export default function PreShiftModal({ employeeName, selectedShift, shiftLabel,
   const lastSeenMs     = parseInt(localStorage.getItem(wikiLastSeenKey) || "0");
   const newWiki        = wikiEntries.filter(w => (w.updatedAt ? new Date(w.updatedAt).getTime() : 0) > lastSeenMs);
 
+  // Hash po TREŚCI (tytuł+treść), nie po ID — ID są niestabilne (seed/sync Supabase),
+  // a liczy się to, co pracownik potwierdza. Musi być identyczny jak w handleStartShift.
+  const contentHash     = (arr) => arr.map(x => `${x.title || ""}|${x.body || ""}`).sort().join("||");
   // Permanent hash keys — standing reminders remembered across days
-  const standingHash    = reminders.map(r => r.id).sort().join(",");
+  const standingHash    = contentHash(reminders);
   const standingHashKey = `ack-sh-${ackName}-${standingHash}`;
 
-  // Alert-set hash — ack jest powiązany z konkretnym zbiorem alertów, więc nowy
-  // alert kierownika ponownie wymaga potwierdzenia (nie chowa się po starym ACK).
-  const alertsHash    = alerts.map(a => a.id).sort().join(",");
+  // Alert-set hash — ack powiązany z konkretnym zbiorem alertów (po treści).
+  const alertsHash    = contentHash(alerts);
   const alertsHashKey = `ack-al-${ackName}-${alertsHash}`;
 
   const counts = { alerts: alerts.length, standing: reminders.length, wiki: newWiki.length };

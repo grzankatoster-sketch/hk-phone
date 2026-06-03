@@ -1108,9 +1108,11 @@ export default function App(){
       return notExp&&(!a.target_shift||a.target_shift===shiftKey);
     });
     const hasAlerts=relevantAlerts.length>0;
-    // Hash zbioru alertów — nowy alert zmienia hash i unieważnia poprzedni ACK,
-    // więc okno startowe pokaże się ponownie (analogicznie do stałych przypomnień).
-    const alertsHash=relevantAlerts.map(a=>a.id).sort().join(",");
+    // Hash po TREŚCI (tytuł+treść), nie po ID — ID są niestabilne (seed/sync Supabase
+    // generują nowe), a treść jest tym, co pracownik faktycznie potwierdza. Dzięki temu
+    // ACK przeżywa wymianę ID i nie trzeba akceptować tego samego przy każdym logowaniu.
+    const contentHash=(arr)=>arr.map(x=>`${x.title||""}|${x.body||""}`).sort().join("||");
+    const alertsHash=contentHash(relevantAlerts);
     const hasReminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false).length>0;
     const wikiLastSeen=parseInt(localStorage.getItem(`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`)||"0");
     const hasNewWiki=wikiEntries.filter(w=>(w.updatedAt?new Date(w.updatedAt).getTime():0)>wikiLastSeen).length>0;
@@ -1120,7 +1122,7 @@ export default function App(){
     // Permanent hash check for standing reminders — skip re-ack if same set already acknowledged
     if(hasReminders){
       const rems=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false);
-      const sHash=rems.map(r=>r.id).sort().join(",");
+      const sHash=contentHash(rems);
       if(sHash&&localStorage.getItem(`ack-sh-${ackN}-${sHash}`)==="1")localStorage.setItem(`${ackBase}-standing`,"1");
     }
     const alertsAcked=!hasAlerts||localStorage.getItem(`ack-al-${ackN}-${alertsHash}`)==="1";
@@ -2901,8 +2903,14 @@ export default function App(){
                 }}
               />
               <datalist id="cc-emp-list-main">
-                {employees.map(e=><option key={e} value={e}/>)}
-                {customManagers.map(m=><option key={"m_"+m} value={m}/>)}
+                {(()=>{
+                  const seen=new Set();const out=[];
+                  [...employees,...customManagers].forEach(n=>{
+                    const k=String(n||"").trim().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ł/g,"l").toLowerCase();
+                    if(!k||seen.has(k))return;seen.add(k);out.push(n);
+                  });
+                  return out.map(n=><option key={n} value={n}/>);
+                })()}
               </datalist>
               <button
                 className="cc-login-btn"
