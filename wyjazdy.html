@@ -46,6 +46,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .rost-add{display:flex;gap:7px;margin-top:3px}
 .rost-inp{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
 .rost-addbtn{padding:8px 14px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+.rost-send{margin-top:8px;width:100%;padding:11px;border-radius:9px;border:none;background:#0f7a4a;color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
 .day.today{border-color:var(--plum);background:linear-gradient(180deg,rgba(90,29,74,.06) 0%,var(--paper) 100%)}
 .day.tomorrow{border-color:var(--line-strong)}
 .day.empty{opacity:.55}
@@ -182,21 +183,48 @@ const getRoster = d => { try { return JSON.parse(localStorage.getItem(rosterKey(
 const setRoster = (d,arr) => localStorage.setItem(rosterKey(d), JSON.stringify(arr));
 const capitalize = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 
-// Dzieli `reg` pokoi i `apt` apartamentów między pracowników. Apartament liczy się
-// jak 3 pokoje (waga), apartamenty rozdawane round-robin, pokoje wyrównują obciążenie.
-function splitWorkload(reg, apt, workers) {
+// Podział 1:1 z przyciskiem „Auto-przypisz" w panelu HK (HKPanel.autoAssign):
+// apartament = waga 3, dyżur dostaje 0.7 udziału, apartamenty wg kolejki aptQueue,
+// pokoje wyrównują do wag, ostatni absorbuje nadmiar. Zwraca licznik reg/apt per osoba.
+function splitWorkload(reg, apt, workers, dutyName) {
   const n = workers.length;
   if (!n) return [];
-  const aptArr = new Array(n).fill(0);
-  for (let i=0;i<apt;i++) aptArr[i%n]++;
+  const dutyIdx = workers.findIndex(w => w.name === dutyName);
+  const DUTY_RATIO = 0.7;
   const totalWeight = reg + apt*3;
-  const targetW = totalWeight/n;
-  const ideal = aptArr.map(a=>Math.max(0,targetW - a*3));
-  const idealSum = ideal.reduce((s,x)=>s+x,0) || 1;
-  const regArr = ideal.map(x=>Math.floor(x*reg/idealSum));
-  let leftover = reg - regArr.reduce((s,x)=>s+x,0);
-  while (leftover>0){ let mi=0,mv=Infinity; for(let i=0;i<n;i++){const w=regArr[i]+aptArr[i]*3; if(w<mv){mv=w;mi=i;}} regArr[mi]++; leftover--; }
-  return workers.map((w,i)=>({ name:w.name, role:w.role, reg:regArr[i], apt:aptArr[i] }));
+  const rawRatios = workers.map((_,i)=> (i===dutyIdx && dutyIdx>=0) ? DUTY_RATIO : 1.0);
+  const ratioSum = rawRatios.reduce((s,v)=>s+v,0) || 1;
+  const weightTargets = rawRatios.map(v=>Math.floor(v/ratioSum*totalWeight));
+  const aptCount = new Array(n).fill(0);
+  const aptWeights = new Array(n).fill(0);
+  const nonDuty = workers.map((_,i)=>i).filter(i=>i!==dutyIdx);
+  const dutyArr = dutyIdx>=0 ? [dutyIdx] : [];
+  const aptQueue = [...nonDuty,...nonDuty,...dutyArr,...nonDuty,...dutyArr];
+  for (let ri=0; ri<apt; ri++) {
+    const pi = aptQueue.length ? (aptQueue[ri % aptQueue.length] ?? 0) : 0;
+    aptCount[pi]++; aptWeights[pi]+=3;
+  }
+  const regTargets = workers.map((_,i)=>Math.max(0, weightTargets[i]-aptWeights[i]));
+  const regSum = regTargets.reduce((s,v)=>s+v,0);
+  const scale = regSum>0 ? reg/regSum : 1;
+  const adjTargets = regTargets.map(v=>Math.round(v*scale));
+  let diff = reg - adjTargets.reduce((s,v)=>s+v,0);
+  const diffOrder = [...nonDuty, dutyIdx>=0?dutyIdx:-1].filter(i=>i>=0);
+  for (let j=0; diff>0 && j<diffOrder.length; j++){ adjTargets[diffOrder[j]]++; diff--; }
+  while (diff<0){
+    const maxVal = Math.max(...diffOrder.map(i=>adjTargets[i]));
+    const idx = diffOrder.find(i=>adjTargets[i]===maxVal && adjTargets[i]>0);
+    if (idx===undefined) break;
+    adjTargets[idx]--; diff++;
+  }
+  // Pętla przypisania (ostatni absorbuje nadmiar) — wiernie jak autoAssign.
+  const finalReg = new Array(n).fill(0);
+  let pIdx=0, filled=0;
+  for (let r=0; r<reg; r++){
+    while (pIdx<n-1 && filled>=adjTargets[pIdx]){ pIdx++; filled=0; }
+    finalReg[pIdx]++; filled++;
+  }
+  return workers.map((w,i)=>({ name:w.name, role:w.role, reg:finalReg[i], apt:aptCount[i] }));
 }
 
 // Globalne handlery — inline onclick przetrwa rebuild innerHTML
@@ -205,17 +233,32 @@ window.addRosterWorker = (iso)=>{
   const inp = document.getElementById("rost-input-"+iso);
   const name = (inp && inp.value || "").trim();
   if (!name) return;
-  const arr = getRoster(iso); arr.push({ name: capitalize(name), role:"poranna" });
+  // Pierwsza wpisana osoba domyślnie na dyżurze (0.7 udziału), reszta poranna.
+  const arr = getRoster(iso); arr.push({ name: capitalize(name), role: arr.length===0 ? "dyzur" : "poranna" });
   setRoster(iso, arr); render(lastByDate);
   const ni = document.getElementById("rost-input-"+iso); if (ni) ni.focus();
 };
 window.removeRosterWorker = (iso, idx)=>{ const arr=getRoster(iso); arr.splice(idx,1); setRoster(iso,arr); render(lastByDate); };
 window.setRosterRole = (iso, idx, role)=>{ const arr=getRoster(iso); if(arr[idx]){ arr[idx].role=role; setRoster(iso,arr); render(lastByDate); } };
+window.sendRoster = async (iso)=>{
+  const roster = getRoster(iso);
+  if (!roster.length){ toast("Dodaj najpierw pracowników.", "#f59ea6"); return; }
+  try{
+    const res = await fetch(SB_URL+"/rest/v1/hk_roster?on_conflict=tenant_id,date", {
+      method:"POST",
+      headers:{ apikey:SB_KEY, Authorization:"Bearer "+SB_KEY, "content-type":"application/json", Prefer:"resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({ tenant_id:TENANT_ID, date:iso, roster, updated_at:new Date().toISOString() }),
+    });
+    if (res.ok) toast("Obsada wysłana do recepcji ✓");
+    else toast("Błąd wysyłki ("+res.status+")", "#f59ea6");
+  }catch(e){ toast("Brak połączenia", "#f59ea6"); }
+};
 
 function plannerHtml(iso, counts) {
   const roster = getRoster(iso);
   const morning = roster.filter(w=>w.role!=="popoludnie");
-  const split = splitWorkload(counts.w.reg, counts.w.apt, morning);
+  const dutyName = (roster.find(w=>w.role==="dyzur")||{}).name;
+  const split = splitWorkload(counts.w.reg, counts.w.apt, morning, dutyName);
   let mi = 0;
   const rows = roster.map((w, idx)=>{
     let load;
@@ -240,6 +283,7 @@ function plannerHtml(iso, counts) {
         onkeydown="if(event.key==='Enter')addRosterWorker('${iso}')"/>
       <button class="rost-addbtn" onclick="addRosterWorker('${iso}')">Dodaj</button>
     </div>
+    ${roster.length ? `<button class="rost-send" onclick="sendRoster('${iso}')">📤 Wyślij obsadę do recepcji</button>` : ""}
   </div>`;
 }
 

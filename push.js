@@ -94,12 +94,14 @@ function mountInstallPrompt() {
   const ios = __isIos();
   const steps = ios
     ? `<div style="font-size:14.5px;line-height:1.6;color:#e6edf3">
-         Aby dostawać <b>powiadomienia o zadaniach</b> na ekran blokady:
+         Aby dostawać <b>powiadomienia na ekran blokady</b>:
          <ol style="margin:10px 0 0 18px;padding:0">
-           <li>Tapnij <b>Udostępnij</b> <span style="display:inline-block;border:1px solid #6366f1;border-radius:6px;padding:0 7px;margin:0 2px">⬆</span> na dole Safari</li>
-           <li>Wybierz <b>„Dodaj do ekranu początkowego"</b></li>
-           <li>Otwórz z <b>nowej ikony</b> i włącz powiadomienia</li>
+           <li>Otwórz tę stronę w <b>Safari</b> (nie Chrome ani Edge — na iPhone tylko Safari to potrafi)</li>
+           <li>Tapnij ikonę <b>Udostępnij</b> (kwadracik ze strzałką — na dole ekranu lub przy pasku adresu)</li>
+           <li>Przewiń listę i wybierz <b>„Dodaj do ekranu początkowego"</b></li>
+           <li>Otwórz aplikację z <b>nowej ikony</b> i włącz powiadomienia</li>
          </ol>
+         <div style="font-size:12px;color:#8a93a3;margin-top:8px">Nie widzisz „Dodaj do ekranu początkowego"? To znak, że nie jesteś w Safari.</div>
        </div>`
     : `<div style="font-size:14.5px;line-height:1.6;color:#e6edf3">
          Dodaj aplikację do telefonu, aby dostawać <b>powiadomienia o zadaniach</b> — także na ekran blokady.
