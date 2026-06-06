@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>HK Panel</title>
 <link rel="manifest" href="manifest.json"/>
-<meta name="theme-color" content="#0f1117"/>
+<meta name="theme-color" content="#5a1d4a"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
 <meta name="apple-mobile-web-app-title" content="Conrad HK"/>
@@ -14,91 +14,108 @@
 <script src="push.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e6edf3;min-height:100vh;overscroll-behavior:none}
-.header{background:#161b22;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #30363d;position:sticky;top:0;z-index:10}
-.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0}
-.name{font-size:17px;font-weight:800;flex:1}
+:root{
+  --plum:#5a1d4a;
+  --plum-soft:#7a3a6a;
+  --cream:#fdfaf7;
+  --paper:#ffffff;
+  --ink:#2d1422;
+  --muted:#8a6a7e;
+  --line:rgba(90,29,74,.14);
+  --line-strong:rgba(90,29,74,.28);
+  --tint:rgba(90,29,74,.06);
+  --blue:#2563eb;
+  --green:#0f7a4a;
+  --amber:#a07820;
+  --lilac:#784b8e;
+  --red:#b3261e;
+}
+html,body{background:var(--cream)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
+.header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
+.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.name{font-size:17px;font-weight:800;flex:1;color:#fff}
 .shift-badge{font-size:10px;padding:3px 8px;border-radius:999px;font-weight:700}
-.tabs{display:flex;background:#161b22;border-bottom:2px solid #30363d;position:sticky;top:66px;z-index:9}
-.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:#484f58;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
-.tab-btn.active{color:#6366f1;border-bottom-color:#6366f1}
-.tab-badge{display:inline-block;background:#f59e0b;color:#000;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
-.stats{display:flex;gap:6px;padding:12px 14px;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
-.stat{background:#1c2128;border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
+.tabs{display:flex;background:var(--paper);border-bottom:2px solid var(--line-strong);position:sticky;top:66px;z-index:9}
+.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn.active{color:var(--plum);border-bottom-color:var(--plum)}
+.tab-badge{display:inline-block;background:var(--amber);color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
+.stats{display:flex;gap:6px;padding:12px 14px;background:var(--paper);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.stat{background:var(--tint);border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
 .stat-n{font-size:18px;font-weight:900}
-.stat-l{font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;margin-top:1px}
+.stat-l{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:1px}
 .sections{padding:12px 12px 80px}
-.section-title{font-size:10px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
-.room-card{background:#1c2128;border-radius:12px;margin-bottom:8px;overflow:hidden;border:1.5px solid #30363d;transition:border-color .2s}
-.room-card.cleaning{border-color:#60a5fa}
-.room-card.done{border-color:#34d399}
-.room-card.skipped{border-color:#a78bfa;opacity:.75}
+.section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.room-card{background:var(--paper);border-radius:12px;margin-bottom:8px;overflow:hidden;border:1.5px solid var(--line);box-shadow:0 1px 2px rgba(90,29,74,.04);transition:border-color .2s}
+.room-card.cleaning{border-color:var(--blue)}
+.room-card.done{border-color:var(--green)}
+.room-card.skipped{border-color:var(--lilac);opacity:.75}
 .room-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
 .room-no{font-size:26px;font-weight:900;min-width:56px;letter-spacing:-.02em}
 .room-status{font-size:12px;font-weight:700;flex:1;text-transform:uppercase;letter-spacing:.04em}
 .room-dur{font-size:11px;font-weight:700}
-.room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:#21262d;color:#8b949e;font-weight:700}
+.room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--tint);color:var(--muted);font-weight:700}
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s;font-family:inherit}
 .btn:active{opacity:.75}
-.btn-blue{background:#2563eb;color:#fff}
-.btn-green{background:#16a34a;color:#fff}
-.btn-amber{background:#d97706;color:#fff}
-.btn-gray{background:#21262d;color:#8b949e;border:1px solid #30363d}
-.report-panel{padding:14px;border-top:1px solid #30363d;display:none}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-gray{background:var(--tint);color:var(--plum);border:1px solid var(--line)}
+.report-panel{padding:14px;border-top:1px solid var(--line);display:none}
 .report-panel.open{display:block}
 .report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.report-item{background:#161b22;border-radius:8px;padding:10px 8px;text-align:center}
-.report-label{font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;margin-bottom:6px}
+.report-item{background:var(--tint);border-radius:8px;padding:10px 8px;text-align:center}
+.report-label{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:6px}
 .report-ctrl{display:flex;align-items:center;justify-content:center;gap:8px}
-.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:#21262d;color:#e6edf3;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:var(--tint);color:var(--plum);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .report-ctrl span{font-size:18px;font-weight:900;min-width:22px;text-align:center}
 .extra-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.extra-row input{flex:1;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:7px 10px;color:#e6edf3;font-size:13px;font-family:inherit}
-.add-extra{background:#21262d;border:1px solid #30363d;border-radius:7px;padding:7px 14px;color:#8b949e;font-size:12px;cursor:pointer;font-family:inherit}
-.num-input{width:100%;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:8px 6px;color:#e6edf3;font-size:16px;font-weight:800;text-align:center;font-family:inherit}
-.num-input:focus{outline:none;border-color:#6366f1}
-.fault-box{margin-top:14px;border-top:1px solid #30363d;padding-top:12px}
-.fault-title{font-size:11px;font-weight:800;color:#f87171;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
-.fault-box textarea{width:100%;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px;color:#e6edf3;font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
+.extra-row input{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:7px 10px;color:var(--ink);font-size:13px;font-family:inherit}
+.add-extra{background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:7px 14px;color:var(--plum);font-size:12px;cursor:pointer;font-family:inherit}
+.num-input{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:8px 6px;color:var(--ink);font-size:16px;font-weight:800;text-align:center;font-family:inherit}
+.num-input:focus{outline:none;border-color:var(--plum)}
+.fault-box{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.fault-title{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.fault-box textarea{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
 .fault-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid #30363d}
+.fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .fault-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.fault-thumb button{position:absolute;top:0;right:0;background:rgba(0,0,0,.65);border:none;color:#f87171;font-size:13px;font-weight:900;width:20px;height:20px;cursor:pointer;line-height:1}
-.fault-add{display:block;width:100%;background:#21262d;border:1px dashed #484f58;border-radius:8px;padding:11px;color:#8b949e;font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
+.fault-thumb button{position:absolute;top:0;right:0;background:rgba(45,20,34,.6);border:none;color:#fff;font-size:13px;font-weight:900;width:20px;height:20px;cursor:pointer;line-height:1}
+.fault-add{display:block;width:100%;background:var(--tint);border:1px dashed var(--line-strong);border-radius:8px;padding:11px;color:var(--muted);font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
 .fault-add input{display:none}
-.btn-fault{background:#7f1d1d;color:#fecaca}
-.task-card{background:#1c2128;border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid #f59e0b}
+.btn-fault{background:var(--red);color:#fff}
+.task-card{background:var(--paper);border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid var(--amber)}
 .task-text{font-size:14px;font-weight:700;margin-bottom:6px}
-.task-meta{font-size:11px;color:#484f58;margin-bottom:8px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c2128;border:1px solid #30363d;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:opacity .3s;white-space:nowrap}
-.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:#484f58;font-size:14px}
-.spinner{width:36px;height:36px;border:3px solid #21262d;border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite}
+.task-meta{font-size:11px;color:var(--muted);margin-bottom:8px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--paper);border:1px solid var(--line-strong);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 8px 30px rgba(90,29,74,.25);transition:opacity .3s;white-space:nowrap}
+.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:var(--muted);font-size:14px}
+.spinner{width:36px;height:36px;border:3px solid var(--line);border-top-color:var(--plum);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:40px 20px;color:#484f58}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}
 /* Team tab */
-.team-section{background:#161b22;border:1.5px solid #30363d;border-radius:12px;margin-bottom:10px;overflow:hidden}
-.team-section-title{padding:10px 14px;font-size:10px;font-weight:800;color:#484f58;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid #21262d}
-.worker-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #21262d}
+.team-section{background:var(--paper);border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.team-section-title{padding:10px 14px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.worker-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .worker-row:last-child{border-bottom:none}
 .worker-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0}
-.worker-bar-bg{height:4px;border-radius:999px;background:#21262d;margin-top:4px}
+.worker-bar-bg{height:4px;border-radius:999px;background:var(--tint);margin-top:4px}
 .worker-bar{height:100%;border-radius:999px;transition:width .3s}
-.log-row{display:flex;align-items:flex-start;gap:9px;padding:8px 14px;border-bottom:1px solid #21262d}
+.log-row{display:flex;align-items:flex-start;gap:9px;padding:8px 14px;border-bottom:1px solid var(--line)}
 .log-row:last-child{border-bottom:none}
 .log-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
 .log-text{font-size:12px;font-weight:600;line-height:1.4}
-.log-time{font-size:10px;color:#484f58;margin-top:2px}
-.ex-card{background:#161b22;border:2px solid #f59e0b;border-radius:12px;padding:13px 14px;margin-bottom:10px}
-.ex-title{font-size:13px;font-weight:800;color:#f59e0b;margin-bottom:6px}
+.log-time{font-size:10px;color:var(--muted);margin-top:2px}
+.ex-card{background:var(--paper);border:2px solid var(--amber);border-radius:12px;padding:13px 14px;margin-bottom:10px}
+.ex-title{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:6px}
 .ex-btns{display:flex;gap:8px;margin-top:10px}
-.ex-accept{flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
-.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);color:#f87171;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-accept{flex:1;padding:11px;border-radius:9px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(179,38,30,.35);background:rgba(179,38,30,.06);color:var(--red);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
 .ex-accept:active,.ex-reject:active{opacity:.7}
-.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(99,102,241,.35);background:rgba(99,102,241,.08);color:#a5b4fc;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
-.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(96,165,250,.35);background:rgba(96,165,250,.08);color:#60a5fa;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--tint);color:var(--plum);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(37,99,235,.3);background:rgba(37,99,235,.07);color:var(--blue);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
 .transfer-btn:active,.request-btn:active{opacity:.7}
-.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-size:12px;font-weight:700;margin:3px}
+.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);color:var(--amber);font-size:12px;font-weight:700;margin:3px}
 </style>
 </head>
 <body>
@@ -120,7 +137,7 @@ const TODAY   = new Date().toISOString().split("T")[0];
 // Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 
-const COLORS  = ["#6366f1","#f59e0b","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c","#2dd4bf","#e879f9","#facc15"];
+const COLORS  = ["#5a1d4a","#9b598a","#a07820","#784b8e","#2563eb","#0f7a4a","#c2708a","#b3261e","#7a3a6a","#476d8e"];
 const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
 const wColor  = (name) => COLORS[Math.abs([...(name||"")].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
 
@@ -154,7 +171,7 @@ let allLogs        = []; // recent hk_logs
 let pendingExchanges = []; // parsed from logs
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
-function toast(msg, color="#34d399") {
+function toast(msg, color="var(--green)") {
   const el = document.createElement("div");
   el.className = "toast";
   el.style.color = color;
@@ -211,7 +228,7 @@ async function skipRoom(room) {
   roomStates[room] = {...(roomStates[room]||{}), status:"pominięte", done_at:done};
   openRoom = null;
   render();
-  toast(`Pokój ${room} — pominięty`,"#a78bfa");
+  toast(`Pokój ${room} — pominięty`,"var(--lilac)");
 }
 
 async function doneTask(id, text) {
@@ -253,7 +270,7 @@ function render() {
   <div class="header">
     <div class="avatar" style="background:${WCOLOR}">${WORKER.charAt(0).toUpperCase()}</div>
     <div class="name">${WORKER}</div>
-    <div class="shift-badge" style="background:${isPm?"rgba(167,139,250,.15)":"rgba(52,211,153,.15)"}; color:${isPm?"#a78bfa":"#34d399"}">${isPm?"PM":"Rano"}</div>
+    <div class="shift-badge" style="background:rgba(255,255,255,.16); color:${isPm?"#f0d6e8":"#cdeede"}">${isPm?"PM":"Rano"}</div>
   </div>
   <div class="tabs">
     <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
@@ -269,12 +286,12 @@ function render() {
   // Rooms tab
   html += `
   <div class="stats">
-    <div class="stat"><div class="stat-n" style="color:#8b949e">${waiting.length}</div><div class="stat-l">Czeka</div></div>
-    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:#60a5fa">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
-    <div class="stat"><div class="stat-n" style="color:#34d399">${done.length}</div><div class="stat-l">Gotowe</div></div>
-    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:#a78bfa">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
-    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:#f59e0b">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
-    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:#f59e0b">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
+    <div class="stat"><div class="stat-n" style="color:var(--muted)">${waiting.length}</div><div class="stat-l">Czeka</div></div>
+    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:var(--blue)">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
+    <div class="stat"><div class="stat-n" style="color:var(--green)">${done.length}</div><div class="stat-l">Gotowe</div></div>
+    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:var(--lilac)">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
+    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:var(--amber)">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
+    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:var(--amber)">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
   </div>
   <div class="sections">`;
 
@@ -306,7 +323,7 @@ function render() {
     skipped.forEach(r => { html += roomCard(r, "pominięte"); });
   }
   if (!allRooms.length) {
-    html += `<div class="empty"><div class="empty-icon">🧹</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:#484f58">Poczekaj na przypisanie przez recepcję.</div></div>`;
+    html += `<div class="empty"><div class="empty-icon">🧹</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:var(--muted)">Poczekaj na przypisanie przez recepcję.</div></div>`;
   }
   html += `</div>`;
   app.innerHTML = html;
@@ -327,7 +344,7 @@ function renderTeamHtml() {
   html += `<div class="section-title">Postęp zespołu</div><div class="team-section">`;
   const workers = Object.keys(allAssignments);
   if (!workers.length) {
-    html += `<div style="padding:12px 14px;color:#484f58;font-size:12px">Brak danych o pracownikach</div>`;
+    html += `<div style="padding:12px 14px;color:var(--muted);font-size:12px">Brak danych o pracownikach</div>`;
   } else {
     workers.forEach(w => {
       const rooms = allAssignments[w] || [];
@@ -341,11 +358,11 @@ function renderTeamHtml() {
         <div class="worker-av" style="background:${wColor(w)}">${w.charAt(0).toUpperCase()}</div>
         <div style="flex:1">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:13px;font-weight:${isMe?900:700};color:#e6edf3">${escHtml(w)}${isMe?" <span style='font-size:10px;color:#6366f1'>Ty</span>":""}</span>
-            <span style="font-size:13px;font-weight:900;color:#34d399">${done}/${rooms.length}</span>
+            <span style="font-size:13px;font-weight:${isMe?900:700};color:var(--ink)">${escHtml(w)}${isMe?" <span style='font-size:10px;color:var(--plum)'>Ty</span>":""}</span>
+            <span style="font-size:13px;font-weight:900;color:var(--green)">${done}/${rooms.length}</span>
           </div>
           <div class="worker-bar-bg"><div class="worker-bar" style="width:${pct}%;background:${wColor(w)}"></div></div>
-          <div style="font-size:10px;color:#484f58;margin-top:3px">start: ${startTxt} · ${free} wolnych</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">start: ${startTxt} · ${free} wolnych</div>
         </div>
       </div>`;
     });
@@ -374,18 +391,18 @@ function renderTeamHtml() {
     exchange_reject:  l => `${escHtml(l.worker)} odrzucił/a wymianę`,
     exchange_request: l => { try{ const d=JSON.parse(l.extra||"{}"); return `${escHtml(l.worker)} prosi o pokoje od ${escHtml(d.from||"")}`; }catch{return "prośba o pokoje";} },
   };
-  const LOG_COLOR = { start:"#60a5fa", done:"#34d399", skip:"#f59e0b", vacate:"#a78bfa", task_done:"#34d399", exchange_accept:"#34d399", exchange_reject:"#f87171", exchange_request:"#f59e0b" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
     html += `<div class="section-title">Aktywność dziś</div><div class="team-section">`;
     recentLogs.forEach((l,i) => {
-      const c = LOG_COLOR[l.action] || "#8b949e";
+      const c = LOG_COLOR[l.action] || "#8a6a7e";
       const fn = LOG_TEXT[l.action];
       const txt = fn ? fn(l) : escHtml(l.worker)+" "+escHtml(l.action);
       html += `<div class="log-row">
         <div class="log-icon" style="background:${c}22;color:${c}">●</div>
-        <div><div class="log-text" style="color:#e6edf3">${txt}</div><div class="log-time">${escHtml(l.log_time)}</div></div>
+        <div><div class="log-text" style="color:var(--ink)">${txt}</div><div class="log-time">${escHtml(l.log_time)}</div></div>
       </div>`;
     });
     html += `</div>`;
@@ -408,16 +425,16 @@ function roomCard(no, status) {
   const pm    = myPmRooms.includes(no);
   const pmt   = pmRoomTypes[no];
 
-  const colors = { W:"#8b949e", czyszczenie:"#60a5fa", czyste:"#34d399", "pominięte":"#a78bfa", vacated:"#f59e0b" };
+  const colors = { W:"var(--muted)", czyszczenie:"var(--blue)", czyste:"var(--green)", "pominięte":"var(--lilac)", vacated:"var(--amber)" };
   const labels = { W:"Czeka", czyszczenie:"Sprząta", czyste:"Czyste ✓", "pominięte":"Pominięte", vacated:"Pokój pusty" };
-  const col = colors[status] || "#8b949e";
+  const col = colors[status] || "var(--muted)";
   const lbl = labels[status] || "Czeka";
   const duration = (status==="czyste"||status==="czyszczenie") ? dur(rs.started_at, rs.done_at||new Date().toISOString()) : null;
 
   let buttons = "";
   if (status === "W" || status === "vacated") {
     buttons = `<button class="btn btn-blue" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>`;
-    if (status === "vacated") buttons = `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px;font-size:12px;color:#f59e0b;font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
+    if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
       <button class="btn btn-green" style="margin-bottom:8px" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>
@@ -466,13 +483,13 @@ function renderReportPanel(room) {
   });
   html += `</div>`;
 
-  html += `<div style="font-size:11px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Dodatkowe pozycje</div>`;
+  html += `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Dodatkowe pozycje</div>`;
   ex.forEach((it,idx) => {
     html += `<div class="extra-row">
       <input placeholder="Nazwa…" value="${escHtml(it.name)}" oninput="getExtra('${room}')[${idx}].name=this.value"/>
       <input class="num-input" style="flex:0 0 70px" type="number" inputmode="numeric" min="0" value="${it.count||0}"
         onfocus="this.select()" oninput="getExtra('${room}')[${idx}].count=Math.max(0,parseInt(this.value)||0)">
-      <button onclick="removeExtraRow('${room}',${idx})" style="background:#21262d;border:1px solid #30363d;border-radius:7px;padding:6px 10px;color:#f87171;cursor:pointer">✕</button>
+      <button onclick="removeExtraRow('${room}',${idx})" style="background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--red);cursor:pointer">✕</button>
     </div>`;
   });
   html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
@@ -509,8 +526,8 @@ async function compressImage(file) {
 async function addFaultPhotos(room, input) {
   const fd=getFaultDraft(room);
   for (const f of [...(input.files||[])]) {
-    if (fd.photos.length>=MAX_FAULT_PHOTOS) { toast("Maks. "+MAX_FAULT_PHOTOS+" zdjęć","#f59e0b"); break; }
-    try { fd.photos.push(await compressImage(f)); } catch { toast("Nie udało się wczytać zdjęcia","#f87171"); }
+    if (fd.photos.length>=MAX_FAULT_PHOTOS) { toast("Maks. "+MAX_FAULT_PHOTOS+" zdjęć","var(--amber)"); break; }
+    try { fd.photos.push(await compressImage(f)); } catch { toast("Nie udało się wczytać zdjęcia","var(--red)"); }
   }
   input.value="";
   renderReportPanel(room);
@@ -518,9 +535,9 @@ async function addFaultPhotos(room, input) {
 function removeFaultPhoto(room, idx) { getFaultDraft(room).photos.splice(idx,1); renderReportPanel(room); }
 async function reportFault(room) {
   const fd=getFaultDraft(room);
-  if (!fd.desc.trim()) { toast("Opisz usterkę","#f87171"); return; }
-  if (!sb) { toast("Brak połączenia","#f87171"); return; }
-  toast("Wysyłanie usterki…","#60a5fa");
+  if (!fd.desc.trim()) { toast("Opisz usterkę","var(--red)"); return; }
+  if (!sb) { toast("Brak połączenia","var(--red)"); return; }
+  toast("Wysyłanie usterki…","var(--blue)");
   const urls=[];
   for (const dataUrl of fd.photos) {
     try {
@@ -534,10 +551,10 @@ async function reportFault(room) {
     tenant_id:TENANT_ID, source:"hk", floor:"hk", space_id:room, room,
     description:fd.desc.trim(), reported_by:WORKER, status:"open", priority:"normal", photos:urls
   });
-  if (error) { toast("Błąd zapisu usterki","#f87171"); return; }
+  if (error) { toast("Błąd zapisu usterki","var(--red)"); return; }
   await addLog("usterka", room, fd.desc.trim().slice(0,120));
   faultDrafts[room]={desc:"",photos:[]};
-  toast("Usterka zgłoszona ✓","#34d399");
+  toast("Usterka zgłoszona ✓","var(--green)");
   renderReportPanel(room);
 }
 
@@ -615,10 +632,10 @@ async function pickWorker() {
   }
 
   let html = `<div style="padding:24px 16px;max-width:480px;margin:0 auto">
-    <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:#fff">Kto sprząta?</div>
-    <div style="font-size:13px;color:#9ca3af;margin-bottom:18px">Wybierz swoje imię — zapamiętamy je na tym telefonie.</div>`;
+    <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum)">Kto sprząta?</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Wybierz swoje imię — zapamiętamy je na tym telefonie.</div>`;
   names.forEach(n => {
-    html += `<button data-name="${escHtml(n)}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;background:#1a1d27;border:1px solid #2a2e3a;border-radius:14px;color:#fff;font-size:16px;font-weight:700;text-align:left;cursor:pointer">
+    html += `<button data-name="${escHtml(n)}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;background:var(--paper);border:1px solid var(--line);border-radius:14px;color:var(--ink);font-size:16px;font-weight:700;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(90,29,74,.04)">
       <span style="width:34px;height:34px;border-radius:50%;background:${wColor(n)};display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${escHtml((n[0] || "?").toUpperCase())}</span>
       ${escHtml(n)}
     </button>`;
@@ -631,7 +648,7 @@ async function pickWorker() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   if (!WORKER) { await pickWorker(); return; }
-  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:#f87171">Brak konfiguracji Supabase.</div>'; return; }
+  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">Brak konfiguracji Supabase.</div>'; return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
 
   const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single();
@@ -690,7 +707,7 @@ async function init() {
           const {data}=await sb.from("hk_rooms").select("*").eq("date",TODAY).in("room",all);
           if (data) data.forEach(r=>{ roomStates[r.room]=r; allRoomStates[r.room]=r; });
         }
-        toast("Recepcja zaktualizowała plan","#60a5fa");
+        toast("Recepcja zaktualizowała plan","var(--blue)");
       }
       render();
     })
