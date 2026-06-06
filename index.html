@@ -109,7 +109,13 @@ let sb = null;
 const app = document.getElementById("app");
 
 const params  = new URLSearchParams(location.search);
-const WORKER  = params.get("w") || "";
+// ?w= z URL ma pierwszeństwo i jest zapamiętywany. Uruchomienie z ekranu
+// głównego iPhone'a idzie do start_url bez ?w= — wtedy bierzemy z localStorage.
+let WORKER = params.get("w") || "";
+try {
+  if (WORKER) localStorage.setItem("hk_worker", WORKER);
+  else WORKER = localStorage.getItem("hk_worker") || "";
+} catch (e) { /* tryb prywatny / brak storage */ }
 const TODAY   = new Date().toISOString().split("T")[0];
 // Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
