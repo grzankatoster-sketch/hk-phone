@@ -1,7 +1,7 @@
 // Web Push dla telefonów HK (PWA). Wymaga sw.js + manifest w tym samym katalogu.
 // VAPID public key — WKLEJ po wygenerowaniu:  npx web-push generate-vapid-keys
 // (klucz publiczny NIE jest tajny — trafia do przeglądarek; prywatny → secret Supabase).
-const VAPID_PUBLIC_KEY = "REPLACE_WITH_VAPID_PUBLIC_KEY";
+const VAPID_PUBLIC_KEY = "BHUrIZx-afbwrPgMmFxwXMBu4pd4TQWFMYyM33Wm2HfEd2mh5OaHxbIN6_wwiaH_4CDoywtdBaoURCBluum49gQ";
 
 // ─── Dodaj do ekranu początkowego (A2HS) ─────────────────────────────────────
 // Android: przechwytujemy natywny prompt instalacji, by odpalić go na tap.
