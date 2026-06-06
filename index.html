@@ -592,9 +592,45 @@ async function refreshData() {
   } catch (e) { /* sieć padła — spróbujemy za 12 s */ }
 }
 
+// ─── Wybór pracownika (gdy brak ?w=, np. start z ekranu głównego iPhone) ───────
+function setWorker(name) {
+  try { localStorage.setItem("hk_worker", name); } catch (e) {}
+  const u = new URL(location.href);
+  u.searchParams.set("w", name);
+  location.replace(u.toString());
+}
+
+async function pickWorker() {
+  if (!sb) { render(); return; }
+  app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
+  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments").eq("date", TODAY).single();
+  const names = [...new Set([
+    ...Object.keys(plan?.assignments || {}),
+    ...Object.keys(plan?.pm_assignments || {}),
+  ])].sort((a, b) => a.localeCompare(b, "pl"));
+
+  if (!names.length) {
+    app.innerHTML = `<div class="loading"><div class="empty-icon">⚠️</div><div>Brak planu na dziś.<br>Otwórz swój link <b>?w=Imię</b>.</div></div>`;
+    return;
+  }
+
+  let html = `<div style="padding:24px 16px;max-width:480px;margin:0 auto">
+    <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:#fff">Kto sprząta?</div>
+    <div style="font-size:13px;color:#9ca3af;margin-bottom:18px">Wybierz swoje imię — zapamiętamy je na tym telefonie.</div>`;
+  names.forEach(n => {
+    html += `<button data-name="${escHtml(n)}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;background:#1a1d27;border:1px solid #2a2e3a;border-radius:14px;color:#fff;font-size:16px;font-weight:700;text-align:left;cursor:pointer">
+      <span style="width:34px;height:34px;border-radius:50%;background:${wColor(n)};display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${escHtml((n[0] || "?").toUpperCase())}</span>
+      ${escHtml(n)}
+    </button>`;
+  });
+  html += `</div>`;
+  app.innerHTML = html;
+  app.querySelectorAll("button[data-name]").forEach(b => b.onclick = () => setWorker(b.dataset.name));
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  if (!WORKER) { render(); return; }
+  if (!WORKER) { await pickWorker(); return; }
   if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:#f87171">Brak konfiguracji Supabase.</div>'; return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
 
