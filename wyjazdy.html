@@ -193,49 +193,22 @@ const getRoster = d => { try { return JSON.parse(localStorage.getItem(rosterKey(
 const setRoster = (d,arr) => localStorage.setItem(rosterKey(d), JSON.stringify(arr));
 const capitalize = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 
-// Podział 1:1 z przyciskiem „Auto-przypisz" w panelu HK (HKPanel.autoAssign):
-// apartament = waga 3, dyżur dostaje 0.7 udziału, apartamenty wg kolejki aptQueue,
-// pokoje wyrównują do wag, ostatni absorbuje nadmiar. Zwraca licznik reg/apt per osoba.
-function splitWorkload(reg, apt, workers, dutyName) {
-  const n = workers.length;
-  if (!n) return [];
-  const dutyIdx = workers.findIndex(w => w.name === dutyName);
-  const DUTY_RATIO = 0.85; // dyżurny tylko nieco mniej (bardziej fair)
-  const totalWeight = reg + apt*3;
-  const rawRatios = workers.map((_,i)=> (i===dutyIdx && dutyIdx>=0) ? DUTY_RATIO : 1.0);
-  const ratioSum = rawRatios.reduce((s,v)=>s+v,0) || 1;
-  const weightTargets = rawRatios.map(v=>Math.floor(v/ratioSum*totalWeight));
-  const aptCount = new Array(n).fill(0);
-  const aptWeights = new Array(n).fill(0);
-  const nonDuty = workers.map((_,i)=>i).filter(i=>i!==dutyIdx);
-  const dutyArr = dutyIdx>=0 ? [dutyIdx] : [];
-  const aptQueue = [...nonDuty,...nonDuty,...dutyArr,...nonDuty,...dutyArr];
-  for (let ri=0; ri<apt; ri++) {
-    const pi = aptQueue.length ? (aptQueue[ri % aptQueue.length] ?? 0) : 0;
-    aptCount[pi]++; aptWeights[pi]+=3;
+// Podział pokoi per osoba = JEDNO źródło prawdy: realne przypisania z programu
+// (hk_plan.assignments: { "Imię": ["101","106",...] } — to, co rozpisała recepcja).
+// Dzięki temu liczby na telefonie są identyczne z programem, bez własnej heurystyki.
+function normName(s){ return String(s||"").trim().toLowerCase(); }
+function loadsFromAssignments(assignments){
+  const map = {};
+  if (assignments && typeof assignments === "object") {
+    Object.entries(assignments).forEach(([person, list]) => {
+      if (!Array.isArray(list)) return;
+      const apt = list.filter(no => APT_ROOMS.includes(String(no))).length;
+      map[normName(person)] = { reg: list.length - apt, apt, name: person };
+    });
   }
-  const regTargets = workers.map((_,i)=>Math.max(0, weightTargets[i]-aptWeights[i]));
-  const regSum = regTargets.reduce((s,v)=>s+v,0);
-  const scale = regSum>0 ? reg/regSum : 1;
-  const adjTargets = regTargets.map(v=>Math.round(v*scale));
-  let diff = reg - adjTargets.reduce((s,v)=>s+v,0);
-  const diffOrder = [...nonDuty, dutyIdx>=0?dutyIdx:-1].filter(i=>i>=0);
-  for (let j=0; diff>0 && j<diffOrder.length; j++){ adjTargets[diffOrder[j]]++; diff--; }
-  while (diff<0){
-    const maxVal = Math.max(...diffOrder.map(i=>adjTargets[i]));
-    const idx = diffOrder.find(i=>adjTargets[i]===maxVal && adjTargets[i]>0);
-    if (idx===undefined) break;
-    adjTargets[idx]--; diff++;
-  }
-  // Pętla przypisania (ostatni absorbuje nadmiar) — wiernie jak autoAssign.
-  const finalReg = new Array(n).fill(0);
-  let pIdx=0, filled=0;
-  for (let r=0; r<reg; r++){
-    while (pIdx<n-1 && filled>=adjTargets[pIdx]){ pIdx++; filled=0; }
-    finalReg[pIdx]++; filled++;
-  }
-  return workers.map((w,i)=>({ name:w.name, role:w.role, reg:finalReg[i], apt:aptCount[i] }));
+  return map;
 }
+const fmtLoad = L => L.apt ? L.reg+"+"+L.apt : ""+L.reg;
 
 // Globalne handlery — inline onclick przetrwa rebuild innerHTML
 window.toggleDay = (iso)=>{ expandedDay = expandedDay===iso ? null : iso; render(lastByDate); };
@@ -266,14 +239,13 @@ window.sendRoster = async (iso)=>{
 
 function plannerHtml(iso, counts) {
   const roster = getRoster(iso);
-  const morning = roster.filter(w=>w.role!=="popoludnie");
-  const dutyName = (roster.find(w=>w.role==="dyzur")||{}).name;
-  const split = splitWorkload(counts.w.reg, counts.w.apt, morning, dutyName);
-  let mi = 0;
+  const plan = lastByDate[iso] || {};
+  const loads = loadsFromAssignments(plan.assignments);
+  const anyAssigned = Object.keys(loads).length > 0;
   const rows = roster.map((w, idx)=>{
     let load;
     if (w.role==="popoludnie") load = "popoł.";
-    else { const s = split[mi++]; load = s ? (s.apt ? s.reg+"+"+s.apt : ""+s.reg) : "0"; }
+    else { const L = loads[normName(w.name)]; load = L ? fmtLoad(L) : "—"; }
     return `<div class="rost-row">
       <span class="rost-name">${escapeHtml(w.name)}</span>
       <select class="rost-role" onchange="setRosterRole('${iso}',${idx},this.value)">
@@ -285,9 +257,25 @@ function plannerHtml(iso, counts) {
       <button class="rost-x" onclick="removeRosterWorker('${iso}',${idx})" aria-label="Usuń">×</button>
     </div>`;
   }).join("");
+  // Osoby rozpisane w programie, których nie ma w lokalnej obsadzie — pokaż jako
+  // podgląd (read-only), by telefon zawsze odzwierciedlał realny podział recepcji 1:1.
+  const rosterNames = new Set(roster.map(w=>normName(w.name)));
+  const extraRows = Object.values(loads)
+    .filter(L => !rosterNames.has(normName(L.name)))
+    .sort((a,b)=>a.name.localeCompare(b.name,"pl"))
+    .map(L => `<div class="rost-row">
+      <span class="rost-name">${escapeHtml(L.name)}</span>
+      <span class="rost-role" style="opacity:.6;border-style:dashed">w programie</span>
+      <span class="rost-load">${fmtLoad(L)}</span>
+    </div>`).join("");
+  let body = rows + extraRows;
+  if (!body) body = roster.length
+    ? '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>'
+    : '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>';
+  else if (rows && !anyAssigned) body += '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>';
   return `<div class="planner">
     <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału</div>
-    ${rows || '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>'}
+    ${body}
     <div class="rost-add">
       <input id="rost-input-${iso}" class="rost-inp" placeholder="Imię pracownika" autocomplete="off"
         onkeydown="if(event.key==='Enter')addRosterWorker('${iso}')"/>
