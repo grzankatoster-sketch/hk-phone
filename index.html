@@ -64,6 +64,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .btn-gray{background:var(--tint);color:var(--plum);border:1px solid var(--line)}
 .btn-row{display:flex;gap:8px}
 .ask-banner{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.32);border-radius:8px;padding:10px;font-size:12px;color:var(--blue);font-weight:800;text-align:center;margin-bottom:8px}
+.prio-banner{background:rgba(179,38,30,.1);border:1px solid rgba(179,38,30,.35);border-radius:8px;padding:10px;font-size:12.5px;color:var(--red);font-weight:900;text-align:center;margin-bottom:8px}
 .reply-panel{margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--tint)}
 .reply-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .reply-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--plum);cursor:pointer;font-family:inherit}
@@ -380,10 +381,11 @@ function renderTeamHtml() {
     room_request:     l => l.extra ? escHtml(l.extra) : `${escHtml(l.worker)} prosi o pokój`,
     reassign:         l => l.extra ? `Recepcja: ${escHtml(l.extra)}` : `${escHtml(l.worker)} — zmiana przydziału`,
     priority:         l => l.extra ? escHtml(l.extra) : `Recepcja: pok. ${escHtml(l.room)} w pierwszej kolejności`,
+    priority_off:     l => `Recepcja: anulowano priorytet pok. ${escHtml(l.room)}`,
     info_request:     l => `Recepcja pyta o pok. ${escHtml(l.room)}`,
     info_reply:       l => `pok. ${escHtml(l.room)} · ${escHtml(l.worker)}: ${escHtml(l.extra||"")}`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", info_request:"#2563eb", info_reply:"#0f7a4a" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -431,6 +433,17 @@ async function requestRoom() {
 
 // ─── Odpowiedź do recepcji (na pytanie o status pokoju) ────────────────────────
 const REPLY_PRESETS = ["Myję podłogę", "Już kończę", "Czekam na gości", "Goście w pokoju", "Zaraz zaczynam", "Brak dostępu"];
+
+// Czy recepcja oznaczyła pokój jako PILNY (w pierwszej kolejności)? priority bez późniejszego priority_off.
+function priorityFor(no) {
+  let on = false;
+  for (const l of allLogs) {
+    if (l.room !== no) continue;
+    if (l.action === "priority") on = true;
+    else if (l.action === "priority_off") on = false;
+  }
+  return on;
+}
 
 // Czy recepcja czeka na odpowiedź o tym pokoju? (info_request bez późniejszego info_reply)
 function pendingAskFor(no) {
@@ -490,6 +503,8 @@ function roomCard(no, status) {
   const duration = (status==="czyste"||status==="czyszczenie") ? dur(rs.started_at, rs.done_at||new Date().toISOString()) : null;
 
   const pendingAsk = pendingAskFor(no);
+  const isPriority  = priorityFor(no);
+  const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
   const replyBtn   = `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>`;
   const replyUI    = replyOpen === no ? renderReplyPanel(no) : "";
@@ -508,7 +523,7 @@ function roomCard(no, status) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
-  if (askBanner || replyUI) buttons = askBanner + buttons + replyUI;
+  buttons = prioBanner + askBanner + buttons + replyUI;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
