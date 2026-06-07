@@ -291,7 +291,7 @@ function plannerHtml(iso, counts) {
     let load;
     if (w.role==="popoludnie") load = "popoł.";
     else if (anyAssigned) { const L = loads[normName(w.name)]; load = L ? fmtLoad(L) : "—"; }
-    else { const E = est[idx]; load = E ? fmtLoad(E)+"≈" : "—"; }
+    else { const E = est[idx]; load = E ? fmtLoad(E) : "—"; }
     return `<div class="rost-row">
       <span class="rost-name">${escapeHtml(w.name)}</span>
       <select class="rost-role" onchange="setRosterRole('${iso}',${idx},this.value)">
@@ -318,7 +318,6 @@ function plannerHtml(iso, counts) {
   if (!body) body = roster.length
     ? '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>'
     : '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>';
-  else if (rows && !anyAssigned) body += '<div class="rost-empty">≈ podział szacunkowy — recepcja może go zmienić</div>';
   return `<div class="planner">
     <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału</div>
     ${body}
