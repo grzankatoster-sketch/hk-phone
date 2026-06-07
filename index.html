@@ -55,6 +55,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .room-status{font-size:12px;font-weight:700;flex:1;text-transform:uppercase;letter-spacing:.04em}
 .room-dur{font-size:11px;font-weight:700}
 .room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--tint);color:var(--muted);font-weight:700}
+.room-phystype{font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:rgba(37,99,235,.1);color:var(--blue);letter-spacing:.02em;flex-shrink:0}
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s;font-family:inherit}
 .btn:active{opacity:.75}
 .btn-blue{background:var(--blue);color:#fff}
@@ -162,7 +163,9 @@ let faultDrafts = {}; // room -> {desc, photos:[dataUrl...]}
 const MAX_FAULT_PHOTOS = 5;
 let isPm       = false;
 let pmRoomTypes = {};
+let roomTypes  = {}; // { roomNo: "DBL"|"TWIN"|... } — typ fizyczny pokoju (z hk_plan.room_types)
 let activeTab  = "rooms";
+let roomRequestSent = false; // czy pracownik wysłał już prośbę o pokój (dziś)
 
 // Team state
 let allAssignments = {}; // { workerName: [roomNo, ...] }
@@ -340,34 +343,18 @@ function renderTeam() { render(); }
 function renderTeamHtml() {
   let html = `<div class="sections" style="padding-top:10px">`;
 
-  // ── Worker progress ──
-  html += `<div class="section-title">Postęp zespołu</div><div class="team-section">`;
-  const workers = Object.keys(allAssignments);
-  if (!workers.length) {
-    html += `<div style="padding:12px 14px;color:var(--muted);font-size:12px">Brak danych o pracownikach</div>`;
-  } else {
-    workers.forEach(w => {
-      const rooms = allAssignments[w] || [];
-      const done  = rooms.filter(no => allRoomStates[no]?.status === "czyste").length;
-      const free  = rooms.filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; }).length;
-      const pct   = rooms.length ? Math.round(done/rooms.length*100) : 0;
-      const isMe  = w === WORKER;
-      const startLog = allLogs.slice().reverse().find(l => l.worker===w && l.action==="start");
-      const startTxt = startLog ? startLog.log_time : "—";
-      html += `<div class="worker-row" style="${isMe?"background:rgba(99,102,241,.06)":""}">
-        <div class="worker-av" style="background:${wColor(w)}">${w.charAt(0).toUpperCase()}</div>
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:13px;font-weight:${isMe?900:700};color:var(--ink)">${escHtml(w)}${isMe?" <span style='font-size:10px;color:var(--plum)'>Ty</span>":""}</span>
-            <span style="font-size:13px;font-weight:900;color:var(--green)">${done}/${rooms.length}</span>
-          </div>
-          <div class="worker-bar-bg"><div class="worker-bar" style="width:${pct}%;background:${wColor(w)}"></div></div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px">start: ${startTxt} · ${free} wolnych</div>
-        </div>
-      </div>`;
-    });
-  }
-  html += `</div>`;
+  // ── Prośba o pokój ──
+  // Pracownik (np. ten, kto skończył) prosi recepcję o przydzielenie pokoju.
+  // Wpis trafia do hk_logs (action=room_request) → recepcja widzi go w HK Live
+  // i może użyć sugestii zamiany (agent/AI).
+  const myRemaining = [...myRooms, ...myPmRooms].filter(r => { const s=roomStates[r]; return !s||s.status==="W"; }).length;
+  html += `<div class="team-section" style="padding:14px;margin-bottom:12px">
+    <div style="font-size:13px;font-weight:800;color:var(--plum);margin-bottom:4px">🙋 Prośba o pokój</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${myRemaining>0?`Masz jeszcze ${myRemaining} do sprzątania.`:"Skończyłaś swoje pokoje?"} Poproś recepcję o kolejny pokój — zobaczą to od razu.</div>
+    ${roomRequestSent
+      ? `<div style="text-align:center;padding:10px;border-radius:10px;background:rgba(15,122,74,.1);color:var(--green);font-size:13px;font-weight:700">✓ Prośba wysłana do recepcji</div>`
+      : `<button class="btn btn-blue" onclick="requestRoom()" style="width:100%">🙋 Poproś o pokój</button>`}
+  </div>`;
 
   // ── Vacated rooms ──
   const vacatedNos = Object.entries(allRoomStates)
@@ -390,8 +377,10 @@ function renderTeamHtml() {
     exchange_accept:  l => { try{ const d=JSON.parse(l.extra||"{}"); return `⇄ ${escHtml(d.from||l.worker)} → ${escHtml(d.to||"")} (${(d.rooms||[]).length} pok.)`; }catch{return "wymiana";} },
     exchange_reject:  l => `${escHtml(l.worker)} odrzucił/a wymianę`,
     exchange_request: l => { try{ const d=JSON.parse(l.extra||"{}"); return `${escHtml(l.worker)} prosi o pokoje od ${escHtml(d.from||"")}`; }catch{return "prośba o pokoje";} },
+    room_request:     l => l.extra ? escHtml(l.extra) : `${escHtml(l.worker)} prosi o pokój`,
+    reassign:         l => l.extra ? `Recepcja: ${escHtml(l.extra)}` : `${escHtml(l.worker)} — zmiana przydziału`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -416,6 +405,25 @@ function switchTab(t) {
   activeTab = t;
   if (t === "team") loadTeamData().then(render);
   else render();
+}
+
+// ─── Prośba o pokój → recepcja (hk_logs) ───────────────────────────────────────
+async function requestRoom() {
+  if (!sb || roomRequestSent) return;
+  roomRequestSent = true;
+  render(); // natychmiastowy feedback (przycisk → potwierdzenie)
+  const myRemaining = [...myRooms, ...myPmRooms].filter(r => { const s=roomStates[r]; return !s||s.status==="W"; }).length;
+  const note = myRemaining > 0
+    ? `${WORKER} prosi o pokój (zostało ${myRemaining})`
+    : `${WORKER} skończyła i prosi o pokój`;
+  try {
+    await addLog("room_request", null, note);
+    toast("Prośba wysłana do recepcji ✓", "var(--green)");
+  } catch (e) {
+    roomRequestSent = false;
+    toast("Nie udało się wysłać prośby", "var(--red)");
+    render();
+  }
 }
 
 // ─── Room card ────────────────────────────────────────────────────────────────
@@ -446,6 +454,7 @@ function roomCard(no, status) {
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
       <div class="room-no" style="color:${col}">${no}</div>
+      ${roomTypes[no]?`<div class="room-phystype">${escHtml(roomTypes[no])}</div>`:""}
       <div class="room-status" style="color:${col}">${lbl}</div>
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
@@ -562,13 +571,14 @@ async function reportFault(room) {
 async function loadTeamData() {
   if (!sb) return;
   const [{ data: plan }, { data: rData }, { data: lData }] = await Promise.all([
-    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single(),
+    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single(),
     sb.from("hk_rooms").select("*").eq("date", TODAY),
     sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
   ]);
 
   if (plan) {
     allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
+    roomTypes = plan.room_types || roomTypes;
   }
   if (rData) {
     allRoomStates = {};
@@ -586,11 +596,12 @@ async function refreshData() {
   const ae = document.activeElement;
   if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // nie kasuj wpisywanego tekstu
   try {
-    const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single();
+    const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
     if (plan) {
       myRooms   = (plan.assignments   || {})[WORKER] || [];
       myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
       pmRoomTypes = plan.pm_room_types || {};
+      roomTypes = plan.room_types || {};
       isPm = myPmRooms.length > 0 && myRooms.length === 0;
       allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
     }
@@ -651,11 +662,12 @@ async function init() {
   if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">Brak konfiguracji Supabase.</div>'; return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
 
-  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single();
+  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
   if (plan) {
     myRooms   = (plan.assignments   || {})[WORKER] || [];
     myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
     pmRoomTypes = plan.pm_room_types || {};
+    roomTypes = plan.room_types || {};
     isPm = myPmRooms.length > 0 && myRooms.length === 0;
     allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
   }
@@ -699,6 +711,7 @@ async function init() {
       const newRooms   = (row.assignments   ||{})[WORKER] || [];
       const newPmRooms = (row.pm_assignments||{})[WORKER] || [];
       allAssignments = {...(row.assignments||{}), ...(row.pm_assignments||{})};
+      roomTypes = row.room_types || roomTypes;
       if (JSON.stringify(newRooms)!==JSON.stringify(myRooms)||JSON.stringify(newPmRooms)!==JSON.stringify(myPmRooms)) {
         myRooms=newRooms; myPmRooms=newPmRooms; pmRoomTypes=row.pm_room_types||{};
         isPm=myPmRooms.length>0&&myRooms.length===0;
