@@ -506,7 +506,9 @@ function roomCard(no, status) {
   const isPriority  = priorityFor(no);
   const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
-  const replyBtn   = `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>`;
+  // Przycisk odpowiedzi (z gotowcami) pokazujemy TYLKO gdy recepcja faktycznie
+  // pyta o status pokoju. Bez pytania pracownik widzi sam "Zaczynam sprzątać".
+  const replyBtn   = pendingAsk ? `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>` : "";
   const replyUI    = replyOpen === no ? renderReplyPanel(no) : "";
 
   let buttons = "";
