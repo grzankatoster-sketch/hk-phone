@@ -62,6 +62,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .btn-green{background:var(--green);color:#fff}
 .btn-amber{background:var(--amber);color:#fff}
 .btn-gray{background:var(--tint);color:var(--plum);border:1px solid var(--line)}
+.btn-row{display:flex;gap:8px}
+.ask-banner{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.32);border-radius:8px;padding:10px;font-size:12px;color:var(--blue);font-weight:800;text-align:center;margin-bottom:8px}
+.reply-panel{margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--tint)}
+.reply-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.reply-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--plum);cursor:pointer;font-family:inherit}
+.reply-chip:active{opacity:.7}
+.reply-custom{display:flex;gap:8px}
+.reply-custom input{flex:1;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink)}
+.reply-custom .btn{width:auto;flex:0 0 auto;padding:12px 16px;font-size:14px}
 .report-panel{padding:14px;border-top:1px solid var(--line);display:none}
 .report-panel.open{display:block}
 .report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
@@ -166,6 +175,8 @@ let pmRoomTypes = {};
 let roomTypes  = {}; // { roomNo: "DBL"|"TWIN"|... } — typ fizyczny pokoju (z hk_plan.room_types)
 let activeTab  = "rooms";
 let roomRequestSent = false; // czy pracownik wysłał już prośbę o pokój (dziś)
+let replyOpen  = null; // roomNo|null — otwarty panel odpowiedzi do recepcji
+let replyDraft = {};   // { roomNo: "tekst" } — robocza treść własnej odpowiedzi
 
 // Team state
 let allAssignments = {}; // { workerName: [roomNo, ...] }
@@ -356,17 +367,6 @@ function renderTeamHtml() {
       : `<button class="btn btn-blue" onclick="requestRoom()" style="width:100%">🙋 Poproś o pokój</button>`}
   </div>`;
 
-  // ── Vacated rooms ──
-  const vacatedNos = Object.entries(allRoomStates)
-    .filter(([,r]) => r.vacated && r.status==="W")
-    .map(([no]) => no);
-  if (vacatedNos.length) {
-    html += `<div class="section-title">🔔 Puste pokoje (czekają)</div>
-    <div class="team-section"><div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px">
-    ${vacatedNos.map(no=>`<span class="vac-pill">${escHtml(no)}</span>`).join("")}
-    </div></div>`;
-  }
-
   // ── Activity feed ──
   const LOG_TEXT = {
     start:            l => `${escHtml(l.worker)} zaczyna pok. ${escHtml(l.room)}`,
@@ -379,8 +379,11 @@ function renderTeamHtml() {
     exchange_request: l => { try{ const d=JSON.parse(l.extra||"{}"); return `${escHtml(l.worker)} prosi o pokoje od ${escHtml(d.from||"")}`; }catch{return "prośba o pokoje";} },
     room_request:     l => l.extra ? escHtml(l.extra) : `${escHtml(l.worker)} prosi o pokój`,
     reassign:         l => l.extra ? `Recepcja: ${escHtml(l.extra)}` : `${escHtml(l.worker)} — zmiana przydziału`,
+    priority:         l => l.extra ? escHtml(l.extra) : `Recepcja: pok. ${escHtml(l.room)} w pierwszej kolejności`,
+    info_request:     l => `Recepcja pyta o pok. ${escHtml(l.room)}`,
+    info_reply:       l => `pok. ${escHtml(l.room)} · ${escHtml(l.worker)}: ${escHtml(l.extra||"")}`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", info_request:"#2563eb", info_reply:"#0f7a4a" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -426,6 +429,53 @@ async function requestRoom() {
   }
 }
 
+// ─── Odpowiedź do recepcji (na pytanie o status pokoju) ────────────────────────
+const REPLY_PRESETS = ["Myję podłogę", "Już kończę", "Czekam na gości", "Goście w pokoju", "Zaraz zaczynam", "Brak dostępu"];
+
+// Czy recepcja czeka na odpowiedź o tym pokoju? (info_request bez późniejszego info_reply)
+function pendingAskFor(no) {
+  let pending = false;
+  for (const l of allLogs) {
+    if (l.room !== no) continue;
+    if (l.action === "info_request") pending = true;
+    else if (l.action === "info_reply") pending = false;
+  }
+  return pending;
+}
+
+function toggleReply(no) {
+  replyOpen = replyOpen === no ? null : no;
+  render();
+}
+
+async function sendReply(no, text) {
+  const t = (text || "").trim();
+  if (!sb || !t) return;
+  replyOpen = null;
+  replyDraft[no] = "";
+  render();
+  try {
+    await addLog("info_reply", no, t.slice(0, 200));
+    toast("Odpowiedź wysłana do recepcji ✓", "var(--green)");
+  } catch (e) {
+    toast("Nie udało się wysłać odpowiedzi", "var(--red)");
+  }
+}
+
+function renderReplyPanel(no) {
+  const presets = REPLY_PRESETS.map(p =>
+    `<button type="button" class="reply-chip" onclick="sendReply('${no}',this.textContent)">${p}</button>`
+  ).join("");
+  return `<div class="reply-panel">
+    <div class="reply-presets">${presets}</div>
+    <div class="reply-custom">
+      <input id="replyin-${no}" placeholder="Własna odpowiedź…" value="${escHtml(replyDraft[no]||"")}"
+        oninput="replyDraft['${no}']=this.value">
+      <button type="button" class="btn btn-blue" onclick="sendReply('${no}',document.getElementById('replyin-${no}').value)">Wyślij</button>
+    </div>
+  </div>`;
+}
+
 // ─── Room card ────────────────────────────────────────────────────────────────
 function roomCard(no, status) {
   const rs    = roomStates[no] || {};
@@ -439,17 +489,26 @@ function roomCard(no, status) {
   const lbl = labels[status] || "Czeka";
   const duration = (status==="czyste"||status==="czyszczenie") ? dur(rs.started_at, rs.done_at||new Date().toISOString()) : null;
 
+  const pendingAsk = pendingAskFor(no);
+  const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
+  const replyBtn   = `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>`;
+  const replyUI    = replyOpen === no ? renderReplyPanel(no) : "";
+
   let buttons = "";
   if (status === "W" || status === "vacated") {
-    buttons = `<button class="btn btn-blue" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>`;
+    buttons = `<div class="btn-row"><button class="btn btn-blue" style="flex:3" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>${replyBtn}</div>`;
     if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
-      <button class="btn btn-green" style="margin-bottom:8px" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>
+      <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
       <div id="rp-${no}" class="report-panel"></div>`;
     // "Goście nie chcieli" tylko dla pokoi PGZ (nie PG, nie wyjazdy).
     if (pmt === "PGZ") buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
+  } else if (pendingAsk) {
+    // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
+    buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
+  if (askBanner || replyUI) buttons = askBanner + buttons + replyUI;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
