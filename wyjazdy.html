@@ -210,6 +210,49 @@ function loadsFromAssignments(assignments){
 }
 const fmtLoad = L => L.apt ? L.reg+"+"+L.apt : ""+L.reg;
 
+// Szacunkowy podział pokoi na osobę, gdy recepcja jeszcze nie rozpisała —
+// kierownik od razu widzi obciążenie i może dobrać obsadę. Liczy tą samą wagą
+// co program (apartament=3, dyżur=0.85 udziału). Po realnym rozpisaniu w
+// recepcji telefon zastępuje szacunek danymi z hk_plan.assignments (1:1).
+function estimateSplit(roster, counts){
+  const out = {};
+  const reg = counts.w.reg|0, apt = counts.w.apt|0;
+  // Popołudnie nie sprząta wyjazdowych — liczymy tylko poranne/dyżur.
+  const morning = roster.map((w,i)=>({w,i})).filter(x=>x.w.role!=="popoludnie");
+  const n = morning.length;
+  if (!n || (!reg && !apt)) return out;
+  const dutyLocal = morning.findIndex(x=>x.w.role==="dyzur");
+  const DUTY_RATIO = 0.85;
+  const totalWeight = reg + apt*3;
+  const rawRatios = morning.map((_,i)=> (i===dutyLocal && dutyLocal>=0) ? DUTY_RATIO : 1.0);
+  const ratioSum = rawRatios.reduce((s,v)=>s+v,0) || 1;
+  const weightTargets = rawRatios.map(v=>Math.floor(v/ratioSum*totalWeight));
+  // Apartamenty (waga 3) rozdajemy najpierw — kolejka preferuje osoby poza dyżurem.
+  const aptWeights = new Array(n).fill(0);
+  const aptCount = new Array(n).fill(0);
+  const nonDuty = morning.map((_,i)=>i).filter(i=>i!==dutyLocal);
+  const dutyArr = dutyLocal>=0 ? [dutyLocal] : [];
+  const aptQueue = [...nonDuty,...nonDuty,...dutyArr,...nonDuty,...dutyArr];
+  const queue = aptQueue.length ? aptQueue : morning.map((_,i)=>i);
+  for (let r=0;r<apt;r++){ const pi = queue[r%queue.length] ?? 0; aptCount[pi]++; aptWeights[pi]+=3; }
+  // Pokoje zwykłe wypełniają pozostałe cele wagowe.
+  const regTargets = morning.map((_,i)=>Math.max(0, weightTargets[i]-aptWeights[i]));
+  const regSum = regTargets.reduce((s,v)=>s+v,0);
+  const scale = regSum>0 ? reg/regSum : 1;
+  const adj = regTargets.map(v=>Math.round(v*scale));
+  let diff = reg - adj.reduce((s,v)=>s+v,0);
+  const diffOrder = [...nonDuty, dutyLocal>=0?dutyLocal:-1].filter(i=>i>=0);
+  for (let j=0; diff>0 && diffOrder.length; j++){ adj[diffOrder[j%diffOrder.length]]++; diff--; }
+  while (diff<0 && diffOrder.length){
+    const mx = Math.max(...diffOrder.map(i=>adj[i]));
+    const idx = diffOrder.find(i=>adj[i]===mx && adj[i]>0);
+    if (idx===undefined) break;
+    adj[idx]--; diff++;
+  }
+  morning.forEach((x,li)=>{ out[x.i] = { reg: adj[li], apt: aptCount[li] }; });
+  return out;
+}
+
 // Globalne handlery — inline onclick przetrwa rebuild innerHTML
 window.toggleDay = (iso)=>{ expandedDay = expandedDay===iso ? null : iso; render(lastByDate); };
 window.addRosterWorker = (iso)=>{
@@ -242,10 +285,13 @@ function plannerHtml(iso, counts) {
   const plan = lastByDate[iso] || {};
   const loads = loadsFromAssignments(plan.assignments);
   const anyAssigned = Object.keys(loads).length > 0;
+  // Brak realnego rozpisania → policz szacunek, by kierownik widział obciążenie.
+  const est = anyAssigned ? {} : estimateSplit(roster, counts);
   const rows = roster.map((w, idx)=>{
     let load;
     if (w.role==="popoludnie") load = "popoł.";
-    else { const L = loads[normName(w.name)]; load = L ? fmtLoad(L) : "—"; }
+    else if (anyAssigned) { const L = loads[normName(w.name)]; load = L ? fmtLoad(L) : "—"; }
+    else { const E = est[idx]; load = E ? fmtLoad(E)+"≈" : "—"; }
     return `<div class="rost-row">
       <span class="rost-name">${escapeHtml(w.name)}</span>
       <select class="rost-role" onchange="setRosterRole('${iso}',${idx},this.value)">
@@ -272,7 +318,7 @@ function plannerHtml(iso, counts) {
   if (!body) body = roster.length
     ? '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>'
     : '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>';
-  else if (rows && !anyAssigned) body += '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>';
+  else if (rows && !anyAssigned) body += '<div class="rost-empty">≈ podział szacunkowy — recepcja może go zmienić</div>';
   return `<div class="planner">
     <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału</div>
     ${body}
