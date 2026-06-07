@@ -6,6 +6,34 @@
 <title>Usterki — Konserwacja</title>
 <link rel="manifest" href="manifest-konserwacja.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<script>
+/* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
+   dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
+   jej zamykać ani usuwać i dodawać ponownie. */
+(function(){
+  var url = location.pathname + (location.search || "");
+  var baseline = null, busy = false, INTERVAL = 5 * 60 * 1000;
+  function fp(s){ var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ":" + h; }
+  async function check(){
+    if (busy || navigator.onLine === false) return;
+    busy = true;
+    try {
+      var res = await fetch(url, { cache: "no-store" });
+      if (res.ok){
+        var cur = fp(await res.text());
+        if (baseline === null) baseline = cur;
+        else if (cur !== baseline){ location.reload(); return; }
+      }
+    } catch (e) { /* offline / chwilowy błąd — sprawdzimy później */ }
+    busy = false;
+  }
+  if ("serviceWorker" in navigator)
+    navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){});
+  check();
+  setInterval(function(){ if (!document.hidden) check(); }, INTERVAL);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
 <meta name="apple-mobile-web-app-title" content="Konserwacja"/>
@@ -70,6 +98,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .kons-head{display:flex;flex-direction:column;line-height:1.15;flex:1;min-width:0}
 .kons-hi{font-size:11px;color:rgba(255,255,255,.75);font-weight:600}
 .kons-name{font-size:18px;font-weight:800;color:#fff}
+.assign-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 9px}
+.assignee{font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;background:var(--tint);color:var(--plum);border:1px solid var(--line);text-transform:uppercase;letter-spacing:.03em}
+.assignee.me{background:var(--plum);color:#fff;border-color:var(--plum)}
+.assignee.all{color:var(--muted)}
+.cat-chip{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--tint);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -82,7 +115,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 const params = new URLSearchParams(location.search);
 // Hardcode konserwatorów — każdy ma własny kod QR: ?k=Grzegorz / ?k=Kamil
 const KONSERWATORZY = ["Grzegorz", "Kamil"];
-const rawK    = (params.get("k") || "").trim();
+let rawK = (params.get("k") || "").trim();
+// QR jest „stały": po pierwszym zeskanowaniu zapamiętujemy osobę, by powitanie działało też
+// po dodaniu apki do ekranu głównego (PWA start_url nie zawiera ?k=).
+try {
+  if (rawK) localStorage.setItem("kons_who", rawK);
+  else rawK = localStorage.getItem("kons_who") || "";
+} catch (e) { /* tryb prywatny / brak storage */ }
 const matched = KONSERWATORZY.find(n => n.toLowerCase() === rawK.toLowerCase());
 const WHO     = matched || rawK || "konserwacja";  // kto aktualizuje status (resolved_by)
 const KNOWN   = !!matched;
@@ -110,6 +149,14 @@ function fmtDate(iso){ try{ return new Date(iso).toLocaleString("pl-PL",{day:"2-
 function openImg(url){ document.getElementById("lightbox-img").src=url; document.getElementById("lightbox").classList.add("open"); }
 function photosOf(f){ const a=[...(f.photos||[])]; if(f.photo_url&&!a.includes(f.photo_url)) a.unshift(f.photo_url); return a; }
 function locOf(f){ return f.room || f.space_id || "—"; }
+// Kto odpowiedzialny: przypisany konserwator (np. „👤 Kamil"), „Ty" gdy to zalogowana
+// osoba, albo „👥 Wszyscy" gdy brak przypisania (kategoria spoza podziału specjalności).
+function assignChip(f){
+  const who = (f.assigned_to||"").trim();
+  if (!who) return `<span class="assignee all">👥 Wszyscy</span>`;
+  if (KNOWN && who.toLowerCase()===WHO.toLowerCase()) return `<span class="assignee me">👤 Ty</span>`;
+  return `<span class="assignee">👤 ${esc(who)}</span>`;
+}
 
 function renderTabs(){
   document.getElementById("tabs").innerHTML = FILTERS.map(([k,l])=>{
@@ -134,6 +181,7 @@ function render(){
         <span class="src">${f.source==="hk"?"HK":"recepcja"}</span>
       </div>
       <div class="desc">${esc(f.description)}</div>
+      <div class="assign-row">${assignChip(f)}${f.category?`<span class="cat-chip">${esc(f.category)}</span>`:""}</div>
       <div class="meta">${esc(f.reported_by||"—")} · ${fmtDate(f.reported_at||f.created_at)}${f.resolved_by?` · naprawił: ${esc(f.resolved_by)}`:""}</div>`;
     if (photos.length){
       html += `<div class="thumbs">` + photos.map(p=>`<div class="thumb" onclick="openImg('${esc(p)}')"><img src="${esc(p)}" loading="lazy"/></div>`).join("") + `</div>`;
