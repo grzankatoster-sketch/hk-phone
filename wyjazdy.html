@@ -76,6 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .rost-inp{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
 .rost-addbtn{padding:8px 14px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
 .rost-send{margin-top:8px;width:100%;padding:11px;border-radius:9px;border:none;background:#0f7a4a;color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+.rost-restore{margin-top:6px;align-self:flex-start;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 0}
 .day.today{border-color:var(--plum);background:linear-gradient(180deg,rgba(90,29,74,.06) 0%,var(--paper) 100%)}
 .day.tomorrow{border-color:var(--line-strong)}
 .day.empty{opacity:.55}
@@ -219,6 +220,12 @@ const escapeHtml = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;")
 const rosterKey = d => "hk-roster-"+d;
 const getRoster = d => { try { return JSON.parse(localStorage.getItem(rosterKey(d))||"[]"); } catch { return []; } };
 const setRoster = (d,arr) => localStorage.setItem(rosterKey(d), JSON.stringify(arr));
+// Lokalnie ukryte osoby "w programie" (zapis per dzień). Telefon nie kasuje
+// przypisania w recepcji — tylko chowa imię z widoku obsady, by kierownik
+// mógł wyczyścić listę. Klucz = znormalizowane imię.
+const hiddenKey = d => "hk-roster-hidden-"+d;
+const getHidden = d => { try { return JSON.parse(localStorage.getItem(hiddenKey(d))||"[]"); } catch { return []; } };
+const setHidden = (d,arr) => localStorage.setItem(hiddenKey(d), JSON.stringify(arr));
 const capitalize = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 
 // Podział pokoi per osoba = JEDNO źródło prawdy: realne przypisania z programu
@@ -293,6 +300,12 @@ window.addRosterWorker = (iso)=>{
   const ni = document.getElementById("rost-input-"+iso); if (ni) ni.focus();
 };
 window.removeRosterWorker = (iso, idx)=>{ const arr=getRoster(iso); arr.splice(idx,1); setRoster(iso,arr); render(lastByDate); };
+window.dismissProgramWorker = (iso, enc)=>{
+  const n = normName(decodeURIComponent(enc));
+  const h = getHidden(iso); if (!h.includes(n)) h.push(n);
+  setHidden(iso, h); render(lastByDate);
+};
+window.restoreHidden = (iso)=>{ setHidden(iso, []); render(lastByDate); };
 window.setRosterRole = (iso, idx, role)=>{ const arr=getRoster(iso); if(arr[idx]){ arr[idx].role=role; setRoster(iso,arr); render(lastByDate); } };
 window.sendRoster = async (iso)=>{
   const roster = getRoster(iso);
@@ -334,18 +347,21 @@ function plannerHtml(iso, counts) {
   // Osoby rozpisane w programie, których nie ma w lokalnej obsadzie — pokaż jako
   // podgląd (read-only), by telefon zawsze odzwierciedlał realny podział recepcji 1:1.
   const rosterNames = new Set(roster.map(w=>normName(w.name)));
+  const hidden = new Set(getHidden(iso));
   const extraRows = Object.values(loads)
-    .filter(L => !rosterNames.has(normName(L.name)))
+    .filter(L => !rosterNames.has(normName(L.name)) && !hidden.has(normName(L.name)))
     .sort((a,b)=>a.name.localeCompare(b.name,"pl"))
     .map(L => `<div class="rost-row">
       <span class="rost-name">${escapeHtml(L.name)}</span>
       <span class="rost-role" style="opacity:.6;border-style:dashed">w programie</span>
       <span class="rost-load">${fmtLoad(L)}</span>
+      <button class="rost-x" onclick="dismissProgramWorker('${iso}','${encodeURIComponent(L.name).replace(/'/g,"%27")}')" aria-label="Ukryj">×</button>
     </div>`).join("");
   let body = rows + extraRows;
   if (!body) body = roster.length
     ? '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>'
     : '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>';
+  const hiddenCount = hidden.size;
   return `<div class="planner">
     <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału</div>
     ${body}
@@ -354,6 +370,7 @@ function plannerHtml(iso, counts) {
         onkeydown="if(event.key==='Enter')addRosterWorker('${iso}')"/>
       <button class="rost-addbtn" onclick="addRosterWorker('${iso}')">Dodaj</button>
     </div>
+    ${hiddenCount ? `<button class="rost-restore" onclick="restoreHidden('${iso}')">Pokaż ukryte (${hiddenCount})</button>` : ""}
     ${roster.length ? `<button class="rost-send" onclick="sendRoster('${iso}')">📤 Wyślij obsadę do recepcji</button>` : ""}
   </div>`;
 }
