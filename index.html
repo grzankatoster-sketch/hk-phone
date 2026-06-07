@@ -6,6 +6,34 @@
 <title>HK Panel</title>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<script>
+/* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
+   dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
+   jej zamykać ani usuwać i dodawać ponownie. */
+(function(){
+  var url = location.pathname + (location.search || "");
+  var baseline = null, busy = false, INTERVAL = 5 * 60 * 1000;
+  function fp(s){ var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ":" + h; }
+  async function check(){
+    if (busy || navigator.onLine === false) return;
+    busy = true;
+    try {
+      var res = await fetch(url, { cache: "no-store" });
+      if (res.ok){
+        var cur = fp(await res.text());
+        if (baseline === null) baseline = cur;
+        else if (cur !== baseline){ location.reload(); return; }
+      }
+    } catch (e) { /* offline / chwilowy błąd — sprawdzimy później */ }
+    busy = false;
+  }
+  if ("serviceWorker" in navigator)
+    navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){});
+  check();
+  setInterval(function(){ if (!document.hidden) check(); }, INTERVAL);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+})();
+</script>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black"/>
 <meta name="apple-mobile-web-app-title" content="Conrad HK"/>
@@ -432,7 +460,7 @@ async function requestRoom() {
 }
 
 // ─── Odpowiedź do recepcji (na pytanie o status pokoju) ────────────────────────
-const REPLY_PRESETS = ["Myję podłogę", "Już kończę", "Czekam na gości", "Goście w pokoju", "Zaraz zaczynam", "Brak dostępu"];
+const REPLY_PRESETS = ["Myję podłogę", "Już kończę", "Dopiero zaczynam"];
 
 // Czy recepcja oznaczyła pokój jako PILNY (w pierwszej kolejności)? priority bez późniejszego priority_off.
 function priorityFor(no) {
