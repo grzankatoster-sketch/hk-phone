@@ -69,7 +69,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .rost-row{display:flex;align-items:center;gap:8px}
 .rost-name{flex:1;font-weight:700;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rost-role{font-size:12px;padding:5px 6px;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:inherit}
-.rost-load{min-width:56px;text-align:center;font-weight:900;font-size:15px;color:var(--plum);font-variant-numeric:tabular-nums}
+.rost-load{min-width:44px;text-align:center;font-weight:900;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rost-target{width:50px;padding:6px 3px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:14px;text-align:center;font-family:inherit;-moz-appearance:textfield}
+.rost-target::-webkit-outer-spin-button,.rost-target::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.rost-target::placeholder{color:var(--muted);font-weight:600;font-size:11px}
+.rost-target.set{border-color:var(--plum);background:rgba(90,29,74,.1);box-shadow:0 0 0 1px rgba(90,29,74,.25)}
 .rost-x{background:none;border:none;color:#c2708a;font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
 .rost-empty{font-size:12px;color:var(--muted);padding:4px 0}
 .rost-add{display:flex;gap:7px;margin-top:3px}
@@ -307,6 +311,14 @@ window.dismissProgramWorker = (iso, enc)=>{
 };
 window.restoreHidden = (iso)=>{ setHidden(iso, []); render(lastByDate); };
 window.setRosterRole = (iso, idx, role)=>{ const arr=getRoster(iso); if(arr[idx]){ arr[idx].role=role; setRoster(iso,arr); render(lastByDate); } };
+// Ile pokoi kierownik chce rozpisać tej osobie (np. "Natalia 7 pokoi" z wiadomości).
+// Cel ręczny zapisuje się w obsadzie i jedzie do recepcji razem z rolą.
+window.setRosterRooms = (iso, idx, val)=>{
+  const arr=getRoster(iso); if(!arr[idx]) return;
+  const n = parseInt(val,10);
+  if (val==="" || isNaN(n) || n<0) delete arr[idx].rooms; else arr[idx].rooms = n;
+  setRoster(iso,arr); render(lastByDate);
+};
 window.sendRoster = async (iso)=>{
   const roster = getRoster(iso);
   if (!roster.length){ toast("Dodaj najpierw pracowników.", "#f59ea6"); return; }
@@ -333,6 +345,7 @@ function plannerHtml(iso, counts) {
     if (w.role==="popoludnie") load = "popoł.";
     else if (anyAssigned) { const L = loads[normName(w.name)]; load = L ? fmtLoad(L) : "—"; }
     else { const E = est[idx]; load = E ? fmtLoad(E) : "—"; }
+    const hasTarget = w.rooms!=null && w.rooms!=="";
     return `<div class="rost-row">
       <span class="rost-name">${escapeHtml(w.name)}</span>
       <select class="rost-role" onchange="setRosterRole('${iso}',${idx},this.value)">
@@ -340,6 +353,10 @@ function plannerHtml(iso, counts) {
         <option value="dyzur"${w.role==="dyzur"?" selected":""}>Dyżur</option>
         <option value="popoludnie"${w.role==="popoludnie"?" selected":""}>Popołudnie</option>
       </select>
+      <input class="rost-target${hasTarget?" set":""}" type="number" inputmode="numeric" min="0" max="40"
+        placeholder="pok." value="${hasTarget?w.rooms:""}"
+        onchange="setRosterRooms('${iso}',${idx},this.value)"
+        aria-label="Ile pokoi rozpisać dla ${escapeHtml(w.name)}" title="Ile pokoi rozpisać"/>
       <span class="rost-load">${load}</span>
       <button class="rost-x" onclick="removeRosterWorker('${iso}',${idx})" aria-label="Usuń">×</button>
     </div>`;
@@ -362,8 +379,14 @@ function plannerHtml(iso, counts) {
     ? '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>'
     : '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>';
   const hiddenCount = hidden.size;
+  // Suma ręcznie rozpisanych pokoi (cel kierownika) vs. ile wyjazdów jest do podziału.
+  const targetSum = roster.reduce((s,w)=> s + (w.rooms!=null && w.rooms!=="" ? (parseInt(w.rooms,10)||0) : 0), 0);
+  const avail = counts.w.total;
+  const tgtTxt = targetSum>0
+    ? ` · <span style="color:${targetSum>avail?"#c2708a":"var(--plum)"}">rozpisano ${targetSum}/${avail}</span>`
+    : "";
   return `<div class="planner">
-    <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału</div>
+    <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału${tgtTxt}</div>
     ${body}
     <div class="rost-add">
       <input id="rost-input-${iso}" class="rost-inp" placeholder="Imię pracownika" autocomplete="off"
