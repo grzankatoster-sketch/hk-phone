@@ -6,6 +6,8 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<link rel="icon" type="image/svg+xml" href="icon.svg"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
 <script>
 /* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
    dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
@@ -161,8 +163,16 @@ function render(){
     <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. Zapisuje się automatycznie po każdym kliknięciu.</div>
     <div class="legend">${legend}</div>
     ${rows}
-    <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>`;
+    <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>
+    <button id="confirmBtn" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:#0f7a4a;color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer" onclick="confirmAvail()">Gotowe — wyślij do kierownika</button>`;
 }
+window.confirmAvail = () => {
+  const filled = Object.keys(CHOICE).length;
+  if (!filled) return toast("Najpierw zaznacz przynajmniej jeden dzień.", "#c2415a");
+  const b = document.getElementById("confirmBtn");
+  if (b){ b.textContent = "Wysłano ✓ Dziękujemy!"; b.style.background = "#0a5c38"; }
+  toast("Dziękujemy! Twoja dyspozycyjność jest zapisana ✓");
+};
 
 window.pick = async (date, choice)=>{
   const prev = CHOICE[date];
