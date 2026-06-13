@@ -54,15 +54,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .wrap{max-width:560px;margin:0 auto;padding:18px 14px 40px}
 .h2{font-family:'DM Serif Display',Georgia,serif;font-size:20px;color:var(--plum);font-weight:400;margin-bottom:4px}
 .sub{font-size:12.5px;color:var(--muted);margin-bottom:16px;line-height:1.5}
-.grid{display:flex;flex-direction:column;gap:9px}
-.acct{display:flex;align-items:center;gap:12px;background:var(--paper);border:1.5px solid var(--line);border-radius:13px;padding:13px 15px;cursor:pointer;text-align:left;font-family:inherit;width:100%;transition:border-color .15s}
-.acct:hover{border-color:var(--plum)}
-.acct .av{width:38px;height:38px;border-radius:50%;background:rgba(90,29,74,.08);color:var(--plum);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0}
+.grid{display:flex;flex-direction:column;gap:10px}
+.acct{display:flex;align-items:center;gap:13px;background:linear-gradient(180deg,#fff,#fdfbfa);border:1.5px solid var(--line);border-radius:15px;padding:13px 14px;cursor:pointer;text-align:left;font-family:inherit;width:100%;box-shadow:0 1px 2px rgba(90,29,74,.05);transition:border-color .16s,box-shadow .16s,transform .08s}
+.acct:hover{border-color:var(--line-strong);box-shadow:0 6px 18px rgba(90,29,74,.1)}
+.acct:active{transform:scale(.985);box-shadow:0 1px 2px rgba(90,29,74,.05)}
+.acct .av{width:42px;height:42px;border-radius:13px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 5px rgba(90,29,74,.18);text-shadow:0 1px 2px rgba(0,0,0,.18)}
 .acct .meta{flex:1;min-width:0}
-.acct .nm{font-weight:800;font-size:15px;color:var(--ink)}
-.acct .rl{font-size:11.5px;color:var(--muted);margin-top:2px}
-.acct .badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--plum);white-space:nowrap}
-.acct .badge.new{color:var(--ok);border-color:rgba(15,122,74,.4);background:rgba(15,122,74,.06)}
+.acct .nm{font-weight:800;font-size:15.5px;color:var(--ink);letter-spacing:-.01em}
+.acct .rl{font-size:11.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct .badge{font-size:9.5px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid var(--line-strong);color:var(--plum);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.acct .badge.new{color:var(--ok);border-color:rgba(15,122,74,.4);background:rgba(15,122,74,.07)}
+.acct .chev{color:var(--line-strong);font-size:22px;font-weight:700;line-height:1;flex-shrink:0;transition:transform .16s,color .16s}
+.acct:hover .chev{color:var(--plum);transform:translateX(2px)}
+.login-id{display:flex;align-items:center;gap:13px;margin-bottom:2px}
+.login-id .av{width:46px;height:46px;border-radius:14px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(90,29,74,.2);text-shadow:0 1px 2px rgba(0,0,0,.18)}
 .card{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:18px 16px}
 .field{margin-top:12px}
 .field label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin-bottom:5px;letter-spacing:.03em}
@@ -88,8 +93,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .dhdr{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
 .dhdr .role-ttl{font-family:'DM Serif Display',Georgia,serif;font-size:21px;color:var(--plum);font-weight:400}
 .dhdr .role-who{font-size:11.5px;color:var(--muted);margin-top:2px}
-.tabs{display:flex;gap:6px;margin:14px 0;background:rgba(90,29,74,.06);padding:4px;border-radius:11px}
-.tab{flex:1;padding:9px 6px;border:none;background:transparent;border-radius:8px;font-weight:800;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:inherit}
+.tabs{display:flex;gap:6px;margin:14px 0;background:rgba(90,29,74,.06);padding:4px;border-radius:11px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{height:0}
+.tab{flex:0 0 auto;padding:9px 13px;border:none;background:transparent;border-radius:8px;font-weight:800;font-size:12.5px;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap}
 .tab.on{background:var(--paper);color:var(--plum);box-shadow:0 1px 3px rgba(90,29,74,.12)}
 .day{background:var(--paper);border:1.5px solid var(--line);border-radius:13px;padding:12px 14px;margin-bottom:9px}
 .day.today{border-color:var(--plum);background:linear-gradient(180deg,rgba(90,29,74,.05),var(--paper))}
@@ -126,6 +132,122 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fitem .tm{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0;font-variant-numeric:tabular-nums}
 .empty{font-size:12.5px;color:var(--muted);text-align:center;padding:22px 10px;background:rgba(90,29,74,.03);border:1px dashed var(--line-strong);border-radius:11px}
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ════════ REDESIGN „cichy luksus" — telefon + komputer (sidebar) ════════ */
+:root{
+  --serif:'Fraunces',Georgia,serif; --ui:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --plum:#5a1d4a; --plum-2:#7a3a6a; --plum-deep:#3a1230;
+  --cream:#f7f1ec; --paper:#fffdfb; --ink:#2a1320; --muted:#9a8290;
+  --line:rgba(58,18,48,.12); --line-strong:rgba(58,18,48,.22);
+  --gold:#b0863a; --ok:#1f7a52; --bad:#c2415a;
+  --shadow:0 1px 2px rgba(58,18,48,.05), 0 14px 32px -18px rgba(58,18,48,.32);
+  --r:16px;
+}
+body{font-family:var(--ui);background:
+  radial-gradient(1100px 480px at 100% -10%, rgba(122,58,106,.10), transparent 60%),
+  radial-gradient(900px 420px at -10% 0%, rgba(176,134,58,.07), transparent 55%),
+  var(--cream);}
+.hdr,.foot{display:none!important}
+.h2,.role-ttl,.ddate,.kpi .v,.topbar h1,.brand .b1{font-family:var(--serif);font-weight:500;letter-spacing:-.01em}
+
+/* ── Logowanie (wyśrodkowane) ── */
+#app.wrap.auth{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:40px 20px}
+.wrap.auth::before{content:"CONRAD COMFORT";display:block;text-align:center;font-family:var(--serif);letter-spacing:.24em;color:var(--plum);font-size:15px}
+.wrap.auth::after{content:"Panel menedżerski";display:block;text-align:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:3px 0 22px}
+.wrap.auth .h2{font-size:23px;text-align:center}
+.wrap.auth .sub{text-align:center}
+.card{border-radius:var(--r);box-shadow:var(--shadow);border-color:var(--line)}
+.btn{background:linear-gradient(180deg,var(--plum-2),var(--plum));box-shadow:0 8px 20px -8px rgba(90,29,74,.6);border-radius:13px;letter-spacing:.01em}
+.btn:hover{filter:brightness(1.06)}
+.inp{border-radius:12px}.inp:focus{box-shadow:0 0 0 3px rgba(90,29,74,.12)}
+
+/* ── Pulpit: powłoka ── */
+#app.dash{max-width:none;margin:0;padding:0}
+.shell{min-height:100vh}
+.side{display:none}
+.main{min-width:0;display:flex;flex-direction:column;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px;padding:13px 15px;background:rgba(255,253,251,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar h1{font-size:20px;color:var(--plum);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-out{background:rgba(90,29,74,.07);border:1px solid var(--line);color:var(--plum);border-radius:10px;padding:8px 12px;font:700 12.5px var(--ui);cursor:pointer}
+.tabs.mob{display:flex;gap:6px;margin:0;padding:10px 12px;overflow-x:auto;border-bottom:1px solid var(--line);background:var(--paper)}
+.tabs.mob::-webkit-scrollbar{height:0}
+.content{padding:16px 13px 70px;width:100%}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:11px 13px;box-shadow:var(--shadow)}
+.kpi .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font-size:25px;color:var(--plum);margin-top:2px;line-height:1}
+.kpi .v.ok{color:var(--ok)} .kpi .v.gold{color:var(--gold)}
+
+/* ── Komponenty: szlif ── */
+.wcard,.statrow,.day{box-shadow:var(--shadow);border-radius:14px}
+.wcard{transition:border-color .15s,box-shadow .15s,transform .08s}
+.wcard:hover{box-shadow:0 14px 30px -16px rgba(58,18,48,.4)}
+.wtop .av{border-radius:11px;background:linear-gradient(135deg,var(--plum-2),var(--plum));color:#fff}
+.pill{border-radius:11px}
+.tab.on{box-shadow:0 2px 8px -2px rgba(90,29,74,.25)}
+.soon{color:var(--gold)}
+
+/* ════════ KOMPUTER (≥ 920px): sidebar + szeroka treść + siatka ════════ */
+@media(min-width:920px){
+  .shell{display:grid;grid-template-columns:264px 1fr}
+  .side{display:flex;flex-direction:column;gap:16px;padding:22px 16px;color:#fff;position:sticky;top:0;height:100vh;
+    background:linear-gradient(170deg,var(--plum) 0%,var(--plum-deep) 100%);box-shadow:inset -1px 0 0 rgba(255,255,255,.06)}
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 6px 6px}
+  .brand .b1{font-size:14px;letter-spacing:.16em;color:#fff}
+  .brand .b2{font-size:9.5px;letter-spacing:.06em;color:rgba(255,255,255,.6);margin-top:2px}
+  .me{display:flex;align-items:center;gap:11px;padding:11px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+  .me-av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+  .me-n{font-weight:800;font-size:14px;color:#fff;line-height:1.2}
+  .me-r{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
+  .nav{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+  .navbtn{display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;background:transparent;color:rgba(255,255,255,.8);
+    border-radius:11px;font:700 13.5px var(--ui);cursor:pointer;text-align:left;transition:background .14s,color .14s}
+  .navbtn svg{width:18px;height:18px;flex-shrink:0;opacity:.9}
+  .navbtn:hover{background:rgba(255,255,255,.09);color:#fff}
+  .navbtn.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+  .side-out{margin-top:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;
+    border-radius:11px;padding:11px;font:800 13px var(--ui);cursor:pointer}
+  .side-out:hover{background:rgba(255,255,255,.16)}
+  .tabs.mob,.top-out{display:none}
+  .topbar{padding:18px 30px;background:rgba(247,241,236,.7)}
+  .topbar h1{font-size:27px}
+  .content{padding:24px 30px 70px;max-width:1080px}
+  .kpis{grid-template-columns:repeat(4,1fr);gap:12px}
+  #hkBody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+  #hkBody>.card,#hkBody>.soon,#hkBody>.note,#hkBody>.empty,#hkBody>.feed,#hkBody>.panelbox,
+  #hkBody>.legend,#hkBody>.link,#hkBody>.fullspan,#hkBody>.kpis,#hkBody>.spin{grid-column:1/-1}
+  .wcard,.statrow,.day{margin-bottom:0}
+}
+@media(min-width:1280px){ .content{margin:0 auto} }
+
+/* ── Dopięcie detali ── */
+.kpi{position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--plum-2),var(--plum))}
+.kpi .v.ok::after,.kpi .v.gold::after{content:none}
+.bar{background:rgba(58,18,48,.09)}
+.bar>span{transition:width .5s cubic-bezier(.4,0,.2,1);background:linear-gradient(90deg,var(--ok),#28a06b)}
+.chip{border-radius:8px}
+.statrow{border-radius:13px;transition:border-color .15s}
+.fitem{padding:9px 0}
+.fitem:last-child{border-bottom:none}
+.fitem .ic{width:20px;text-align:center;font-weight:900}
+.empty{border-radius:14px;padding:28px 16px;line-height:1.6}
+.acct .av{box-shadow:0 5px 12px -4px rgba(90,29,74,.55),inset 0 1px 0 rgba(255,255,255,.25)}
+.side-out:active,.btn:active{transform:scale(.985)}
+.navbtn span{flex:1}
+.auth-foot{text-align:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:22px;opacity:.8}
+.soon{display:flex;align-items:center;gap:8px}
+.soon::before{content:"";width:14px;height:1.5px;background:var(--gold);border-radius:2px;flex-shrink:0}
+.wcard:active{transform:scale(.992)}
+.pill .pv{font-family:var(--serif)}
+@media(min-width:920px){
+  .content{animation:fadeup .35s ease both}
+}
+@keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
 </head>
 <body>
 <div class="hdr">
@@ -144,9 +266,117 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 <script>
 const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
 const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
-const sb = (window.supabase && window.supabase.createClient)
-  ? window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } })
-  : null;
+
+// ── Tryb DEMO (podgląd bez Supabase): panel.html?demo  lub  ?demo=mgr_hk ──
+const _qp = new URLSearchParams(location.search);
+const DEMO = _qp.has("demo");
+const _ROLES = ["admin","koordynator","mgr_recepcja","mgr_hk","mgr_glowny","mgr_operacyjny","mgr_gastro"];
+const DEMO_ROLE = _ROLES.includes(_qp.get("demo")) ? _qp.get("demo") : "admin";
+
+function makeMockClient(){
+  const today = (()=>{ const d=new Date(),p=n=>n<10?"0"+n:""+n; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); })();
+  const plus = n => { const d=new Date(); d.setDate(d.getDate()+n); const p=x=>x<10?"0"+x:""+x; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
+  const ACC = [
+    {name:"Admin",email:"admin@conrad-panel.com",role:"admin",claimed:true,active:true,created_at:today},
+    {name:"Koordynator",email:"koord@conrad-panel.com",role:"koordynator",claimed:true,active:true,created_at:today},
+    {name:"Menedżer recepcji",email:"recep@conrad-panel.com",role:"mgr_recepcja",claimed:false,active:true,requires_code:true,created_at:today},
+    {name:"Tetiana (HK)",email:"tet@conrad-panel.com",role:"mgr_hk",claimed:true,active:true,created_at:today},
+    {name:"Menedżer główny",email:"glow@conrad-panel.com",role:"mgr_glowny",claimed:true,active:true,created_at:today},
+    {name:"Menedżer operacyjny",email:"oper@conrad-panel.com",role:"mgr_operacyjny",claimed:false,active:true,created_at:today},
+    {name:"Menedżer gastronomii",email:"gastro@conrad-panel.com",role:"mgr_gastro",claimed:false,active:true,created_at:today},
+  ];
+  const DEMO_EMAIL = (ACC.find(a=>a.role===DEMO_ROLE)||ACC[0]).email;
+  const DATA = {
+    app_accounts: ACC,
+    hk_workers: [{name:"Anna",active:true},{name:"Marta",active:true},{name:"Tetiana",active:true},{name:"Oksana",active:true}],
+    hk_plan: [
+      {date:today, assignments:{Anna:["101","102","106"],Marta:["201","202","203"]}, pm_room_types:{"101":"W","102":"WP","106":"W","203":"PG","204":"PGZ","205":"PG"}},
+      {date:plus(1), assignments:{Anna:["110","111"]}, pm_room_types:{"110":"W","305":"PGZ"}},
+    ],
+    hk_rooms: [
+      {date:today,room:"101",worker:"Anna",status:"czyste"},{date:today,room:"102",worker:"Anna",status:"W"},
+      {date:today,room:"106",worker:"Anna",status:"W"},{date:today,room:"201",worker:"Marta",status:"czyste"},
+      {date:today,room:"202",worker:"Marta",status:"W"},{date:today,room:"203",worker:"Marta",status:"W"},
+    ],
+    hk_logs: [
+      {date:today,action:"done",worker:"Anna",room:"101",log_time:"10:24"},
+      {date:today,action:"start",worker:"Marta",room:"202",log_time:"10:40"},
+      {date:today,action:"vacate",room:"305",log_time:"10:05"},
+      {date:today,action:"skip",worker:"Anna",room:"118",log_time:"09:50"},
+    ],
+    faults: [
+      {id:"1",description:"Cieknący kran w 312",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"312",room:"312",source:"reception",reported_at:today+"T09:00:00",reported_by:"Recepcja"},
+      {id:"2",description:"Przepalona żarówka na korytarzu",assigned_to:"Kamil",status:"in_progress",priority:"normal",space_id:"koryt. 2p",source:"hk",reported_at:today+"T08:10:00",reported_by:"Anna"},
+      {id:"3",description:"Klimatyzacja nie chłodzi",assigned_to:null,status:"open",priority:"normal",space_id:"restauracja",source:"reception",reported_at:today+"T07:30:00",reported_by:"Recepcja"},
+    ],
+    shift_reports: [
+      {day_key:today,shift_key:"poranna",employee:"Kasia",cash_closing:1240.5,safe_total:5300,cash_current:820,saved_at:today+"T14:00:00"},
+      {day_key:today,shift_key:"popoludniowa",employee:"Ola",cash_closing:1890,safe_total:5300,cash_current:430,saved_at:today+"T22:00:00"},
+    ],
+    manager_alerts: [
+      {id:"a1",title:"Sprawdzić rezerwację 312",body:"Gość prosi o wcześniejszy check-in",priority:"high",created_by:"Recepcja",created_at:today+"T11:00:00",done:false},
+      {id:"a2",title:"Dostawa ręczników",body:"Przyjechała o 9, rozłożona na piętrach",priority:"normal",created_by:"Tetiana",created_at:today+"T09:20:00",done:false},
+    ],
+    hk_roster: [{date:today, roster:[{name:"Anna",role:"dyzur"},{name:"Marta",role:"poranna"},{name:"Oksana",role:"popoludnie"}]}],
+  };
+  const RPC = {
+    current_app_role: ()=> DEMO_ROLE,
+    claim_account: ()=> DEMO_ROLE,
+    list_panel_audit: ()=> [
+      {actor:"Tetiana",actor_role:"mgr_hk",action:"grafik_utworzony",detail:"Wysłał grafik (week) od "+plus(3)+" dla 4 os.",created_at:today+"T08:00:00"},
+      {actor:"Anna",actor_role:null,action:"grafik_wpis",detail:plus(3)+": dzien",created_at:today+"T08:30:00"},
+      {actor:"Anna",actor_role:null,action:"grafik_edycja",detail:plus(4)+": off (było: dzien)",created_at:today+"T09:05:00"},
+      {actor:"Recepcja",actor_role:"mgr_recepcja",action:"zadanie_dodane",detail:"Sprawdzić rezerwację 312",created_at:today+"T11:00:00"},
+    ],
+    list_availability_requests: ()=> [
+      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,persons:4,answered:2},
+    ],
+    get_request_grid: ()=> {
+      const ppl=["Anna","Marta","Oksana","Tetiana"], days=[plus(3),plus(4),plus(5)], ch=["dzien","popoludnie","off"], out=[];
+      ppl.forEach((p,i)=> days.forEach((d,j)=> out.push({person:p,token:"DEMO",kind:"hk",date:d,choice:ch[(i+j)%3]})));
+      return out;
+    },
+    create_availability_request: ()=> [{person:"Anna",token:"A1B2C3"},{person:"Marta",token:"D4E5F6"}],
+    admin_list_accounts: ()=> ACC,
+    log_action: ()=> null, admin_add_account: ()=> "acc_demo@conrad-panel.com",
+    admin_set_role: ()=> null, admin_set_active: ()=> null,
+    admin_reset_account: ()=> "acc_new@conrad-panel.com",
+    precheck_claim: ()=> true, regenerate_token: ()=> "NEW123", set_token_active: ()=> null,
+  };
+  function builder(name){
+    let rows = (DATA[name]||[]).map(r=>({...r}));
+    const api = {
+      select(){ return api; }, order(){ return api; }, limit(){ return api; },
+      eq(c,v){ rows=rows.filter(r=>String(r[c])===String(v)); return api; },
+      in(c,a){ rows=rows.filter(r=>a.includes(r[c])); return api; },
+      gte(c,v){ rows=rows.filter(r=>r[c]!=null&&String(r[c])>=String(v)); return api; },
+      lte(c,v){ rows=rows.filter(r=>r[c]!=null&&String(r[c])<=String(v)); return api; },
+      maybeSingle(){ return Promise.resolve({data:rows[0]||null,error:null}); },
+      insert(){ return Promise.resolve({data:null,error:null}); },
+      upsert(){ return Promise.resolve({data:null,error:null}); },
+      update(){ return api; },
+      then(f,r){ return Promise.resolve({data:rows,error:null}).then(f,r); },
+    };
+    return api;
+  }
+  return {
+    from: builder,
+    rpc: (n,a)=> Promise.resolve({ data: RPC[n] ? RPC[n](a) : null, error: null }),
+    functions: { invoke: (n,opt)=> Promise.resolve({ data:{ text:"(DEMO) "+((opt&&opt.body&&opt.body.payload&&opt.body.payload.name)||"Pracownik")+" pracuje rzetelnie — równe tempo i regularne zgłaszanie usterek. Solidny członek zespołu." }, error:null }) },
+    auth: {
+      getSession: ()=> Promise.resolve({ data:{ session:{ user:{ email:DEMO_EMAIL } } } }),
+      getUser:    ()=> Promise.resolve({ data:{ user:{ email:DEMO_EMAIL } } }),
+      signInWithPassword: ()=> Promise.resolve({ data:{}, error:null }),
+      signUp: ()=> Promise.resolve({ data:{}, error:null }),
+      signOut: ()=> Promise.resolve({ error:null }),
+    },
+  };
+}
+
+const sb = DEMO ? makeMockClient()
+  : ((window.supabase && window.supabase.createClient)
+      ? window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } })
+      : null);
 
 // Etykiety ról + placeholdery widoków (kolejne iteracje wpinają tu realne moduły).
 const ROLE_INFO = {
@@ -163,6 +393,13 @@ const ROLE_LABEL = r => (ROLE_INFO[r] && ROLE_INFO[r].label) || r;
 const app = document.getElementById("app");
 const logoutBtn = document.getElementById("logoutBtn");
 const initials = n => (String(n||"").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("") || "?").toUpperCase();
+// Stabilny, „markowy" gradient awatara wyliczany z imienia (spójny na każdym urządzeniu).
+const avatarBg = (n) => {
+  let h = 0; const s = String(n||"");
+  for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0;
+  const hue = h % 360, hue2 = (hue + 26) % 360;
+  return `linear-gradient(135deg, hsl(${hue} 46% 46%), hsl(${hue2} 52% 38%))`;
+};
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 
 let accounts = [];
@@ -176,47 +413,62 @@ async function boot() {
 }
 
 async function showAccountList() {
-  logoutBtn.style.display = "none";
+  app.className = "wrap auth";
   app.innerHTML = '<div class="spin">Wczytywanie kont…</div>';
-  const { data, error } = await sb.from("app_accounts").select("name,email,role,claimed").order("role");
+  const { data, error } = await sb.from("app_accounts").select("name,email,role,claimed,active,requires_code").order("role");
   if (error) { app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Błąd wczytywania: ${esc(error.message)}</div></div>`; return; }
-  accounts = data || [];
+  accounts = (data || []).filter(a => a.active !== false);
   const tiles = accounts.map((a,i) => `
-    <button class="acct" onclick="pickAccount(${i})">
-      <span class="av">${esc(initials(a.name))}</span>
+    <button class="acct" onclick="pickAccount(${i})" aria-label="Zaloguj jako ${esc(a.name)}">
+      <span class="av" style="background:${avatarBg(a.name)}">${esc(initials(a.name))}</span>
       <span class="meta"><span class="nm">${esc(a.name)}</span><span class="rl">${esc(ROLE_LABEL(a.role))}</span></span>
-      <span class="badge ${a.claimed ? "" : "new"}">${a.claimed ? "Zaloguj" : "Pierwsze logowanie"}</span>
+      <span class="badge ${a.claimed ? "" : "new"}">${a.claimed ? "Zaloguj" : "Nowe"}</span>
+      <span class="chev" aria-hidden="true">›</span>
     </button>`).join("");
   app.innerHTML = `
     <div class="h2">Wybierz swoje konto</div>
     <div class="sub">Zaloguj się, aby zobaczyć swój panel. Przy pierwszym wejściu ustawisz własne hasło.</div>
-    <div class="grid">${tiles || '<div class="spin">Brak kont — uruchom seed w Supabase.</div>'}</div>`;
+    <div class="grid">${tiles || '<div class="spin">Brak kont — uruchom seed w Supabase.</div>'}</div>
+    <div class="auth-foot">Conrad Comfort • dostęp tylko dla uprawnionych</div>`;
 }
 
 window.pickAccount = (i) => {
   const a = accounts[i];
   if (!a) return;
   const first = !a.claimed;
+  app.className = "wrap auth";
   app.innerHTML = `
     <button class="link" onclick="showAccountList()">‹ Wróć do listy</button>
     <div class="card">
-      <div class="h2" style="margin-bottom:2px">${esc(a.name)}</div>
-      <div class="sub" style="margin-bottom:0">${esc(ROLE_LABEL(a.role))}</div>
+      <div class="login-id">
+        <span class="av" style="background:${avatarBg(a.name)}">${esc(initials(a.name))}</span>
+        <div>
+          <div class="h2" style="margin-bottom:2px">${esc(a.name)}</div>
+          <div class="sub" style="margin-bottom:0">${esc(ROLE_LABEL(a.role))}</div>
+        </div>
+      </div>
       ${first
         ? `<div class="note" style="margin-top:10px">To Twoje pierwsze logowanie — ustaw hasło, którym będziesz się logować od teraz.</div>`
         : ""}
-      <div class="field">
-        <label>${first ? "Nowe hasło (min. 6 znaków)" : "Hasło"}</label>
-        <input id="pw" class="inp" type="password" autocomplete="${first ? "new-password" : "current-password"}"
-          placeholder="••••••••" onkeydown="if(event.key==='Enter')submitAuth(${i},${first})"/>
-      </div>
-      ${first ? `
-      <div class="field">
-        <label>Powtórz hasło</label>
-        <input id="pw2" class="inp" type="password" autocomplete="new-password" placeholder="••••••••"
-          onkeydown="if(event.key==='Enter')submitAuth(${i},${first})"/>
-      </div>` : ""}
-      <button id="goBtn" class="btn" onclick="submitAuth(${i},${first})">${first ? "Ustaw hasło i wejdź" : "Zaloguj"}</button>
+      <form id="authForm" autocomplete="on" onsubmit="submitAuth(${i},${first});return false;">
+        <input type="text" name="username" autocomplete="username" value="${esc(a.email)}" style="display:none" readonly tabindex="-1"/>
+        ${first && a.requires_code ? `
+        <div class="field">
+          <label>Kod od administratora</label>
+          <input id="ccode" class="inp" type="text" inputmode="text" autocomplete="off" placeholder="np. 4821"/>
+        </div>` : ""}
+        <div class="field">
+          <label>${first ? "Nowe hasło (min. 6 znaków)" : "Hasło"}</label>
+          <input id="pw" class="inp" type="password" autocomplete="${first ? "new-password" : "current-password"}"
+            inputmode="text" enterkeyhint="${first ? "next" : "go"}" placeholder="••••••••"/>
+        </div>
+        ${first ? `
+        <div class="field">
+          <label>Powtórz hasło</label>
+          <input id="pw2" class="inp" type="password" autocomplete="new-password" enterkeyhint="go" placeholder="••••••••"/>
+        </div>` : ""}
+        <button id="goBtn" class="btn" type="submit">${first ? "Ustaw hasło i wejdź" : "Zaloguj"}</button>
+      </form>
       <div id="authMsg" class="msg"></div>
     </div>`;
   setTimeout(()=>{ const el=document.getElementById("pw"); if(el) el.focus(); }, 50);
@@ -243,8 +495,14 @@ window.submitAuth = async (i, first) => {
   }
   if (btn) { btn.disabled = true; btn.textContent = "Chwila…"; }
   setMsg("", "");
+  const code = (document.getElementById("ccode")||{}).value || "";
   try {
     if (first) {
+      // Kod jednorazowy (jeśli wymagany) — weryfikacja PRZED utworzeniem konta.
+      if (a.requires_code) {
+        const { data: ok } = await sb.rpc("precheck_claim", { p_email: a.email, p_code: code });
+        if (!ok) throw new Error("Nieprawidłowy kod od administratora.");
+      }
       // Pierwsze logowanie: utwórz konto Auth z wybranym hasłem, potem zwiąż ze spisem.
       const { error: suErr } = await sb.auth.signUp({ email: a.email, password: pw });
       if (suErr) {
@@ -252,7 +510,7 @@ window.submitAuth = async (i, first) => {
         const { error: siErr } = await sb.auth.signInWithPassword({ email: a.email, password: pw });
         if (siErr) throw new Error("To konto jest już aktywne. Jeśli to Ty — zaloguj się swoim hasłem; jeśli nie pamiętasz, poproś admina o reset.");
       } else {
-        await sb.rpc("claim_account", { p_email: a.email });
+        await sb.rpc("claim_account", { p_email: a.email, p_code: code });
       }
     } else {
       const { error } = await sb.auth.signInWithPassword({ email: a.email, password: pw });
@@ -283,9 +541,8 @@ async function showPanelFromSession() {
     return;
   }
   CURRENT = { role, name };
-  // Gastro i admin: na razie placeholder (ich widoki w kolejnych iteracjach).
-  // Pozostałe role (HK, koordynator, recepcja, główny, operacyjny) dziedziczą widok HK.
-  if (role === "mgr_gastro" || role === "admin") return renderPlaceholder(role, name);
+  // Admin: pełny pulpit + Konta. Gastro: własny zestaw (Grafik/Zadania/Akcje).
+  // Pozostałe role dziedziczą widok HK.
   renderHkDashboard(role, name);
 }
 
@@ -318,30 +575,73 @@ function stopLive(){ if (liveTimer){ clearInterval(liveTimer); liveTimer=null; }
 // Role recepcyjne widzą dodatkowo Zadania + Kasę; grafik widzą HK + recepcyjne.
 const RECEPCJA_ROLES = new Set(["koordynator","mgr_recepcja","mgr_glowny","mgr_operacyjny"]);
 const GRAFIK_ROLES   = new Set(["mgr_hk","koordynator","mgr_recepcja","mgr_glowny","mgr_operacyjny"]);
+const KONSERW_ROLES  = new Set(["mgr_glowny","mgr_operacyjny"]);
 function tabsFor(role){
+  // Gastro: osobny, węższy zestaw (bez modułów HK).
+  if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["akcje","Akcje"]];
+  const A = role === "admin";  // admin widzi wszystko
   const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]];
-  if (GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
-  if (RECEPCJA_ROLES.has(role)) t.push(["zadania","Zadania"], ["kasa","Kasa"]);
-  if (GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
+  if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
+  if (A || RECEPCJA_ROLES.has(role)) t.push(["zadania","Zadania"], ["kasa","Kasa"]);
+  if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."]);
+  if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
+  if (A)                             t.push(["konta","Konta"]);
   return t;
 }
+
+const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const NAV_ICON = {
+  live:    _ic('<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/>'),
+  wyjazdy: _ic('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
+  staty:   _ic('<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/>'),
+  grafik:  _ic('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+  zadania: _ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
+  kasa:    _ic('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="17" cy="14.5" r="1.4"/>'),
+  konserw: _ic('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.3L3 18l3 3 6.4-6.3a4 4 0 0 0 5.3-5.4l-2.6 2.6-2-2 2.6-2.6z"/>'),
+  akcje:   _ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
+};
+const BRAND_SVG = '<svg viewBox="0 0 80 12" width="40" height="10" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>';
+const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); return f?f[1]:""; };
 
 function renderHkDashboard(role, name) {
   stopLive();
   const tabs = tabsFor(role);
-  if (!tabs.some(([k]) => k===hkTab)) hkTab = "live";
-  const label = (ROLE_INFO[role]||{}).label || role;
-  const tabsHtml = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" onclick="setHkTab('${k}')">${lbl}</button>`).join("");
+  if (!tabs.some(([k]) => k===hkTab)) hkTab = tabs[0][0];
+  const roleLbl = (ROLE_INFO[role]||{}).label || role;
+  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span></button>`).join("");
+  const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${lbl}</button>`).join("");
+  const av = esc(initials(name)), avbg = avatarBg(name);
+  app.className = "dash";
   app.innerHTML = `
-    <div class="dhdr">
-      <div><div class="role-ttl">${esc(label)}</div><div class="role-who">Zalogowano jako: <b>${esc(name||"—")}</b></div></div>
-    </div>
-    <div class="tabs">${tabsHtml}</div>
-    <div id="hkBody"><div class="spin">Wczytywanie…</div></div>`;
+    <div class="shell">
+      <aside class="side">
+        <div class="brand">${BRAND_SVG}<div><div class="b1">CONRAD COMFORT</div><div class="b2">Panel menedżerski</div></div></div>
+        <div class="me"><span class="me-av" style="background:${avbg}">${av}</span>
+          <div><div class="me-n">${esc(name||"—")}</div><div class="me-r">${esc(roleLbl)}</div></div></div>
+        <nav class="nav">${nav}</nav>
+        <button class="side-out" onclick="doLogout()">Wyloguj</button>
+      </aside>
+      <main class="main">
+        <header class="topbar">
+          <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
+          <button class="top-out" onclick="doLogout()">Wyloguj</button>
+        </header>
+        <div class="tabs mob">${mtab}</div>
+        <div id="hkBody" class="content"><div class="spin">Wczytywanie…</div></div>
+      </main>
+    </div>`;
   loadHkTab();
 }
 
-window.setHkTab = (t) => { hkTab = t; renderHkDashboard(CURRENT.role, CURRENT.name); };
+// Lekkie przełączenie zakładki (bez przebudowy sidebara — brak migotania).
+window.setHkTab = (t) => {
+  hkTab = t;
+  document.querySelectorAll(".navbtn,.tab").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  const tt = document.getElementById("pageTitle"); if (tt) tt.textContent = tabTitle(CURRENT.role, t);
+  const hb = document.getElementById("hkBody"); if (hb) hb.innerHTML = '<div class="spin">Wczytywanie…</div>';
+  loadHkTab();
+};
 
 async function loadHkTab() {
   stopLive();
@@ -351,7 +651,9 @@ async function loadHkTab() {
   if (hkTab === "zadania") return loadZadania();
   if (hkTab === "kasa")    return loadKasa();
   if (hkTab === "grafik")  return loadGrafik();
+  if (hkTab === "konserw") return loadKonserw();
   if (hkTab === "akcje")   return loadAkcje();
+  if (hkTab === "konta")   return loadKonta();
 }
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
@@ -375,17 +677,36 @@ function countTypes(plan) {
 }
 const fmtWP = (reg, apt) => apt ? `${reg}+${apt} APT` : `${reg}`;
 
+let WYJAZDY_RANGE = [], WY_PLAN = {}, ROSTER = {};
+const HK_ROLE_OPT = [["poranna","Poranna"],["dyzur","Dyżur"],["popoludnie","Popołudnie"]];
+const _cap = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
+
 async function loadWyjazdy() {
   const range = [0,1,2].map(i => { const t=new Date(); t.setHours(0,0,0,0); return isoDate(new Date(t.getTime()+i*86400000)); });
-  let rows = [];
+  WYJAZDY_RANGE = range;
   try {
-    const { data } = await sb.from("hk_plan").select("date,assignments,pm_room_types").gte("date",range[0]).lte("date",range[2]);
-    rows = data || [];
+    const [pl, ro] = await Promise.all([
+      sb.from("hk_plan").select("date,assignments,pm_room_types").gte("date",range[0]).lte("date",range[2]),
+      sb.from("hk_roster").select("date,roster").gte("date",range[0]).lte("date",range[2]),
+    ]);
+    WY_PLAN = {}; (pl.data||[]).forEach(r => { WY_PLAN[r.date] = { assignments:r.assignments||{}, pm_room_types:r.pm_room_types||{} }; });
+    ROSTER  = {}; (ro.data||[]).forEach(r => { ROSTER[r.date] = Array.isArray(r.roster) ? r.roster : []; });
   } catch { return body('<div class="empty">Nie udało się pobrać planu.</div>'); }
-  const byDate = {}; rows.forEach(r => { byDate[r.date] = { assignments:r.assignments||{}, pm_room_types:r.pm_room_types||{} }; });
-  const html = range.map((iso,i) => {
-    const c = countTypes(byDate[iso]); const d = fmtDate(iso);
+  renderWyjazdy();
+}
+
+function renderWyjazdy() {
+  const html = WYJAZDY_RANGE.map((iso,i) => {
+    const c = countTypes(WY_PLAN[iso]); const d = fmtDate(iso);
     const lbl = i===0 ? "DZIŚ" : i===1 ? "JUTRO" : "";
+    const ros = ROSTER[iso] || [];
+    const rrows = ros.length ? ros.map((w,idx)=>`<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+        <span style="flex:1;font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</span>
+        <select class="inp" style="width:auto;padding:6px 8px;font-size:12px" onchange="rosterRole('${iso}',${idx},this.value)">
+          ${HK_ROLE_OPT.map(([v,l])=>`<option value="${v}"${w.role===v?" selected":""}>${l}</option>`).join("")}
+        </select>
+        <button onclick="rosterRemove('${iso}',${idx})" aria-label="Usuń" style="background:none;border:none;color:var(--bad);font-size:19px;line-height:1;cursor:pointer;padding:0 4px">×</button>
+      </div>`).join("") : `<div class="note" style="margin-top:0">Brak obsady — dodaj osoby poniżej.</div>`;
     return `<div class="day ${i===0?"today":""}">
       <div class="drow">
         <div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>
@@ -395,13 +716,40 @@ async function loadWyjazdy() {
           <div class="pill pgz ${c.pgz===0?"zero":""}"><div class="pl">PGZ</div><div class="pv">${c.pgz}</div></div>
         </div>
       </div>
+      <div style="margin-top:11px;border-top:1px dashed var(--line-strong);padding-top:10px">
+        <div class="soon" style="margin-top:0">Obsada (${ros.length})</div>
+        ${rrows}
+        <div style="display:flex;gap:7px;margin-top:7px">
+          <input id="radd-${iso}" class="inp" style="flex:1" placeholder="Imię pracownika" autocomplete="off" onkeydown="if(event.key==='Enter')rosterAdd('${iso}')"/>
+          <button class="rost-addbtn" style="padding:9px 13px;border-radius:9px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer" onclick="rosterAdd('${iso}')">Dodaj</button>
+        </div>
+        <button class="btn" style="margin-top:8px;padding:10px" onclick="rosterSave('${iso}',this)">Zapisz obsadę</button>
+      </div>
     </div>`;
   }).join("");
-  body(html + `<div class="note">Pełne planowanie obsady — w aplikacji recepcji oraz na stronie „Wyjazdy".</div>`);
+  body(html);
 }
+window.rosterAdd = (iso) => {
+  const inp = document.getElementById("radd-"+iso); const v = (inp && inp.value || "").trim();
+  if (!v) return;
+  (ROSTER[iso] = ROSTER[iso] || []).push({ name:_cap(v), role: ROSTER[iso].length===0 ? "dyzur" : "poranna" });
+  renderWyjazdy(); setTimeout(()=>{ const n=document.getElementById("radd-"+iso); if(n) n.focus(); }, 30);
+};
+window.rosterRemove = (iso, idx) => { if (ROSTER[iso]) { ROSTER[iso].splice(idx,1); renderWyjazdy(); } };
+window.rosterRole = (iso, idx, role) => { if (ROSTER[iso] && ROSTER[iso][idx]) ROSTER[iso][idx].role = role; };
+window.rosterSave = async (iso, btn) => {
+  if (btn){ btn.disabled=true; btn.textContent="Zapisywanie…"; }
+  try {
+    const { error } = await sb.from("hk_roster").upsert({ tenant_id:TENANT_ID, date:iso, roster:ROSTER[iso]||[], updated_at:new Date().toISOString() }, { onConflict:"tenant_id,date" });
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"obsada_zapis", p_detail:`${iso} (${(ROSTER[iso]||[]).length} os.)` }); } catch {}
+    if (btn){ btn.disabled=false; btn.textContent="Zapisano ✓"; setTimeout(()=>{ if(btn) btn.textContent="Zapisz obsadę"; }, 1600); }
+  } catch (e) { if (btn){ btn.disabled=false; btn.textContent="Zapisz obsadę"; } alert((e&&e.message)||"Błąd zapisu."); }
+};
 
 // ── Na żywo: kto robi jaki pokój (hk_rooms dzisiaj) + feed zdarzeń (hk_logs) ──
 const FEED_ICON = { start:"▶", done:"✓", skip:"✕", vacate:"🔔", task_done:"☑" };
+const FEED_COLOR = { start:"#2563eb", done:"#1f7a52", skip:"#b0863a", vacate:"#7a3a6a", task_done:"#1f7a52" };
 function feedText(l){
   const a = l.action;
   if (a==="start")  return `${l.worker||"?"} zaczyna pokój ${l.room||""}`;
@@ -448,11 +796,22 @@ async function loadLive() {
         </div>`;
       }).join("");
     }
+    let kpis = "";
+    if (workers.length) {
+      let tot=0, don=0; workers.forEach(([,d])=>{ tot+=d.rooms.length; don+=d.done; });
+      const pct = tot ? Math.round(don/tot*100) : 0;
+      kpis = `<div class="kpis">
+        <div class="kpi"><div class="l">Pokoje dziś</div><div class="v">${tot}</div></div>
+        <div class="kpi"><div class="l">Zrobione</div><div class="v ok">${don}</div></div>
+        <div class="kpi"><div class="l">Postęp</div><div class="v gold">${pct}%</div></div>
+        <div class="kpi"><div class="l">Ekipa</div><div class="v">${workers.length}</div></div>
+      </div>`;
+    }
     const feed = logs.length ? `<div class="soon" style="margin-top:18px">Ostatnie zdarzenia</div><div class="feed">${
       logs.map(l => { const t = l.log_time || (l.created_at?new Date(l.created_at).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}):"");
-        return `<div class="fitem"><span class="ic">${FEED_ICON[l.action]||"·"}</span><span>${esc(feedText(l))}</span><span class="tm">${esc(t)}</span></div>`; }).join("")
+        return `<div class="fitem"><span class="ic" style="color:${FEED_COLOR[l.action]||"var(--muted)"}">${FEED_ICON[l.action]||"·"}</span><span>${esc(feedText(l))}</span><span class="tm">${esc(t)}</span></div>`; }).join("")
     }</div>` : "";
-    body(html + feed);
+    body(kpis + html + feed);
   };
   await paint();
   liveTimer = setInterval(() => { if (hkTab==="live") paint(); else stopLive(); }, 5000);
@@ -490,7 +849,39 @@ async function loadStats() {
 }
 
 let STATS_CACHE = {};
-window.showWorker = (w) => {
+let WORKER_CTX = null;
+
+// Tempo pracy — liczone z hk_logs (start→done), zwracane jako ETYKIETA (bez minut).
+// Czas jest mierzony, ale konkretne minuty celowo nie są nigdzie pokazywane.
+async function workerPaceLabel(worker){
+  const today=new Date(), from=new Date(today); from.setDate(today.getDate()-6);
+  const fk=isoDate(from), tk=isoDate(today);
+  let logs=[];
+  try { const { data } = await sb.from("hk_logs").select("action,worker,room,created_at,date").eq("worker",worker).gte("date",fk).lte("date",tk); logs=data||[]; }
+  catch { return "brak danych"; }
+  const starts={}, durs=[];
+  logs.filter(l=>l.created_at).sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at))).forEach(l=>{
+    if (l.action==="start") starts[l.room]=new Date(l.created_at).getTime();
+    else if (l.action==="done" && starts[l.room]){ const m=(new Date(l.created_at).getTime()-starts[l.room])/60000; if(m>2&&m<240) durs.push(m); delete starts[l.room]; }
+  });
+  if (!durs.length) return "brak danych";
+  const avg=durs.reduce((a,b)=>a+b,0)/durs.length;
+  return avg<25 ? "sprawne tempo" : avg<=40 ? "równe tempo" : "dokładne, spokojne tempo";
+}
+// Najbliższa dyspozycyjność z ostatniego zebranego grafiku.
+async function workerAvailabilityText(worker){
+  try {
+    const { data:reqs } = await sb.rpc("list_availability_requests");
+    if (!reqs || !reqs.length) return "";
+    const { data:grid } = await sb.rpc("get_request_grid", { p_request_id: reqs[0].id });
+    const today=isoDate(new Date());
+    const ch={dzien:"dzień",popoludnie:"popoł.",poranna:"poranna",popoludniowa:"popoł.",nocna:"nocna"};
+    const mine=(grid||[]).filter(r=>r.person===worker && r.date && r.choice && r.choice!=="off" && r.date>=today)
+      .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,7);
+    return mine.map(r=>{ const [,m,d]=r.date.split("-"); return `${d}.${m} ${ch[r.choice]||r.choice}`; }).join(", ");
+  } catch { return ""; }
+}
+window.showWorker = async (w) => {
   const s = STATS_CACHE[w] || { sprzatniete:0, zgloszone:0 };
   body(`
     <button class="link" onclick="setHkTab('staty')">‹ Wróć do statystyk</button>
@@ -500,10 +891,28 @@ window.showWorker = (w) => {
       <div style="margin-top:14px">
         <div class="statrow"><span class="k">Pokoje sprzątnięte</span><span class="v">${s.sprzatniete}</span></div>
         <div class="statrow"><span class="k">Zgłoszone usterki</span><span class="v">${s.zgloszone}</span></div>
-        <div class="statrow"><span class="k">Kiedy może pracować</span><span class="v" style="font-size:12.5px;color:var(--muted)">z grafiku — wkrótce</span></div>
+        <div class="statrow"><span class="k">Kiedy może pracować</span><span class="v" id="wAvail" style="font-size:12px;color:var(--muted);max-width:55%;text-align:right">ładowanie…</span></div>
       </div>
+      <button id="wAiBtn" class="btn" style="margin-top:14px" onclick="genWorkerAI()">✨ Generuj opis AI</button>
+      <div id="wAi" class="msg info" style="display:none;margin-top:10px;white-space:pre-wrap"></div>
       <div class="note">Czas sprzątania pokoi jest mierzony wewnętrznie, ale celowo nie jest pokazywany.</div>
     </div>`);
+  const [pace, avail] = await Promise.all([workerPaceLabel(w), workerAvailabilityText(w)]);
+  WORKER_CTX = { name:w, rooms:s.sprzatniete, faults:s.zgloszone, pace, availability:avail };
+  const av=document.getElementById("wAvail"); if (av) av.textContent = avail || "brak zebranego grafiku";
+};
+window.genWorkerAI = async () => {
+  if (!WORKER_CTX) return;
+  const btn=document.getElementById("wAiBtn"), out=document.getElementById("wAi");
+  if (btn){ btn.disabled=true; btn.textContent="Generuję…"; }
+  try {
+    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"worker", tenant_id:TENANT_ID, payload:WORKER_CTX } });
+    if (error) throw error;
+    if (out){ out.className="msg info"; out.style.display="block"; out.textContent=(data&&data.text)||"Brak opisu."; }
+  } catch (e) {
+    if (out){ out.className="msg err"; out.style.display="block"; out.textContent="AI niedostępne ("+((e&&e.message)||"błąd")+")."; }
+  }
+  if (btn){ btn.disabled=false; btn.textContent="✨ Generuj opis AI"; }
 };
 
 // ── Zadania: przekazane na komputer recepcji (manager_alerts) + dodawanie z telefonu ──
@@ -511,10 +920,11 @@ const PRIO = { high:{l:"Pilne",c:"#c2415a"}, normal:{l:"Zwykłe",c:"#5a1d4a"}, l
 async function loadZadania() {
   let rows = [];
   try {
-    const { data } = await sb.from("manager_alerts").select("title,body,priority,target_shift,created_by,created_at,pinned")
-      .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(40);
+    const { data } = await sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done")
+      .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60);
     rows = data || [];
   } catch { return body('<div class="empty">Nie udało się pobrać zadań.</div>'); }
+  rows = rows.filter(r => !r.done);
   const form = `
     <div class="card" style="margin-bottom:12px">
       <div class="soon" style="margin-top:0">Przekaż zadanie na komputer recepcji</div>
@@ -537,9 +947,13 @@ async function loadZadania() {
         <span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span>
       </div>
       ${r.body?`<div style="font-size:12.5px;color:var(--muted)">${esc(r.body)}</div>`:""}
-      ${r.created_by?`<div style="font-size:11px;color:var(--muted)">od: ${esc(r.created_by)}</div>`:""}
+      <div style="display:flex;align-items:center;gap:8px;width:100%;margin-top:2px">
+        ${r.created_by?`<span style="font-size:11px;color:var(--muted);flex:1">od: ${esc(r.created_by)}</span>`:`<span style="flex:1"></span>`}
+        <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer"
+          onclick="markZadanieDone('${r.id}')">✓ Zrobione</button>
+      </div>
     </div>`;
-  }).join("") : '<div class="empty">Brak przekazanych zadań.</div>';
+  }).join("") : '<div class="empty">Brak otwartych zadań. 🎉</div>';
   body(form + `<div class="soon">Przekazane zadania</div>` + list);
 }
 window.addZadanie = async () => {
@@ -562,6 +976,15 @@ window.addZadanie = async () => {
     setM((e&&e.message)||"Nie udało się wysłać.", "err");
     if (btn){ btn.disabled=false; btn.textContent="Wyślij na komputer"; }
   }
+};
+
+window.markZadanieDone = async (id) => {
+  try {
+    const { error } = await sb.from("manager_alerts").update({ done:true, done_at:new Date().toISOString(), done_by:CURRENT.name||"Panel" }).eq("id", id);
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"zadanie_zrobione", p_detail:"oznaczono zrobione" }); } catch {}
+    loadZadania();
+  } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
 };
 
 // ── Kasa: stan kasy ostatnich dni (shift_reports) ──
@@ -693,6 +1116,11 @@ window.copyLink = (token, el) => {
   const url = GRAFIK_BASE + token;
   navigator.clipboard?.writeText(url).then(()=>{ if(el){ const o=el.textContent; el.textContent="Skopiowano ✓"; setTimeout(()=>el.textContent=o,1500); } }, ()=>{});
 };
+window.regenLink = async (token, reqId) => {
+  if (!confirm("Odświeżyć link? Stary przestanie działać, dostaniesz nowy kod.")) return;
+  try { const { error } = await sb.rpc("regenerate_token", { p_token: token }); if (error) throw error; openGrid(reqId); }
+  catch (e) { alert((e&&e.message)||"Nie udało się odświeżyć."); }
+};
 window.openGrid = async (reqId) => {
   body('<div class="spin">Wczytywanie odpowiedzi…</div>');
   let rows = [];
@@ -701,7 +1129,17 @@ window.openGrid = async (reqId) => {
   const persons = [...new Set(rows.map(r => r.person))].sort((a,b)=>a.localeCompare(b,"pl"));
   const dates = [...new Set(rows.filter(r=>r.date).map(r => r.date))].sort();
   const byPD = {}; rows.forEach(r => { if(r.date) byPD[r.person+"|"+r.date] = r.choice; });
+  const tokenOf = {}; rows.forEach(r => { if(r.token && !tokenOf[r.person]) tokenOf[r.person] = r.token; });
   let html = `<button class="link" onclick="setHkTab('grafik')">‹ Wróć do grafików</button>`;
+  // Zarządzanie linkami: kopiuj lub odśwież (gdy wyciekł).
+  html += `<div class="soon">Linki indywidualne</div>` + persons.map(pn => {
+    const tok = tokenOf[pn] || "";
+    return `<div class="statrow" style="gap:8px">
+      <div class="k"><div>${esc(pn)}</div><div style="font-size:13px;font-weight:900;color:var(--plum);letter-spacing:.1em;margin-top:2px">kod: ${esc(tok)}</div></div>
+      <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:11.5px;cursor:pointer" onclick="copyLink('${esc(tok)}', this)">Kopiuj</button>
+      <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="regenLink('${esc(tok)}','${esc(reqId)}')">Odśwież</button>
+    </div>`;
+  }).join("");
   if (!dates.length) {
     html += '<div class="empty">Nikt jeszcze nie odpowiedział.</div>';
     return body(html);
@@ -717,14 +1155,94 @@ window.openGrid = async (reqId) => {
   }).join("");
   const legend = Object.entries(CHOICE_ABBR).map(([k,a])=>`<span style="color:${a[1]};font-weight:800">${a[0]}</span> ${k}`).join(" · ");
   html += `<div class="note" style="margin-top:6px">Legenda: ${legend}</div>
-    <div style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper);margin-top:8px">
+    <div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper);margin-top:8px">
       <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody></table></div>`;
   body(html);
 };
 
+// ── Konserwatorzy: obciążenie (usterki) + dodawanie zadań (insert faults → push przez webhook) ──
+const KONSERW_BASE = ["Grzegorz","Kamil"];
+const FSTATUS = { open:"otwarta", in_progress:"w toku", done:"naprawiona" };
+async function loadKonserw() {
+  let faults = [];
+  try {
+    const { data } = await sb.from("faults")
+      .select("id,description,assigned_to,status,priority,space_id,room,reported_at,reported_by")
+      .eq("tenant_id", TENANT_ID).in("status", ["open","in_progress"])
+      .order("reported_at", { ascending:false }).limit(200);
+    faults = data || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać usterek.</div>'); }
+  const names = [...new Set([...KONSERW_BASE, ...faults.map(f => (f.assigned_to||"").trim()).filter(Boolean)])];
+  const opts = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  const form = `
+    <div class="card" style="margin-bottom:12px">
+      <div class="soon" style="margin-top:0">Dodaj zadanie konserwatorowi</div>
+      <div class="field"><label>Opis zadania / usterki</label>
+        <input id="kDesc" class="inp" placeholder="np. Cieknący kran w 312"/></div>
+      <div class="field"><label>Przypisz do</label><select id="kWho" class="inp">${opts}</select></div>
+      <div class="field"><label>Miejsce (opcjonalnie)</label><input id="kLoc" class="inp" placeholder="np. 312 / parter / recepcja"/></div>
+      <div class="field"><label>Priorytet</label>
+        <select id="kPrio" class="inp"><option value="normal">Zwykły</option><option value="high">Pilny</option><option value="low">Niski</option></select></div>
+      <button id="kBtn" class="btn" onclick="addKonserwTask()">Dodaj zadanie</button>
+      <div id="kMsg" class="msg"></div>
+    </div>`;
+  const cards = names.map(n => {
+    const mine = faults.filter(f => (f.assigned_to||"").trim() === n);
+    const open = mine.filter(f => (f.status||"open")==="open").length;
+    const prog = mine.filter(f => f.status==="in_progress").length;
+    const rows = mine.length ? mine.map(f => faultRow(f)).join("") : '<div class="rost-empty" style="font-size:12px;color:var(--muted);padding:4px 0">Brak otwartych zadań.</div>';
+    return `<div class="wcard" style="cursor:default">
+      <div class="wtop"><span class="av">${esc(initials(n))}</span><span class="nm">${esc(n)}</span>
+        <span class="prog">${open}+${prog}</span></div>
+      <div class="note" style="margin-top:2px">otwarte: ${open} · w toku: ${prog}</div>
+      <div style="margin-top:8px">${rows}</div>
+    </div>`;
+  }).join("");
+  const un = faults.filter(f => !(f.assigned_to||"").trim());
+  const unHtml = un.length ? `<div class="soon">Nieprzypisane (${un.length})</div>${un.map(f=>faultRow(f)).join("")}` : "";
+  body(form + `<div class="soon">Obciążenie konserwatorów</div>` + cards + unHtml);
+}
+function faultRow(f){
+  const p = PRIO[f.priority] || PRIO.normal;
+  const loc = f.space_id || f.room || "";
+  return `<div class="statrow" style="margin-bottom:6px;align-items:flex-start">
+    <div class="k"><div style="font-size:13px">${esc(f.description||"")}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">
+        ${loc?esc(loc)+" · ":""}${FSTATUS[f.status]||f.status}${f.reported_by?" · zgł. "+esc(f.reported_by):""}</div></div>
+    <span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span>
+  </div>`;
+}
+window.addKonserwTask = async () => {
+  const desc = (document.getElementById("kDesc")||{}).value || "";
+  const who  = (document.getElementById("kWho")||{}).value || "";
+  const loc  = (document.getElementById("kLoc")||{}).value || "";
+  const prio = (document.getElementById("kPrio")||{}).value || "normal";
+  const msg = document.getElementById("kMsg"); const btn = document.getElementById("kBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!desc.trim()) return setM("Wpisz opis zadania.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  try {
+    const { error } = await sb.from("faults").insert({
+      tenant_id: TENANT_ID, description: desc.trim(), assigned_to: who || null,
+      status: "open", priority: prio, reported_by: CURRENT.name || "Panel",
+      source: "panel", space_id: loc.trim() || null,
+    });
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"zadanie_konserwator", p_detail: `${who||"—"}: ${desc.trim()}` }); } catch {}
+    loadKonserw();
+  } catch (e) {
+    setM((e&&e.message)||"Nie udało się dodać.", "err");
+    if (btn){ btn.disabled=false; btn.textContent="Dodaj zadanie"; }
+  }
+};
+
 // ── Akcje: spis kto co zrobił / edytował (panel_audit) ──
 const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w grafiku",
-                    grafik_edycja:"Edycja grafiku", zadanie_dodane:"Dodał zadanie" };
+                    grafik_edycja:"Edycja grafiku", zadanie_dodane:"Dodał zadanie",
+                    zadanie_konserwator:"Zadanie dla konserwatora", zadanie_zrobione:"Zadanie zrobione",
+                    konto_dodane:"Dodał konto", konto_rola:"Zmienił rolę", konto_aktywne:"Aktywność konta",
+                    konto_reset:"Reset hasła konta", grafik_link_reset:"Odświeżył link grafiku",
+                    obsada_zapis:"Zapis obsady" };
 async function loadAkcje() {
   let rows = [];
   try { const { data } = await sb.rpc("list_panel_audit"); rows = data || []; }
@@ -740,6 +1258,75 @@ async function loadAkcje() {
   }).join("");
   body(`<div class="note" style="margin-top:0;margin-bottom:8px">Ostatnie akcje w panelu — kto co zrobił lub edytował.</div><div class="feed">${html}</div>`);
 }
+
+// ── Konta (admin): dodawanie kont + role + aktywacja ──
+const ROLE_OPTIONS = [["mgr_hk","Menedżer HK"],["koordynator","Koordynator"],["mgr_recepcja","Menedżer recepcji"],
+  ["mgr_glowny","Menedżer główny"],["mgr_operacyjny","Menedżer operacyjny"],["mgr_gastro","Menedżer gastronomii"],["admin","Admin"]];
+const roleSelect = (id, sel) => `<select id="${id}" class="inp">${ROLE_OPTIONS.map(([v,l])=>`<option value="${v}"${sel===v?" selected":""}>${l}</option>`).join("")}</select>`;
+async function loadKonta() {
+  let rows = [];
+  try { const { data } = await sb.rpc("admin_list_accounts"); rows = data || []; }
+  catch { return body('<div class="empty">Brak uprawnień lub błąd.</div>'); }
+  const form = `
+    <div class="card" style="margin-bottom:12px">
+      <div class="soon" style="margin-top:0">Dodaj konto</div>
+      <div class="field"><label>Imię (widoczne na liście logowania)</label>
+        <input id="aName" class="inp" placeholder="np. Tetiana"/></div>
+      <div class="field"><label>Rola</label>${roleSelect("aRole","mgr_hk")}</div>
+      <div class="field"><label>Kod 1. logowania (opcjonalny)</label>
+        <input id="aCode" class="inp" placeholder="np. 4821 — chroni przed przejęciem konta"/></div>
+      <button id="aBtn" class="btn" onclick="addKonto()">Dodaj konto</button>
+      <div id="aMsg" class="msg"></div>
+      <div class="note">Hasło ustawi sama osoba przy pierwszym logowaniu. Jeśli podasz kod — przekaż go tej osobie.</div>
+    </div>`;
+  const list = rows.map(r => {
+    const st = r.active === false ? "nieaktywne" : (r.claimed ? "aktywne · ma hasło" : "czeka na 1. logowanie");
+    const stc = r.active === false ? "var(--bad)" : (r.claimed ? "var(--ok)" : "var(--muted)");
+    return `<div class="wcard" style="cursor:default">
+      <div class="wtop"><span class="av">${esc(initials(r.name))}</span>
+        <span class="nm">${esc(r.name)}</span>
+        <span style="font-size:11px;font-weight:800;color:${stc}">${st}</span></div>
+      <div style="display:flex;gap:7px;margin-top:9px;align-items:center;flex-wrap:wrap">
+        ${roleSelect("role_"+esc(r.email), r.role)}
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
+          onclick="saveKontoRole('${esc(r.email)}')">Zapisz rolę</button>
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:${r.active===false?"var(--ok)":"var(--bad)"};font-weight:800;font-size:12px;cursor:pointer"
+          onclick="toggleKonto('${esc(r.email)}', ${r.active===false})">${r.active===false?"Aktywuj":"Dezaktywuj"}</button>
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
+          onclick="resetKonto('${esc(r.email)}','${esc(r.name)}')">Reset hasła</button>
+      </div>
+    </div>`;
+  }).join("");
+  body(form + `<div class="soon">Konta (${rows.length})</div>` + (list || '<div class="empty">Brak kont.</div>'));
+}
+window.addKonto = async () => {
+  const name = (document.getElementById("aName")||{}).value || "";
+  const role = (document.getElementById("aRole")||{}).value || "mgr_hk";
+  const codeV = (document.getElementById("aCode")||{}).value || "";
+  const msg = document.getElementById("aMsg"); const btn = document.getElementById("aBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!name.trim()) return setM("Wpisz imię.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  try { const { error } = await sb.rpc("admin_add_account", { p_name: name.trim(), p_role: role, p_code: codeV.trim() });
+    if (error) throw error;
+    setM(codeV.trim() ? `Konto dodane. Kod 1. logowania: ${codeV.trim()} — przekaż osobie.` : "Konto dodane.", "info");
+    setTimeout(loadKonta, 1400);
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj konto"; } }
+};
+window.resetKonto = async (email, name) => {
+  if (!confirm(`Zresetować hasło konta „${name}"? Osoba ustawi nowe hasło przy kolejnym logowaniu.`)) return;
+  try { const { error } = await sb.rpc("admin_reset_account", { p_email: email }); if (error) throw error; loadKonta(); }
+  catch (e) { alert((e&&e.message)||"Błąd resetu."); }
+};
+window.saveKontoRole = async (email) => {
+  const role = (document.getElementById("role_"+email)||{}).value;
+  try { const { error } = await sb.rpc("admin_set_role", { p_email: email, p_role: role }); if (error) throw error; loadKonta(); }
+  catch (e) { alert((e&&e.message)||"Błąd zmiany roli."); }
+};
+window.toggleKonto = async (email, makeActive) => {
+  try { const { error } = await sb.rpc("admin_set_active", { p_email: email, p_active: makeActive }); if (error) throw error; loadKonta(); }
+  catch (e) { alert((e&&e.message)||"Błąd."); }
+};
 
 window.doLogout = async () => {
   stopLive();
