@@ -318,6 +318,15 @@ function makeMockClient(){
       {id:"a2",title:"Dostawa ręczników",body:"Przyjechała o 9, rozłożona na piętrach",priority:"normal",created_by:"Tetiana",created_at:today+"T09:20:00",done:false},
     ],
     hk_roster: [{date:today, roster:[{name:"Anna",role:"dyzur"},{name:"Marta",role:"poranna"},{name:"Oksana",role:"popoludnie"}]}],
+    standing_reminders: [
+      {id:"s1",title:"Zawsze sprawdzaj depozyt przy check-in",body:"",active:true,created_by:"Koordynator",created_at:today+"T08:00:00"},
+      {id:"s2",title:"Klucz do magazynu zwracamy na recepcję",body:"",active:true,created_by:"Admin",created_at:today+"T07:00:00"},
+    ],
+    panel_mirror: [
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"schedule", data:(()=>{ const o={}; o[today]={Kasia:{start:"7",end:"15",shift:"poranna"},Ola:{start:"15",end:"22",shift:"popoludniowa"}}; o[plus(1)]={Kasia:{start:"7",end:"15",shift:"poranna"},Marek:{start:"22",end:"7",shift:"nocna"}}; return o; })()},
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[{employee:"Kasia",amount:-50,reason:"zwrot za parking",dateKey:today}]},
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"reports_full", data:[{dayKey:today,shiftKey:"poranna",employee:"Kasia"},{dayKey:today,shiftKey:"popoludniowa",employee:"Ola"}]},
+    ],
   };
   const RPC = {
     current_app_role: ()=> DEMO_ROLE,
@@ -654,10 +663,10 @@ const GRAFIK_ROLES   = new Set(["mgr_hk","koordynator","mgr_recepcja","mgr_glown
 const KONSERW_ROLES  = new Set(["mgr_glowny","mgr_operacyjny"]);
 function tabsFor(role){
   // Gastro: osobny, węższy zestaw (bez modułów HK).
-  if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["akcje","Akcje"]];
+  if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
-  const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]];
-  if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
+  const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"],["tablica","Tablica"]];
+  if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"], ["zmiany","Zmiany"]);
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zadania","Zadania"], ["kasa","Kasa"]);
   if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."]);
   if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
@@ -731,12 +740,20 @@ async function loadHkTab() {
   if (hkTab === "zadania") return loadZadania();
   if (hkTab === "kasa")    return loadKasa();
   if (hkTab === "grafik")  return loadGrafik();
+  if (hkTab === "zmiany")  return loadZmiany();
   if (hkTab === "konserw") return loadKonserw();
+  if (hkTab === "tablica") return loadTablica();
   if (hkTab === "akcje")   return loadAkcje();
   if (hkTab === "konta")   return loadKonta();
 }
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
+
+// Odczyt snapshotu z aplikacji recepcji (panel_mirror): schedule / payment_corrections / reports_full.
+async function getMirror(kind){
+  try { const { data } = await sb.from("panel_mirror").select("data").eq("tenant_id", TENANT_ID).eq("kind", kind).maybeSingle(); return data ? data.data : null; }
+  catch { return null; }
+}
 
 // ── Wyjazdy (logika 1:1 z wyjazdy.html: W/WP + PG + PGZ na 3 dni) ──
 function countTypes(plan) {
@@ -1070,33 +1087,63 @@ window.markZadanieDone = async (id) => {
 // ── Kasa: stan kasy ostatnich dni (shift_reports) ──
 const SHIFT_LBL = { poranna:"Poranna", popoludniowa:"Popołudniowa", wieczorowa:"Wieczorowa", nocna:"Nocna", dzienna:"Dzienna" };
 const zl = v => (v==null||isNaN(v)) ? "—" : Number(v).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
+let kasaFull = false;
+window.toggleKasaFull = () => { kasaFull = !kasaFull; loadKasa(); };
 async function loadKasa() {
-  const today = new Date(); const from = new Date(today); from.setDate(today.getDate()-6);
+  const today = new Date(); const from = new Date(today); from.setDate(today.getDate() - (kasaFull ? 89 : 6));
   const fromKey = isoDate(from), toKey = isoDate(today);
+  const toggle = `<button class="rost-addbtn fullspan" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="toggleKasaFull()">${kasaFull ? "Pokaż ostatnie 7 dni" : "Pokaż pełną historię (90 dni)"}</button>`;
   let rows = [];
   try {
     const { data } = await sb.from("shift_reports").select("day_key,shift_key,employee,cash_closing,safe_total,cash_current,saved_at")
-      .eq("tenant_id", TENANT_ID).gte("day_key", fromKey).lte("day_key", toKey).order("saved_at", { ascending:false });
+      .eq("tenant_id", TENANT_ID).gte("day_key", fromKey).lte("day_key", toKey).order("saved_at", { ascending:false }).limit(300);
     rows = data || [];
   } catch { return body('<div class="empty">Nie udało się pobrać stanu kasy.</div>'); }
-  if (!rows.length) return body('<div class="empty">Brak raportów kasy z ostatnich 7 dni.</div>');
-  const byDay = {};
-  rows.forEach(r => { (byDay[r.day_key] = byDay[r.day_key] || []).push(r); });
-  const days = Object.keys(byDay).sort().reverse();
-  const html = days.map(dk => {
-    const d = fmtDate(dk);
-    const items = byDay[dk].map(r => `
-      <div class="statrow" style="margin-bottom:6px">
-        <div class="k">
-          <div>${esc(SHIFT_LBL[r.shift_key]||r.shift_key||"")} · ${esc(r.employee||"—")}</div>
-          <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">
-            Kasa: ${zl(r.cash_current)} · KW: ${zl(r.cash_closing)}</div>
-        </div>
-        <div class="v" title="Sejf">${zl(r.safe_total)}</div>
-      </div>`).join("");
-    return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
-  }).join("");
-  body(`<div class="note" style="margin-top:0;margin-bottom:10px">Stan kasy ostatnich 7 dni. Po prawej: kwota w sejfie.</div>` + html);
+  let cashHtml;
+  if (!rows.length) {
+    cashHtml = `<div class="empty">Brak raportów kasy${kasaFull?"":" z ostatnich 7 dni"}. Pojawią się, gdy recepcja zamknie zmianę.</div>`;
+  } else {
+    const byDay = {};
+    rows.forEach(r => { (byDay[r.day_key] = byDay[r.day_key] || []).push(r); });
+    const days = Object.keys(byDay).sort().reverse();
+    cashHtml = days.map(dk => {
+      const d = fmtDate(dk);
+      const items = byDay[dk].map(r => `
+        <div class="statrow" style="margin-bottom:6px">
+          <div class="k">
+            <div>${esc(SHIFT_LBL[r.shift_key]||r.shift_key||"")} · ${esc(r.employee||"—")}</div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">
+              Kasa: ${zl(r.cash_current)} · KW: ${zl(r.cash_closing)}</div>
+          </div>
+          <div class="v" title="Sejf">${zl(r.safe_total)}</div>
+        </div>`).join("");
+      return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
+    }).join("");
+  }
+  // Korekty płatności + raporty zmian — z mirrora aplikacji recepcji (panel_mirror).
+  const [corr, rf] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full")]);
+  const inRange = k => { const dk=String(k||"").slice(0,10); return dk>=fromKey && dk<=toKey; };
+  let corrHtml = "";
+  if (Array.isArray(corr)) {
+    const list = corr.filter(c => inRange(c.dateKey||c.date||c.createdAt||c.savedAt)).slice(0,80);
+    if (list.length) corrHtml = `<div class="soon">Korekty płatności</div>` + list.map(c => {
+      const who = esc(c.employee||c.name||"—"); const am = Number(c.amount);
+      const when = String(c.dateKey||c.date||c.createdAt||c.savedAt||"").slice(0,10);
+      const reason = esc(c.reason||c.note||c.powod||"");
+      return `<div class="statrow"><div class="k"><div>${who}${reason?` — <span style="color:var(--muted);font-weight:600">${reason}</span>`:""}</div>${when?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(when)}</div>`:""}</div><div class="v" style="color:${am<0?"var(--bad)":"var(--ok)"}">${zl(am)}</div></div>`;
+    }).join("");
+  }
+  let rfHtml = "";
+  if (Array.isArray(rf)) {
+    const byDk = {}; rf.forEach(r => { const dk=String(r.dayKey||r.day_key||r.savedAt||"").slice(0,10); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
+    const dks = Object.keys(byDk).sort().reverse().slice(0,7);
+    if (dks.length) rfHtml = `<div class="soon">Raporty zmian (źródło raportu dobowego)</div>` + dks.map(dk => {
+      const d=fmtDate(dk);
+      const items=byDk[dk].map(r=>`<div style="font-size:12.5px;color:var(--ink);padding:2px 0">• ${esc(SHIFT_LBL[r.shiftKey||r.shift_key]||r.shiftKey||r.shift_key||"")} — ${esc(r.employee||r.employeeName||"—")}</div>`).join("");
+      return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:2px"><div style="font-weight:800;font-size:13px">${d.dow}, ${d.txt}</div>${items}</div>`;
+    }).join("");
+  }
+  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie.</div>` + cashHtml + corrHtml + rfHtml);
 }
 
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
@@ -1316,13 +1363,90 @@ window.addKonserwTask = async () => {
   }
 };
 
+// ── Zmiany: grafik przydzielony (mirror "schedule" z aplikacji recepcji) ──
+const DOW_SH = ["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
+const SHIFT_CODE2 = { poranna:"P", popoludniowa:"PP", wieczorowa:"W", dzienna:"D", nocna:"N" };
+async function loadZmiany() {
+  const sched = await getMirror("schedule");
+  if (!sched || typeof sched !== "object" || !Object.keys(sched).length)
+    return body('<div class="empty">Brak grafiku przydzielonego. Pojawi się, gdy recepcja zapisze grafik w aplikacji (po wdrożeniu nowej wersji aplikacji recepcji).</div>');
+  const mon = (()=>{ const d=new Date(); const off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); d.setHours(0,0,0,0); return d; })();
+  const days = [...Array(7)].map((_,i)=> isoDate(new Date(mon.getTime()+i*86400000)));
+  const emps = [...new Set(days.flatMap(dk => { const day=sched[dk]; return day&&typeof day==="object" ? Object.keys(day).filter(e=>day[e]) : []; }))].sort((a,b)=>a.localeCompare(b,"pl"));
+  if (!emps.length) return body('<div class="empty">Brak przypisań w tym tygodniu.</div>');
+  const head = `<th style="text-align:left;padding:7px 9px;position:sticky;left:0;background:var(--cream)">Pracownik</th>` +
+    days.map((d,i)=>`<th style="padding:7px 6px;font-size:11px;color:var(--muted)">${DOW_SH[i]}<br><span style="font-weight:400">${d.slice(8)}</span></th>`).join("");
+  const rows = emps.map(emp => {
+    const cells = days.map(dk => {
+      const e = sched[dk] && sched[dk][emp];
+      if (!e) return `<td style="text-align:center;padding:5px 6px;color:var(--line-strong)">·</td>`;
+      const code = SHIFT_CODE2[e.shift] || (e.shift?String(e.shift).slice(0,2).toUpperCase():"✓");
+      const hrs = (e.start||e.end) ? `${e.start||""}${e.end?"-"+e.end:""}` : "";
+      return `<td style="text-align:center;padding:5px 6px"><span style="font-weight:900;font-size:12px;color:var(--plum)">${esc(code)}</span>${hrs?`<div style="font-size:10px;color:var(--muted)">${esc(hrs)}</div>`:""}</td>`;
+    }).join("");
+    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(emp)}</td>${cells}</tr>`;
+  }).join("");
+  body(`<div class="note" style="margin-top:0;margin-bottom:8px">Grafik przydzielony — bieżący tydzień (z aplikacji recepcji).</div>
+    <div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
+      <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`);
+}
+
+// ── Tablica: stałe przypomnienia (standing_reminders) + ostatnie ogłoszenia (manager_alerts) ──
+async function loadTablica() {
+  let rem = [], alr = [];
+  try {
+    const [r1, r2] = await Promise.all([
+      sb.from("standing_reminders").select("id,title,body,active,created_by,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60),
+      sb.from("manager_alerts").select("title,body,priority,created_by,created_at,done").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(30),
+    ]);
+    rem = (r1.data || []).filter(r => r.active !== false);
+    alr = (r2.data || []).filter(a => !a.done);
+  } catch { return body('<div class="empty">Nie udało się pobrać tablicy.</div>'); }
+  const form = `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">Dodaj stałe przypomnienie</div>
+    <div class="field"><label>Treść</label><input id="srTitle" class="inp" placeholder="np. Zawsze sprawdzaj depozyt przy check-in" onkeydown="if(event.key==='Enter')addReminder()"/></div>
+    <button id="srBtn" class="btn" onclick="addReminder()">Dodaj przypomnienie</button>
+    <div id="srMsg" class="msg"></div>
+  </div>`;
+  const remList = rem.length ? rem.map(r => `<div class="statrow">
+      <span class="k">📌 ${esc(r.title||"")}${r.body?` — <span style="color:var(--muted);font-weight:600">${esc(r.body)}</span>`:""}</span>
+      <button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="removeReminder('${r.id}')">Usuń</button>
+    </div>`).join("") : '<div class="empty">Brak stałych przypomnień.</div>';
+  const alrList = alr.length ? alr.map(a => {
+    const when = a.created_at ? new Date(a.created_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+    const p = PRIO[a.priority] || PRIO.normal;
+    return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:3px">
+      <div style="display:flex;gap:8px;width:100%;align-items:center"><span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span><span class="k" style="flex:1">${esc(a.title||"")}</span><span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span></div>
+      ${a.body?`<div style="font-size:12.5px;color:var(--muted)">${esc(a.body)}</div>`:""}
+    </div>`; }).join("") : '<div class="empty">Brak ogłoszeń.</div>';
+  body(form + `<div class="soon">Stałe przypomnienia</div>` + remList + `<div class="soon">Ostatnie ogłoszenia</div>` + alrList);
+}
+window.addReminder = async () => {
+  const t = (document.getElementById("srTitle")||{}).value || "";
+  const msg = document.getElementById("srMsg"), btn = document.getElementById("srBtn");
+  const setM = (x,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=x||""; } };
+  if (!t.trim()) return setM("Wpisz treść.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  try {
+    const { error } = await sb.from("standing_reminders").insert({ tenant_id:TENANT_ID, title:t.trim(), body:"", active:true, created_by:CURRENT.name||"Panel" });
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"przypomnienie_dodane", p_detail:t.trim() }); } catch {}
+    loadTablica();
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj przypomnienie"; } }
+};
+window.removeReminder = async (id) => {
+  try { const { error } = await sb.from("standing_reminders").update({ active:false }).eq("id", id); if (error) throw error; loadTablica(); }
+  catch (e) { alert((e&&e.message)||"Błąd."); }
+};
+
 // ── Akcje: spis kto co zrobił / edytował (panel_audit) ──
 const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w grafiku",
                     grafik_edycja:"Edycja grafiku", zadanie_dodane:"Dodał zadanie",
                     zadanie_konserwator:"Zadanie dla konserwatora", zadanie_zrobione:"Zadanie zrobione",
                     konto_dodane:"Dodał konto", konto_rola:"Zmienił rolę", konto_aktywne:"Aktywność konta",
-                    konto_reset:"Reset hasła konta", grafik_link_reset:"Odświeżył link grafiku",
-                    obsada_zapis:"Zapis obsady" };
+                    konto_reset:"Reset hasła konta", konto_haslo:"Ustawił hasło konta",
+                    grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
+                    przypomnienie_dodane:"Dodał przypomnienie" };
 async function loadAkcje() {
   let rows = [];
   try { const { data } = await sb.rpc("list_panel_audit"); rows = data || []; }
