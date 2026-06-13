@@ -340,7 +340,7 @@ function makeMockClient(){
     admin_list_accounts: ()=> ACC,
     log_action: ()=> null, admin_add_account: ()=> "acc_demo@conrad-panel.com",
     admin_set_role: ()=> null, admin_set_active: ()=> null,
-    admin_reset_account: ()=> "acc_new@conrad-panel.com",
+    admin_reset_account: ()=> "acc_new@conrad-panel.com", admin_set_password: ()=> true,
     precheck_claim: ()=> true, regenerate_token: ()=> "NEW123", set_token_active: ()=> null,
   };
   function builder(name){
@@ -369,6 +369,7 @@ function makeMockClient(){
       signInWithPassword: ()=> Promise.resolve({ data:{}, error:null }),
       signUp: ()=> Promise.resolve({ data:{}, error:null }),
       signOut: ()=> Promise.resolve({ error:null }),
+      updateUser: ()=> Promise.resolve({ data:{}, error:null }),
     },
   };
 }
@@ -409,8 +410,83 @@ async function boot() {
   // Aktywna sesja? → od razu panel.
   const { data: { session } } = await sb.auth.getSession();
   if (session) return showPanelFromSession();
-  showAccountList();
+  showLogin();
 }
+
+// ── Logowanie: formularz (login = imię + hasło), jak na poczcie ──
+async function showLogin() {
+  app.className = "wrap auth";
+  app.innerHTML = '<div class="spin">Ładowanie…</div>';
+  const { data, error } = await sb.from("app_accounts").select("name,email,role,claimed,active,requires_code");
+  if (error) { app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Błąd: ${esc(error.message)}</div></div>`; return; }
+  accounts = (data || []).filter(a => a.active !== false);
+  app.innerHTML = `
+    <div class="h2">Logowanie</div>
+    <div class="sub">Wpisz swoje imię i hasło.</div>
+    <div class="card">
+      <form id="loginForm" autocomplete="on" onsubmit="submitLogin();return false;">
+        <div class="field"><label>Login (imię)</label>
+          <input id="lname" class="inp" autocomplete="username" autocapitalize="words" placeholder="np. Tetiana" oninput="loginNameHint()"/></div>
+        <div id="codeWrap" class="field" style="display:none"><label>Kod od administratora</label>
+          <input id="lcode" class="inp" autocomplete="off" placeholder="np. 4821"/></div>
+        <div class="field"><label>Hasło</label>
+          <input id="lpw" class="inp" type="password" autocomplete="current-password" placeholder="••••••••"/></div>
+        <div id="lhint" class="note" style="display:none"></div>
+        <button id="lbtn" class="btn" type="submit">Zaloguj</button>
+      </form>
+      <div id="authMsg" class="msg"></div>
+    </div>
+    <div class="auth-foot">Conrad Comfort • dostęp tylko dla uprawnionych</div>`;
+  setTimeout(()=>{ const e=document.getElementById("lname"); if(e) e.focus(); }, 50);
+}
+function findAccount(name) {
+  const n = String(name||"").trim().toLowerCase();
+  return accounts.find(a => String(a.name||"").trim().toLowerCase() === n);
+}
+window.loginNameHint = () => {
+  const a = findAccount((document.getElementById("lname")||{}).value);
+  const cw = document.getElementById("codeWrap"), h = document.getElementById("lhint"), pw = document.getElementById("lpw");
+  const first = a && !a.claimed;
+  if (cw) cw.style.display = (first && a.requires_code) ? "" : "none";
+  if (pw) pw.setAttribute("autocomplete", first ? "new-password" : "current-password");
+  if (h) { if (first) { h.style.display="block"; h.textContent="Pierwsze logowanie — wpisane hasło zostanie zapisane jako Twoje."; } else h.style.display="none"; }
+};
+window.submitLogin = async () => {
+  const name = (document.getElementById("lname")||{}).value || "";
+  const pw   = (document.getElementById("lpw")||{}).value || "";
+  const code = (document.getElementById("lcode")||{}).value || "";
+  const a = findAccount(name);
+  const btn = document.getElementById("lbtn");
+  if (!a)  return setMsg("Nie znam takiego loginu — sprawdź pisownię imienia.", "err");
+  if (!pw) return setMsg("Wpisz hasło.", "err");
+  if (!a.claimed && pw.length < 6) return setMsg("Pierwsze hasło musi mieć min. 6 znaków.", "err");
+  if (btn) { btn.disabled = true; btn.textContent = "Chwila…"; }
+  setMsg("", "");
+  try {
+    if (a.claimed) {
+      const { error } = await sb.auth.signInWithPassword({ email: a.email, password: pw });
+      if (error) throw new Error("Błędne hasło.");
+    } else {
+      if (a.requires_code) {
+        const { data: ok } = await sb.rpc("precheck_claim", { p_email: a.email, p_code: code });
+        if (!ok) throw new Error("Nieprawidłowy kod od administratora.");
+      }
+      const { error: su } = await sb.auth.signUp({ email: a.email, password: pw });
+      if (su) {
+        // Konto Auth już istnieje (np. wcześniejsza próba) → zaloguj tym hasłem i napraw flagę.
+        const { error: si } = await sb.auth.signInWithPassword({ email: a.email, password: pw });
+        if (si) throw new Error("To konto ma już hasło. Wpisz właściwe hasło, albo poproś admina o reset (zakładka Konta).");
+        await sb.rpc("claim_account", { p_email: a.email, p_code: code });
+      } else {
+        await sb.rpc("claim_account", { p_email: a.email, p_code: code });
+      }
+    }
+    await showPanelFromSession();
+  } catch (e) {
+    setMsg((e && e.message) || "Nie udało się zalogować.", "err");
+    if (btn) { btn.disabled = false; btn.textContent = "Zaloguj"; }
+  }
+};
 
 async function showAccountList() {
   app.className = "wrap auth";
@@ -620,11 +696,15 @@ function renderHkDashboard(role, name) {
         <div class="me"><span class="me-av" style="background:${avbg}">${av}</span>
           <div><div class="me-n">${esc(name||"—")}</div><div class="me-r">${esc(roleLbl)}</div></div></div>
         <nav class="nav">${nav}</nav>
-        <button class="side-out" onclick="doLogout()">Wyloguj</button>
+        <div style="margin-top:auto;display:flex;flex-direction:column;gap:7px">
+          <button class="side-out" style="margin-top:0;background:rgba(255,255,255,.06)" onclick="changeMyPassword()">Zmień hasło</button>
+          <button class="side-out" style="margin-top:0" onclick="doLogout()">Wyloguj</button>
+        </div>
       </aside>
       <main class="main">
         <header class="topbar">
           <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
+          <button class="top-out" onclick="changeMyPassword()">Hasło</button>
           <button class="top-out" onclick="doLogout()">Wyloguj</button>
         </header>
         <div class="tabs mob">${mtab}</div>
@@ -1314,9 +1394,16 @@ window.addKonto = async () => {
   } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj konto"; } }
 };
 window.resetKonto = async (email, name) => {
-  if (!confirm(`Zresetować hasło konta „${name}"? Osoba ustawi nowe hasło przy kolejnym logowaniu.`)) return;
-  try { const { error } = await sb.rpc("admin_reset_account", { p_email: email }); if (error) throw error; loadKonta(); }
-  catch (e) { alert((e&&e.message)||"Błąd resetu."); }
+  const np = prompt(`Nowe hasło dla „${name}" (min. 6 znaków) — przekaż je tej osobie:`);
+  if (np == null) return;
+  if (np.length < 6) return alert("Hasło musi mieć min. 6 znaków.");
+  try {
+    const { data, error } = await sb.rpc("admin_set_password", { p_email: email, p_password: np });
+    if (error) throw error;
+    if (data === false) alert(`„${name}" nie logował(a) się jeszcze ani razu — ustawi hasło sam(a) przy pierwszym wejściu.`);
+    else alert(`Hasło ustawione ✓ Przekaż „${name}": ${np}`);
+    loadKonta();
+  } catch (e) { alert((e&&e.message)||"Błąd resetu."); }
 };
 window.saveKontoRole = async (email) => {
   const role = (document.getElementById("role_"+email)||{}).value;
@@ -1331,7 +1418,15 @@ window.toggleKonto = async (email, makeActive) => {
 window.doLogout = async () => {
   stopLive();
   await sb.auth.signOut();
-  showAccountList();
+  showLogin();
+};
+// Zmiana własnego hasła (zalogowany użytkownik).
+window.changeMyPassword = async () => {
+  const np = prompt("Podaj nowe hasło (min. 6 znaków):");
+  if (np == null) return;
+  if (np.length < 6) return alert("Hasło musi mieć min. 6 znaków.");
+  try { const { error } = await sb.auth.updateUser({ password: np }); if (error) throw error; alert("Hasło zmienione ✓"); }
+  catch (e) { alert((e&&e.message) || "Nie udało się zmienić hasła."); }
 };
 
 boot();
