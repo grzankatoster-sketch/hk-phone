@@ -253,17 +253,17 @@ body{font-family:var(--ui);background:
 /* ── Animowane, markowe tło ── */
 body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
   background:
-    radial-gradient(420px 420px at var(--bx,20%) var(--by,15%), rgba(122,58,106,.12), transparent 70%),
-    radial-gradient(380px 380px at 85% 75%, rgba(176,134,58,.10), transparent 70%),
-    radial-gradient(500px 500px at 60% 30%, rgba(90,29,74,.06), transparent 70%);
-  animation:bgdrift 22s ease-in-out infinite alternate;}
+    radial-gradient(520px 520px at 18% 12%, rgba(122,58,106,.20), transparent 68%),
+    radial-gradient(460px 460px at 88% 78%, rgba(176,134,58,.15), transparent 68%),
+    radial-gradient(620px 620px at 60% 35%, rgba(90,29,74,.10), transparent 70%);
+  animation:bgdrift 20s ease-in-out infinite alternate;}
 @keyframes bgdrift{
   0%{--bx:18%;--by:12%;transform:translate3d(0,0,0)}
   50%{transform:translate3d(2%,-1.5%,0)}
   100%{--bx:30%;--by:22%;transform:translate3d(-2%,1.5%,0)}
 }
 /* delikatny monogram (4 kropki marki) w rogu, ledwo widoczny */
-body::after{content:"";position:fixed;right:-40px;bottom:-30px;width:240px;height:240px;z-index:-1;pointer-events:none;opacity:.05;
+body::after{content:"";position:fixed;right:-30px;bottom:-20px;width:300px;height:300px;z-index:-1;pointer-events:none;opacity:.08;
   background:radial-gradient(circle 9px at 30px 120px,var(--plum) 99%,transparent),
             radial-gradient(circle 9px at 70px 120px,var(--plum) 99%,transparent),
             radial-gradient(circle 9px at 110px 120px,var(--plum) 99%,transparent),
@@ -355,8 +355,13 @@ function makeMockClient(){
       {id:"3",description:"Klimatyzacja nie chłodzi",assigned_to:null,status:"open",priority:"normal",space_id:"restauracja",source:"reception",reported_at:today+"T07:30:00",reported_by:"Recepcja"},
     ],
     shift_reports: [
-      {day_key:today,shift_key:"poranna",employee:"Kasia",cash_closing:1240.5,safe_total:5300,cash_current:820,saved_at:today+"T14:00:00"},
-      {day_key:today,shift_key:"popoludniowa",employee:"Ola",cash_closing:1890,safe_total:5300,cash_current:430,saved_at:today+"T22:00:00"},
+      {day_key:today,shift_key:"poranna",employee:"Kasia",cash_closing:1240.5,safe_total:5300,cash_current:820,saved_at:today+"T14:00:00",tasks_done:4},
+      {day_key:today,shift_key:"popoludniowa",employee:"Ola",cash_closing:1890,safe_total:5300,cash_current:430,saved_at:today+"T22:00:00",tasks_done:3},
+    ],
+    booking_reviews: [
+      {guest:"Anna K.",rating:9.2,text_pos:"Czysto i miła obsługa",text_neg:"",review_date:today},
+      {guest:"Tomasz W.",rating:7.5,text_pos:"Dobra lokalizacja",text_neg:"Głośno rano",review_date:today},
+      {guest:"Marta L.",rating:5.0,text_pos:"",text_neg:"Wolny check-in",review_date:today},
     ],
     manager_alerts: [
       {id:"a1",title:"Sprawdzić rezerwację 312",body:"Gość prosi o wcześniejszy check-in",priority:"high",created_by:"Recepcja",created_at:today+"T11:00:00",done:false},
@@ -376,6 +381,7 @@ function makeMockClient(){
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"schedule", data:(()=>{ const o={}; o[today]={Kasia:{start:"7",end:"15",shift:"poranna"},Ola:{start:"15",end:"22",shift:"popoludniowa"}}; o[plus(1)]={Kasia:{start:"7",end:"15",shift:"poranna"},Marek:{start:"22",end:"7",shift:"nocna"}}; return o; })()},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[{employee:"Kasia",amount:-50,reason:"zwrot za parking",dateKey:today}]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"reports_full", data:[{dayKey:today,shiftKey:"poranna",employee:"Kasia"},{dayKey:today,shiftKey:"popoludniowa",employee:"Ola"}]},
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employees", data:["Kasia","Ola","Marek","Natalia","Rebecca"]},
     ],
   };
   const RPC = {
@@ -991,33 +997,73 @@ async function loadLive() {
 
 // ── Statystyki: ostatnie 7 dni (pokoje sprzątnięte wg osoby + usterki zgłoszone z HK) ──
 async function loadStats() {
+  const role = CURRENT.role, isHKonly = role === "mgr_hk";
+  const showHK = true, showRecep = !isHKonly;
+  const showKons = role==="mgr_glowny"||role==="mgr_operacyjny"||role==="admin";
+  const showOpinie = !isHKonly;
   const today = new Date(); const from = new Date(today); from.setDate(today.getDate()-6);
   const fromKey = isoDate(from), toKey = isoDate(today);
   const fromIso = new Date(fromKey+"T00:00:00").toISOString(), toIso = new Date(toKey+"T23:59:59").toISOString();
-  let rooms = [], faults = [];
+  body('<div class="spin">Wczytywanie…</div>');
+  let hkRes, recRes, konRes, revRes, recRoster;
   try {
-    const [r1, r2] = await Promise.all([
-      sb.from("hk_rooms").select("status,worker,date").gte("date",fromKey).lte("date",toKey),
-      sb.from("faults").select("source,status,reported_by,reported_at").eq("source","hk").gte("reported_at",fromIso).lte("reported_at",toIso),
+    [hkRes, recRes, recRoster, konRes, revRes] = await Promise.all([
+      showHK ? Promise.all([
+        sb.from("hk_rooms").select("status,worker,date").gte("date",fromKey).lte("date",toKey),
+        sb.from("faults").select("source,status,reported_by,reported_at").eq("source","hk").gte("reported_at",fromIso).lte("reported_at",toIso),
+      ]) : Promise.resolve(null),
+      showRecep ? sb.from("shift_reports").select("employee,day_key,tasks_done").eq("tenant_id",TENANT_ID).gte("day_key",fromKey).lte("day_key",toKey) : Promise.resolve(null),
+      showRecep ? getMirror("employees") : Promise.resolve(null),  // pełny rejestr recepcji (nawet bez zamkniętych zmian)
+      showKons ? sb.from("faults").select("assigned_to,status,reported_at").eq("tenant_id",TENANT_ID).gte("reported_at",fromIso).lte("reported_at",toIso) : Promise.resolve(null),
+      showOpinie ? sb.from("booking_reviews").select("guest,rating,text_pos,text_neg,review_date").eq("tenant_id",TENANT_ID).order("review_date",{ascending:false}).limit(20) : Promise.resolve(null),
     ]);
-    rooms = r1.data || []; faults = r2.data || [];
   } catch { return body('<div class="empty">Nie udało się pobrać statystyk.</div>'); }
-  const perWorker = {};
-  rooms.forEach(r => {
-    const w = r.worker; if (!w) return;
-    perWorker[w] = perWorker[w] || { sprzatniete:0, zgloszone:0 };
-    if (DONE_STATES.has(String(r.status||"").toLowerCase())) perWorker[w].sprzatniete++;
-  });
-  faults.forEach(f => { const w=f.reported_by; if(!w) return; perWorker[w]=perWorker[w]||{sprzatniete:0,zgloszone:0}; perWorker[w].zgloszone++; });
-  STATS_CACHE = perWorker;
-  const list = Object.entries(perWorker).sort((a,b)=>b[1].sprzatniete-a[1].sprzatniete);
-  if (!list.length) return body('<div class="empty">Brak danych z ostatnich 7 dni.</div>');
-  const html = list.map(([w,s]) => `
-    <div class="wcard" onclick="showWorker('${esc(w).replace(/'/g,"\\'")}')">
-      <div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}</span><span class="prog">${s.sprzatniete}</span></div>
-      <div class="chips"><span class="chip">${s.sprzatniete} pokoi</span><span class="chip">${s.zgloszone} usterek</span></div>
-    </div>`).join("");
-  body(`<div class="note" style="margin-top:0;margin-bottom:10px">Ostatnie 7 dni (${fromKey} – ${toKey}). Kliknij osobę, by zobaczyć szczegóły.</div>` + html);
+  let html = `<div class="note" style="margin-top:0;margin-bottom:6px">Ostatnie 7 dni (${fromKey} – ${toKey}). Każdy dział osobno.</div>`;
+  // ── Housekeeping ──
+  if (showHK && hkRes) {
+    const rooms = hkRes[0].data||[], faults = hkRes[1].data||[];
+    const pw = {};
+    rooms.forEach(r => { const w=r.worker; if(!w) return; pw[w]=pw[w]||{sprzatniete:0,zgloszone:0}; if(DONE_STATES.has(String(r.status||"").toLowerCase())) pw[w].sprzatniete++; });
+    faults.forEach(f => { const w=f.reported_by; if(!w) return; pw[w]=pw[w]||{sprzatniete:0,zgloszone:0}; pw[w].zgloszone++; });
+    STATS_CACHE = pw;
+    const list = Object.entries(pw).sort((a,b)=>b[1].sprzatniete-a[1].sprzatniete);
+    html += `<div class="soon">Housekeeping</div>` + (list.length ? list.map(([w,s])=>`
+      <div class="wcard" onclick="showWorker('${esc(w).replace(/'/g,"\\'")}')">
+        <div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}</span><span class="prog">${s.sprzatniete}</span></div>
+        <div class="chips"><span class="chip">${s.sprzatniete} pokoi</span><span class="chip">${s.zgloszone} usterek</span></div></div>`).join("") : '<div class="empty">Brak danych HK.</div>');
+  }
+  // ── Recepcja ──
+  if (showRecep && (recRes || recRoster)) {
+    const pe = {};
+    if (Array.isArray(recRoster)) recRoster.forEach(n => { if (n) pe[n] = pe[n] || {zmiany:0,zadania:0}; }); // cały zespół recepcji
+    (recRes && recRes.data || []).forEach(r => { const e=r.employee||"—"; pe[e]=pe[e]||{zmiany:0,zadania:0}; pe[e].zmiany++; pe[e].zadania+=r.tasks_done||0; });
+    const list = Object.entries(pe).sort((a,b)=>b[1].zmiany-a[1].zmiany);
+    html += `<div class="soon">Recepcja</div>` + (list.length ? list.map(([e,s])=>`
+      <div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(e))}</span><span class="nm">${esc(e)}</span><span class="prog">${s.zmiany}</span></div>
+        <div class="chips"><span class="chip">${s.zmiany} zmian</span><span class="chip">${s.zadania} zadań</span></div></div>`).join("") : '<div class="empty">Brak danych recepcji (zamknięte zmiany).</div>');
+  }
+  // ── Konserwatorzy ──
+  if (showKons && konRes) {
+    const pk = {};
+    (konRes.data||[]).forEach(f => { const w=(f.assigned_to||"").trim(); if(!w) return; pk[w]=pk[w]||{open:0,prog:0,done:0}; const st=f.status||"open"; if(st==="done")pk[w].done++; else if(st==="in_progress")pk[w].prog++; else pk[w].open++; });
+    const list = Object.entries(pk).sort((a,b)=>(b[1].open+b[1].prog)-(a[1].open+a[1].prog));
+    html += `<div class="soon">Konserwatorzy</div>` + (list.length ? list.map(([w,s])=>`
+      <div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}</span><span class="prog">${s.done}</span></div>
+        <div class="chips"><span class="chip">${s.open} otwarte</span><span class="chip">${s.prog} w toku</span><span class="chip" style="color:var(--ok)">${s.done} naprawione</span></div></div>`).join("") : '<div class="empty">Brak danych.</div>');
+  }
+  // ── Opinie gości (Booking) — recepcja widzi przez raporty ──
+  if (showOpinie && revRes) {
+    const rows = revRes.data||[];
+    html += `<div class="soon">Opinie gości (Booking)</div>` + (rows.length ? rows.map(r=>{
+      const rating = r.rating!=null ? Number(r.rating).toFixed(1) : "—";
+      const txt = [r.text_pos, r.text_neg].filter(Boolean).join(" · ");
+      const col = rating>=8?"var(--ok)":rating>=6?"var(--gold)":"var(--bad)";
+      return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:3px">
+        <div style="display:flex;width:100%;align-items:center;gap:8px"><span class="k" style="flex:1">${esc(r.guest||"Gość")}</span><span class="v" style="color:${col}">${rating}</span></div>
+        ${txt?`<div style="font-size:12.5px;color:var(--muted)">${esc(txt.slice(0,200))}</div>`:""}</div>`;
+    }).join("") : '<div class="empty">Brak opinii.</div>');
+  }
+  body(html);
 }
 
 let STATS_CACHE = {};
@@ -1224,7 +1270,8 @@ async function loadKasa() {
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
 const GRAFIK_BASE = "https://grzankatoster-sketch.github.io/hk-phone/grafik.html?t=";
 const CHOICE_ABBR = { dzien:["D","#5a1d4a"], popoludnie:["P","#a07820"], off:["—","#8a6a7e"],
-                      poranna:["R","#1D4ED8"], popoludniowa:["Po","#C2410C"], nocna:["N","#0F172A"] };
+                      poranna:["R","#1D4ED8"], popoludniowa:["Po","#C2410C"], nocna:["N","#0F172A"],
+                      dzienna:["D","#15803D"], godziny:["G","#1f7a52"] };
 let hkWorkersCache = null;
 const nextMonday = () => { const d=new Date(); d.setHours(0,0,0,0); const a=(8-d.getDay())%7||7; d.setDate(d.getDate()+a); return isoDate(d); };
 const firstNextMonth = () => { const d=new Date(); return isoDate(new Date(d.getFullYear(), d.getMonth()+1, 1)); };
@@ -1235,14 +1282,16 @@ async function loadGrafik() {
   const dept = CURRENT.role === "mgr_hk" ? "hk" : (CURRENT.role === "admin" ? "both" : "recepcja");
   let workers = [], reqs = [];
   try {
-    const [w, rec, r] = await Promise.all([
+    const [w, rec, roster, r] = await Promise.all([
       (dept !== "recepcja") ? (hkWorkersCache ? Promise.resolve({ data: hkWorkersCache }) : sb.from("hk_workers").select("name,active")) : Promise.resolve({ data: [] }),
       (dept !== "hk") ? sb.from("shift_reports").select("employee").eq("tenant_id", TENANT_ID).order("saved_at", { ascending:false }).limit(200) : Promise.resolve({ data: [] }),
+      (dept !== "hk") ? getMirror("employees") : Promise.resolve(null),  // kanoniczny rejestr recepcji z aplikacji
       sb.rpc("list_availability_requests"),
     ]);
     if (dept !== "recepcja") hkWorkersCache = w.data || [];
     const hk = (w.data || []).filter(x => x.active !== false).map(x => x.name).filter(Boolean);
-    const recep = [...new Set((rec.data || []).map(x => x.employee).filter(Boolean))];
+    // recepcja: najpierw pełna lista z rejestru, potem uzupełnienie o osoby z zamkniętych zmian
+    const recep = [...new Set([...(Array.isArray(roster) ? roster : []), ...(rec.data || []).map(x => x.employee)].filter(Boolean))];
     workers = [...new Set([...(dept === "recepcja" ? [] : hk), ...(dept === "hk" ? [] : recep)])].sort((a,b)=>a.localeCompare(b,"pl"));
     reqs = r.data || [];
   } catch {}
