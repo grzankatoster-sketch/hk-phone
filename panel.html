@@ -865,16 +865,16 @@ async function getMirror(kind){
 function countTypes(plan) {
   const data = plan || {};
   const pmRoomTypes = data.pm_room_types || {};
-  const assigned = [];
-  const a = data.assignments;
-  if (a && typeof a === "object") Object.values(a).forEach(list => Array.isArray(list) && list.forEach(no => assigned.push(String(no))));
+  // Wyjazdy liczymy WYLACZNIE po statusie W/WP z pm_room_types (lustro recepcji,
+  // ta sama liczba co panel HK). assignments zawiera tez pobyty PG/PGZ rozpisane
+  // sprzataczkom — wrzucenie ich do licznika zawyzalo wyjazdy (14+3 zamiast 12).
   const typedW = []; let pg=0, pgz=0;
   if (pmRoomTypes && typeof pmRoomTypes === "object") {
     Object.entries(pmRoomTypes).forEach(([no,v]) => {
       if (v==="W"||v==="WP") typedW.push(String(no)); else if (v==="PG") pg++; else if (v==="PGZ") pgz++;
     });
   }
-  const allW = [...new Set([...typedW, ...assigned])];
+  const allW = [...new Set(typedW)];
   const apt = allW.filter(no => APT_ROOMS.includes(no)).length;
   return { w:{ total:allW.length, reg:allW.length-apt, apt }, pg, pgz };
 }
@@ -1579,7 +1579,6 @@ function renderGrid() {
     </div>`;
   }).join("");
   if (!dates.length) { html += '<div class="empty">Nikt jeszcze nie odpowiedział.</div>'; return body(html); }
-  html += `<button class="btn" style="margin:12px 0 4px" onclick="buildGrafikAI()">✨ Zbuduj grafik z AI</button>`;
   const vbtn = (v,l)=>`<button class="tab ${gridView===v?"on":""}" style="flex:0 0 auto" onclick="setGridView('${v}')">${l}</button>`;
   html += `<div class="tabs" style="margin:14px 0 8px">${vbtn("grid","Siatka")}${vbtn("summary","Podsumowanie dni")}${vbtn("person","Per osoba")}</div>`;
   const legend = Object.entries(CHOICE_ABBR).map(([k,a])=>`<span style="color:${a[1]};font-weight:800">${a[0]}</span> ${k}`).join(" · ");
@@ -1611,67 +1610,6 @@ function renderGrid() {
   }
   body(html);
 }
-
-// ── Grafik AI: życzenia godzin → propozycja AI → potwierdź i wyślij do aplikacji recepcji ──
-let GRAFIK_PROPOSAL = null, AI_CTX = null;
-window.buildGrafikAI = () => {
-  const rows = GRID_ROWS;
-  const persons = [...new Set(rows.map(r=>r.person))].sort((a,b)=>a.localeCompare(b,"pl"));
-  const availOf = {}; rows.forEach(r=>{ if(r.date && r.choice && r.choice!=="off"){ (availOf[r.person]=availOf[r.person]||[]).push({date:r.date,choice:r.choice}); } });
-  AI_CTX = { persons, availOf };
-  const inputs = persons.map((p,i)=>`<div class="statrow"><span class="k">${esc(p)} <span style="font-size:11px;color:var(--muted)">(${(availOf[p]||[]).length} dni)</span></span>
-    <input id="gh-${i}" class="inp" type="number" min="0" step="4" value="40" style="width:92px" title="Życzona liczba godzin"/></div>`).join("");
-  body(`<button class="link" onclick="openGrid('${GRID_REQ}')">‹ Wróć do odpowiedzi</button>
-    <div class="card"><div class="soon" style="margin-top:0">Życzone godziny (na okres)</div>
-    ${inputs || '<div class="empty">Brak osób z dyspozycyjnością.</div>'}
-    <button id="aiBtn" class="btn" onclick="genGrafikAI()">✨ Generuj grafik przez AI</button>
-    <div id="aiMsg" class="msg"></div></div>
-    <div id="aiOut"></div>`);
-};
-window.genGrafikAI = async () => {
-  if (!AI_CTX) return;
-  const { persons, availOf } = AI_CTX;
-  const rows = GRID_ROWS;
-  const days = [...new Set(rows.filter(r=>r.date).map(r=>r.date))].sort();
-  const dept = (rows.find(r=>r.kind)||{}).kind || "recepcja";
-  const ppl = persons.map((p,i)=>({ name:p, hours:Number((document.getElementById("gh-"+i)||{}).value)||0, available:(availOf[p]||[]) }));
-  const btn=document.getElementById("aiBtn"), msg=document.getElementById("aiMsg");
-  const setM=(t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (btn){ btn.disabled=true; btn.textContent="AI układa grafik…"; }
-  try {
-    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"grafik", tenant_id:TENANT_ID, payload:{ period_type:"tydzien", period_start:days[0], days, persons:ppl, dept } } });
-    if (error) throw error;
-    let sched = data && data.data && data.data.schedule;
-    if (!sched && data && data.text) { try { sched = JSON.parse(data.text).schedule; } catch {} }
-    if (!sched) throw new Error("AI nie zwróciło grafiku — spróbuj ponownie.");
-    GRAFIK_PROPOSAL = sched;
-    renderProposal(sched, days, (data.data && data.data.note) || "");
-    setM("Gotowe — sprawdź propozycję poniżej.", "info");
-  } catch (e) { setM((e&&e.message)||"AI niedostępne.", "err"); }
-  if (btn){ btn.disabled=false; btn.textContent="✨ Generuj grafik przez AI"; }
-};
-function renderProposal(sched, days, note) {
-  const persons = [...new Set(Object.values(sched).flatMap(d=>Object.keys(d||{})))].sort((a,b)=>a.localeCompare(b,"pl"));
-  const head = `<th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--cream)">Osoba</th>` +
-    days.map(d=>{ const [,m,dd]=d.split("-"); return `<th style="padding:6px 6px;font-size:11px;color:var(--muted)">${dd}.${m}</th>`; }).join("");
-  const rws = persons.map(p=>{ const cells=days.map(d=>{ const e=sched[d]&&sched[d][p];
-      return `<td style="text-align:center;padding:5px 6px">${e?`<span style="font-weight:900;font-size:11px;color:var(--plum)">${esc((e.start||"")+"-"+(e.end||""))}</span>`:`<span style="color:var(--line-strong)">·</span>`}</td>`; }).join("");
-    return `<tr><td style="padding:6px 8px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(p)}</td>${cells}</tr>`; }).join("");
-  const el=document.getElementById("aiOut");
-  if (el) el.innerHTML = `${note?`<div class="note">AI: ${esc(note)}</div>`:""}
-    <div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper);margin-top:8px">
-      <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rws}</tbody></table></div>
-    <button class="btn" style="margin-top:10px;background:#0f7a4a" onclick="sendProposal()">✓ Potwierdź i wyślij do aplikacji</button>`;
-}
-window.sendProposal = async () => {
-  if (!GRAFIK_PROPOSAL) return;
-  try {
-    const { error } = await sb.from("panel_mirror").upsert({ tenant_id:TENANT_ID, kind:"proposed_schedule", data:GRAFIK_PROPOSAL, updated_at:new Date().toISOString() }, { onConflict:"tenant_id,kind" });
-    if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"grafik_wyslany", p_detail:"propozycja grafiku do aplikacji" }); } catch {}
-    alert('Wysłano ✓ W aplikacji recepcji kliknij „Pobierz propozycję z panelu", aby wczytać grafik.');
-  } catch (e) { alert((e&&e.message)||"Błąd wysyłki."); }
-};
 
 // ── Konserwatorzy: obciążenie (usterki) + dodawanie zadań (insert faults → push przez webhook) ──
 const KONSERW_BASE = ["Grzegorz","Kamil"];
