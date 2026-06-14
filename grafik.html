@@ -84,6 +84,10 @@ body{font-family:var(--ui);background:
 .opt.sel{box-shadow:0 6px 16px -7px rgba(90,29,74,.6)}
 .legend{gap:12px}.legend span{font-weight:600}
 .sub b,.hi{color:var(--plum)}
+.modes{display:flex;gap:6px;background:rgba(90,29,74,.06);padding:4px;border-radius:12px;margin-bottom:14px}
+.modebtn{flex:1;padding:10px;border:none;background:transparent;border-radius:9px;font-weight:800;font-size:13.5px;color:var(--muted);cursor:pointer;font-family:inherit}
+.modebtn.on{background:var(--paper);color:var(--plum);box-shadow:0 1px 3px rgba(90,29,74,.14)}
+.hsel{flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
 </style>
 </head>
 <body>
@@ -110,6 +114,8 @@ const OPTS = {
 
 let META = null;             // { person, kind, period_type, period_start }
 let CHOICE = {};             // { 'YYYY-MM-DD': choice }
+let MODE = "shift", HOURS = {};                 // tryb wyboru + { date: {start,end} }
+const HOPT = Array.from({length:25}, (_,i)=>i); // 0..24
 
 function toast(msg, color="#0f7a4a"){
   const e=document.createElement("div"); e.className="toast"; e.style.color=color; e.textContent=msg;
@@ -135,8 +141,9 @@ async function boot(){
   try { const r=await sb.rpc("get_availability",{p_token:TOKEN}); data=r.data; }
   catch { app.innerHTML='<div class="box"><div class="big">Błąd połączenia</div><div class="sm">Spróbuj ponownie za chwilę.</div></div>'; return; }
   if(!data){ app.innerHTML='<div class="box"><div class="big">Link nieaktywny</div><div class="sm">Ten link wygasł lub jest nieprawidłowy. Poproś menedżera o nowy.</div></div>'; return; }
-  META=data; CHOICE={};
-  (data.entries||[]).forEach(e=>{ CHOICE[e.date]=e.choice; });
+  META=data; CHOICE={}; HOURS={};
+  (data.entries||[]).forEach(e=>{ CHOICE[e.date]=e.choice; if(e.start||e.end) HOURS[e.date]={start:e.start||"",end:e.end||""}; });
+  if (Object.values(CHOICE).some(c=>c==="godziny")) MODE="hours";
   render();
 }
 
@@ -146,26 +153,48 @@ function render(){
   const days = buildDays(META);
   const todayIso = iso(new Date());
   const periodLbl = META.period_type==="week" ? "tydzień" : "miesiąc";
-  const legend = opts.map(([,l])=>`<span>• ${esc(l)}</span>`).join("");
+  const toggle = `<div class="modes">
+    <button class="modebtn ${MODE==='shift'?'on':''}" onclick="setMode('shift')">Zmiana</button>
+    <button class="modebtn ${MODE==='hours'?'on':''}" onclick="setMode('hours')">Godziny (od–do)</button></div>`;
   const rows = days.map(dt=>{
     const k=iso(dt); const cur=CHOICE[k]||"";
     const wknd = (dt.getDay()===0||dt.getDay()===6) ? " weekend":"";
     const today = k===todayIso ? " today":"";
-    const btns = opts.map(([v,l])=>`<button class="opt ${v==="off"?"off":""} ${cur===v?"sel":""}" onclick="pick('${k}','${v}')">${esc(l)}</button>`).join("");
+    let inner;
+    if (MODE==="shift"){
+      inner = `<div class="opts">${opts.map(([v,l])=>`<button class="opt ${v==="off"?"off":""} ${cur===v?"sel":""}" onclick="pick('${k}','${v}')">${esc(l)}</button>`).join("")}</div>`;
+    } else {
+      const h = HOURS[k]||{}; const isOff = cur==="off";
+      const sel = (id,val,ph)=>`<select class="hsel" onchange="setH('${k}','${id}',this.value)"><option value="">${ph}</option>${HOPT.map(x=>`<option value="${x}"${String(val)===String(x)?" selected":""}>${x}:00</option>`).join("")}</select>`;
+      inner = `<div class="opts" style="align-items:center">
+        ${sel("start",h.start,"od")}<span style="color:var(--muted);font-weight:800">–</span>${sel("end",h.end,"do")}
+        <button class="opt off ${isOff?"sel":""}" style="flex:0 0 auto;min-width:88px" onclick="pick('${k}','off')">Nie mogę</button>
+      </div>${(cur==="godziny"&&(h.start||h.end))?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę ${h.start||"?"}:00–${h.end||"?"}:00 ✓</div>`:""}`;
+    }
     return `<div class="day${today}${wknd}">
       <div class="dtop"><span class="ddow">${DOW[dt.getDay()]}</span><span class="ddate">${dt.getDate()} ${MON[dt.getMonth()]}</span></div>
-      <div class="opts">${btns}</div>
-    </div>`;
+      ${inner}</div>`;
   }).join("");
   const filled = Object.keys(CHOICE).length;
   app.innerHTML = `
     <div class="hi">Cześć ${esc(META.person||"")}!</div>
-    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. Zapisuje się automatycznie po każdym kliknięciu.</div>
-    <div class="legend">${legend}</div>
+    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Wybierz gotową zmianę."} Zapisuje się automatycznie.</div>
+    ${toggle}
     ${rows}
     <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>
     <button id="confirmBtn" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:#0f7a4a;color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer" onclick="confirmAvail()">Gotowe — wyślij do kierownika</button>`;
 }
+window.setMode = (m)=>{ MODE=m; render(); };
+async function saveAvail(date, choice, start, end){
+  try { const { error } = await sb.rpc("set_availability",{ p_token:TOKEN, p_date:date, p_choice:choice, p_start:start, p_end:end }); if(error) throw error; return true; }
+  catch { toast("Nie zapisano — spróbuj ponownie.", "#c2415a"); return false; }
+}
+window.setH = async (date, which, val)=>{
+  const h = HOURS[date] = HOURS[date] || { start:"", end:"" };
+  h[which] = val;
+  if (h.start && h.end){ CHOICE[date]="godziny"; render(); await saveAvail(date,"godziny",h.start,h.end); }
+  else render();
+};
 window.confirmAvail = () => {
   const filled = Object.keys(CHOICE).length;
   if (!filled) return toast("Najpierw zaznacz przynajmniej jeden dzień.", "#c2415a");
@@ -175,17 +204,12 @@ window.confirmAvail = () => {
 };
 
 window.pick = async (date, choice)=>{
-  const prev = CHOICE[date];
+  const prev = CHOICE[date], prevH = HOURS[date];
   CHOICE[date] = choice;        // optymistycznie
+  if (choice !== "godziny") delete HOURS[date];
   render();
-  try {
-    const { error } = await sb.rpc("set_availability",{ p_token:TOKEN, p_date:date, p_choice:choice });
-    if (error) throw error;
-  } catch (e) {
-    if (prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev;  // cofnij
-    render();
-    toast("Nie zapisano — spróbuj ponownie.", "#c2415a");
-  }
+  const ok = await saveAvail(date, choice, null, null);
+  if (!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; if(prevH) HOURS[date]=prevH; render(); }
 };
 
 boot();
