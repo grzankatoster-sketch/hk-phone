@@ -300,6 +300,13 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   .btn{padding:15px;font-size:15.5px}
   .inp{padding:14px;font-size:16px}  /* 16px = iOS nie przybliża pola */
 }
+/* Tryb „Praca" — iframe z widokiem telefonu HK wypełnia obszar treści. */
+.praca-wrap{margin:-16px -13px -98px}
+.praca-frame{display:block;width:100%;border:0;background:#fff;height:calc(100dvh - 116px)}
+@media(min-width:860px){
+  .praca-wrap{margin:-24px -30px -70px}
+  .praca-frame{height:calc(100dvh - 60px);border-radius:12px}
+}
 </style>
 </head>
 <body>
@@ -767,6 +774,7 @@ function tabsFor(role){
   if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
   const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]];
+  if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
@@ -790,6 +798,7 @@ const NAV_ICON = {
   plan:    _ic('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M9 11h6M9 15h4"/>'),
   akcje:   _ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
+  praca:   _ic('<path d="M19 5l-7 7M14 4l6 6M8.5 10.5l5 5M3 21l3.5-1 9-9-2.5-2.5-9 9L3 21z"/>'),
 };
 const BRAND_SVG = '<svg viewBox="0 0 80 12" width="40" height="10" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>';
 const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); return f?f[1]:""; };
@@ -839,6 +848,7 @@ window.setHkTab = (t) => {
 
 async function loadHkTab() {
   stopLive();
+  if (hkTab === "praca")   return loadPraca();
   if (hkTab === "live")    return loadLive();
   if (hkTab === "wyjazdy") return loadWyjazdy();
   if (hkTab === "staty")   return loadStats();
@@ -854,6 +864,15 @@ async function loadHkTab() {
 }
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
+
+// Tryb „Praca" — kierownik HK sprząta jak pracownik. Osadzamy istniejący widok
+// telefonu (index.html) w iframe, podając imię zalogowanej osoby jako ?w=.
+// Dzięki temu cała logika pokoi, raportów i powiadomień działa bez duplikacji.
+function loadPraca() {
+  const who = encodeURIComponent(CURRENT.name || "");
+  if (!who) { body('<div class="spin">Brak imienia konta — nie można uruchomić trybu pracy.</div>'); return; }
+  body(`<div class="praca-wrap"><iframe class="praca-frame" src="index.html?w=${who}&embed=1" title="Tryb pracy — sprzątanie pokoi" allow="clipboard-write"></iframe></div>`);
+}
 
 // Odczyt snapshotu z aplikacji recepcji (panel_mirror): schedule / payment_corrections / reports_full.
 async function getMirror(kind){
@@ -1089,7 +1108,7 @@ async function loadLive() {
         return `<div class="fitem"><span class="ic" style="color:${FEED_COLOR[l.action]||"var(--muted)"}">${FEED_ICON[l.action]||"·"}</span><span>${esc(feedText(l))}</span><span class="tm">${esc(t)}</span></div>`; }).join("")
     }</div>` : "";
     const head = `<div class="fullspan" style="margin-bottom:12px">
-      <button class="rost-addbtn" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia dla ekipy HK</button>
+      <button class="rost-addbtn" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia i kontrole HK</button>
     </div>`;
     body(head + kpis + `<div class="note" style="margin-top:0;margin-bottom:8px">Kliknij osobę, by zobaczyć jej pokoje i czasy.</div>` + html + feed);
   };
@@ -1099,10 +1118,48 @@ async function loadLive() {
 // (Dodawanie osób do obsady robi się w zakładce „Wyjazdy"; QR generuje aplikacja recepcji z hk_roster.)
 window.showHkReminders = async () => {
   stopLive();
-  let rows = [];
+  let rows = [], qc = null, rosterNames = [];
+  const today = isoDate(new Date());
   try { const { data } = await sb.from("hk_reminders").select("id,body,created_by,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(40); rows = (data||[]).filter(r=>r.active!==false); } catch {}
+  try { const { data } = await sb.from("hk_qc_settings").select("*").eq("tenant_id", TENANT_ID).maybeSingle(); qc = data; } catch {}
+  try { const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle();
+        rosterNames = ((data&&data.roster)||[]).map(p => (p&&p.name)||(typeof p==="string"?p:null)).filter(Boolean); } catch {}
   const list = rows.length ? rows.map(r => `<div class="statrow"><span class="k">🔔 ${esc(r.body)}</span>
     <button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="rmHkReminder('${r.id}')">Usuń</button></div>`).join("") : '<div class="empty">Brak przypomnień.</div>';
+
+  // ── Ustawienia losowej kontroli pokoi ──
+  const def = { enabled:true, mode:"random", chosen_person:"", daily_limit:4,
+    items:["Sprawdziłaś pod łóżkiem?","Stan czajnika (czysty, woda, kubki)?","Ręczniki uzupełnione?","Łazienka — kosmetyki i papier?","Minibar uzupełniony?","Zasłony / okno domknięte?"] };
+  const s = qc || def;
+  const items = Array.isArray(s.items) ? s.items : def.items;
+  const dl = rosterNames.map(n=>`<option value="${esc(n)}">`).join("");
+  const qcCard = `
+    <div class="soon" style="margin-top:22px">Losowa kontrola pokoi</div>
+    <div class="card">
+      <div class="sub" style="margin-bottom:12px">Po ukończeniu pokoju losowa osoba dostaje na telefon checklistę do przeklikania (do <b>${s.daily_limit||4}</b>/dzień, każdy raz dziennie).</div>
+      <label style="display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer">
+        <input type="checkbox" id="qcEnabled" ${s.enabled!==false?"checked":""} style="width:20px;height:20px;accent-color:var(--plum)"/> Kontrole włączone</label>
+      <div class="field"><label>Tryb wyboru osoby</label>
+        <div style="display:flex;gap:8px">
+          <label class="qc-mode" style="flex:1;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+            <input type="radio" name="qcMode" value="random" ${s.mode!=="person"?"checked":""} onchange="qcModeToggle()"/> Losowanie</label>
+          <label class="qc-mode" style="flex:1;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+            <input type="radio" name="qcMode" value="person" ${s.mode==="person"?"checked":""} onchange="qcModeToggle()"/> Wybrana osoba</label>
+        </div>
+      </div>
+      <div class="field" id="qcPersonWrap" style="display:${s.mode==="person"?"block":"none"}">
+        <label>Osoba dostająca kontrole</label>
+        <input id="qcPerson" class="inp" list="qcRoster" value="${esc(s.chosen_person||"")}" placeholder="np. Anna"/>
+        <datalist id="qcRoster">${dl}</datalist>
+      </div>
+      <div class="field"><label>Limit kontroli na dzień</label>
+        <input id="qcLimit" class="inp" type="number" min="1" max="20" value="${s.daily_limit||4}" style="max-width:120px"/></div>
+      <div class="field"><label>Pytania checklisty (jedno na linię)</label>
+        <textarea id="qcItems" class="inp" rows="6" style="resize:vertical">${esc(items.join("\n"))}</textarea></div>
+      <button id="qcSaveBtn" class="btn" onclick="saveQcSettings()">Zapisz ustawienia kontroli</button>
+      <div id="qcMsg" class="msg"></div>
+    </div>`;
+
   body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
     <div class="card">
       <div class="soon" style="margin-top:0">Przypomnienie dla telefonów ekipy HK</div>
@@ -1110,7 +1167,34 @@ window.showHkReminders = async () => {
       <button id="hrBtn" class="btn" onclick="addHkReminder()">Wyślij na telefony</button>
       <div id="hrMsg" class="msg"></div>
     </div>
-    <div class="soon">Aktywne przypomnienia</div>${list}`);
+    <div class="soon">Aktywne przypomnienia</div>${list}
+    ${qcCard}`);
+};
+window.qcModeToggle = () => {
+  const m = (document.querySelector('input[name="qcMode"]:checked')||{}).value;
+  const w = document.getElementById("qcPersonWrap"); if (w) w.style.display = m==="person" ? "block" : "none";
+};
+window.saveQcSettings = async () => {
+  const msg = document.getElementById("qcMsg"), btn = document.getElementById("qcSaveBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  const mode = (document.querySelector('input[name="qcMode"]:checked')||{}).value || "random";
+  const person = ((document.getElementById("qcPerson")||{}).value||"").trim();
+  const limit = Math.max(1, Math.min(20, parseInt((document.getElementById("qcLimit")||{}).value,10)||4));
+  const items = ((document.getElementById("qcItems")||{}).value||"").split("\n").map(x=>x.trim()).filter(Boolean);
+  if (mode==="person" && !person) return setM("Wpisz osobę albo wybierz tryb Losowanie.", "err");
+  if (!items.length) return setM("Dodaj przynajmniej jedno pytanie.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Zapisuję…"; }
+  try {
+    const { error } = await sb.from("hk_qc_settings").upsert({
+      tenant_id: TENANT_ID,
+      enabled: !!(document.getElementById("qcEnabled")||{}).checked,
+      mode, chosen_person: mode==="person" ? person : null,
+      daily_limit: limit, items, updated_at: new Date().toISOString(),
+    }, { onConflict: "tenant_id" });
+    if (error) throw error;
+    setM("Zapisano ✓", "info");
+  } catch (e) { setM((e&&e.message)||"Nie udało się zapisać.", "err"); }
+  finally { if (btn){ btn.disabled=false; btn.textContent="Zapisz ustawienia kontroli"; } }
 };
 window.addHkReminder = async () => {
   const b = ((document.getElementById("hrBody")||{}).value||"").trim();
