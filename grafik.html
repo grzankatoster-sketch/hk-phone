@@ -149,13 +149,15 @@ async function boot(){
 
 function render(){
   const kind = (META.kind==="recepcja") ? "recepcja" : "hk";
+  const hoursAllowed = kind==="recepcja";        // godziny tylko dla recepcji; HK = same zmiany
+  if (!hoursAllowed) MODE = "shift";
   const opts = OPTS[kind];
   const days = buildDays(META);
   const todayIso = iso(new Date());
   const periodLbl = META.period_type==="week" ? "tydzień" : "miesiąc";
-  const toggle = `<div class="modes">
+  const toggle = hoursAllowed ? `<div class="modes">
     <button class="modebtn ${MODE==='shift'?'on':''}" onclick="setMode('shift')">Zmiana</button>
-    <button class="modebtn ${MODE==='hours'?'on':''}" onclick="setMode('hours')">Godziny (od–do)</button></div>`;
+    <button class="modebtn ${MODE==='hours'?'on':''}" onclick="setMode('hours')">Godziny (od–do)</button></div>` : "";
   const rows = days.map(dt=>{
     const k=iso(dt); const cur=CHOICE[k]||"";
     const wknd = (dt.getDay()===0||dt.getDay()===6) ? " weekend":"";
@@ -186,7 +188,10 @@ function render(){
 }
 window.setMode = (m)=>{ MODE=m; render(); };
 async function saveAvail(date, choice, start, end){
-  try { const { error } = await sb.rpc("set_availability",{ p_token:TOKEN, p_date:date, p_choice:choice, p_start:start, p_end:end }); if(error) throw error; return true; }
+  // Godziny → wersja 5-arg (wymaga migracji 0024). Zwykła zmiana → wersja 3-arg (działa zawsze).
+  const args = { p_token:TOKEN, p_date:date, p_choice:choice };
+  if (start != null || end != null) { args.p_start = start; args.p_end = end; }
+  try { const { error } = await sb.rpc("set_availability", args); if(error) throw error; return true; }
   catch { toast("Nie zapisano — spróbuj ponownie.", "#c2415a"); return false; }
 }
 window.setH = async (date, which, val)=>{
