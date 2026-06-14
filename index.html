@@ -130,6 +130,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:var(--muted);font-size:14px}
 .spinner{width:36px;height:36px;border:3px solid var(--line);border-top-color:var(--plum);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideup{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}
 /* Team tab */
@@ -168,6 +169,9 @@ const params  = new URLSearchParams(location.search);
 // ?w= z URL ma pierwszeństwo i jest zapamiętywany. Uruchomienie z ekranu
 // głównego iPhone'a idzie do start_url bez ?w= — wtedy bierzemy z localStorage.
 let WORKER = params.get("w") || "";
+// ?embed=1 — widok osadzony w panelu menedżera (tryb „Praca"). Wtedy nie
+// pokazujemy nakładki „Dodaj do ekranu" (instalacją zarządza panel).
+const EMBED = params.get("embed") === "1";
 try {
   if (WORKER) localStorage.setItem("hk_worker", WORKER);
   else WORKER = localStorage.getItem("hk_worker") || "";
@@ -547,16 +551,20 @@ function roomCard(no, status) {
   const replyBtn   = pendingAsk ? `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>` : "";
   const replyUI    = replyOpen === no ? renderReplyPanel(no) : "";
 
+  // Pobyt (PG/PGZ, zmiana popołudniowa) — gość może nie chcieć sprzątania.
+  // Wyjazdy (W/WP) zawsze trzeba posprzątać, więc bez tego przycisku.
+  const isPobyt = pmt === "PG" || pmt === "PGZ";
+
   let buttons = "";
   if (status === "W" || status === "vacated") {
     buttons = `<div class="btn-row"><button class="btn btn-blue" style="flex:3" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>${replyBtn}</div>`;
+    // Dla pobytów od razu drugi przycisk obok startu (nie po rozpoczęciu sprzątania).
+    if (isPobyt) buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
     if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
       <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
       <div id="rp-${no}" class="report-panel"></div>`;
-    // "Goście nie chcieli" tylko dla pokoi PGZ (nie PG, nie wyjazdy).
-    if (pmt === "PGZ") buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
   } else if (pendingAsk) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
@@ -731,6 +739,7 @@ async function refreshData() {
     const y = window.scrollY;
     render();
     window.scrollTo(0, y);
+    checkAcks();
   } catch (e) { /* sieć padła — spróbujemy za 12 s */ }
 }
 
@@ -801,6 +810,7 @@ async function init() {
   if (lData) allLogs = lData;
 
   render();
+  checkAcks();
 
   // Realtime
   const allMyRooms = [...myRooms, ...myPmRooms];
@@ -843,11 +853,103 @@ async function init() {
       allLogs = [...allLogs, row];
       render();
     })
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"hk_quality_checks",filter:`date=eq.${TODAY}`}, ({new:row})=>{
+      if (row && _firstName(row.target_worker)===_firstName(WORKER)) checkAcks();
+    })
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"hk_reminders"}, ()=> checkAcks())
     .subscribe();
 
   // Fallback do Realtime — gwarantuje, że nowe zadania/przypisania pojawią się
   // bez ręcznego odświeżania, nawet gdy websocket nie dostarczy zdarzenia.
   if (!window.__hkPoll) window.__hkPoll = setInterval(refreshData, 12000);
+}
+
+// ─── Powiadomienia „do przeklikania" (kontrole pokoi + przypomnienia) ──────────
+// Imię porównujemy po pierwszym członie (plan: „Anna Kowalska" = ?w=Anna).
+const _firstName = (n) => String(n||"").trim().toLowerCase().split(/\s+/)[0];
+let _ackBusy = false;
+
+async function checkAcks() {
+  if (!sb || !WORKER || _ackBusy) return;
+  if (document.getElementById("ackModal")) return;   // jeden modal naraz
+  _ackBusy = true;
+  try {
+    // 1) Losowe kontrole pokoi przypisane do mnie (najpilniejsze).
+    const { data: qc } = await sb.from("hk_quality_checks")
+      .select("*").eq("date", TODAY).eq("status", "pending").order("created_at");
+    const mine = (qc||[]).filter(c => _firstName(c.target_worker) === _firstName(WORKER));
+    if (mine.length) { showQcModal(mine[0]); return; }
+
+    // 2) Przypomnienia bez mojego potwierdzenia.
+    const { data: rems } = await sb.from("hk_reminders")
+      .select("id,body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at");
+    const active = (rems||[]).filter(r => r.active !== false);
+    if (active.length) {
+      const ids = active.map(r=>r.id);
+      const { data: acks } = await sb.from("hk_reminder_acks")
+        .select("reminder_id").eq("worker", WORKER).in("reminder_id", ids);
+      const acked = new Set((acks||[]).map(a=>a.reminder_id));
+      const todo = active.filter(r => !acked.has(r.id));
+      if (todo.length) { showReminderModal(todo[0]); return; }
+    }
+  } catch (e) { /* sieć — spróbujemy przy następnym odświeżeniu */ }
+  finally { _ackBusy = false; }
+}
+
+function _ackOverlay(inner) {
+  const o = document.createElement("div");
+  o.id = "ackModal";
+  o.style.cssText = "position:fixed;inset:0;z-index:1200;background:rgba(45,20,34,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;font-family:inherit";
+  o.innerHTML = `<div style="background:var(--paper);width:100%;max-width:520px;border-top-left-radius:20px;border-top-right-radius:20px;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(45,20,34,.4);max-height:90vh;overflow:auto;animation:slideup .25s ease">${inner}</div>`;
+  document.body.appendChild(o);
+  return o;
+}
+
+function showQcModal(c) {
+  const items = Array.isArray(c.items) ? c.items : [];
+  const rows = items.map((it,i)=>`
+    <label style="display:flex;align-items:center;gap:11px;padding:13px 12px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:9px;font-size:14.5px;color:var(--ink);cursor:pointer">
+      <input type="checkbox" data-qi="${i}" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--plum)"/>
+      <span>${escHtml(it.q)}</span>
+    </label>`).join("");
+  const o = _ackOverlay(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span style="font-size:22px">🔍</span>
+      <div style="font-size:18px;font-weight:800;color:var(--plum)">Kontrola pokoju ${escHtml(c.room)}</div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${c.cleaned_by?("Sprzątał(a): "+escHtml(c.cleaned_by)+". "):""}Sprawdź pokój i potwierdź każdy punkt.</div>
+    <div id="qcItems">${rows||'<div style="color:var(--muted);font-size:13px">Brak pytań w checkliście.</div>'}</div>
+    <button id="qcConfirm" disabled style="width:100%;margin-top:8px;padding:14px;border:none;border-radius:12px;background:var(--plum);color:#fff;font-size:15px;font-weight:800;cursor:pointer;opacity:.5">Zatwierdź kontrolę</button>`);
+  const btn = o.querySelector("#qcConfirm");
+  const boxes = [...o.querySelectorAll("input[data-qi]")];
+  const sync = () => { const all = boxes.length>0 && boxes.every(b=>b.checked); btn.disabled=!all; btn.style.opacity = all?"1":".5"; };
+  boxes.forEach(b => b.onchange = sync);
+  if (!boxes.length) { btn.disabled=false; btn.style.opacity="1"; }
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const checkedItems = items.map((it,i)=>({ q: it.q, checked: boxes[i] ? boxes[i].checked : true }));
+    try {
+      await sb.from("hk_quality_checks").update({ status:"done", acked_at:new Date().toISOString(), items:checkedItems }).eq("id", c.id);
+    } catch(e){}
+    o.remove();
+    toast("Kontrola pokoju "+c.room+" zatwierdzona ✓");
+    setTimeout(checkAcks, 300);   // może czeka kolejne powiadomienie
+  };
+}
+
+function showReminderModal(r) {
+  const o = _ackOverlay(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:22px">📌</span>
+      <div style="font-size:18px;font-weight:800;color:var(--plum)">Przypomnienie</div>
+    </div>
+    <div style="font-size:15px;color:var(--ink);line-height:1.55;background:rgba(90,29,74,.05);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">${escHtml(r.body)}</div>
+    <button id="remOk" style="width:100%;padding:14px;border:none;border-radius:12px;background:var(--plum);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Przeczytałam — OK</button>`);
+  o.querySelector("#remOk").onclick = async () => {
+    try { await sb.from("hk_reminder_acks").insert({ reminder_id:r.id, worker:WORKER }); } catch(e){}
+    o.remove();
+    setTimeout(checkAcks, 300);
+  };
 }
 
 (async()=>{
@@ -859,7 +961,7 @@ async function init() {
   if (WORKER && typeof mountPushButton === "function") {
     mountPushButton({ sb, tenant: TENANT_ID, worker: WORKER, role: "hk" });
   }
-  if (WORKER && typeof mountInstallPrompt === "function") setTimeout(mountInstallPrompt, 1500);
+  if (!EMBED && WORKER && typeof mountInstallPrompt === "function") setTimeout(mountInstallPrompt, 1500);
 })();
 </script>
 </body>
