@@ -406,7 +406,7 @@ function makeMockClient(){
       {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,persons:4,answered:2},
     ],
     get_request_grid: ()=> {
-      const ppl=["Anna","Marta","Oksana","Tetiana"], days=[plus(3),plus(4),plus(5)], ch=["dzien","popoludnie","off"], out=[];
+      const ppl=["Anna","Marta","Oksana","Tetiana"], days=[today,plus(1),plus(2)], ch=["dzien","popoludnie","off"], out=[];
       ppl.forEach((p,i)=> days.forEach((d,j)=> out.push({person:p,token:"DEMO",kind:"hk",date:d,choice:ch[(i+j)%3]})));
       return out;
     },
@@ -852,7 +852,7 @@ function countTypes(plan) {
 }
 const fmtWP = (reg, apt) => apt ? `${reg}+${apt} APT` : `${reg}`;
 
-let WYJAZDY_RANGE = [], WY_PLAN = {}, ROSTER = {};
+let WYJAZDY_RANGE = [], WY_PLAN = {}, ROSTER = {}, AVAIL_BY_DATE = {};
 const HK_ROLE_OPT = [["poranna","Poranna"],["dyzur","Dyżur"],["popoludnie","Popołudnie"]];
 const _cap = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
 
@@ -867,6 +867,18 @@ async function loadWyjazdy() {
     WY_PLAN = {}; (pl.data||[]).forEach(r => { WY_PLAN[r.date] = { assignments:r.assignments||{}, pm_room_types:r.pm_room_types||{} }; });
     ROSTER  = {}; (ro.data||[]).forEach(r => { ROSTER[r.date] = Array.isArray(r.roster) ? r.roster : []; });
   } catch { return body('<div class="empty">Nie udało się pobrać planu.</div>'); }
+  // Korelacja z grafikiem: kto z dyspozycyjności może w danym dniu (HK).
+  AVAIL_BY_DATE = {};
+  try {
+    const { data: reqs } = await sb.rpc("list_availability_requests");
+    if (reqs && reqs.length) {
+      const { data: grid } = await sb.rpc("get_request_grid", { p_request_id: reqs[0].id });
+      (grid||[]).forEach(r => {
+        if (r.date && r.choice && r.choice!=="off" && (r.kind==="hk" || !r.kind))
+          (AVAIL_BY_DATE[r.date] = AVAIL_BY_DATE[r.date] || {})[r.person] = r.choice;
+      });
+    }
+  } catch {}
   renderWyjazdy();
 }
 
@@ -888,6 +900,9 @@ function renderWyjazdy() {
         <button onclick="rosterRemove('${iso}',${idx})" aria-label="Usuń" style="background:none;border:none;color:var(--bad);font-size:19px;line-height:1;cursor:pointer;padding:0 4px">×</button>
       </div>`;
     }).join("") : `<div class="note" style="margin-top:0">Brak obsady — dodaj osoby poniżej.</div>`;
+    const _av = AVAIL_BY_DATE[iso] || {}; const _inR = new Set(ros.map(w=>w.name));
+    const _names = Object.keys(_av).filter(n=>!_inR.has(n));
+    const chipHtml = _names.length ? `<div style="margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Dostępni z grafiku — dodaj jednym kliknięciem</div><div class="chips">${_names.map(n=>`<button class="chip" style="cursor:pointer;border-color:rgba(31,122,82,.4);color:var(--ok);background:rgba(31,122,82,.06)" onclick="rosterQuickAdd('${iso}','${esc(n).replace(/'/g,"\\'")}','${esc(_av[n])}')">+ ${esc(n)}</button>`).join("")}</div></div>` : "";
     return `<div class="day ${i===0?"today":""}">
       <div class="drow">
         <div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>
@@ -900,6 +915,7 @@ function renderWyjazdy() {
       <div style="margin-top:11px;border-top:1px dashed var(--line-strong);padding-top:10px">
         <div class="soon" style="margin-top:0">Obsada (${ros.length})${(()=>{ const t=ros.reduce((s,w)=>s+(w.rooms!=null&&w.rooms!==""?(parseInt(w.rooms,10)||0):0),0); return t>0?` · rozpisano ${t}/${c.w.total} pok.`:""; })()}</div>
         ${rrows}
+        ${chipHtml}
         <div style="display:flex;gap:7px;margin-top:7px">
           <input id="radd-${iso}" class="inp" style="flex:1" placeholder="Imię pracownika" autocomplete="off" onkeydown="if(event.key==='Enter')rosterAdd('${iso}')"/>
           <button class="rost-addbtn" style="padding:9px 13px;border-radius:9px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer" onclick="rosterAdd('${iso}')">Dodaj</button>
@@ -915,6 +931,12 @@ window.rosterAdd = (iso) => {
   if (!v) return;
   (ROSTER[iso] = ROSTER[iso] || []).push({ name:_cap(v), role: ROSTER[iso].length===0 ? "dyzur" : "poranna" });
   renderWyjazdy(); setTimeout(()=>{ const n=document.getElementById("radd-"+iso); if(n) n.focus(); }, 30);
+};
+window.rosterQuickAdd = (iso, name, choice) => {
+  const role = choice === "popoludnie" ? "popoludnie" : (choice === "dyzur" ? "dyzur" : "poranna");
+  ROSTER[iso] = ROSTER[iso] || [];
+  if (!ROSTER[iso].some(w => w.name === name)) ROSTER[iso].push({ name, role });
+  renderWyjazdy();
 };
 window.rosterRemove = (iso, idx) => { if (ROSTER[iso]) { ROSTER[iso].splice(idx,1); renderWyjazdy(); } };
 window.rosterRole = (iso, idx, role) => { if (ROSTER[iso] && ROSTER[iso][idx]) ROSTER[iso][idx].role = role; };
@@ -952,24 +974,43 @@ let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [], roster = [];
+    let rooms = [], logs = [], roster = [], assign = {};
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
+        sb.from("hk_plan").select("assignments,pm_assignments").eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
+      const plan = r4.data || {};
+      assign = { ...(plan.assignments||{}), ...(plan.pm_assignments||{}) }; // worker → [pokoje], jak w programie
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
+    // Status pokoju (done/pusty) z hk_rooms.
+    const roomStatus = {};
+    rooms.forEach(r => { roomStatus[r.room] = { done:DONE_STATES.has(String(r.status||"").toLowerCase()), vacated:!!r.vacated }; });
     const byWorker = {};
-    // Najpierw WSZYSCY z obsady dnia (żeby pokazać też tych bez pokoi).
+    // 1) wszyscy z obsady dnia (też bez pokoi)
     roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); if(w) byWorker[w]=byWorker[w]||{rooms:[],done:0,role:(p&&p.role)||""}; });
+    // 2) przypisania z planu — tyle pokoi, ile w programie recepcji
+    Object.entries(assign).forEach(([w, rms]) => {
+      if (!w || !Array.isArray(rms)) return;
+      byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
+      rms.forEach(room => {
+        if (byWorker[w].rooms.some(x => x.room === room)) return;
+        const st = roomStatus[room] || {};
+        byWorker[w].rooms.push({ room, done:!!st.done, vacated:!!st.vacated });
+        if (st.done) byWorker[w].done++;
+      });
+    });
+    // 3) pokoje przypisane wprost w hk_rooms (gdyby planu nie było)
     rooms.forEach(r => {
       const w = r.worker; if (!w) return;
       byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
+      if (byWorker[w].rooms.some(x => x.room === r.room)) return;
       const done = DONE_STATES.has(String(r.status||"").toLowerCase());
-      byWorker[w].rooms.push({ room:r.room, done, status:r.status, vacated:!!r.vacated });
+      byWorker[w].rooms.push({ room:r.room, done, vacated:!!r.vacated });
       if (done) byWorker[w].done++;
     });
     LIVE_DATA = { byWorker, today };
@@ -1003,69 +1044,15 @@ async function loadLive() {
       logs.map(l => { const t = l.log_time || (l.created_at?new Date(l.created_at).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}):"");
         return `<div class="fitem"><span class="ic" style="color:${FEED_COLOR[l.action]||"var(--muted)"}">${FEED_ICON[l.action]||"·"}</span><span>${esc(feedText(l))}</span><span class="tm">${esc(t)}</span></div>`; }).join("")
     }</div>` : "";
-    const head = `<div class="fullspan" style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="rost-addbtn" style="flex:1;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showAddWorker()">➕ Dodaj osobę (QR)</button>
-      <button class="rost-addbtn" style="flex:1;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia</button>
+    const head = `<div class="fullspan" style="margin-bottom:12px">
+      <button class="rost-addbtn" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia dla ekipy HK</button>
     </div>`;
     body(head + kpis + `<div class="note" style="margin-top:0;margin-bottom:8px">Kliknij osobę, by zobaczyć jej pokoje i czasy.</div>` + html + feed);
   };
   await paint();
   liveTimer = setInterval(() => { if (hkTab==="live") paint(); else stopLive(); }, 5000);
 }
-// Telefon HK pracownika + QR (publiczny link strony pracownika).
-const HK_PHONE = name => "https://grzankatoster-sketch.github.io/hk-phone/?w=" + encodeURIComponent(name);
-const QR_IMG = url => "https://api.qrserver.com/v1/create-qr-code/?size=170x170&margin=8&data=" + encodeURIComponent(url);
-window.showAddWorker = async () => {
-  stopLive();
-  const today = isoDate(new Date());
-  let roster = [];
-  try { const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(); roster = (data && Array.isArray(data.roster)) ? data.roster : []; } catch {}
-  const names = roster.map(p => (p&&p.name)||(typeof p==="string"?p:null)).filter(Boolean);
-  const qrCards = names.map(n => `<div class="statrow"><span class="k">${esc(n)}</span>
-    <button class="rost-addbtn" style="padding:7px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="showQR('${esc(n).replace(/'/g,"\\'")}')">Pokaż QR</button></div>`).join("");
-  body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
-    <div class="card">
-      <div class="soon" style="margin-top:0">Dodaj osobę do dzisiejszej obsady</div>
-      <div class="field"><label>Imię</label><input id="awName" class="inp" placeholder="np. Oksana" onkeydown="if(event.key==='Enter')addWorker()"/></div>
-      <div class="field"><label>Rola</label><select id="awRole" class="inp"><option value="poranna">Poranna</option><option value="dyzur">Dyżur</option><option value="popoludnie">Popołudnie</option></select></div>
-      <button id="awBtn" class="btn" onclick="addWorker()">Dodaj i pokaż QR</button>
-      <div id="awMsg" class="msg"></div>
-      <div id="awQR"></div>
-    </div>
-    ${names.length?`<div class="soon">Obsada dziś — kody QR</div>${qrCards}`:""}`);
-};
-window.addWorker = async () => {
-  const name = ((document.getElementById("awName")||{}).value||"").trim();
-  const role = (document.getElementById("awRole")||{}).value || "poranna";
-  const msg = document.getElementById("awMsg"), btn = document.getElementById("awBtn");
-  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!name) return setM("Wpisz imię.", "err");
-  const cap = name.charAt(0).toUpperCase()+name.slice(1);
-  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
-  const today = isoDate(new Date());
-  try {
-    let roster = [];
-    const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle();
-    roster = (data && Array.isArray(data.roster)) ? data.roster : [];
-    if (!roster.some(p => ((p&&p.name)||p) === cap)) roster.push({ name:cap, role });
-    const { error } = await sb.from("hk_roster").upsert({ tenant_id:TENANT_ID, date:today, roster, updated_at:new Date().toISOString() }, { onConflict:"tenant_id,date" });
-    if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"obsada_zapis", p_detail:`dodano ${cap} (${role})` }); } catch {}
-    const url = HK_PHONE(cap);
-    const el = document.getElementById("awQR");
-    if (el) el.innerHTML = `<div style="text-align:center;margin-top:14px"><img src="${QR_IMG(url)}" alt="QR ${esc(cap)}" style="width:170px;height:170px;border-radius:12px;border:1px solid var(--line)"/>
-      <div style="font-size:12px;color:var(--muted);margin-top:8px">QR dla <b>${esc(cap)}</b> — niech zeskanuje telefonem</div>
-      <div style="font-size:10.5px;color:var(--muted);word-break:break-all;margin-top:4px">${esc(url)}</div></div>`;
-    setM(`Dodano ${cap} do obsady ✓`, "info");
-    if (btn){ btn.disabled=false; btn.textContent="Dodaj i pokaż QR"; }
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj i pokaż QR"; } }
-};
-window.showQR = (name) => {
-  const url = HK_PHONE(name);
-  const el = document.getElementById("awQR");
-  if (el) el.innerHTML = `<div style="text-align:center;margin-top:14px"><img src="${QR_IMG(url)}" alt="QR ${esc(name)}" style="width:170px;height:170px;border-radius:12px;border:1px solid var(--line)"/>
-    <div style="font-size:12px;color:var(--muted);margin-top:8px">QR dla <b>${esc(name)}</b></div></div>`;
-};
+// (Dodawanie osób do obsady robi się w zakładce „Wyjazdy"; QR generuje aplikacja recepcji z hk_roster.)
 window.showHkReminders = async () => {
   stopLive();
   let rows = [];
