@@ -47,6 +47,11 @@
 }
 html,body{background:var(--cream)}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
+/* ── Interaktywna warstwa tła (nakładka na animowaną aurorę body::before) ──
+   Przezroczysta — dorzuca tylko reakcję na kursor/dotyk, nie zasłania gradientu. */
+#bgfx{position:fixed;inset:0;width:100%;height:100%;z-index:-1;display:block;pointer-events:none;background:transparent}
+.hdr,.wrap,.foot{position:relative;z-index:1}
+@media (prefers-reduced-motion: reduce){#bgfx{display:none}}
 .hdr{background:var(--plum);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:12px}
 .logo{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .logo-text{display:flex;flex-direction:column;line-height:1.1}
@@ -295,6 +300,7 @@ body::after{content:"";position:fixed;right:-30px;bottom:-20px;width:300px;heigh
 </style>
 </head>
 <body>
+<canvas id="bgfx" aria-hidden="true"></canvas>
 <div class="hdr">
   <div class="logo">
     <svg viewBox="0 0 80 12" width="44" height="11" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
@@ -367,10 +373,13 @@ function makeMockClient(){
       {id:"a1",title:"Sprawdzić rezerwację 312",body:"Gość prosi o wcześniejszy check-in",priority:"high",created_by:"Recepcja",created_at:today+"T11:00:00",done:false},
       {id:"a2",title:"Dostawa ręczników",body:"Przyjechała o 9, rozłożona na piętrach",priority:"normal",created_by:"Tetiana",created_at:today+"T09:20:00",done:false},
     ],
-    hk_roster: [{date:today, roster:[{name:"Anna",role:"dyzur"},{name:"Marta",role:"poranna"},{name:"Oksana",role:"popoludnie"}]}],
+    hk_roster: [{tenant_id:"00000000-0000-0000-0000-000000000001", date:today, roster:[{name:"Anna",role:"dyzur"},{name:"Marta",role:"poranna"},{name:"Oksana",role:"popoludnie"}]}],
     standing_reminders: [
       {id:"s1",title:"Zawsze sprawdzaj depozyt przy check-in",body:"",active:true,created_by:"Koordynator",created_at:today+"T08:00:00"},
       {id:"s2",title:"Klucz do magazynu zwracamy na recepcję",body:"",active:true,created_by:"Admin",created_at:today+"T07:00:00"},
+    ],
+    hk_reminders: [
+      {id:"hr1",tenant_id:"00000000-0000-0000-0000-000000000001",body:"Pamiętajcie o wymianie ręczników w apartamentach",active:true,created_by:"Tetiana",created_at:today+"T08:30:00"},
     ],
     panel_plan: [
       {id:"pl1",plan:"Parking",date:today,task:"Sprawdzić miejsca 1–20, odśnieżyć wjazd",assigned_to:"Grzegorz",response:"Zrobione, wjazd posypany",status:"done",created_by:"Menedżer główny"},
@@ -729,9 +738,10 @@ function tabsFor(role){
   // Gastro: osobny, węższy zestaw (bez modułów HK).
   if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
-  const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"],["tablica","Tablica"]];
-  if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"], ["zmiany","Zmiany"]);
-  if (A || RECEPCJA_ROLES.has(role)) t.push(["zadania","Zadania"], ["kasa","Kasa"]);
+  const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]];
+  if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
+  if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
+  if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
   if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["plan","Plan"]);
   if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
   if (A)                             t.push(["konta","Konta"]);
@@ -938,40 +948,44 @@ function feedText(l){
   return l.extra || `${l.worker||"?"}: ${a||""}`;
 }
 
+let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [];
+    let rooms = [], logs = [], roster = [];
     try {
-      const [r1, r2] = await Promise.all([
-        sb.from("hk_rooms").select("room,worker,status").eq("date", today),
-        sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(12),
+      const [r1, r2, r3] = await Promise.all([
+        sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
+        sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
+        sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
+      roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
-    // Grupuj pokoje wg pracownika; pomiń stany niesprzątane (PG/PGZ to pobyty, nie wyjazdy).
     const byWorker = {};
+    // Najpierw WSZYSCY z obsady dnia (żeby pokazać też tych bez pokoi).
+    roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); if(w) byWorker[w]=byWorker[w]||{rooms:[],done:0,role:(p&&p.role)||""}; });
     rooms.forEach(r => {
-      const w = r.worker || "—";
-      if (!byWorker[w]) byWorker[w] = { rooms: [], done: 0 };
+      const w = r.worker; if (!w) return;
+      byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
       const done = DONE_STATES.has(String(r.status||"").toLowerCase());
-      byWorker[w].rooms.push({ room: r.room, done });
+      byWorker[w].rooms.push({ room:r.room, done, status:r.status, vacated:!!r.vacated });
       if (done) byWorker[w].done++;
     });
-    const workers = Object.entries(byWorker).filter(([w]) => w!=="—").sort((a,b)=>a[0].localeCompare(b[0],"pl"));
-    let html = "";
+    LIVE_DATA = { byWorker, today };
+    const workers = Object.entries(byWorker).filter(([w]) => w && w!=="—").sort((a,b)=>a[0].localeCompare(b[0],"pl"));
+    let html;
     if (!workers.length) {
-      html = '<div class="empty">Dziś nikt nie ma jeszcze przypisanych pokoi.</div>';
+      html = '<div class="empty">Dziś nikt nie ma jeszcze obsady ani przypisanych pokoi.</div>';
     } else {
       html = workers.map(([w, d]) => {
         const total = d.rooms.length, pct = total ? Math.round(d.done/total*100) : 0;
-        const chips = d.rooms.sort((a,b)=>String(a.room).localeCompare(String(b.room),"pl",{numeric:true}))
-          .map(r => `<span class="chip ${r.done?"done":""}">${esc(r.room)}</span>`).join("");
-        return `<div class="wcard" style="cursor:default">
-          <div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}</span><span class="prog">${d.done}/${total}</span></div>
-          <div class="bar"><span style="width:${pct}%"></span></div>
-          <div class="chips">${chips}</div>
-        </div>`;
+        const role = d.role ? ` <span style="font-size:11px;color:var(--muted);font-weight:600">${esc(d.role)}</span>` : "";
+        const vac = d.rooms.filter(r=>r.vacated && !r.done).length;
+        const vacB = vac ? ` <span style="font-size:10px;font-weight:800;color:#a07820;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.35);border-radius:99px;padding:1px 7px">🔔 ${vac} pusty</span>` : "";
+        return `<div class="wcard" onclick="showLiveWorker('${esc(w).replace(/'/g,"\\'")}')">
+          <div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}${role}${vacB}</span><span class="prog">${d.done}/${total}</span></div>
+          <div class="bar"><span style="width:${pct}%"></span></div></div>`;
       }).join("");
     }
     let kpis = "";
@@ -989,11 +1003,130 @@ async function loadLive() {
       logs.map(l => { const t = l.log_time || (l.created_at?new Date(l.created_at).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}):"");
         return `<div class="fitem"><span class="ic" style="color:${FEED_COLOR[l.action]||"var(--muted)"}">${FEED_ICON[l.action]||"·"}</span><span>${esc(feedText(l))}</span><span class="tm">${esc(t)}</span></div>`; }).join("")
     }</div>` : "";
-    body(kpis + html + feed);
+    const head = `<div class="fullspan" style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="rost-addbtn" style="flex:1;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showAddWorker()">➕ Dodaj osobę (QR)</button>
+      <button class="rost-addbtn" style="flex:1;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia</button>
+    </div>`;
+    body(head + kpis + `<div class="note" style="margin-top:0;margin-bottom:8px">Kliknij osobę, by zobaczyć jej pokoje i czasy.</div>` + html + feed);
   };
   await paint();
   liveTimer = setInterval(() => { if (hkTab==="live") paint(); else stopLive(); }, 5000);
 }
+// Telefon HK pracownika + QR (publiczny link strony pracownika).
+const HK_PHONE = name => "https://grzankatoster-sketch.github.io/hk-phone/?w=" + encodeURIComponent(name);
+const QR_IMG = url => "https://api.qrserver.com/v1/create-qr-code/?size=170x170&margin=8&data=" + encodeURIComponent(url);
+window.showAddWorker = async () => {
+  stopLive();
+  const today = isoDate(new Date());
+  let roster = [];
+  try { const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(); roster = (data && Array.isArray(data.roster)) ? data.roster : []; } catch {}
+  const names = roster.map(p => (p&&p.name)||(typeof p==="string"?p:null)).filter(Boolean);
+  const qrCards = names.map(n => `<div class="statrow"><span class="k">${esc(n)}</span>
+    <button class="rost-addbtn" style="padding:7px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="showQR('${esc(n).replace(/'/g,"\\'")}')">Pokaż QR</button></div>`).join("");
+  body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
+    <div class="card">
+      <div class="soon" style="margin-top:0">Dodaj osobę do dzisiejszej obsady</div>
+      <div class="field"><label>Imię</label><input id="awName" class="inp" placeholder="np. Oksana" onkeydown="if(event.key==='Enter')addWorker()"/></div>
+      <div class="field"><label>Rola</label><select id="awRole" class="inp"><option value="poranna">Poranna</option><option value="dyzur">Dyżur</option><option value="popoludnie">Popołudnie</option></select></div>
+      <button id="awBtn" class="btn" onclick="addWorker()">Dodaj i pokaż QR</button>
+      <div id="awMsg" class="msg"></div>
+      <div id="awQR"></div>
+    </div>
+    ${names.length?`<div class="soon">Obsada dziś — kody QR</div>${qrCards}`:""}`);
+};
+window.addWorker = async () => {
+  const name = ((document.getElementById("awName")||{}).value||"").trim();
+  const role = (document.getElementById("awRole")||{}).value || "poranna";
+  const msg = document.getElementById("awMsg"), btn = document.getElementById("awBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!name) return setM("Wpisz imię.", "err");
+  const cap = name.charAt(0).toUpperCase()+name.slice(1);
+  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  const today = isoDate(new Date());
+  try {
+    let roster = [];
+    const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle();
+    roster = (data && Array.isArray(data.roster)) ? data.roster : [];
+    if (!roster.some(p => ((p&&p.name)||p) === cap)) roster.push({ name:cap, role });
+    const { error } = await sb.from("hk_roster").upsert({ tenant_id:TENANT_ID, date:today, roster, updated_at:new Date().toISOString() }, { onConflict:"tenant_id,date" });
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"obsada_zapis", p_detail:`dodano ${cap} (${role})` }); } catch {}
+    const url = HK_PHONE(cap);
+    const el = document.getElementById("awQR");
+    if (el) el.innerHTML = `<div style="text-align:center;margin-top:14px"><img src="${QR_IMG(url)}" alt="QR ${esc(cap)}" style="width:170px;height:170px;border-radius:12px;border:1px solid var(--line)"/>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">QR dla <b>${esc(cap)}</b> — niech zeskanuje telefonem</div>
+      <div style="font-size:10.5px;color:var(--muted);word-break:break-all;margin-top:4px">${esc(url)}</div></div>`;
+    setM(`Dodano ${cap} do obsady ✓`, "info");
+    if (btn){ btn.disabled=false; btn.textContent="Dodaj i pokaż QR"; }
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj i pokaż QR"; } }
+};
+window.showQR = (name) => {
+  const url = HK_PHONE(name);
+  const el = document.getElementById("awQR");
+  if (el) el.innerHTML = `<div style="text-align:center;margin-top:14px"><img src="${QR_IMG(url)}" alt="QR ${esc(name)}" style="width:170px;height:170px;border-radius:12px;border:1px solid var(--line)"/>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px">QR dla <b>${esc(name)}</b></div></div>`;
+};
+window.showHkReminders = async () => {
+  stopLive();
+  let rows = [];
+  try { const { data } = await sb.from("hk_reminders").select("id,body,created_by,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(40); rows = (data||[]).filter(r=>r.active!==false); } catch {}
+  const list = rows.length ? rows.map(r => `<div class="statrow"><span class="k">🔔 ${esc(r.body)}</span>
+    <button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="rmHkReminder('${r.id}')">Usuń</button></div>`).join("") : '<div class="empty">Brak przypomnień.</div>';
+  body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
+    <div class="card">
+      <div class="soon" style="margin-top:0">Przypomnienie dla telefonów ekipy HK</div>
+      <div class="field"><label>Treść</label><input id="hrBody" class="inp" placeholder="np. Pamiętajcie o wymianie ręczników w apartamentach" onkeydown="if(event.key==='Enter')addHkReminder()"/></div>
+      <button id="hrBtn" class="btn" onclick="addHkReminder()">Wyślij na telefony</button>
+      <div id="hrMsg" class="msg"></div>
+    </div>
+    <div class="soon">Aktywne przypomnienia</div>${list}`);
+};
+window.addHkReminder = async () => {
+  const b = ((document.getElementById("hrBody")||{}).value||"").trim();
+  const msg = document.getElementById("hrMsg"), btn = document.getElementById("hrBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!b) return setM("Wpisz treść.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Wysyłam…"; }
+  try { const { error } = await sb.from("hk_reminders").insert({ tenant_id:TENANT_ID, body:b, created_by:CURRENT.name||"Kierownik HK", active:true }); if (error) throw error; showHkReminders(); }
+  catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Wyślij na telefony"; } }
+};
+window.rmHkReminder = async (id) => {
+  try { const { error } = await sb.from("hk_reminders").update({ active:false }).eq("id", id); if (error) throw error; showHkReminders(); }
+  catch (e) { alert((e&&e.message)||"Błąd."); }
+};
+// Szczegóły osoby: pokoje + ile/średni czas + ile już robi bieżący pokój.
+window.showLiveWorker = async (w) => {
+  stopLive();
+  body('<div class="spin">Wczytywanie…</div>');
+  const today = isoDate(new Date());
+  let logs = [];
+  try { const { data } = await sb.from("hk_logs").select("action,worker,room,created_at").eq("date", today).eq("worker", w).order("created_at"); logs = data || []; }
+  catch {}
+  const d = (LIVE_DATA.byWorker||{})[w] || { rooms:[], done:0 };
+  const starts = {}, durs = [], elapsed = {};
+  logs.filter(l=>l.created_at).forEach(l => {
+    if (l.action==="start") starts[l.room] = new Date(l.created_at).getTime();
+    else if (l.action==="done" && starts[l.room]) { const m=(new Date(l.created_at).getTime()-starts[l.room])/60000; if(m>0&&m<300) durs.push(m); delete starts[l.room]; }
+  });
+  Object.entries(starts).forEach(([room,ts]) => { elapsed[room] = Math.round((Date.now()-ts)/60000); });
+  const avg = durs.length ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : null;
+  const roomsSorted = d.rooms.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),"pl",{numeric:true}));
+  const list = roomsSorted.length ? roomsSorted.map(r => {
+    const el = elapsed[r.room];
+    const status = r.done ? `<span class="chip done">gotowe</span>`
+      : (el!=null ? `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">w trakcie · ${el} min</span>`
+      : (r.vacated ? `<span class="chip" style="color:#a07820;border-color:rgba(176,134,58,.45);background:rgba(176,134,58,.1)">🔔 pusty — do sprzątania</span>`
+      : `<span class="chip">do zrobienia</span>`));
+    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}</span>${status}</div>`;
+  }).join("") : '<div class="empty">Brak przypisanych pokoi.</div>';
+  body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
+    <div class="panelbox">
+      <div class="role-ttl" style="font-size:20px">${esc(w)}</div>
+      <div class="role-who">Dziś: ${d.done}/${d.rooms.length} pokoi${avg!=null?` · średnio ${avg} min/pokój`:""}</div>
+      <div style="margin-top:12px">${list}</div>
+      <div class="note">Czasy ze zdarzeń start→koniec. Widoczne tylko dla kierownika.</div>
+    </div>`);
+};
 
 // ── Statystyki: ostatnie 7 dni (pokoje sprzątnięte wg osoby + usterki zgłoszone z HK) ──
 async function loadStats() {
@@ -1293,7 +1426,8 @@ async function loadGrafik() {
     // recepcja: najpierw pełna lista z rejestru, potem uzupełnienie o osoby z zamkniętych zmian
     const recep = [...new Set([...(Array.isArray(roster) ? roster : []), ...(rec.data || []).map(x => x.employee)].filter(Boolean))];
     workers = [...new Set([...(dept === "recepcja" ? [] : hk), ...(dept === "hk" ? [] : recep)])].sort((a,b)=>a.localeCompare(b,"pl"));
-    reqs = r.data || [];
+    // Każdy menedżer widzi TYLKO swoje wysłane grafiki; admin widzi wszystkie.
+    reqs = (r.data || []).filter(x => CURRENT.role === "admin" || x.created_by === CURRENT.name);
   } catch {}
   const defKind = dept === "hk" ? "hk" : "recepcja";
   const wchecks = workers.length
@@ -1724,6 +1858,29 @@ window.removeReminder = async (id) => {
   catch (e) { alert((e&&e.message)||"Błąd."); }
 };
 
+// ── Akcje HK: operacyjny feed działu HK (hk_logs + zgłoszone usterki) ──
+async function loadAkcjeHK() {
+  const from = isoDate(new Date(Date.now() - 2*864e5));
+  let logs = [], faults = [];
+  try {
+    const [r1, r2] = await Promise.all([
+      sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at,date").gte("date", from).order("created_at", { ascending:false }).limit(60),
+      sb.from("faults").select("source,description,room,space_id,reported_by,reported_at").eq("source","hk").order("reported_at", { ascending:false }).limit(30),
+    ]);
+    logs = r1.data || []; faults = r2.data || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać akcji HK.</div>'); }
+  const items = [];
+  logs.forEach(l => items.push({ ts:l.created_at||l.date, col:FEED_COLOR[l.action]||"var(--muted)", icon:FEED_ICON[l.action]||"·", text:feedText(l), time:l.log_time }));
+  faults.forEach(f => items.push({ ts:f.reported_at, col:"#c2415a", icon:"⚠", text:`${f.reported_by||"HK"} zgłosił usterkę: ${f.description||""}${(f.room||f.space_id)?" ("+(f.room||f.space_id)+")":""}` }));
+  items.sort((a,b)=>String(b.ts||"").localeCompare(String(a.ts||"")));
+  if (!items.length) return body('<div class="empty">Brak akcji HK z ostatnich dni.</div>');
+  const html = items.slice(0,80).map(it => {
+    const t = it.time || (it.ts ? new Date(it.ts).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "");
+    return `<div class="fitem"><span class="ic" style="color:${it.col}">${it.icon}</span><span>${esc(it.text)}</span><span class="tm">${esc(t)}</span></div>`;
+  }).join("");
+  body(`<div class="note" style="margin-top:0;margin-bottom:8px">Akcje działu HK — kto zaczął/skończył pokój, co puste, wymiany, zgłoszone usterki.</div><div class="feed">${html}</div>`);
+}
+
 // ── Akcje: spis kto co zrobił / edytował (panel_audit) ──
 const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w grafiku",
                     grafik_edycja:"Edycja grafiku", zadanie_dodane:"Dodał zadanie",
@@ -1734,6 +1891,7 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
                     konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji" };
 async function loadAkcje() {
+  if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
   let rows = [];
   try { const { data } = await sb.rpc("list_panel_audit"); rows = data || []; }
   catch { return body('<div class="empty">Nie udało się pobrać akcji.</div>'); }
@@ -1848,6 +2006,89 @@ window.changeMyPassword = async () => {
 };
 
 boot();
+</script>
+
+<script>
+/* ── Interaktywne tło: aurora reagująca na kursor / dotyk ──
+   Lekkie (canvas 2D, ~6 plam), kapowane do 30 fps i DPR≤2, pauza gdy karta w tle.
+   Respektuje prefers-reduced-motion (wtedy canvas ukryty, zostaje statyczny gradient CSS). */
+(function(){
+  var c = document.getElementById('bgfx');
+  if (!c || !c.getContext) return;
+  var rm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
+  if (rm && rm.matches) return;
+  var ctx = c.getContext('2d');
+  var W = 0, H = 0, M = 0, DPR = 1;
+
+  // Plamy w barwach marki (plum / złoto / fiolet) — pozycje i promienie jako ułamki ekranu.
+  var blobs = [
+    { col:'122,58,106', x:.18, y:.16, r:.60, vx: .010, vy: .007, a:.20 },
+    { col:'120,75,142', x:.84, y:.12, r:.54, vx:-.008, vy: .009, a:.17 },
+    { col:'90,29,74',   x:.20, y:.90, r:.58, vx: .009, vy:-.008, a:.16 },
+    { col:'160,120,32', x:.86, y:.86, r:.50, vx:-.007, vy:-.009, a:.11 }
+  ];
+  // Wskaźnik (mysz/dotyk) — pozycja docelowa + wygładzona; glow podąża za palcem.
+  var p = { x:.5, y:.4, tx:.5, ty:.4, on:0 };
+
+  function resize(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = c.clientWidth; H = c.clientHeight; M = Math.max(W, H);
+    c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize, { passive:true });
+  resize();
+
+  function move(e){
+    var t = e.touches ? e.touches[0] : e;
+    if (!t) return;
+    p.tx = t.clientX / Math.max(W,1);
+    p.ty = t.clientY / Math.max(H,1);
+    p.on = 1;
+  }
+  window.addEventListener('pointermove', move, { passive:true });
+  window.addEventListener('touchmove', move, { passive:true });
+  window.addEventListener('pointerout', function(){ p.on = 0; }, { passive:true });
+
+  function drawBlob(x, y, r, col, a){
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0,   'rgba('+col+','+a+')');
+    g.addColorStop(.55, 'rgba('+col+','+(a*0.35)+')');
+    g.addColorStop(1,   'rgba('+col+',0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 6.2832);
+    ctx.fill();
+  }
+
+  var last = 0;
+  function frame(now){
+    requestAnimationFrame(frame);
+    if (document.hidden) return;
+    if (now - last < 33) return;       // ~30 fps
+    last = now;
+
+    // wygładzone podążanie glow za wskaźnikiem
+    p.x += (p.tx - p.x) * 0.06;
+    p.y += (p.ty - p.y) * 0.06;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    for (var i = 0; i < blobs.length; i++){
+      var b = blobs[i];
+      b.x += b.vx * 0.0016; b.y += b.vy * 0.0016;
+      if (b.x < -.1 || b.x > 1.1) b.vx *= -1;
+      if (b.y < -.1 || b.y > 1.1) b.vy *= -1;
+      // delikatne przyciąganie ku wskaźnikowi (interaktywność)
+      var dx = p.x - b.x, dy = p.y - b.y, pull = p.on ? 0.10 : 0;
+      drawBlob((b.x + dx*pull) * W, (b.y + dy*pull) * H, b.r * M, b.col, b.a);
+    }
+    // świetlisty refleks podążający za kursorem / dotykiem
+    if (p.on) drawBlob(p.x * W, p.y * H, 0.32 * M, '255,250,245', 0.13);
+  }
+  requestAnimationFrame(frame);
+})();
 </script>
 </body>
 </html>
