@@ -974,38 +974,23 @@ let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [], roster = [], assign = {};
+    let rooms = [], logs = [], roster = [];
     try {
-      const [r1, r2, r3, r4] = await Promise.all([
+      const [r1, r2, r3] = await Promise.all([
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
-        sb.from("hk_plan").select("assignments,pm_assignments").eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
-      const plan = r4.data || {};
-      assign = { ...(plan.assignments||{}), ...(plan.pm_assignments||{}) }; // worker → [pokoje], jak w programie
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
-    // Status pokoju (done/pusty) z hk_rooms.
-    const roomStatus = {};
-    rooms.forEach(r => { roomStatus[r.room] = { done:DONE_STATES.has(String(r.status||"").toLowerCase()), vacated:!!r.vacated }; });
     const byWorker = {};
-    // 1) wszyscy z obsady dnia (też bez pokoi)
+    // Wszyscy z obsady dnia (też bez pokoi).
     roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); if(w) byWorker[w]=byWorker[w]||{rooms:[],done:0,role:(p&&p.role)||""}; });
-    // 2) przypisania z planu — tyle pokoi, ile w programie recepcji
-    Object.entries(assign).forEach(([w, rms]) => {
-      if (!w || !Array.isArray(rms)) return;
-      byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
-      rms.forEach(room => {
-        if (byWorker[w].rooms.some(x => x.room === room)) return;
-        const st = roomStatus[room] || {};
-        byWorker[w].rooms.push({ room, done:!!st.done, vacated:!!st.vacated });
-        if (st.done) byWorker[w].done++;
-      });
-    });
-    // 3) pokoje przypisane wprost w hk_rooms (gdyby planu nie było)
+    // Pokoje do sprzątania z hk_rooms (przypisanie jak w programie); pomijamy POBYTY PG/PGZ.
     rooms.forEach(r => {
+      const st = String(r.status||"").toUpperCase();
+      if (st === "PG" || st === "PGZ") return;
       const w = r.worker; if (!w) return;
       byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
       if (byWorker[w].rooms.some(x => x.room === r.room)) return;
