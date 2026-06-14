@@ -210,6 +210,7 @@ let replyDraft = {};   // { roomNo: "tekst" } — robocza treść własnej odpow
 let allAssignments = {}; // { workerName: [roomNo, ...] }
 let allRoomStates  = {}; // { roomNo: roomRow }
 let allLogs        = []; // recent hk_logs
+let hkReminders    = []; // przypomnienia od kierownika HK (hk_reminders)
 let pendingExchanges = []; // parsed from logs
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -381,6 +382,14 @@ function renderTeam() { render(); }
 
 function renderTeamHtml() {
   let html = `<div class="sections" style="padding-top:10px">`;
+
+  // ── Przypomnienia od kierownika HK ──
+  if (hkReminders && hkReminders.length) {
+    html += `<div class="team-section" style="padding:14px;margin-bottom:12px;border-left:3px solid var(--plum)">
+      <div style="font-size:13px;font-weight:800;color:var(--plum);margin-bottom:6px">🔔 Przypomnienia od kierownika</div>
+      ${hkReminders.map(r=>`<div style="font-size:13px;color:#2d1422;padding:6px 0;border-top:1px solid rgba(90,29,74,.08)">${escHtml(r.body)}</div>`).join("")}
+    </div>`;
+  }
 
   // ── Prośba o pokój ──
   // Pracownik (np. ten, kto skończył) prosi recepcję o przydzielenie pokoju.
@@ -673,10 +682,11 @@ async function reportFault(room) {
 // ─── Team data load ───────────────────────────────────────────────────────────
 async function loadTeamData() {
   if (!sb) return;
-  const [{ data: plan }, { data: rData }, { data: lData }] = await Promise.all([
+  const [{ data: plan }, { data: rData }, { data: lData }, remRes] = await Promise.all([
     sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single(),
     sb.from("hk_rooms").select("*").eq("date", TODAY),
     sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
+    sb.from("hk_reminders").select("body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(20).then(r=>r, ()=>({data:[]})),
   ]);
 
   if (plan) {
@@ -688,6 +698,7 @@ async function loadTeamData() {
     rData.forEach(r => { allRoomStates[r.room] = r; });
   }
   if (lData) allLogs = lData;
+  hkReminders = ((remRes && remRes.data) || []).filter(r => r.active !== false);
 }
 
 // ─── Polling fallback ─────────────────────────────────────────────────────────
