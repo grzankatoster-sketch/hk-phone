@@ -912,27 +912,58 @@ async function loadWyjazdy() {
   renderWyjazdy();
 }
 
+const _roleLbl = v => (HK_ROLE_OPT.find(o=>o[0]===v)||[null,v])[1] || v || "—";
 function renderWyjazdy() {
   const html = WYJAZDY_RANGE.map((iso,i) => {
     const c = countTypes(WY_PLAN[iso]); const d = fmtDate(iso);
     const lbl = i===0 ? "DZIŚ" : i===1 ? "JUTRO" : "";
+    // Obsadę planujemy WYŁĄCZNIE na kolejny dzień (jutro). Dalsze dni 7-dniowego
+    // widoku są tylko podglądem wyjazdów/pobytów — bez edycji obsady.
+    const editable = (i === 1);
     const ros = ROSTER[iso] || [];
-    const rrows = ros.length ? ros.map((w,idx)=>{
-      const hasTarget = w.rooms!=null && w.rooms!=="";
-      return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
-        <span style="flex:1;font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</span>
-        <select class="inp" style="width:auto;padding:6px 8px;font-size:12px" onchange="rosterRole('${iso}',${idx},this.value)">
-          ${HK_ROLE_OPT.map(([v,l])=>`<option value="${v}"${w.role===v?" selected":""}>${l}</option>`).join("")}
-        </select>
-        <input type="number" inputmode="numeric" min="0" max="40" placeholder="pok." value="${hasTarget?w.rooms:""}"
-          onchange="rosterRooms('${iso}',${idx},this.value)" aria-label="Ile pokoi rozpisać dla ${esc(w.name)}" title="Ile pokoi rozpisać"
-          style="width:52px;padding:6px 3px;font-size:13px;font-weight:800;text-align:center;border-radius:8px;border:1px solid ${hasTarget?"var(--plum)":"var(--line-strong)"};background:${hasTarget?"rgba(90,29,74,.1)":"var(--paper)"};color:var(--plum);font-family:inherit;-moz-appearance:textfield"/>
-        <button onclick="rosterRemove('${iso}',${idx})" aria-label="Usuń" style="background:none;border:none;color:var(--bad);font-size:19px;line-height:1;cursor:pointer;padding:0 4px">×</button>
-      </div>`;
-    }).join("") : `<div class="note" style="margin-top:0">Brak obsady — dodaj osoby poniżej.</div>`;
-    const _av = AVAIL_BY_DATE[iso] || {}; const _inR = new Set(ros.map(w=>w.name));
-    const _names = Object.keys(_av).filter(n=>!_inR.has(n));
-    const chipHtml = _names.length ? `<div style="margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Dostępni z grafiku — dodaj jednym kliknięciem</div><div class="chips">${_names.map(n=>`<button class="chip" style="cursor:pointer;border-color:rgba(31,122,82,.4);color:var(--ok);background:rgba(31,122,82,.06)" onclick="rosterQuickAdd('${iso}','${esc(n).replace(/'/g,"\\'")}','${esc(_av[n])}')">+ ${esc(n)}</button>`).join("")}</div></div>` : "";
+    const rosTotal = ros.reduce((s,w)=>s+(w.rooms!=null&&w.rooms!==""?(parseInt(w.rooms,10)||0):0),0);
+    const obsHead = `Obsada (${ros.length})${rosTotal>0?` · rozpisano ${rosTotal}/${c.w.total} pok.`:""}`;
+
+    let obsadaBlock;
+    if (editable) {
+      const rrows = ros.length ? ros.map((w,idx)=>{
+        const hasTarget = w.rooms!=null && w.rooms!=="";
+        return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
+          <span style="flex:1;font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</span>
+          <select class="inp" style="width:auto;padding:6px 8px;font-size:12px" onchange="rosterRole('${iso}',${idx},this.value)">
+            ${HK_ROLE_OPT.map(([v,l])=>`<option value="${v}"${w.role===v?" selected":""}>${l}</option>`).join("")}
+          </select>
+          <input type="number" inputmode="numeric" min="0" max="40" placeholder="pok." value="${hasTarget?w.rooms:""}"
+            onchange="rosterRooms('${iso}',${idx},this.value)" aria-label="Ile pokoi rozpisać dla ${esc(w.name)}" title="Ile pokoi rozpisać"
+            style="width:52px;padding:6px 3px;font-size:13px;font-weight:800;text-align:center;border-radius:8px;border:1px solid ${hasTarget?"var(--plum)":"var(--line-strong)"};background:${hasTarget?"rgba(90,29,74,.1)":"var(--paper)"};color:var(--plum);font-family:inherit;-moz-appearance:textfield"/>
+          <button onclick="rosterRemove('${iso}',${idx})" aria-label="Usuń" style="background:none;border:none;color:var(--bad);font-size:19px;line-height:1;cursor:pointer;padding:0 4px">×</button>
+        </div>`;
+      }).join("") : `<div class="note" style="margin-top:0">Brak obsady — dodaj osoby poniżej.</div>`;
+      const _av = AVAIL_BY_DATE[iso] || {}; const _inR = new Set(ros.map(w=>w.name));
+      const _names = Object.keys(_av).filter(n=>!_inR.has(n));
+      const chipHtml = _names.length ? `<div style="margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Dostępni z grafiku — dodaj jednym kliknięciem</div><div class="chips">${_names.map(n=>`<button class="chip" style="cursor:pointer;border-color:rgba(31,122,82,.4);color:var(--ok);background:rgba(31,122,82,.06)" onclick="rosterQuickAdd('${iso}','${esc(n).replace(/'/g,"\\'")}','${esc(_av[n])}')">+ ${esc(n)}</button>`).join("")}</div></div>` : "";
+      obsadaBlock = `<div class="soon" style="margin-top:0">${obsHead}</div>
+        ${rrows}
+        ${chipHtml}
+        <div style="display:flex;gap:7px;margin-top:7px">
+          <input id="radd-${iso}" class="inp" style="flex:1" placeholder="Imię pracownika" autocomplete="off" onkeydown="if(event.key==='Enter')rosterAdd('${iso}')"/>
+          <button class="rost-addbtn" style="padding:9px 13px;border-radius:9px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer" onclick="rosterAdd('${iso}')">Dodaj</button>
+        </div>
+        <button class="btn" style="margin-top:8px;padding:10px" onclick="rosterSave('${iso}',this)">Zapisz obsadę</button>`;
+    } else {
+      const roRows = ros.length ? ros.map(w=>{
+        const hasTarget = w.rooms!=null && w.rooms!=="";
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="flex:1;font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</span>
+          <span style="font-size:12px;color:var(--muted)">${esc(_roleLbl(w.role))}</span>
+          ${hasTarget?`<span style="font-weight:800;font-size:12.5px;color:var(--plum)">${parseInt(w.rooms,10)||0} pok.</span>`:""}
+        </div>`;
+      }).join("") : "";
+      obsadaBlock = `<div class="soon" style="margin-top:0">${obsHead}</div>
+        ${roRows}
+        <div class="note" style="margin-top:6px">Obsadę planujesz tylko na kolejny dzień (jutro).</div>`;
+    }
+
     return `<div class="day ${i===0?"today":""}">
       <div class="drow">
         <div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>
@@ -943,14 +974,7 @@ function renderWyjazdy() {
         </div>
       </div>
       <div style="margin-top:11px;border-top:1px dashed var(--line-strong);padding-top:10px">
-        <div class="soon" style="margin-top:0">Obsada (${ros.length})${(()=>{ const t=ros.reduce((s,w)=>s+(w.rooms!=null&&w.rooms!==""?(parseInt(w.rooms,10)||0):0),0); return t>0?` · rozpisano ${t}/${c.w.total} pok.`:""; })()}</div>
-        ${rrows}
-        ${chipHtml}
-        <div style="display:flex;gap:7px;margin-top:7px">
-          <input id="radd-${iso}" class="inp" style="flex:1" placeholder="Imię pracownika" autocomplete="off" onkeydown="if(event.key==='Enter')rosterAdd('${iso}')"/>
-          <button class="rost-addbtn" style="padding:9px 13px;border-radius:9px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12.5px;cursor:pointer" onclick="rosterAdd('${iso}')">Dodaj</button>
-        </div>
-        <button class="btn" style="margin-top:8px;padding:10px" onclick="rosterSave('${iso}',this)">Zapisz obsadę</button>
+        ${obsadaBlock}
       </div>
     </div>`;
   }).join("");
@@ -1444,10 +1468,11 @@ async function loadGrafik() {
   const reqList = reqs.length ? reqs.map(r => {
     const d = fmtDate(String(r.period_start));
     const lbl = r.period_type === "week" ? "tydzień" : "miesiąc";
-    return `<div class="statrow" onclick="openGrid('${r.id}')" style="cursor:pointer">
-      <div class="k"><div>${lbl} od ${d.txt}</div>
+    return `<div class="statrow" style="cursor:pointer;gap:8px">
+      <div class="k" onclick="openGrid('${r.id}')" style="flex:1"><div>${lbl} od ${d.txt}</div>
         <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">${r.answered}/${r.persons} odpowiedziało${r.created_by?" · "+esc(r.created_by):""}</div></div>
-      <span class="v" style="font-size:13px">›</span>
+      <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="delGrafik('${r.id}', this)">Usuń</button>
+      <span class="v" style="font-size:13px" onclick="openGrid('${r.id}')">›</span>
     </div>`;
   }).join("") : '<div class="empty">Brak wysłanych grafików.</div>';
   body(`
@@ -1519,6 +1544,15 @@ window.regenLink = async (token, reqId) => {
   if (!confirm("Odświeżyć link? Stary przestanie działać, dostaniesz nowy kod.")) return;
   try { const { error } = await sb.rpc("regenerate_token", { p_token: token }); if (error) throw error; openGrid(reqId); }
   catch (e) { alert((e&&e.message)||"Nie udało się odświeżyć."); }
+};
+window.delGrafik = async (reqId, btn) => {
+  if (!confirm("Usunąć ten grafik wraz z odpowiedziami pracowników? Tej operacji nie można cofnąć.")) return;
+  if (btn){ btn.disabled=true; btn.textContent="Usuwanie…"; }
+  try {
+    const { error } = await sb.rpc("delete_availability_request", { p_request_id: reqId });
+    if (error) throw error;
+    loadGrafik();
+  } catch (e) { if(btn){ btn.disabled=false; btn.textContent="Usuń"; } alert((e&&e.message)||"Nie udało się usunąć grafiku."); }
 };
 let GRID_ROWS = [], GRID_REQ = null, gridView = "grid";
 window.openGrid = async (reqId) => {
