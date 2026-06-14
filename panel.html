@@ -170,6 +170,9 @@ body{font-family:var(--ui);background:
 .btn{background:linear-gradient(180deg,var(--plum-2),var(--plum));box-shadow:0 8px 20px -8px rgba(90,29,74,.6);border-radius:13px;letter-spacing:.01em}
 .btn:hover{filter:brightness(1.06)}
 .inp{border-radius:12px}.inp:focus{box-shadow:0 0 0 3px rgba(90,29,74,.12)}
+.remember{display:flex;align-items:center;gap:9px;margin:2px 0 12px;cursor:pointer;user-select:none}
+.remember input{width:18px;height:18px;accent-color:var(--plum);cursor:pointer;flex-shrink:0}
+.remember span{font-size:13px;color:var(--muted)}
 
 /* ── Pulpit: powłoka ── */
 #app.dash{max-width:none;margin:0;padding:0}
@@ -502,24 +505,26 @@ async function showLogin() {
   const { data, error } = await sb.from("app_accounts").select("name,email,role,claimed,active,requires_code");
   if (error) { app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Błąd: ${esc(error.message)}</div></div>`; return; }
   accounts = (data || []).filter(a => a.active !== false);
+  const savedName = (()=>{ try { return localStorage.getItem("panel_remember_name") || ""; } catch(_) { return ""; } })();
   app.innerHTML = `
     <div class="h2">Logowanie</div>
     <div class="sub">Wpisz swoje imię i hasło.</div>
     <div class="card">
       <form id="loginForm" autocomplete="on" onsubmit="submitLogin();return false;">
         <div class="field"><label>Login (imię)</label>
-          <input id="lname" class="inp" autocomplete="username" autocapitalize="words" placeholder="np. Tetiana" oninput="loginNameHint()"/></div>
+          <input id="lname" class="inp" autocomplete="username" autocapitalize="words" placeholder="np. Tetiana" value="${esc(savedName)}" oninput="loginNameHint()"/></div>
         <div id="codeWrap" class="field" style="display:none"><label>Kod od administratora</label>
           <input id="lcode" class="inp" autocomplete="off" placeholder="np. 4821"/></div>
         <div class="field"><label>Hasło</label>
           <input id="lpw" class="inp" type="password" autocomplete="current-password" placeholder="••••••••"/></div>
         <div id="lhint" class="note" style="display:none"></div>
+        <label class="remember"><input id="lremember" type="checkbox" ${savedName ? "checked" : ""}/><span>Zapamiętaj mnie na tym urządzeniu</span></label>
         <button id="lbtn" class="btn" type="submit">Zaloguj</button>
       </form>
       <div id="authMsg" class="msg"></div>
     </div>
     <div class="auth-foot">Conrad Comfort • dostęp tylko dla uprawnionych</div>`;
-  setTimeout(()=>{ const e=document.getElementById("lname"); if(e) e.focus(); }, 50);
+  setTimeout(()=>{ const e=document.getElementById(savedName ? "lpw" : "lname"); if(e) e.focus(); }, 50);
 }
 function findAccount(name) {
   const n = String(name||"").trim().toLowerCase();
@@ -542,6 +547,7 @@ window.submitLogin = async () => {
   if (!a)  return setMsg("Nie znam takiego loginu — sprawdź pisownię imienia.", "err");
   if (!pw) return setMsg("Wpisz hasło.", "err");
   if (!a.claimed && pw.length < 6) return setMsg("Pierwsze hasło musi mieć min. 6 znaków.", "err");
+  const remember = !!(document.getElementById("lremember")||{}).checked;
   if (btn) { btn.disabled = true; btn.textContent = "Chwila…"; }
   setMsg("", "");
   try {
@@ -563,6 +569,10 @@ window.submitLogin = async () => {
         await sb.rpc("claim_account", { p_email: a.email, p_code: code });
       }
     }
+    try {
+      if (remember) localStorage.setItem("panel_remember_name", a.name);
+      else localStorage.removeItem("panel_remember_name");
+    } catch(_) {}
     await showPanelFromSession();
   } catch (e) {
     setMsg((e && e.message) || "Nie udało się zalogować.", "err");
