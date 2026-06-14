@@ -258,29 +258,27 @@ body{font-family:var(--ui);background:
 }
 @keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-/* ── Animowane, markowe tło ── */
-body::before{content:"";position:fixed;inset:-10%;z-index:-2;pointer-events:none;
+/* ── Tło „atelier": jedwabista aurora marki + winieta (warstwa statyczna/fallback) ── */
+body::before{content:"";position:fixed;inset:-8%;z-index:-2;pointer-events:none;
   background:
-    radial-gradient(640px 640px at 16% 10%, rgba(122,58,106,.45), transparent 66%),
-    radial-gradient(560px 560px at 88% 16%, rgba(120,75,142,.34), transparent 66%),
-    radial-gradient(620px 620px at 82% 86%, rgba(176,134,58,.30), transparent 66%),
-    radial-gradient(720px 720px at 22% 90%, rgba(90,29,74,.34), transparent 68%),
-    radial-gradient(820px 820px at 55% 45%, rgba(90,29,74,.16), transparent 72%);
-  animation:bgdrift 22s ease-in-out infinite alternate;}
+    radial-gradient(58% 48% at 13% 6%,  rgba(122,58,106,.42), transparent 70%),
+    radial-gradient(52% 44% at 90% 12%, rgba(150,92,152,.32), transparent 70%),
+    radial-gradient(60% 54% at 86% 92%, rgba(176,134,58,.30), transparent 72%),
+    radial-gradient(64% 58% at 14% 94%, rgba(90,29,74,.36),  transparent 72%),
+    radial-gradient(135% 120% at 50% 40%, transparent 52%, rgba(74,22,58,.10) 100%),
+    radial-gradient(120% 90% at 50% 30%, rgba(255,253,251,.55), transparent 60%),
+    linear-gradient(168deg,#fbf6f3 0%, #f6ecf2 50%, #f1e3ec 100%);
+  animation:bgdrift 26s ease-in-out infinite alternate;}
 @keyframes bgdrift{
-  0%{--bx:18%;--by:12%;transform:translate3d(0,0,0)}
-  50%{transform:translate3d(2%,-1.5%,0)}
-  100%{--bx:30%;--by:22%;transform:translate3d(-2%,1.5%,0)}
+  0%{transform:translate3d(0,0,0) scale(1.02)}
+  50%{transform:translate3d(1.6%,-1.2%,0) scale(1.04)}
+  100%{transform:translate3d(-1.6%,1.2%,0) scale(1.02)}
 }
-/* delikatny monogram (4 kropki marki) w rogu, ledwo widoczny */
-body::after{content:"";position:fixed;right:-30px;bottom:-20px;width:300px;height:300px;z-index:-1;pointer-events:none;opacity:.08;
-  background:radial-gradient(circle 9px at 30px 120px,var(--plum) 99%,transparent),
-            radial-gradient(circle 9px at 70px 120px,var(--plum) 99%,transparent),
-            radial-gradient(circle 9px at 110px 120px,var(--plum) 99%,transparent),
-            radial-gradient(circle 9px at 150px 120px,var(--plum) 99%,transparent);
-  animation:floaty 9s ease-in-out infinite alternate;}
-@keyframes floaty{from{transform:translateY(0)}to{transform:translateY(-10px)}}
-@media(prefers-reduced-motion:reduce){body::before,body::after{animation:none}}
+/* ── Ziarno (film grain) — premium faktura papieru ── */
+body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;mix-blend-mode:soft-light;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:160px 160px;}
+@media(prefers-reduced-motion:reduce){body::before{animation:none}}
 
 /* ── Telefon: dolny pasek nawigacji (ikony) + większe karty ── */
 @media(max-width:919px){
@@ -1006,23 +1004,28 @@ let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [], roster = [];
+    let rooms = [], logs = [], roster = [], roomTypes = {};
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
+        sb.from("hk_plan").select("pm_room_types").eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
+      roomTypes = (r4.data && r4.data.pm_room_types) || {};
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
     const byWorker = {};
     // Wszyscy z obsady dnia (też bez pokoi).
     roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); if(w) byWorker[w]=byWorker[w]||{rooms:[],done:0,role:(p&&p.role)||""}; });
     // Pokoje do sprzątania z hk_rooms (przypisanie jak w programie); pomijamy POBYTY PG/PGZ.
+    // Typ pokoju (wyjazd vs pobyt) bierzemy z hk_plan.pm_room_types — synchronizowanego
+    // z planem maila przez aplikację. W hk_rooms.status jest tylko stan pracy
+    // (W=czeka / czyszczenie / czyste), NIE typ pokoju — dlatego dawny filtr po status nic nie odcinał.
     rooms.forEach(r => {
-      const st = String(r.status||"").toUpperCase();
-      if (st === "PG" || st === "PGZ") return;
+      const type = String(roomTypes[r.room]||"").toUpperCase();
+      if (type === "PG" || type === "PGZ") return;
       const w = r.worker; if (!w) return;
       byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
       if (byWorker[w].rooms.some(x => x.room === r.room)) return;
@@ -2013,9 +2016,9 @@ boot();
 </script>
 
 <script>
-/* ── Interaktywne tło: aurora reagująca na kursor / dotyk ──
-   Lekkie (canvas 2D, ~6 plam), kapowane do 30 fps i DPR≤2, pauza gdy karta w tle.
-   Respektuje prefers-reduced-motion (wtedy canvas ukryty, zostaje statyczny gradient CSS). */
+/* ── Interaktywna warstwa „atelier": jedwabista aurora + reflektor za kursorem/dotykiem ──
+   Canvas 2D, ~4 oddychające plamy. Kap ~30 fps, DPR≤2, pauza gdy karta w tle.
+   Respektuje prefers-reduced-motion (canvas wyłączony — zostaje statyczna aurora CSS). */
 (function(){
   var c = document.getElementById('bgfx');
   if (!c || !c.getContext) return;
@@ -2024,15 +2027,15 @@ boot();
   var ctx = c.getContext('2d');
   var W = 0, H = 0, M = 0, DPR = 1;
 
-  // Plamy w barwach marki (plum / złoto / fiolet) — pozycje i promienie jako ułamki ekranu.
+  // Plamy w barwach marki (plum / fiolet / złoto). r = promień bazowy, br = amplituda „oddechu".
   var blobs = [
-    { col:'122,58,106', x:.18, y:.16, r:.62, vx: .012, vy: .008, a:.32 },
-    { col:'120,75,142', x:.84, y:.12, r:.56, vx:-.010, vy: .010, a:.28 },
-    { col:'90,29,74',   x:.20, y:.90, r:.60, vx: .010, vy:-.009, a:.26 },
-    { col:'160,120,32', x:.86, y:.86, r:.52, vx:-.008, vy:-.010, a:.20 }
+    { col:'122,58,106', x:.18, y:.15, r:.60, br:.06, vx: .011, vy: .007, a:.30, ph:0.0 },
+    { col:'150,92,152', x:.85, y:.12, r:.54, br:.07, vx:-.009, vy: .010, a:.26, ph:1.6 },
+    { col:'90,29,74',   x:.20, y:.90, r:.58, br:.05, vx: .010, vy:-.009, a:.27, ph:3.1 },
+    { col:'176,134,58', x:.86, y:.86, r:.50, br:.06, vx:-.008, vy:-.010, a:.19, ph:4.5 }
   ];
-  // Wskaźnik (mysz/dotyk) — pozycja docelowa + wygładzona; glow podąża za palcem.
-  var p = { x:.5, y:.4, tx:.5, ty:.4, on:0 };
+  // Wskaźnik (mysz/dotyk): pozycja docelowa + wygładzona; reflektor podąża z opóźnieniem.
+  var p = { x:.5, y:.42, tx:.5, ty:.42, on:0 };
 
   function resize(){
     DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -2054,42 +2057,48 @@ boot();
   window.addEventListener('touchmove', move, { passive:true });
   window.addEventListener('pointerout', function(){ p.on = 0; }, { passive:true });
 
-  function drawBlob(x, y, r, col, a){
+  function softCircle(x, y, r, col, a){
     var g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0,   'rgba('+col+','+a+')');
-    g.addColorStop(.55, 'rgba('+col+','+(a*0.35)+')');
-    g.addColorStop(1,   'rgba('+col+',0)');
+    g.addColorStop(0,    'rgba('+col+','+a+')');
+    g.addColorStop(.5,   'rgba('+col+','+(a*0.42)+')');
+    g.addColorStop(1,    'rgba('+col+',0)');
     ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, 6.2832);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
   }
 
-  var last = 0;
+  var last = 0, t = 0;
   function frame(now){
     requestAnimationFrame(frame);
     if (document.hidden) return;
-    if (now - last < 33) return;       // ~30 fps
-    last = now;
+    if (now - last < 33) return;        // ~30 fps
+    last = now; t += 0.012;
 
-    // wygładzone podążanie glow za wskaźnikiem
-    p.x += (p.tx - p.x) * 0.06;
-    p.y += (p.ty - p.y) * 0.06;
+    p.x += (p.tx - p.x) * 0.055;
+    p.y += (p.ty - p.y) * 0.055;
 
     ctx.clearRect(0, 0, W, H);
-    ctx.globalCompositeOperation = 'source-over';
 
+    // 1) jedwabista aurora — oddychające, dryfujące plamy
+    ctx.globalCompositeOperation = 'source-over';
     for (var i = 0; i < blobs.length; i++){
       var b = blobs[i];
-      b.x += b.vx * 0.0016; b.y += b.vy * 0.0016;
-      if (b.x < -.1 || b.x > 1.1) b.vx *= -1;
-      if (b.y < -.1 || b.y > 1.1) b.vy *= -1;
-      // delikatne przyciąganie ku wskaźnikowi (interaktywność)
-      var dx = p.x - b.x, dy = p.y - b.y, pull = p.on ? 0.10 : 0;
-      drawBlob((b.x + dx*pull) * W, (b.y + dy*pull) * H, b.r * M, b.col, b.a);
+      b.x += b.vx * 0.0015; b.y += b.vy * 0.0015;
+      if (b.x < -.12 || b.x > 1.12) b.vx *= -1;
+      if (b.y < -.12 || b.y > 1.12) b.vy *= -1;
+      var dx = p.x - b.x, dy = p.y - b.y, pull = p.on ? 0.09 : 0;
+      var rr = (b.r + b.br * Math.sin(t + b.ph)) * M;   // „oddech"
+      softCircle((b.x + dx*pull) * W, (b.y + dy*pull) * H, rr, b.col, b.a);
     }
-    // świetlisty refleks podążający za kursorem / dotykiem
-    if (p.on) drawBlob(p.x * W, p.y * H, 0.32 * M, '255,250,245', 0.13);
+
+    // 2) reflektor podążający za kursorem/dotykiem — światło ujawnia głębię
+    if (p.on){
+      var lx = p.x * W, ly = p.y * H;
+      ctx.globalCompositeOperation = 'soft-light';       // głębszy plum pod światłem
+      softCircle(lx, ly, 0.40 * M, '90,29,74', 0.30);
+      ctx.globalCompositeOperation = 'lighter';          // ciepły rdzeń światła
+      softCircle(lx, ly, 0.26 * M, '255,246,236', 0.10);
+      ctx.globalCompositeOperation = 'source-over';
+    }
   }
   requestAnimationFrame(frame);
 })();
