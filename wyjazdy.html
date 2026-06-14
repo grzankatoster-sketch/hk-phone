@@ -152,16 +152,6 @@ function buildRange() {
   return out;
 }
 
-function flattenAssignments(assignments) {
-  const rooms = [];
-  if (assignments && typeof assignments === "object") {
-    Object.values(assignments).forEach(list => {
-      if (Array.isArray(list)) list.forEach(no => rooms.push(String(no)));
-    });
-  }
-  return [...new Set(rooms)].sort((a,b) => a.localeCompare(b, "pl", { numeric: true }));
-}
-
 function splitRooms(rooms) {
   const apt = rooms.filter(no => APT_ROOMS.includes(no)).length;
   return { total: rooms.length, reg: rooms.length - apt, apt };
@@ -170,7 +160,9 @@ function splitRooms(rooms) {
 function countTypes(plan) {
   const data = plan || {};
   const pmRoomTypes = data.pmRoomTypes || {};
-  const assignedWRooms = flattenAssignments(data.assignments);
+  // Wyjazdy = pokoje o statusie W/WP w pm_room_types (lustro statusu z recepcji,
+  // ta sama liczba co panel HK). NIE sumujemy z assignments — recepcja rozpisuje
+  // tam także pobyty PG/PGZ na sprzątaczki, co zawyżało licznik (14+3 zamiast 12).
   const typedWRooms = [];
   let pg=0, pgz=0;
   if (pmRoomTypes && typeof pmRoomTypes === "object") {
@@ -180,7 +172,7 @@ function countTypes(plan) {
       else if (v==="PGZ") pgz++;
     });
   }
-  const allWRooms = [...new Set([...typedWRooms, ...assignedWRooms])]
+  const allWRooms = [...new Set(typedWRooms)]
     .sort((a,b) => a.localeCompare(b, "pl", { numeric: true }));
   const w = splitRooms(allWRooms);
   return { w, pg, pgz };
