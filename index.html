@@ -880,7 +880,9 @@ async function checkAcks() {
     const mine = (qc||[]).filter(c => _firstName(c.target_worker) === _firstName(WORKER));
     if (mine.length) { showQcModal(mine[0]); return; }
 
-    // 2) Przypomnienia bez mojego potwierdzenia.
+    // 2) Przypomnienia bez mojego potwierdzenia. W trybie Praca kierownika (EMBED)
+    //    pomijamy — to ona je wysyła, nie musi sama sobie ich potwierdzać.
+    if (EMBED) return;
     const { data: rems } = await sb.from("hk_reminders")
       .select("id,body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at");
     const active = (rems||[]).filter(r => r.active !== false);
