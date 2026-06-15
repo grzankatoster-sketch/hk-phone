@@ -283,10 +283,13 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 /* ── Telefon: dolny pasek nawigacji (ikony) + większe karty ── */
 @media(max-width:919px){
   .tabs.mob{position:fixed;left:0;right:0;bottom:0;z-index:30;margin:0;border-top:1px solid var(--line);border-bottom:none;
-    padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(255,253,251,.97);backdrop-filter:blur(12px);
-    box-shadow:0 -6px 22px -10px rgba(58,18,48,.22);gap:4px}
-  .tabs.mob .tab{flex-direction:column;align-items:center;gap:3px;min-width:62px;padding:7px 6px;font-size:9.5px;font-weight:700;color:var(--muted);background:transparent}
-  .tabs.mob .tab svg{width:20px;height:20px}
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));background:rgba(255,253,251,.97);backdrop-filter:blur(12px);
+    box-shadow:0 -6px 22px -10px rgba(58,18,48,.22);gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  /* flex:1 1 auto → przy kilku zakładkach wypełniają pasek (bez przewijania);
+     przy wielu (admin) zadziała min-width + przewijanie w poziomie. */
+  .tabs.mob .tab{flex:1 1 auto;flex-direction:column;align-items:center;gap:3px;min-width:50px;max-width:110px;padding:7px 4px;font-size:9px;font-weight:700;color:var(--muted);background:transparent}
+  .tabs.mob .tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabs.mob .tab svg{width:19px;height:19px}
   .tabs.mob .tab.on{background:rgba(90,29,74,.09);color:var(--plum);box-shadow:none}
   .content{padding-bottom:98px}
   .topbar h1{font-size:21px}
@@ -300,12 +303,19 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   .btn{padding:15px;font-size:15.5px}
   .inp{padding:14px;font-size:16px}  /* 16px = iOS nie przybliża pola */
 }
-/* Tryb „Praca" — iframe z widokiem telefonu HK wypełnia obszar treści. */
+/* Tryb „Praca" — iframe z widokiem telefonu HK wypełnia obszar treści.
+   Widok pracy jest zaprojektowany pod telefon → na desktopie pokazujemy komunikat. */
 .praca-wrap{margin:-16px -13px -98px}
 .praca-frame{display:block;width:100%;border:0;background:#fff;height:calc(100dvh - 116px)}
-@media(min-width:860px){
-  .praca-wrap{margin:-24px -30px -70px}
-  .praca-frame{height:calc(100dvh - 60px);border-radius:12px}
+.praca-desktop{display:none}
+@media(min-width:920px){
+  .praca-wrap{margin:0}
+  .praca-frame{display:none}
+  .praca-desktop{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+    min-height:60vh;gap:14px;padding:30px;color:var(--ink)}
+  .praca-desktop .pd-ico{font-size:54px}
+  .praca-desktop .pd-ttl{font-family:var(--serif);font-size:24px;color:var(--plum)}
+  .praca-desktop .pd-sub{font-size:14px;color:var(--muted);max-width:420px;line-height:1.55}
 }
 </style>
 </head>
@@ -401,6 +411,7 @@ function makeMockClient(){
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[{employee:"Kasia",amount:-50,reason:"zwrot za parking",dateKey:today}]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"reports_full", data:[{dayKey:today,shiftKey:"poranna",employee:"Kasia"},{dayKey:today,shiftKey:"popoludniowa",employee:"Ola"}]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employees", data:["Kasia","Ola","Marek","Natalia","Rebecca"]},
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employee_reports", data:[{id:"d1",author:"Kasia",handoverTo:"Kierownik",subject:"Reklamacja pokój 214",reportDate:today,content:"Gość zgłosił niedziałającą klimatyzację. Przeniesiono do 218, usterkę przekazano konserwacji.",createdAt:today}]},
     ],
   };
   const RPC = {
@@ -413,11 +424,11 @@ function makeMockClient(){
       {actor:"Recepcja",actor_role:"mgr_recepcja",action:"zadanie_dodane",detail:"Sprawdzić rezerwację 312",created_at:today+"T11:00:00"},
     ],
     list_availability_requests: ()=> [
-      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,persons:4,answered:2},
+      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,expires_at:new Date(Date.now()+20*3600000).toISOString(),persons:4,answered:2},
     ],
     get_request_grid: ()=> {
-      const ppl=["Anna","Marta","Oksana","Tetiana"], days=[today,plus(1),plus(2)], ch=["dzien","popoludnie","off"], out=[];
-      ppl.forEach((p,i)=> days.forEach((d,j)=> out.push({person:p,token:"DEMO",kind:"hk",date:d,choice:ch[(i+j)%3]})));
+      const ppl=["Anna","Marta","Oksana","Tetiana"], days=[today,plus(1),plus(2)], ch=["poranna","popoludnie","oba","off"], out=[];
+      ppl.forEach((p,i)=> days.forEach((d,j)=> out.push({person:p,token:"DEMO",kind:"hk",date:d,choice:ch[(i+j)%4]})));
       return out;
     },
     create_availability_request: ()=> [{person:"Anna",token:"A1B2C3"},{person:"Marta",token:"D4E5F6"}],
@@ -871,7 +882,14 @@ function body(html){ const el=document.getElementById("hkBody"); if(el) el.inner
 function loadPraca() {
   const who = encodeURIComponent(CURRENT.name || "");
   if (!who) { body('<div class="spin">Brak imienia konta — nie można uruchomić trybu pracy.</div>'); return; }
-  body(`<div class="praca-wrap"><iframe class="praca-frame" src="index.html?w=${who}&embed=1" title="Tryb pracy — sprzątanie pokoi" allow="clipboard-write"></iframe></div>`);
+  body(`<div class="praca-wrap">
+    <div class="praca-desktop">
+      <div class="pd-ico">📱</div>
+      <div class="pd-ttl">Tryb pracy działa na telefonie</div>
+      <div class="pd-sub">Widok sprzątania pokoi (Zaczynam / Gotowe, raporty, powiadomienia) jest zaprojektowany pod ekran telefonu. Otwórz panel na komórce i wejdź w zakładkę <b>Praca</b>.</div>
+    </div>
+    <iframe class="praca-frame" src="index.html?w=${who}&embed=1" title="Tryb pracy — sprzątanie pokoi" allow="clipboard-write"></iframe>
+  </div>`);
 }
 
 // Odczyt snapshotu z aplikacji recepcji (panel_mirror): schedule / payment_corrections / reports_full.
@@ -932,6 +950,14 @@ async function loadWyjazdy() {
 }
 
 const _roleLbl = v => (HK_ROLE_OPT.find(o=>o[0]===v)||[null,v])[1] || v || "—";
+// Oznaczenie przy imieniu w obsadzie: kto wg zebranego grafiku może i na jaką zmianę.
+// Dzięki temu kierownik rozdziela uczciwie (widzi dyspozycyjność, nie klika w ciemno).
+const _AVAIL_LBL = { oba:"Rano+Popoł.", poranna:"Rano", dzien:"Rano", popoludnie:"Popoł.", dyzur:"Dyżur" };
+function availBadge(choice){
+  const t = _AVAIL_LBL[choice];
+  if (t) return `<span style="display:inline-block;font-size:10px;font-weight:800;color:var(--ok);background:rgba(31,122,82,.08);border:1px solid rgba(31,122,82,.4);border-radius:6px;padding:1px 6px;margin-top:3px;white-space:nowrap">✓ może: ${t}</span>`;
+  return `<span style="display:inline-block;font-size:10px;font-weight:700;color:var(--muted);background:rgba(138,106,126,.1);border:1px solid var(--line-strong);border-radius:6px;padding:1px 6px;margin-top:3px;white-space:nowrap">brak dysp. w grafiku</span>`;
+}
 function renderWyjazdy() {
   const html = WYJAZDY_RANGE.map((iso,i) => {
     const c = countTypes(WY_PLAN[iso]); const d = fmtDate(iso);
@@ -944,11 +970,15 @@ function renderWyjazdy() {
     const obsHead = `Obsada (${ros.length})${rosTotal>0?` · rozpisano ${rosTotal}/${c.w.total} pok.`:""}`;
 
     let obsadaBlock;
+    const _av = AVAIL_BY_DATE[iso] || {};
     if (editable) {
       const rrows = ros.length ? ros.map((w,idx)=>{
         const hasTarget = w.rooms!=null && w.rooms!=="";
         return `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">
-          <span style="flex:1;font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</div>
+            ${availBadge(_av[w.name])}
+          </div>
           <select class="inp" style="width:auto;padding:6px 8px;font-size:12px" onchange="rosterRole('${iso}',${idx},this.value)">
             ${HK_ROLE_OPT.map(([v,l])=>`<option value="${v}"${w.role===v?" selected":""}>${l}</option>`).join("")}
           </select>
@@ -958,7 +988,7 @@ function renderWyjazdy() {
           <button onclick="rosterRemove('${iso}',${idx})" aria-label="Usuń" style="background:none;border:none;color:var(--bad);font-size:19px;line-height:1;cursor:pointer;padding:0 4px">×</button>
         </div>`;
       }).join("") : `<div class="note" style="margin-top:0">Brak obsady — dodaj osoby poniżej.</div>`;
-      const _av = AVAIL_BY_DATE[iso] || {}; const _inR = new Set(ros.map(w=>w.name));
+      const _inR = new Set(ros.map(w=>w.name));
       const _names = Object.keys(_av).filter(n=>!_inR.has(n));
       const chipHtml = _names.length ? `<div style="margin-top:8px"><div style="font-size:10px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Dostępni z grafiku — dodaj jednym kliknięciem</div><div class="chips">${_names.map(n=>`<button class="chip" style="cursor:pointer;border-color:rgba(31,122,82,.4);color:var(--ok);background:rgba(31,122,82,.06)" onclick="rosterQuickAdd('${iso}','${esc(n).replace(/'/g,"\\'")}','${esc(_av[n])}')">+ ${esc(n)}</button>`).join("")}</div></div>` : "";
       obsadaBlock = `<div class="soon" style="margin-top:0">${obsHead}</div>
@@ -973,7 +1003,10 @@ function renderWyjazdy() {
       const roRows = ros.length ? ros.map(w=>{
         const hasTarget = w.rooms!=null && w.rooms!=="";
         return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <span style="flex:1;font-weight:700;font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w.name)}</div>
+            ${availBadge(_av[w.name])}
+          </div>
           <span style="font-size:12px;color:var(--muted)">${esc(_roleLbl(w.role))}</span>
           ${hasTarget?`<span style="font-weight:800;font-size:12.5px;color:var(--plum)">${parseInt(w.rooms,10)||0} pok.</span>`:""}
         </div>`;
@@ -1047,35 +1080,54 @@ let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [], roster = [], roomTypes = {};
+    let rooms = [], logs = [], roster = [], roomTypes = {}, planAssign = {};
     try {
       const [r1, r2, r3, r4] = await Promise.all([
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
-        sb.from("hk_plan").select("pm_room_types").eq("date", today).maybeSingle(),
+        sb.from("hk_plan").select("assignments,pm_room_types").eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
       roomTypes = (r4.data && r4.data.pm_room_types) || {};
+      planAssign = (r4.data && r4.data.assignments) || {};
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
     const byWorker = {};
+    const roomOwner = {}; // room -> aktualny właściciel (plan, a potem live z hk_rooms)
+    const ensure = (w, role) => {
+      if (!w) return null;
+      byWorker[w] = byWorker[w] || { rooms:[], done:0, role:role||"" };
+      if (role && !byWorker[w].role) byWorker[w].role = role;
+      return byWorker[w];
+    };
     // Wszyscy z obsady dnia (też bez pokoi).
-    roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); if(w) byWorker[w]=byWorker[w]||{rooms:[],done:0,role:(p&&p.role)||""}; });
-    // Pokoje do sprzątania z hk_rooms (przypisanie jak w programie); pomijamy POBYTY PG/PGZ.
-    // Typ pokoju (wyjazd vs pobyt) bierzemy z hk_plan.pm_room_types — synchronizowanego
-    // z planem maila przez aplikację. W hk_rooms.status jest tylko stan pracy
-    // (W=czeka / czyszczenie / czyste), NIE typ pokoju — dlatego dawny filtr po status nic nie odcinał.
-    rooms.forEach(r => {
-      const type = String(roomTypes[r.room]||"").toUpperCase();
+    roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); ensure(w, (p&&p.role)||""); });
+    // Dodaj/uaktualnij pokój pracownika. Pomijamy POBYTY PG/PGZ — typ z hk_plan.pm_room_types.
+    // live=true (z hk_rooms) wygrywa nad planem przy reassignmencie.
+    const addRoom = (w, room, status, vacated, live) => {
+      if (!w) return;
+      const type = String(roomTypes[room]||"").toUpperCase();
       if (type === "PG" || type === "PGZ") return;
-      const w = r.worker; if (!w) return;
-      byWorker[w] = byWorker[w] || { rooms:[], done:0, role:"" };
-      if (byWorker[w].rooms.some(x => x.room === r.room)) return;
-      const done = DONE_STATES.has(String(r.status||"").toLowerCase());
-      byWorker[w].rooms.push({ room:r.room, done, vacated:!!r.vacated });
-      if (done) byWorker[w].done++;
-    });
+      const prev = roomOwner[room];
+      if (prev && prev !== w) {
+        if (!live) return;                          // plan nie odbiera pokoju żywemu właścicielowi
+        const pb = byWorker[prev]; if (pb) pb.rooms = pb.rooms.filter(x => x.room !== room);
+      }
+      roomOwner[room] = w;
+      const b = ensure(w); if (!b) return;
+      let e = b.rooms.find(x => x.room === room);
+      if (!e) { e = { room, done:false, vacated:false }; b.rooms.push(e); }
+      if (status  !== undefined) e.done    = DONE_STATES.has(String(status||"").toLowerCase());
+      if (vacated !== undefined) e.vacated = !!vacated;
+    };
+    // 1) LICZBA pokoi na osobę = z planu (hk_plan.assignments) — jak w aplikacji,
+    //    nawet zanim powstaną wiersze hk_rooms (pracownik jeszcze nic nie zaczął).
+    Object.entries(planAssign).forEach(([w, rms]) => { if (Array.isArray(rms)) rms.forEach(room => addRoom(w, String(room))); });
+    // 2) Realny STAN (czyszczenie / czyste / pusty) nakładamy z hk_rooms.
+    rooms.forEach(r => { if (r.worker) addRoom(r.worker, r.room, r.status, r.vacated, true); });
+    // 3) Przelicz „zrobione" po nałożeniu stanu.
+    Object.values(byWorker).forEach(b => { b.done = b.rooms.filter(x => x.done).length; });
     LIVE_DATA = { byWorker, today };
     const workers = Object.entries(byWorker).filter(([w]) => w && w!=="—").sort((a,b)=>a[0].localeCompare(b[0],"pl"));
     let html;
@@ -1108,7 +1160,7 @@ async function loadLive() {
         return `<div class="fitem"><span class="ic" style="color:${FEED_COLOR[l.action]||"var(--muted)"}">${FEED_ICON[l.action]||"·"}</span><span>${esc(feedText(l))}</span><span class="tm">${esc(t)}</span></div>`; }).join("")
     }</div>` : "";
     const head = `<div class="fullspan" style="margin-bottom:12px">
-      <button class="rost-addbtn" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia i kontrole HK</button>
+      <button class="rost-addbtn" style="width:100%;padding:11px;border-radius:11px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:13px;cursor:pointer" onclick="showHkReminders()">🔔 Przypomnienia i kontrole po pokoju</button>
     </div>`;
     body(head + kpis + `<div class="note" style="margin-top:0;margin-bottom:8px">Kliknij osobę, by zobaczyć jej pokoje i czasy.</div>` + html + feed);
   };
@@ -1341,7 +1393,7 @@ async function workerAvailabilityText(worker){
     if (!reqs || !reqs.length) return "";
     const { data:grid } = await sb.rpc("get_request_grid", { p_request_id: reqs[0].id });
     const today=isoDate(new Date());
-    const ch={dzien:"dzień",popoludnie:"popoł.",poranna:"poranna",popoludniowa:"popoł.",nocna:"nocna"};
+    const ch={dzien:"rano",popoludnie:"popoł.",poranna:"rano",oba:"rano+popoł.",popoludniowa:"popoł.",nocna:"nocna"};
     const mine=(grid||[]).filter(r=>r.person===worker && r.date && r.choice && r.choice!=="off" && r.date>=today)
       .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,7);
     return mine.map(r=>{ const [,m,d]=r.date.split("-"); return `${d}.${m} ${ch[r.choice]||r.choice}`; }).join(", ");
@@ -1489,8 +1541,8 @@ async function loadKasa() {
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
-  // Korekty płatności + raporty zmian — z mirrora aplikacji recepcji (panel_mirror).
-  const [corr, rf] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full")]);
+  // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
+  const [corr, rf, notes] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports")]);
   const inRange = k => { const dk=String(k||"").slice(0,10); return dk>=fromKey && dk<=toKey; };
   let corrHtml = "";
   if (Array.isArray(corr)) {
@@ -1512,17 +1564,46 @@ async function loadKasa() {
       return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:2px"><div style="font-weight:800;font-size:13px">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
-  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie.</div>` + cashHtml + corrHtml + rfHtml);
+  // Przesłane notatki służbowe (employee_reports) — pełna treść rozwijana po kliknięciu.
+  let notesHtml = "";
+  if (Array.isArray(notes)) {
+    const list = notes.filter(n => inRange(n.reportDate||n.createdAt)).slice(0,40);
+    if (list.length) notesHtml = `<div class="soon">Przesłane notatki służbowe</div>` + list.map((n,i) => {
+      const subj = esc(n.subject||"Notatka służbowa");
+      const author = esc(n.author||"—"); const to = esc(n.handoverTo||"");
+      const when = esc(String(n.reportDate||n.createdAt||"").slice(0,10));
+      const content = esc(n.content||"");
+      return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="this.querySelector('.note-body').style.display=this.querySelector('.note-body').style.display==='block'?'none':'block'">
+        <div style="font-weight:800;font-size:13px">${subj}</div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:600">${author}${to?` → ${to}`:""}${when?` · ${when}`:""}</div>
+        <div class="note-body" style="display:none;font-size:12.5px;color:var(--ink);white-space:pre-wrap;margin-top:4px;line-height:1.45">${content}</div>
+      </div>`;
+    }).join("");
+  }
+  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
 }
 
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
 const GRAFIK_BASE = "https://grzankatoster-sketch.github.io/hk-phone/grafik.html?t=";
-const CHOICE_ABBR = { dzien:["D","#5a1d4a"], popoludnie:["P","#a07820"], off:["—","#8a6a7e"],
-                      poranna:["R","#1D4ED8"], popoludniowa:["Po","#C2410C"], nocna:["N","#0F172A"],
+const CHOICE_ABBR = { dzien:["R","#5a1d4a"], popoludnie:["P","#a07820"], off:["—","#8a6a7e"],
+                      poranna:["R","#1D4ED8"], oba:["RP","#1f7a52"], popoludniowa:["Po","#C2410C"], nocna:["N","#0F172A"],
                       dzienna:["D","#15803D"], godziny:["G","#1f7a52"] };
 let hkWorkersCache = null;
 const nextMonday = () => { const d=new Date(); d.setHours(0,0,0,0); const a=(8-d.getDay())%7||7; d.setDate(d.getDate()+a); return isoDate(d); };
 const firstNextMonth = () => { const d=new Date(); return isoDate(new Date(d.getFullYear(), d.getMonth()+1, 1)); };
+
+// Status okna czasu linku: „aktywny jeszcze …" / „zamknięte" / „bez limitu".
+function grafikExpiry(expires_at){
+  if (!expires_at) return { txt:"bez limitu", closed:false, warn:false };
+  const ms = new Date(expires_at).getTime() - Date.now();
+  if (isNaN(ms)) return { txt:"", closed:false, warn:false };
+  if (ms <= 0) return { txt:"zamknięte", closed:true, warn:false };
+  const h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000), d = Math.floor(h/24);
+  const txt = d >= 1 ? `aktywny jeszcze ${d}d ${h%24}h`
+            : h >= 1 ? `aktywny jeszcze ${h}h ${m}m`
+            : `aktywny jeszcze ${m}m`;
+  return { txt, closed:false, warn: ms < 3600000 };
+}
 
 async function loadGrafik() {
   body('<div class="spin">Wczytywanie…</div>');
@@ -1552,9 +1633,11 @@ async function loadGrafik() {
   const reqList = reqs.length ? reqs.map(r => {
     const d = fmtDate(String(r.period_start));
     const lbl = r.period_type === "week" ? "tydzień" : "miesiąc";
+    const ex = grafikExpiry(r.expires_at);
+    const exHtml = ex.txt ? ` · <span style="color:${ex.closed||ex.warn?'var(--bad)':'var(--ok)'};font-weight:800">${ex.closed?'🔒 '+ex.txt:'🟢 '+ex.txt}</span>` : "";
     return `<div class="statrow" style="cursor:pointer;gap:8px">
       <div class="k" onclick="openGrid('${r.id}')" style="flex:1"><div>${lbl} od ${d.txt}</div>
-        <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">${r.answered}/${r.persons} odpowiedziało${r.created_by?" · "+esc(r.created_by):""}</div></div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">${r.answered}/${r.persons} odpowiedziało${r.created_by?" · "+esc(r.created_by):""}${exHtml}</div></div>
       <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="delGrafik('${r.id}', this)">Usuń</button>
       <span class="v" style="font-size:13px" onclick="openGrid('${r.id}')">›</span>
     </div>`;
@@ -1567,13 +1650,18 @@ async function loadGrafik() {
           <option value="week">Tydzień</option><option value="month">Miesiąc</option></select></div>
       <div class="field"><label>Początek okresu</label>
         <input id="gStart" class="inp" type="date" value="${nextMonday()}"/></div>
+      <div class="field"><label>Link aktywny przez (potem grafik się zamyka)</label>
+        <select id="gTtl" class="inp">
+          <option value="24">24 godziny</option>
+          <option value="48">48 godzin</option>
+          <option value="168">7 dni</option></select></div>
       ${dept==="both" ? `<div class="field"><label>Rodzaj zmian</label>
         <select id="gKind" class="inp">
-          <option value="hk">HK (dzień / popołudnie)</option>
+          <option value="hk">HK (rano / popołudnie)</option>
           <option value="recepcja">Recepcja (zmiany)</option></select></div>`
        : `<input id="gKind" type="hidden" value="${defKind}"/>
           <div class="field" style="margin-bottom:0"><label>Dział</label>
-            <div class="chip" style="display:inline-block">${defKind==="hk"?"Housekeeping (dzień / popołudnie)":"Recepcja (zmiany)"}</div></div>`}
+            <div class="chip" style="display:inline-block">${defKind==="hk"?"Housekeeping (rano / popołudnie)":"Recepcja (zmiany)"}</div></div>`}
       <div class="field"><label>Pracownicy ${defKind==="hk"?"HK":"recepcji"}</label><div class="chips">${wchecks}</div></div>
       <div class="field"><label>Dodaj ręcznie (imiona po przecinku)</label>
         <input id="gManual" class="inp" placeholder="np. Artur, Gabrysia"/></div>
@@ -1593,6 +1681,7 @@ window.genGrafik = async () => {
   const period = (document.getElementById("gPeriod")||{}).value || "week";
   const start  = (document.getElementById("gStart")||{}).value || nextMonday();
   const kind   = (document.getElementById("gKind")||{}).value || "hk";
+  const ttl    = parseInt((document.getElementById("gTtl")||{}).value, 10) || 24;
   const checked = Array.from(document.querySelectorAll(".gw:checked")).map(c => c.value);
   const manual  = ((document.getElementById("gManual")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
   const persons = [...new Set([...checked, ...manual])];
@@ -1602,7 +1691,7 @@ window.genGrafik = async () => {
   if (btn){ btn.disabled=true; btn.textContent="Generuję…"; }
   try {
     const { data, error } = await sb.rpc("create_availability_request",
-      { p_period_type: period, p_period_start: start, p_persons: persons, p_kind: kind });
+      { p_period_type: period, p_period_start: start, p_persons: persons, p_kind: kind, p_ttl_hours: ttl });
     if (error) throw error;
     const links = (data||[]).map(row => `
       <div class="statrow" style="gap:8px">
