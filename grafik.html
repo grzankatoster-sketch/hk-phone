@@ -88,6 +88,9 @@ body{font-family:var(--ui);background:
 .modebtn{flex:1;padding:10px;border:none;background:transparent;border-radius:9px;font-weight:800;font-size:13.5px;color:var(--muted);cursor:pointer;font-family:inherit}
 .modebtn.on{background:var(--paper);color:var(--plum);box-shadow:0 1px 3px rgba(90,29,74,.14)}
 .hsel{flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
+.cdbar{position:sticky;top:0;z-index:9;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.42);color:#8a6a1e;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:13px;text-align:center}
+.cdbar.warn{background:rgba(194,65,90,.1);border-color:rgba(194,65,90,.45);color:var(--bad)}
+.cdbar b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
 </style>
 </head>
 <body>
@@ -163,7 +166,17 @@ function render(){
     const wknd = (dt.getDay()===0||dt.getDay()===6) ? " weekend":"";
     const today = k===todayIso ? " today":"";
     let inner;
-    if (MODE==="shift"){
+    if (MODE==="shift" && kind==="hk"){
+      // HK = dwie wersje zmiany: Rano i Popołudnie. Można zaznaczyć jedną LUB obie ('oba').
+      const rano = cur==="poranna"||cur==="oba"||cur==="dzien";
+      const pop  = cur==="popoludnie"||cur==="oba";
+      const isOff= cur==="off";
+      inner = `<div class="opts">
+        <button class="opt ${rano?"sel":""}" onclick="pickHK('${k}','rano')">Rano</button>
+        <button class="opt ${pop?"sel":""}" onclick="pickHK('${k}','pop')">Popołudnie</button>
+        <button class="opt off ${isOff?"sel":""}" onclick="pickHK('${k}','off')">Nie mogę</button>
+      </div>${(rano&&pop)?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę cały dzień — rano i popołudnie ✓</div>`:""}`;
+    } else if (MODE==="shift"){
       inner = `<div class="opts">${opts.map(([v,l])=>`<button class="opt ${v==="off"?"off":""} ${cur===v?"sel":""}" onclick="pick('${k}','${v}')">${esc(l)}</button>`).join("")}</div>`;
     } else {
       const h = HOURS[k]||{}; const isOff = cur==="off";
@@ -178,15 +191,43 @@ function render(){
       ${inner}</div>`;
   }).join("");
   const filled = Object.keys(CHOICE).length;
+  const cdBar = META.expires_at ? `<div id="cd" class="cdbar"></div>` : "";
   app.innerHTML = `
+    ${cdBar}
     <div class="hi">Cześć ${esc(META.person||"")}!</div>
     <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Wybierz gotową zmianę."} Zapisuje się automatycznie.</div>
     ${toggle}
     ${rows}
     <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>
     <button id="confirmBtn" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:#0f7a4a;color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer" onclick="confirmAvail()">Gotowe — wyślij do kierownika</button>`;
+  startCountdown();
 }
 window.setMode = (m)=>{ MODE=m; render(); };
+
+// ── Licznik: ile czasu zostało na edycję; po 0 grafik się zamyka ──
+let CD_TIMER = null;
+function showClosed(){
+  if (CD_TIMER){ clearInterval(CD_TIMER); CD_TIMER = null; }
+  app.innerHTML = '<div class="box"><div class="big">Zbiórka zamknięta</div><div class="sm">Czas na edycję grafiku minął. Jeśli chcesz coś jeszcze zmienić, poproś menedżera o nowy link.</div></div>';
+}
+function startCountdown(){
+  if (CD_TIMER){ clearInterval(CD_TIMER); CD_TIMER = null; }
+  if (!META || !META.expires_at) return;
+  const exp = new Date(META.expires_at).getTime();
+  if (isNaN(exp)) return;
+  const tick = ()=>{
+    const ms = exp - Date.now();
+    if (ms <= 0){ showClosed(); return; }
+    const el = document.getElementById("cd");
+    if (!el) return;
+    const h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000), s = Math.floor(ms%60000/1000);
+    const warn = ms < 3600000;              // ostatnia godzina — na czerwono
+    el.className = "cdbar" + (warn ? " warn" : "");
+    el.innerHTML = `⏳ Edycja możliwa jeszcze <b>${h>0?h+"h ":""}${pad(m)}m ${pad(s)}s</b> — potem grafik się zamknie.`;
+  };
+  tick();
+  CD_TIMER = setInterval(tick, 1000);
+}
 async function saveAvail(date, choice, start, end){
   // Godziny → wersja 5-arg (wymaga migracji 0024). Zwykła zmiana → wersja 3-arg (działa zawsze).
   const args = { p_token:TOKEN, p_date:date, p_choice:choice };
@@ -215,6 +256,28 @@ window.pick = async (date, choice)=>{
   render();
   const ok = await saveAvail(date, choice, null, null);
   if (!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; if(prevH) HOURS[date]=prevH; render(); }
+};
+
+// HK: Rano/Popołudnie to przełączniki — można mieć jedną, obie ('oba') lub żadną.
+window.pickHK = async (date, which)=>{
+  const cur = CHOICE[date] || "";
+  let rano = cur==="poranna"||cur==="oba"||cur==="dzien";
+  let pop  = cur==="popoludnie"||cur==="oba";
+  if (which==="off"){ rano = false; pop = false; }
+  else if (which==="rano"){ rano = !rano; }
+  else if (which==="pop"){ pop = !pop; }
+  let choice;
+  if (which==="off") choice = "off";
+  else if (rano && pop) choice = "oba";
+  else if (rano) choice = "poranna";
+  else if (pop) choice = "popoludnie";
+  else choice = null;           // odznaczono wszystko → wpis znika (lokalnie)
+  const prev = CHOICE[date];
+  if (choice === null){ delete CHOICE[date]; render(); return; }
+  CHOICE[date] = choice;        // optymistycznie
+  render();
+  const ok = await saveAvail(date, choice, null, null);
+  if (!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; render(); }
 };
 
 boot();
