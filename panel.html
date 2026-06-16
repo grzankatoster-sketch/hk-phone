@@ -1080,18 +1080,19 @@ let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [], roster = [], roomTypes = {}, planAssign = {};
+    let rooms = [], logs = [], roster = [], roomTypes = {}, planAssign = {}, pmAssign = {};
     try {
       const [r1, r2, r3, r4] = await Promise.all([
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
-        sb.from("hk_plan").select("assignments,pm_room_types").eq("date", today).maybeSingle(),
+        sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
       roomTypes = (r4.data && r4.data.pm_room_types) || {};
       planAssign = (r4.data && r4.data.assignments) || {};
+      pmAssign   = (r4.data && r4.data.pm_assignments) || {};
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
     const byWorker = {};
     const roomOwner = {}; // room -> aktualny właściciel (plan, a potem live z hk_rooms)
@@ -1103,12 +1104,15 @@ async function loadLive() {
     };
     // Wszyscy z obsady dnia (też bez pokoi).
     roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); ensure(w, (p&&p.role)||""); });
-    // Dodaj/uaktualnij pokój pracownika. Pomijamy POBYTY PG/PGZ — typ z hk_plan.pm_room_types.
+    // Dodaj/uaktualnij pokój pracownika. POBYTY (PG/PGZ — typ z pm_room_types) też
+    // liczymy: są przydzielane osobno (pm_assignments, zwykle popołudnie) i widać je
+    // na imiennej stronie pracownika, więc panel musi się z nią zgadzać. Pole `pobyt`
+    // pozwala je odróżnić od wyjazdów (W/WP) w widoku szczegółów.
     // live=true (z hk_rooms) wygrywa nad planem przy reassignmencie.
     const addRoom = (w, room, status, vacated, live) => {
       if (!w) return;
       const type = String(roomTypes[room]||"").toUpperCase();
-      if (type === "PG" || type === "PGZ") return;
+      const isPobyt = (type === "PG" || type === "PGZ");
       const prev = roomOwner[room];
       if (prev && prev !== w) {
         if (!live) return;                          // plan nie odbiera pokoju żywemu właścicielowi
@@ -1117,13 +1121,15 @@ async function loadLive() {
       roomOwner[room] = w;
       const b = ensure(w); if (!b) return;
       let e = b.rooms.find(x => x.room === room);
-      if (!e) { e = { room, done:false, vacated:false }; b.rooms.push(e); }
+      if (!e) { e = { room, done:false, vacated:false, pobyt:isPobyt }; b.rooms.push(e); }
       if (status  !== undefined) e.done    = DONE_STATES.has(String(status||"").toLowerCase());
       if (vacated !== undefined) e.vacated = !!vacated;
     };
-    // 1) LICZBA pokoi na osobę = z planu (hk_plan.assignments) — jak w aplikacji,
+    // 1) LICZBA pokoi na osobę = z planu — jak w aplikacji i na imiennych stronach,
     //    nawet zanim powstaną wiersze hk_rooms (pracownik jeszcze nic nie zaczął).
+    //    assignments = wyjazdy (W/WP), pm_assignments = pobyty (PG/PGZ, np. popołudnie).
     Object.entries(planAssign).forEach(([w, rms]) => { if (Array.isArray(rms)) rms.forEach(room => addRoom(w, String(room))); });
+    Object.entries(pmAssign).forEach(([w, rms]) => { if (Array.isArray(rms)) rms.forEach(room => addRoom(w, String(room))); });
     // 2) Realny STAN (czyszczenie / czyste / pusty) nakładamy z hk_rooms.
     rooms.forEach(r => { if (r.worker) addRoom(r.worker, r.room, r.status, r.vacated, true); });
     // 3) Przelicz „zrobione" po nałożeniu stanu.
@@ -1284,7 +1290,8 @@ window.showLiveWorker = async (w) => {
       : (el!=null ? `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">w trakcie · ${el} min</span>`
       : (r.vacated ? `<span class="chip" style="color:#a07820;border-color:rgba(176,134,58,.45);background:rgba(176,134,58,.1)">🔔 pusty — do sprzątania</span>`
       : `<span class="chip">do zrobienia</span>`));
-    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}</span>${status}</div>`;
+    const tag = r.pobyt ? ` <span style="font-size:10px;font-weight:700;color:var(--muted)">pobyt</span>` : "";
+    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}${tag}</span>${status}</div>`;
   }).join("") : '<div class="empty">Brak przypisanych pokoi.</div>';
   body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
     <div class="panelbox">
