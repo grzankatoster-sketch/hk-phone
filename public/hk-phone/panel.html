@@ -1080,18 +1080,19 @@ let LIVE_DATA = { byWorker:{}, today:"" };
 async function loadLive() {
   const today = isoDate(new Date());
   const paint = async () => {
-    let rooms = [], logs = [], roster = [], roomTypes = {}, planAssign = {};
+    let rooms = [], logs = [], roster = [], roomTypes = {}, planAssign = {}, pmAssign = {};
     try {
       const [r1, r2, r3, r4] = await Promise.all([
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
-        sb.from("hk_plan").select("assignments,pm_room_types").eq("date", today).maybeSingle(),
+        sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", today).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
       roomTypes = (r4.data && r4.data.pm_room_types) || {};
       planAssign = (r4.data && r4.data.assignments) || {};
+      pmAssign   = (r4.data && r4.data.pm_assignments) || {};
     } catch { body('<div class="empty">Brak połączenia z danymi HK.</div>'); return; }
     const byWorker = {};
     const roomOwner = {}; // room -> aktualny właściciel (plan, a potem live z hk_rooms)
@@ -1103,12 +1104,15 @@ async function loadLive() {
     };
     // Wszyscy z obsady dnia (też bez pokoi).
     roster.forEach(p => { const w=(p && p.name) || (typeof p==="string"?p:null); ensure(w, (p&&p.role)||""); });
-    // Dodaj/uaktualnij pokój pracownika. Pomijamy POBYTY PG/PGZ — typ z hk_plan.pm_room_types.
+    // Dodaj/uaktualnij pokój pracownika. POBYTY (PG/PGZ — typ z pm_room_types) też
+    // liczymy: są przydzielane osobno (pm_assignments, zwykle popołudnie) i widać je
+    // na imiennej stronie pracownika, więc panel musi się z nią zgadzać. Pole `pobyt`
+    // pozwala je odróżnić od wyjazdów (W/WP) w widoku szczegółów.
     // live=true (z hk_rooms) wygrywa nad planem przy reassignmencie.
     const addRoom = (w, room, status, vacated, live) => {
       if (!w) return;
       const type = String(roomTypes[room]||"").toUpperCase();
-      if (type === "PG" || type === "PGZ") return;
+      const isPobyt = (type === "PG" || type === "PGZ");
       const prev = roomOwner[room];
       if (prev && prev !== w) {
         if (!live) return;                          // plan nie odbiera pokoju żywemu właścicielowi
@@ -1117,13 +1121,15 @@ async function loadLive() {
       roomOwner[room] = w;
       const b = ensure(w); if (!b) return;
       let e = b.rooms.find(x => x.room === room);
-      if (!e) { e = { room, done:false, vacated:false }; b.rooms.push(e); }
+      if (!e) { e = { room, done:false, vacated:false, pobyt:isPobyt }; b.rooms.push(e); }
       if (status  !== undefined) e.done    = DONE_STATES.has(String(status||"").toLowerCase());
       if (vacated !== undefined) e.vacated = !!vacated;
     };
-    // 1) LICZBA pokoi na osobę = z planu (hk_plan.assignments) — jak w aplikacji,
+    // 1) LICZBA pokoi na osobę = z planu — jak w aplikacji i na imiennych stronach,
     //    nawet zanim powstaną wiersze hk_rooms (pracownik jeszcze nic nie zaczął).
+    //    assignments = wyjazdy (W/WP), pm_assignments = pobyty (PG/PGZ, np. popołudnie).
     Object.entries(planAssign).forEach(([w, rms]) => { if (Array.isArray(rms)) rms.forEach(room => addRoom(w, String(room))); });
+    Object.entries(pmAssign).forEach(([w, rms]) => { if (Array.isArray(rms)) rms.forEach(room => addRoom(w, String(room))); });
     // 2) Realny STAN (czyszczenie / czyste / pusty) nakładamy z hk_rooms.
     rooms.forEach(r => { if (r.worker) addRoom(r.worker, r.room, r.status, r.vacated, true); });
     // 3) Przelicz „zrobione" po nałożeniu stanu.
@@ -1139,19 +1145,27 @@ async function loadLive() {
         const role = d.role ? ` <span style="font-size:11px;color:var(--muted);font-weight:600">${esc(d.role)}</span>` : "";
         const vac = d.rooms.filter(r=>r.vacated && !r.done).length;
         const vacB = vac ? ` <span style="font-size:10px;font-weight:800;color:#a07820;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.35);border-radius:99px;padding:1px 7px">🔔 ${vac} pusty</span>` : "";
+        // Osobno: pokoje wyjazdowe (W/WP) vs pobyty (PG/PGZ).
+        const wj = d.rooms.filter(r=>!r.pobyt), pg = d.rooms.filter(r=>r.pobyt);
+        const seg = [`<span style="font-size:10.5px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border:1px solid rgba(90,29,74,.2);border-radius:99px;padding:1px 8px">Wyjazdy ${wj.filter(r=>r.done).length}/${wj.length}</span>`];
+        if (pg.length) seg.push(`<span style="font-size:10.5px;font-weight:800;color:#1f7a52;background:rgba(31,122,82,.08);border:1px solid rgba(31,122,82,.28);border-radius:99px;padding:1px 8px">PG ${pg.filter(r=>r.done).length}/${pg.length}</span>`);
+        const splitLine = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${seg.join("")}</div>`;
         return `<div class="wcard" onclick="showLiveWorker('${esc(w).replace(/'/g,"\\'")}')">
           <div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}${role}${vacB}</span><span class="prog">${d.done}/${total}</span></div>
-          <div class="bar"><span style="width:${pct}%"></span></div></div>`;
+          <div class="bar"><span style="width:${pct}%"></span></div>${splitLine}</div>`;
       }).join("");
     }
     let kpis = "";
     if (workers.length) {
-      let tot=0, don=0; workers.forEach(([,d])=>{ tot+=d.rooms.length; don+=d.done; });
+      // Rozdziel pokoje wyjazdowe (W/WP) od pobytów (PG/PGZ) — kierownik musi je widzieć osobno.
+      let tot=0, don=0, totW=0, totP=0;
+      workers.forEach(([,d])=>{ tot+=d.rooms.length; don+=d.done; d.rooms.forEach(r=>{ if(r.pobyt) totP++; else totW++; }); });
       const pct = tot ? Math.round(don/tot*100) : 0;
       kpis = `<div class="kpis">
-        <div class="kpi"><div class="l">Pokoje dziś</div><div class="v">${tot}</div></div>
+        <div class="kpi"><div class="l">Wyjazdy</div><div class="v">${totW}</div></div>
+        <div class="kpi"><div class="l">Pobyty PG</div><div class="v gold">${totP}</div></div>
         <div class="kpi"><div class="l">Zrobione</div><div class="v ok">${don}</div></div>
-        <div class="kpi"><div class="l">Postęp</div><div class="v gold">${pct}%</div></div>
+        <div class="kpi"><div class="l">Postęp</div><div class="v">${pct}%</div></div>
         <div class="kpi"><div class="l">Ekipa</div><div class="v">${workers.length}</div></div>
       </div>`;
     }
@@ -1267,31 +1281,56 @@ window.showLiveWorker = async (w) => {
   body('<div class="spin">Wczytywanie…</div>');
   const today = isoDate(new Date());
   let logs = [];
-  try { const { data } = await sb.from("hk_logs").select("action,worker,room,created_at").eq("date", today).eq("worker", w).order("created_at"); logs = data || []; }
+  try { const { data } = await sb.from("hk_logs").select("action,worker,room,created_at,log_time").eq("date", today).eq("worker", w).order("created_at"); logs = data || []; }
   catch {}
   const d = (LIVE_DATA.byWorker||{})[w] || { rooms:[], done:0 };
+  const fmtT = l => l.log_time || (l.created_at ? new Date(l.created_at).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}) : "");
   const starts = {}, durs = [], elapsed = {};
-  logs.filter(l=>l.created_at).forEach(l => {
-    if (l.action==="start") starts[l.room] = new Date(l.created_at).getTime();
-    else if (l.action==="done" && starts[l.room]) { const m=(new Date(l.created_at).getTime()-starts[l.room])/60000; if(m>0&&m<300) durs.push(m); delete starts[l.room]; }
+  const tStart = {}, tDone = {}, tSkip = {}; // godzina ostatniego kliknięcia per pokój
+  logs.forEach(l => {
+    if (l.action==="start") { tStart[l.room] = fmtT(l); if (l.created_at) starts[l.room] = new Date(l.created_at).getTime(); }
+    else if (l.action==="done") { tDone[l.room] = fmtT(l); if (l.created_at && starts[l.room]) { const m=(new Date(l.created_at).getTime()-starts[l.room])/60000; if(m>0&&m<300) durs.push(m); } delete starts[l.room]; }
+    else if (l.action==="skip") { tSkip[l.room] = fmtT(l); delete starts[l.room]; }
   });
   Object.entries(starts).forEach(([room,ts]) => { elapsed[room] = Math.round((Date.now()-ts)/60000); });
   const avg = durs.length ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : null;
   const roomsSorted = d.rooms.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),"pl",{numeric:true}));
-  const list = roomsSorted.length ? roomsSorted.map(r => {
+  const renderRow = (r) => {
     const el = elapsed[r.room];
-    const status = r.done ? `<span class="chip done">gotowe</span>`
-      : (el!=null ? `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">w trakcie · ${el} min</span>`
-      : (r.vacated ? `<span class="chip" style="color:#a07820;border-color:rgba(176,134,58,.45);background:rgba(176,134,58,.1)">🔔 pusty — do sprzątania</span>`
-      : `<span class="chip">do zrobienia</span>`));
-    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}</span>${status}</div>`;
-  }).join("") : '<div class="empty">Brak przypisanych pokoi.</div>';
+    const sk = tSkip[r.room];
+    let status, times = "";
+    if (sk) {
+      status = `<span class="chip" style="color:var(--lilac);border-color:rgba(138,106,126,.45);background:rgba(138,106,126,.1)">goście nie chcieli</span>`;
+      times = `✕ ${esc(sk)}`;
+    } else if (r.done) {
+      status = `<span class="chip done">gotowe</span>`;
+      times = `${tStart[r.room]?`▶ ${esc(tStart[r.room])}`:""}${tDone[r.room]?`${tStart[r.room]?" · ":""}✓ ${esc(tDone[r.room])}`:""}`;
+    } else if (el!=null) {
+      status = `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">w trakcie · ${el} min</span>`;
+      times = tStart[r.room]?`▶ ${esc(tStart[r.room])}`:"";
+    } else if (r.vacated) {
+      status = `<span class="chip" style="color:#a07820;border-color:rgba(176,134,58,.45);background:rgba(176,134,58,.1)">🔔 pusty — do sprzątania</span>`;
+    } else {
+      status = `<span class="chip">do zrobienia</span>`;
+    }
+    const tline = times ? `<span style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${times}</span>` : "";
+    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}${tline}</span>${status}</div>`;
+  };
+  // Osobno pokoje wyjazdowe (W/WP) i pobyty (PG/PGZ).
+  const wj = roomsSorted.filter(r=>!r.pobyt), pg = roomsSorted.filter(r=>r.pobyt);
+  const section = (title, arr, accent) => arr.length
+    ? `<div class="soon" style="margin-top:14px;color:${accent}">${title} · ${arr.filter(r=>r.done).length}/${arr.length}</div>${arr.map(renderRow).join("")}`
+    : "";
+  const list = (wj.length || pg.length)
+    ? section("Wyjazdy (W/WP)", wj, "var(--plum)") + section("Pobyty — PG/PGZ", pg, "#1f7a52")
+    : '<div class="empty">Brak przypisanych pokoi.</div>';
+  const sumSplit = `Wyjazdy ${wj.filter(r=>r.done).length}/${wj.length}${pg.length?` · PG ${pg.filter(r=>r.done).length}/${pg.length}`:""}`;
   body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
     <div class="panelbox">
       <div class="role-ttl" style="font-size:20px">${esc(w)}</div>
-      <div class="role-who">Dziś: ${d.done}/${d.rooms.length} pokoi${avg!=null?` · średnio ${avg} min/pokój`:""}</div>
+      <div class="role-who">Dziś: ${d.done}/${d.rooms.length} pokoi · ${sumSplit}${avg!=null?` · średnio ${avg} min/pokój`:""}</div>
       <div style="margin-top:12px">${list}</div>
-      <div class="note">Czasy ze zdarzeń start→koniec. Widoczne tylko dla kierownika.</div>
+      <div class="note">Godziny: ▶ start sprzątania · ✓ zakończenie · ✕ goście nie chcieli. Widoczne tylko dla kierownika.</div>
     </div>`);
 };
 
@@ -1507,19 +1546,48 @@ window.markZadanieDone = async (id) => {
 
 // ── Kasa: stan kasy ostatnich dni (shift_reports) ──
 const SHIFT_LBL = { poranna:"Poranna", popoludniowa:"Popołudniowa", wieczorowa:"Wieczorowa", nocna:"Nocna", dzienna:"Dzienna" };
+const DOC_KASA = { paragon:"Paragon", faktura:"Faktura", fiskalny:"Paragon fiskalny", inny:"Inny dokument" };
 const zl = v => (v==null||isNaN(v)) ? "—" : Number(v).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
 let kasaFull = false;
 window.toggleKasaFull = () => { kasaFull = !kasaFull; loadKasa(); };
+// Normalizuje datę do klucza ISO (YYYY-MM-DD). Mirror aplikacji recepcji zapisuje
+// część dat w formacie pl-PL ("DD.MM.RRRR, GG:MM" z fmtA), a część jako ISO/dayKey —
+// bez tej normalizacji filtr zakresu odrzucał wszystko (korekty/notatki nie pokazywały się).
+const kasaIso = v => {
+  if (!v) return "";
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);   // DD.MM.RRRR
+  if (m) return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;
+  const t = new Date(s); return isNaN(t) ? "" : isoDate(t);
+};
+const kasaNum = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
 async function loadKasa() {
   const today = new Date(); const from = new Date(today); from.setDate(today.getDate() - (kasaFull ? 89 : 6));
   const fromKey = isoDate(from), toKey = isoDate(today);
+  const inRange = k => { const dk = kasaIso(k); return !!dk && dk>=fromKey && dk<=toKey; };
   const toggle = `<button class="rost-addbtn fullspan" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="toggleKasaFull()">${kasaFull ? "Pokaż ostatnie 7 dni" : "Pokaż pełną historię (90 dni)"}</button>`;
   let rows = [];
   try {
     const { data } = await sb.from("shift_reports").select("day_key,shift_key,employee,cash_closing,safe_total,cash_current,saved_at")
       .eq("tenant_id", TENANT_ID).gte("day_key", fromKey).lte("day_key", toKey).order("saved_at", { ascending:false }).limit(300);
     rows = data || [];
-  } catch { return body('<div class="empty">Nie udało się pobrać stanu kasy.</div>'); }
+  } catch {}
+  // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
+  const [corr, rf, notes] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports")]);
+  // Fallback stanu kasy: gdy brak wierszy w shift_reports (zmiana zamknięta offline lub
+  // przed wdrożeniem zapisu do DB), odtwórz kasę z lustra raportów pełnych (reports_full).
+  if (!rows.length && Array.isArray(rf)) {
+    rows = rf.filter(r => inRange(r.dayKey||r.day_key||r.savedAt)).map(r => ({
+      day_key: kasaIso(r.dayKey||r.day_key||r.savedAt),
+      shift_key: r.shiftKey||r.shift_key,
+      employee: r.employeeName||r.employee,
+      cash_closing: kasaNum(r.cashClosingDocumentsAmount),
+      safe_total: typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal),
+      cash_current: kasaNum(r.cashCurrentAmount),
+      saved_at: r.savedAt,
+    }));
+  }
   let cashHtml;
   if (!rows.length) {
     cashHtml = `<div class="empty">Brak raportów kasy${kasaFull?"":" z ostatnich 7 dni"}. Pojawią się, gdy recepcja zamknie zmianę.</div>`;
@@ -1541,27 +1609,57 @@ async function loadKasa() {
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
-  // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
-  const [corr, rf, notes] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports")]);
-  const inRange = k => { const dk=String(k||"").slice(0,10); return dk>=fromKey && dk<=toKey; };
+  // Korekty płatności (paragon/faktura) — dokumenty, nie kwoty. Rozwijany opis po kliknięciu.
   let corrHtml = "";
   if (Array.isArray(corr)) {
-    const list = corr.filter(c => inRange(c.dateKey||c.date||c.createdAt||c.savedAt)).slice(0,80);
-    if (list.length) corrHtml = `<div class="soon">Korekty płatności</div>` + list.map(c => {
-      const who = esc(c.employee||c.name||"—"); const am = Number(c.amount);
-      const when = String(c.dateKey||c.date||c.createdAt||c.savedAt||"").slice(0,10);
-      const reason = esc(c.reason||c.note||c.powod||"");
-      return `<div class="statrow"><div class="k"><div>${who}${reason?` — <span style="color:var(--muted);font-weight:600">${reason}</span>`:""}</div>${when?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(when)}</div>`:""}</div><div class="v" style="color:${am<0?"var(--bad)":"var(--ok)"}">${zl(am)}</div></div>`;
+    const list = corr.filter(c => inRange(c.submittedAt||c.createdAt||c.dateKey||c.date)).slice(0,80);
+    const pend = list.filter(c=>!c.done).length;
+    if (list.length) corrHtml = `<div class="soon">Korekty płatności${pend?` <span style="color:var(--gold)">· ${pend} oczekuje</span>`:""}</div>` + list.map(c => {
+      const who = esc(c.submittedBy||c.employee||c.name||"—");
+      const when = esc(String(c.submittedAt||c.createdAt||"").trim());
+      const doc = esc(DOC_KASA[c.docType]||c.docType||"Korekta");
+      const resv = esc(c.reservation||"");
+      const why = esc(c.explanation||c.reason||c.note||"");
+      const shift = esc(SHIFT_LBL[c.shift]||c.shift||"");
+      const status = c.done
+        ? `<span class="chip" style="color:var(--ok);border-color:rgba(15,122,74,.35);background:rgba(15,122,74,.07)">zatwierdzona</span>`
+        : `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">oczekuje</span>`;
+      return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="this.querySelector('.corr-body').style.display=this.querySelector('.corr-body').style.display==='block'?'none':'block'">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="font-weight:800;font-size:13px">${doc}${resv?` · rez. ${resv}`:""}</div>${status}</div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:600">${who}${shift?` · ${shift}`:""}${when?` · ${when}`:""}</div>
+        <div class="corr-body" style="display:none;font-size:12.5px;color:var(--ink);white-space:pre-wrap;margin-top:2px;line-height:1.45">${why||"(brak opisu)"}</div>
+      </div>`;
     }).join("");
   }
+  // Raporty zmian = źródło raportu dobowego. Każda zmiana rozwijana: kasa, zadania, przekazanie, braki.
   let rfHtml = "";
   if (Array.isArray(rf)) {
-    const byDk = {}; rf.forEach(r => { const dk=String(r.dayKey||r.day_key||r.savedAt||"").slice(0,10); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
-    const dks = Object.keys(byDk).sort().reverse().slice(0,7);
-    if (dks.length) rfHtml = `<div class="soon">Raporty zmian (źródło raportu dobowego)</div>` + dks.map(dk => {
-      const d=fmtDate(dk);
-      const items=byDk[dk].map(r=>`<div style="font-size:12.5px;color:var(--ink);padding:2px 0">• ${esc(SHIFT_LBL[r.shiftKey||r.shift_key]||r.shiftKey||r.shift_key||"")} — ${esc(r.employee||r.employeeName||"—")}</div>`).join("");
-      return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:2px"><div style="font-weight:800;font-size:13px">${d.dow}, ${d.txt}</div>${items}</div>`;
+    const byDk = {}; rf.forEach(r => { const dk=kasaIso(r.dayKey||r.day_key||r.savedAt); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
+    const dks = Object.keys(byDk).sort().reverse().slice(0, kasaFull?90:7);
+    if (dks.length) rfHtml = `<div class="soon">Raporty zmian / dobowe</div>` + dks.map(dk => {
+      const d = fmtDate(dk);
+      const shifts = byDk[dk];
+      const items = shifts.map(r => {
+        const sh = esc(SHIFT_LBL[r.shiftKey||r.shift_key]||r.shiftLabel||r.shiftKey||r.shift_key||"");
+        const who = esc(r.employeeName||r.employee||"—");
+        const allTasks = [...(r.baseTasks||[]), ...(r.carryOver||[])];
+        const tDone = allTasks.filter(t=>t.status==="[OK]").length, tTot = allTasks.length;
+        const cash = `Kasa: ${zl(kasaNum(r.cashCurrentAmount))} · KW: ${zl(kasaNum(r.cashClosingDocumentsAmount))} · Sejf: ${zl(typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal))}`;
+        const handover = esc(r.handoverNote||"");
+        const taskLines = allTasks.map(t=>`<div style="font-size:12px;padding:1px 0">${t.status==="[OK]"?"✓":"✗"} ${esc(t.text)}</div>`).join("");
+        const missing = (r.missingTasks||[]).map(t=>esc(t.text||t)).filter(Boolean);
+        return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:3px;cursor:pointer" onclick="this.querySelector('.rf-body').style.display=this.querySelector('.rf-body').style.display==='block'?'none':'block'">
+          <div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:12.5px">${sh} — ${who}</div><div style="font-size:11.5px;color:var(--muted);font-weight:700">${tTot?`${tDone}/${tTot} zadań`:""}</div></div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600">${cash}</div>
+          <div class="rf-body" style="display:none;margin-top:5px">
+            ${handover?`<div style="font-size:12px;color:var(--ink);margin-bottom:6px"><b>Przekazanie:</b> ${handover}</div>`:""}
+            ${taskLines?`<div style="margin-bottom:4px">${taskLines}</div>`:""}
+            ${missing.length?`<div style="font-size:11.5px;color:var(--bad)"><b>Braki:</b> ${missing.join(", ")}</div>`:""}
+          </div>
+        </div>`;
+      }).join("");
+      return `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13px;margin-bottom:5px">${d.dow}, ${d.txt} <span style="color:var(--muted);font-weight:600">· ${shifts.length} ${shifts.length===1?"zmiana":"zmian"}</span></div>${items}</div>`;
     }).join("");
   }
   // Przesłane notatki służbowe (employee_reports) — pełna treść rozwijana po kliknięciu.
@@ -1571,7 +1669,7 @@ async function loadKasa() {
     if (list.length) notesHtml = `<div class="soon">Przesłane notatki służbowe</div>` + list.map((n,i) => {
       const subj = esc(n.subject||"Notatka służbowa");
       const author = esc(n.author||"—"); const to = esc(n.handoverTo||"");
-      const when = esc(String(n.reportDate||n.createdAt||"").slice(0,10));
+      const when = esc(kasaIso(n.reportDate||n.createdAt));
       const content = esc(n.content||"");
       return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="this.querySelector('.note-body').style.display=this.querySelector('.note-body').style.display==='block'?'none':'block'">
         <div style="font-weight:800;font-size:13px">${subj}</div>
@@ -1580,7 +1678,7 @@ async function loadKasa() {
       </div>`;
     }).join("");
   }
-  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
+  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie. Kliknij korektę lub raport, by rozwinąć szczegóły.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
 }
 
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
