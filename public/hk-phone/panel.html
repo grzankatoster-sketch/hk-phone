@@ -408,7 +408,10 @@ function makeMockClient(){
     ],
     panel_mirror: [
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"schedule", data:(()=>{ const o={}; o[today]={Kasia:{start:"7",end:"15",shift:"poranna"},Ola:{start:"15",end:"22",shift:"popoludniowa"}}; o[plus(1)]={Kasia:{start:"7",end:"15",shift:"poranna"},Marek:{start:"22",end:"7",shift:"nocna"}}; return o; })()},
-      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[{employee:"Kasia",amount:-50,reason:"zwrot za parking",dateKey:today}]},
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[
+        {id:"corr-demo-1",docType:"paragon",reservation:"312",explanation:"Błędna kwota na paragonie — zawyżono o 50 zł, korekta do zwrotu gościowi.",submittedBy:"Kasia",submittedAt:"16.06.2026, 10:42",shift:"poranna",done:false},
+        {id:"corr-demo-2",docType:"faktura",reservation:"218",explanation:"Faktura na złe dane firmy, wystawiono korektę.",submittedBy:"Ola",submittedAt:"15.06.2026, 18:05",shift:"popoludniowa",done:false},
+      ]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"reports_full", data:[{dayKey:today,shiftKey:"poranna",employee:"Kasia"},{dayKey:today,shiftKey:"popoludniowa",employee:"Ola"}]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employees", data:["Kasia","Ola","Marek","Natalia","Rebecca"]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employee_reports", data:[{id:"d1",author:"Kasia",handoverTo:"Kierownik",subject:"Reklamacja pokój 214",reportDate:today,content:"Gość zgłosił niedziałającą klimatyzację. Przeniesiono do 218, usterkę przekazano konserwacji.",createdAt:today}]},
@@ -1574,7 +1577,12 @@ async function loadKasa() {
     rows = data || [];
   } catch {}
   // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
-  const [corr, rf, notes] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports")]);
+  // Zatwierdzenia korekt trzymamy osobno (payment_correction_approvals), bo mirror jest read-only.
+  const [corr, rf, notes, apprRes] = await Promise.all([
+    getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports"),
+    sb.from("payment_correction_approvals").select("correction_id,decision,manager,note,decided_at").eq("tenant_id", TENANT_ID).then(r=>r, ()=>({data:[]})),
+  ]);
+  const apprBy = {}; (apprRes && apprRes.data || []).forEach(a => { apprBy[a.correction_id] = a; });
   // Fallback stanu kasy: gdy brak wierszy w shift_reports (zmiana zamknięta offline lub
   // przed wdrożeniem zapisu do DB), odtwórz kasę z lustra raportów pełnych (reports_full).
   if (!rows.length && Array.isArray(rf)) {
@@ -1588,6 +1596,34 @@ async function loadKasa() {
       saved_at: r.savedAt,
     }));
   }
+  // ── Alerty „do weryfikacji" — czysto panelowe heurystyki na danych kasy/korekt ──
+  const alerts = [];
+  // 1) Zmiana zamykająca dzień (wieczorowa/nocna) bez zarejestrowanego KW.
+  rows.forEach(r => {
+    const closing = (r.shift_key==="wieczorowa"||r.shift_key==="nocna");
+    if (closing && (r.cash_closing==null || r.cash_closing===0)) {
+      const d = fmtDate(r.day_key);
+      alerts.push(`${d.txt}: ${SHIFT_LBL[r.shift_key]||r.shift_key} (${esc(r.employee||"—")}) — brak KW (zmiana zamykająca dzień)`);
+    }
+  });
+  // 2) Spadek stanu sejfu dzień-do-dnia (możliwy wypływ gotówki do zweryfikowania).
+  const safeByDay = {};
+  rows.forEach(r => { if (r.safe_total!=null) { const dk=r.day_key; if (!(dk in safeByDay)) safeByDay[dk]=r.safe_total; } });
+  const safeDays = Object.keys(safeByDay).sort();
+  for (let i=1;i<safeDays.length;i++){
+    const prev=safeByDay[safeDays[i-1]], cur=safeByDay[safeDays[i]];
+    if (prev>0 && cur < prev - 0.5) { const d=fmtDate(safeDays[i]); alerts.push(`${d.txt}: sejf spadł o ${zl(prev-cur)} (z ${zl(prev)} do ${zl(cur)})`); }
+  }
+  // 3) Korekty oczekujące dłużej niż 3 dni.
+  if (Array.isArray(corr)) {
+    const cut = isoDate(new Date(Date.now()-3*86400000));
+    corr.forEach(c => { if (!c.done && !apprBy[c.id]) { const dk=kasaIso(c.submittedAt||c.createdAt); if (dk && dk < cut) alerts.push(`Korekta „${esc(DOC_KASA[c.docType]||c.docType||"")}${c.reservation?` · rez. ${esc(c.reservation)}`:""}" oczekuje od ${dk}`); } });
+  }
+  const alertHtml = alerts.length
+    ? `<div class="fullspan" style="margin-bottom:10px;padding:11px 13px;border:1px solid rgba(194,65,90,.35);background:rgba(194,65,90,.07);border-radius:11px">
+        <div style="font-weight:800;font-size:12.5px;color:var(--bad);margin-bottom:5px">⚠️ Do weryfikacji (${alerts.length})</div>
+        ${alerts.slice(0,8).map(a=>`<div style="font-size:12px;color:var(--ink);padding:1px 0">• ${a}</div>`).join("")}
+      </div>` : "";
   let cashHtml;
   if (!rows.length) {
     cashHtml = `<div class="empty">Brak raportów kasy${kasaFull?"":" z ostatnich 7 dni"}. Pojawią się, gdy recepcja zamknie zmianę.</div>`;
@@ -1609,11 +1645,13 @@ async function loadKasa() {
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
-  // Korekty płatności (paragon/faktura) — dokumenty, nie kwoty. Rozwijany opis po kliknięciu.
+  // Korekty płatności (paragon/faktura) — dokumenty, nie kwoty. Rozwijany opis + decyzja kierownika.
   let corrHtml = "";
   if (Array.isArray(corr)) {
     const list = corr.filter(c => inRange(c.submittedAt||c.createdAt||c.dateKey||c.date)).slice(0,80);
-    const pend = list.filter(c=>!c.done).length;
+    // Stan = decyzja z panelu (apprBy) ma pierwszeństwo; w jej braku — flaga done z aplikacji recepcji.
+    const stateOf = c => { const a=apprBy[c.id]; if (a) return a.decision==="rejected"?"rejected":"approved"; return c.done?"approved":"pending"; };
+    const pend = list.filter(c=>stateOf(c)==="pending").length;
     if (list.length) corrHtml = `<div class="soon">Korekty płatności${pend?` <span style="color:var(--gold)">· ${pend} oczekuje</span>`:""}</div>` + list.map(c => {
       const who = esc(c.submittedBy||c.employee||c.name||"—");
       const when = esc(String(c.submittedAt||c.createdAt||"").trim());
@@ -1621,14 +1659,26 @@ async function loadKasa() {
       const resv = esc(c.reservation||"");
       const why = esc(c.explanation||c.reason||c.note||"");
       const shift = esc(SHIFT_LBL[c.shift]||c.shift||"");
-      const status = c.done
+      const st = stateOf(c); const a = apprBy[c.id];
+      const dWhen = a&&a.decided_at ? new Date(a.decided_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+      const status = st==="approved"
         ? `<span class="chip" style="color:var(--ok);border-color:rgba(15,122,74,.35);background:rgba(15,122,74,.07)">zatwierdzona</span>`
+        : st==="rejected"
+        ? `<span class="chip" style="color:var(--bad);border-color:rgba(194,65,90,.4);background:rgba(194,65,90,.07)">odrzucona</span>`
         : `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">oczekuje</span>`;
+      const decided = a ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${a.decision==="rejected"?"Odrzucił":"Zatwierdził"}: ${esc(a.manager||"—")}${dWhen?` · ${dWhen}`:""}</div>` : "";
+      const cid = esc(String(c.id||"")).replace(/'/g,"\\'");
+      const actions = (st==="pending" && c.id)
+        ? `<div style="display:flex;gap:7px;margin-top:7px">
+            <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer" onclick="event.stopPropagation();decideCorrection('${cid}','approved')">Zatwierdź</button>
+            <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:12px;cursor:pointer" onclick="event.stopPropagation();decideCorrection('${cid}','rejected')">Odrzuć</button>
+          </div>` : "";
       return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="this.querySelector('.corr-body').style.display=this.querySelector('.corr-body').style.display==='block'?'none':'block'">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
           <div style="font-weight:800;font-size:13px">${doc}${resv?` · rez. ${resv}`:""}</div>${status}</div>
-        <div style="font-size:11.5px;color:var(--muted);font-weight:600">${who}${shift?` · ${shift}`:""}${when?` · ${when}`:""}</div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:600">${who}${shift?` · ${shift}`:""}${when?` · ${when}`:""}</div>${decided}
         <div class="corr-body" style="display:none;font-size:12.5px;color:var(--ink);white-space:pre-wrap;margin-top:2px;line-height:1.45">${why||"(brak opisu)"}</div>
+        ${actions}
       </div>`;
     }).join("");
   }
@@ -1678,8 +1728,22 @@ async function loadKasa() {
       </div>`;
     }).join("");
   }
-  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie. Kliknij korektę lub raport, by rozwinąć szczegóły.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
+  body(toggle + alertHtml + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie. Kliknij korektę lub raport, by rozwinąć szczegóły.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
 }
+
+// Decyzja kierownika o korekcie (zatwierdź/odrzuć) — zapis do payment_correction_approvals.
+window.decideCorrection = async (correctionId, decision) => {
+  if (!correctionId) return;
+  const note = decision==="rejected" ? (prompt("Powód odrzucenia (opcjonalnie):")||"") : "";
+  try {
+    const { error } = await sb.from("payment_correction_approvals").upsert(
+      { tenant_id:TENANT_ID, correction_id:correctionId, decision, manager:CURRENT.name||"Panel", note, decided_at:new Date().toISOString() },
+      { onConflict:"tenant_id,correction_id" });
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"korekta_decyzja", p_detail:`${decision==="rejected"?"odrzucona":"zatwierdzona"} (${correctionId})` }); } catch {}
+    loadKasa();
+  } catch (e) { alert("Nie udało się zapisać decyzji" + (e&&e.message?`: ${e.message}`:".")); }
+};
 
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
 const GRAFIK_BASE = "https://grzankatoster-sketch.github.io/hk-phone/grafik.html?t=";
@@ -2139,7 +2203,8 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     konto_reset:"Reset hasła konta", konto_haslo:"Ustawił hasło konta",
                     grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
-                    konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji" };
+                    konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
+                    korekta_decyzja:"Decyzja o korekcie" };
 async function loadAkcje() {
   if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
   let rows = [];
