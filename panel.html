@@ -1145,19 +1145,27 @@ async function loadLive() {
         const role = d.role ? ` <span style="font-size:11px;color:var(--muted);font-weight:600">${esc(d.role)}</span>` : "";
         const vac = d.rooms.filter(r=>r.vacated && !r.done).length;
         const vacB = vac ? ` <span style="font-size:10px;font-weight:800;color:#a07820;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.35);border-radius:99px;padding:1px 7px">🔔 ${vac} pusty</span>` : "";
+        // Osobno: pokoje wyjazdowe (W/WP) vs pobyty (PG/PGZ).
+        const wj = d.rooms.filter(r=>!r.pobyt), pg = d.rooms.filter(r=>r.pobyt);
+        const seg = [`<span style="font-size:10.5px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border:1px solid rgba(90,29,74,.2);border-radius:99px;padding:1px 8px">Wyjazdy ${wj.filter(r=>r.done).length}/${wj.length}</span>`];
+        if (pg.length) seg.push(`<span style="font-size:10.5px;font-weight:800;color:#1f7a52;background:rgba(31,122,82,.08);border:1px solid rgba(31,122,82,.28);border-radius:99px;padding:1px 8px">PG ${pg.filter(r=>r.done).length}/${pg.length}</span>`);
+        const splitLine = `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">${seg.join("")}</div>`;
         return `<div class="wcard" onclick="showLiveWorker('${esc(w).replace(/'/g,"\\'")}')">
           <div class="wtop"><span class="av">${esc(initials(w))}</span><span class="nm">${esc(w)}${role}${vacB}</span><span class="prog">${d.done}/${total}</span></div>
-          <div class="bar"><span style="width:${pct}%"></span></div></div>`;
+          <div class="bar"><span style="width:${pct}%"></span></div>${splitLine}</div>`;
       }).join("");
     }
     let kpis = "";
     if (workers.length) {
-      let tot=0, don=0; workers.forEach(([,d])=>{ tot+=d.rooms.length; don+=d.done; });
+      // Rozdziel pokoje wyjazdowe (W/WP) od pobytów (PG/PGZ) — kierownik musi je widzieć osobno.
+      let tot=0, don=0, totW=0, totP=0;
+      workers.forEach(([,d])=>{ tot+=d.rooms.length; don+=d.done; d.rooms.forEach(r=>{ if(r.pobyt) totP++; else totW++; }); });
       const pct = tot ? Math.round(don/tot*100) : 0;
       kpis = `<div class="kpis">
-        <div class="kpi"><div class="l">Pokoje dziś</div><div class="v">${tot}</div></div>
+        <div class="kpi"><div class="l">Wyjazdy</div><div class="v">${totW}</div></div>
+        <div class="kpi"><div class="l">Pobyty PG</div><div class="v gold">${totP}</div></div>
         <div class="kpi"><div class="l">Zrobione</div><div class="v ok">${don}</div></div>
-        <div class="kpi"><div class="l">Postęp</div><div class="v gold">${pct}%</div></div>
+        <div class="kpi"><div class="l">Postęp</div><div class="v">${pct}%</div></div>
         <div class="kpi"><div class="l">Ekipa</div><div class="v">${workers.length}</div></div>
       </div>`;
     }
@@ -1273,32 +1281,56 @@ window.showLiveWorker = async (w) => {
   body('<div class="spin">Wczytywanie…</div>');
   const today = isoDate(new Date());
   let logs = [];
-  try { const { data } = await sb.from("hk_logs").select("action,worker,room,created_at").eq("date", today).eq("worker", w).order("created_at"); logs = data || []; }
+  try { const { data } = await sb.from("hk_logs").select("action,worker,room,created_at,log_time").eq("date", today).eq("worker", w).order("created_at"); logs = data || []; }
   catch {}
   const d = (LIVE_DATA.byWorker||{})[w] || { rooms:[], done:0 };
+  const fmtT = l => l.log_time || (l.created_at ? new Date(l.created_at).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}) : "");
   const starts = {}, durs = [], elapsed = {};
-  logs.filter(l=>l.created_at).forEach(l => {
-    if (l.action==="start") starts[l.room] = new Date(l.created_at).getTime();
-    else if (l.action==="done" && starts[l.room]) { const m=(new Date(l.created_at).getTime()-starts[l.room])/60000; if(m>0&&m<300) durs.push(m); delete starts[l.room]; }
+  const tStart = {}, tDone = {}, tSkip = {}; // godzina ostatniego kliknięcia per pokój
+  logs.forEach(l => {
+    if (l.action==="start") { tStart[l.room] = fmtT(l); if (l.created_at) starts[l.room] = new Date(l.created_at).getTime(); }
+    else if (l.action==="done") { tDone[l.room] = fmtT(l); if (l.created_at && starts[l.room]) { const m=(new Date(l.created_at).getTime()-starts[l.room])/60000; if(m>0&&m<300) durs.push(m); } delete starts[l.room]; }
+    else if (l.action==="skip") { tSkip[l.room] = fmtT(l); delete starts[l.room]; }
   });
   Object.entries(starts).forEach(([room,ts]) => { elapsed[room] = Math.round((Date.now()-ts)/60000); });
   const avg = durs.length ? Math.round(durs.reduce((a,b)=>a+b,0)/durs.length) : null;
   const roomsSorted = d.rooms.slice().sort((a,b)=>String(a.room).localeCompare(String(b.room),"pl",{numeric:true}));
-  const list = roomsSorted.length ? roomsSorted.map(r => {
+  const renderRow = (r) => {
     const el = elapsed[r.room];
-    const status = r.done ? `<span class="chip done">gotowe</span>`
-      : (el!=null ? `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">w trakcie · ${el} min</span>`
-      : (r.vacated ? `<span class="chip" style="color:#a07820;border-color:rgba(176,134,58,.45);background:rgba(176,134,58,.1)">🔔 pusty — do sprzątania</span>`
-      : `<span class="chip">do zrobienia</span>`));
-    const tag = r.pobyt ? ` <span style="font-size:10px;font-weight:700;color:var(--muted)">pobyt</span>` : "";
-    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}${tag}</span>${status}</div>`;
-  }).join("") : '<div class="empty">Brak przypisanych pokoi.</div>';
+    const sk = tSkip[r.room];
+    let status, times = "";
+    if (sk) {
+      status = `<span class="chip" style="color:var(--lilac);border-color:rgba(138,106,126,.45);background:rgba(138,106,126,.1)">goście nie chcieli</span>`;
+      times = `✕ ${esc(sk)}`;
+    } else if (r.done) {
+      status = `<span class="chip done">gotowe</span>`;
+      times = `${tStart[r.room]?`▶ ${esc(tStart[r.room])}`:""}${tDone[r.room]?`${tStart[r.room]?" · ":""}✓ ${esc(tDone[r.room])}`:""}`;
+    } else if (el!=null) {
+      status = `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">w trakcie · ${el} min</span>`;
+      times = tStart[r.room]?`▶ ${esc(tStart[r.room])}`:"";
+    } else if (r.vacated) {
+      status = `<span class="chip" style="color:#a07820;border-color:rgba(176,134,58,.45);background:rgba(176,134,58,.1)">🔔 pusty — do sprzątania</span>`;
+    } else {
+      status = `<span class="chip">do zrobienia</span>`;
+    }
+    const tline = times ? `<span style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${times}</span>` : "";
+    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}${tline}</span>${status}</div>`;
+  };
+  // Osobno pokoje wyjazdowe (W/WP) i pobyty (PG/PGZ).
+  const wj = roomsSorted.filter(r=>!r.pobyt), pg = roomsSorted.filter(r=>r.pobyt);
+  const section = (title, arr, accent) => arr.length
+    ? `<div class="soon" style="margin-top:14px;color:${accent}">${title} · ${arr.filter(r=>r.done).length}/${arr.length}</div>${arr.map(renderRow).join("")}`
+    : "";
+  const list = (wj.length || pg.length)
+    ? section("Wyjazdy (W/WP)", wj, "var(--plum)") + section("Pobyty — PG/PGZ", pg, "#1f7a52")
+    : '<div class="empty">Brak przypisanych pokoi.</div>';
+  const sumSplit = `Wyjazdy ${wj.filter(r=>r.done).length}/${wj.length}${pg.length?` · PG ${pg.filter(r=>r.done).length}/${pg.length}`:""}`;
   body(`<button class="link" onclick="setHkTab('live')">‹ Wróć do listy</button>
     <div class="panelbox">
       <div class="role-ttl" style="font-size:20px">${esc(w)}</div>
-      <div class="role-who">Dziś: ${d.done}/${d.rooms.length} pokoi${avg!=null?` · średnio ${avg} min/pokój`:""}</div>
+      <div class="role-who">Dziś: ${d.done}/${d.rooms.length} pokoi · ${sumSplit}${avg!=null?` · średnio ${avg} min/pokój`:""}</div>
       <div style="margin-top:12px">${list}</div>
-      <div class="note">Czasy ze zdarzeń start→koniec. Widoczne tylko dla kierownika.</div>
+      <div class="note">Godziny: ▶ start sprzątania · ✓ zakończenie · ✕ goście nie chcieli. Widoczne tylko dla kierownika.</div>
     </div>`);
 };
 
