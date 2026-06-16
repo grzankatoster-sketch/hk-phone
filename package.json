@@ -1,29 +1,54 @@
 {
   "name": "reception-panel",
-  "version": "1.2.3",
+  "version": "1.7.0",
   "description": "Panel przekazania zmiany recepcji — Conrad Comfort",
   "main": "electron/main.cjs",
   "author": "Conrad Comfort",
+  "contributors": [
+    "grzankatoster-sketch"
+  ],
+  "license": "UNLICENSED",
   "private": true,
   "scripts": {
     "dev": "vite",
+    "lint": "node scripts/security-lint.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cash": "node scripts/cash-logic-tests.mjs",
+    "hk:auto": "node scripts/hk-automation/service.cjs",
+    "hk:auto:once": "node scripts/hk-automation/service.cjs --once",
+    "hk:auto:test": "node scripts/hk-automation/test-parser.cjs",
+    "broker:add": "node scripts/broker/add.cjs",
+    "broker:query": "node scripts/broker/query.cjs",
+    "broker:exam": "node scripts/broker/exam.cjs",
+    "broker:list": "node scripts/broker/list.cjs",
+    "broker:analyze": "node scripts/broker/analyze.cjs",
+    "broker:watch": "node scripts/broker/watch.cjs",
+    "broker:watch:once": "node scripts/broker/watch.cjs --once",
     "build": "vite build",
-    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env ELECTRON_IS_DEV=true electron .\"",
+    "electron:dev": "concurrently -k \"vite --force\" \"wait-on http://localhost:5173 && cross-env ELECTRON_IS_DEV=true electron .\"",
+    "electron:dev\\": "npm run electron:dev",
     "dist": "npm run build && electron-builder --win --x64",
     "release": "npm run build && electron-builder --win --x64 --publish always"
   },
   "dependencies": {
-    "@formkit/auto-animate": "^0.9.0",
-    "@ngrok/ngrok": "^1.7.0",
+    "@anthropic-ai/sdk": "^0.95.1",
+    "@supabase/supabase-js": "^2.105.1",
+    "dotenv": "^16.4.7",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.8.3",
     "framer-motion": "^11.0.0",
+    "imapflow": "^1.0.195",
     "jspdf": "^2.5.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.383.0",
+    "mailparser": "^3.7.2",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^6.0.227",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "web-push": "^3.6.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
@@ -33,12 +58,17 @@
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3",
     "vite": "^5.4.0",
+    "vitest": "^4.1.8",
     "wait-on": "^9.0.4"
   },
   "build": {
     "appId": "pl.conradcomfort.reception",
     "productName": "Panel Recepcji Conrad Comfort",
-    "copyright": "Copyright © 2026 Conrad Comfort",
+    "copyright": "Copyright © 2026 Conrad Comfort. Wszelkie prawa zastrzeżone.",
+    "extraMetadata": {
+      "creator": "grzankatoster-sketch",
+      "copyright": "Copyright © 2026 Conrad Comfort. Wszelkie prawa zastrzeżone."
+    },
     "publish": {
       "provider": "github",
       "owner": "grzankatoster-sketch",
@@ -46,15 +76,18 @@
       "private": false,
       "releaseType": "release"
     },
+    "asar": true,
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "public/**/*"
+      "public/**/*",
+      "scripts/hk-automation/lib/**/*.cjs"
     ],
     "win": {
+      "icon": "public/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -63,9 +96,13 @@
           ]
         }
       ],
-      "requestedExecutionLevel": "asInvoker"
+      "requestedExecutionLevel": "asInvoker",
+      "legalTrademarks": "Conrad Comfort"
     },
     "nsis": {
+      "artifactName": "Panel-Recepcji-Conrad-Comfort-Setup-${version}.${ext}",
+      "installerIcon": "public/icon.ico",
+      "uninstallerIcon": "public/icon.ico",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

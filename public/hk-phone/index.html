@@ -4,94 +4,158 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>HK Panel</title>
+<link rel="manifest" href="manifest.json"/>
+<meta name="theme-color" content="#5a1d4a"/>
+<script>
+/* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
+   dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
+   jej zamykać ani usuwać i dodawać ponownie. */
+(function(){
+  var url = location.pathname + (location.search || "");
+  var baseline = null, busy = false, INTERVAL = 5 * 60 * 1000;
+  function fp(s){ var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ":" + h; }
+  async function check(){
+    if (busy || navigator.onLine === false) return;
+    busy = true;
+    try {
+      var res = await fetch(url, { cache: "no-store" });
+      if (res.ok){
+        var cur = fp(await res.text());
+        if (baseline === null) baseline = cur;
+        else if (cur !== baseline){ location.reload(); return; }
+      }
+    } catch (e) { /* offline / chwilowy błąd — sprawdzimy później */ }
+    busy = false;
+  }
+  if ("serviceWorker" in navigator)
+    navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){});
+  check();
+  setInterval(function(){ if (!document.hidden) check(); }, INTERVAL);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+})();
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+<meta name="apple-mobile-web-app-title" content="Conrad HK"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="push.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1117;color:#e6edf3;min-height:100vh;overscroll-behavior:none}
-.header{background:#161b22;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #30363d;position:sticky;top:0;z-index:10}
-.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0}
-.name{font-size:17px;font-weight:800;flex:1}
+:root{
+  --plum:#5a1d4a;
+  --plum-soft:#7a3a6a;
+  --cream:#fdfaf7;
+  --paper:#ffffff;
+  --ink:#2d1422;
+  --muted:#8a6a7e;
+  --line:rgba(90,29,74,.14);
+  --line-strong:rgba(90,29,74,.28);
+  --tint:rgba(90,29,74,.06);
+  --blue:#2563eb;
+  --green:#0f7a4a;
+  --amber:#a07820;
+  --lilac:#784b8e;
+  --red:#b3261e;
+}
+html,body{background:var(--cream)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
+.header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
+.avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
+.name{font-size:17px;font-weight:800;flex:1;color:#fff}
 .shift-badge{font-size:10px;padding:3px 8px;border-radius:999px;font-weight:700}
-.tabs{display:flex;background:#161b22;border-bottom:2px solid #30363d;position:sticky;top:66px;z-index:9}
-.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:#484f58;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
-.tab-btn.active{color:#6366f1;border-bottom-color:#6366f1}
-.tab-badge{display:inline-block;background:#f59e0b;color:#000;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
-.stats{display:flex;gap:6px;padding:12px 14px;background:#161b22;border-bottom:1px solid #30363d;flex-wrap:wrap}
-.stat{background:#1c2128;border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
+.tabs{display:flex;background:var(--paper);border-bottom:2px solid var(--line-strong);position:sticky;top:66px;z-index:9}
+.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn.active{color:var(--plum);border-bottom-color:var(--plum)}
+.tab-badge{display:inline-block;background:var(--amber);color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
+.stats{display:flex;gap:6px;padding:12px 14px;background:var(--paper);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.stat{background:var(--tint);border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
 .stat-n{font-size:18px;font-weight:900}
-.stat-l{font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;margin-top:1px}
+.stat-l{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:1px}
 .sections{padding:12px 12px 80px}
-.section-title{font-size:10px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
-.room-card{background:#1c2128;border-radius:12px;margin-bottom:8px;overflow:hidden;border:1.5px solid #30363d;transition:border-color .2s}
-.room-card.cleaning{border-color:#60a5fa}
-.room-card.done{border-color:#34d399}
-.room-card.skipped{border-color:#a78bfa;opacity:.75}
+.section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.room-card{background:var(--paper);border-radius:12px;margin-bottom:8px;overflow:hidden;border:1.5px solid var(--line);box-shadow:0 1px 2px rgba(90,29,74,.04);transition:border-color .2s}
+.room-card.cleaning{border-color:var(--blue)}
+.room-card.done{border-color:var(--green)}
+.room-card.skipped{border-color:var(--lilac);opacity:.75}
 .room-head{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer}
 .room-no{font-size:26px;font-weight:900;min-width:56px;letter-spacing:-.02em}
 .room-status{font-size:12px;font-weight:700;flex:1;text-transform:uppercase;letter-spacing:.04em}
 .room-dur{font-size:11px;font-weight:700}
-.room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:#21262d;color:#8b949e;font-weight:700}
+.room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--tint);color:var(--muted);font-weight:700}
+.room-phystype{font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:rgba(37,99,235,.1);color:var(--blue);letter-spacing:.02em;flex-shrink:0}
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s;font-family:inherit}
 .btn:active{opacity:.75}
-.btn-blue{background:#2563eb;color:#fff}
-.btn-green{background:#16a34a;color:#fff}
-.btn-amber{background:#d97706;color:#fff}
-.btn-gray{background:#21262d;color:#8b949e;border:1px solid #30363d}
-.report-panel{padding:14px;border-top:1px solid #30363d;display:none}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-gray{background:var(--tint);color:var(--plum);border:1px solid var(--line)}
+.btn-row{display:flex;gap:8px}
+.ask-banner{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.32);border-radius:8px;padding:10px;font-size:12px;color:var(--blue);font-weight:800;text-align:center;margin-bottom:8px}
+.prio-banner{background:rgba(179,38,30,.1);border:1px solid rgba(179,38,30,.35);border-radius:8px;padding:10px;font-size:12.5px;color:var(--red);font-weight:900;text-align:center;margin-bottom:8px}
+.reply-panel{margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--tint)}
+.reply-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.reply-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--plum);cursor:pointer;font-family:inherit}
+.reply-chip:active{opacity:.7}
+.reply-custom{display:flex;gap:8px}
+.reply-custom input{flex:1;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink)}
+.reply-custom .btn{width:auto;flex:0 0 auto;padding:12px 16px;font-size:14px}
+.report-panel{padding:14px;border-top:1px solid var(--line);display:none}
 .report-panel.open{display:block}
 .report-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.report-item{background:#161b22;border-radius:8px;padding:10px 8px;text-align:center}
-.report-label{font-size:9px;color:#484f58;font-weight:700;text-transform:uppercase;margin-bottom:6px}
+.report-item{background:var(--tint);border-radius:8px;padding:10px 8px;text-align:center}
+.report-label{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:6px}
 .report-ctrl{display:flex;align-items:center;justify-content:center;gap:8px}
-.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:#21262d;color:#e6edf3;font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:var(--tint);color:var(--plum);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .report-ctrl span{font-size:18px;font-weight:900;min-width:22px;text-align:center}
 .extra-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.extra-row input{flex:1;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:7px 10px;color:#e6edf3;font-size:13px;font-family:inherit}
-.add-extra{background:#21262d;border:1px solid #30363d;border-radius:7px;padding:7px 14px;color:#8b949e;font-size:12px;cursor:pointer;font-family:inherit}
-.num-input{width:100%;background:#161b22;border:1px solid #30363d;border-radius:7px;padding:8px 6px;color:#e6edf3;font-size:16px;font-weight:800;text-align:center;font-family:inherit}
-.num-input:focus{outline:none;border-color:#6366f1}
-.fault-box{margin-top:14px;border-top:1px solid #30363d;padding-top:12px}
-.fault-title{font-size:11px;font-weight:800;color:#f87171;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
-.fault-box textarea{width:100%;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px;color:#e6edf3;font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
+.extra-row input{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:7px 10px;color:var(--ink);font-size:13px;font-family:inherit}
+.add-extra{background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:7px 14px;color:var(--plum);font-size:12px;cursor:pointer;font-family:inherit}
+.num-input{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:8px 6px;color:var(--ink);font-size:16px;font-weight:800;text-align:center;font-family:inherit}
+.num-input:focus{outline:none;border-color:var(--plum)}
+.fault-box{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.fault-title{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.fault-box textarea{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
 .fault-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-.fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid #30363d}
+.fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .fault-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.fault-thumb button{position:absolute;top:0;right:0;background:rgba(0,0,0,.65);border:none;color:#f87171;font-size:13px;font-weight:900;width:20px;height:20px;cursor:pointer;line-height:1}
-.fault-add{display:block;width:100%;background:#21262d;border:1px dashed #484f58;border-radius:8px;padding:11px;color:#8b949e;font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
+.fault-thumb button{position:absolute;top:0;right:0;background:rgba(45,20,34,.6);border:none;color:#fff;font-size:13px;font-weight:900;width:20px;height:20px;cursor:pointer;line-height:1}
+.fault-add{display:block;width:100%;background:var(--tint);border:1px dashed var(--line-strong);border-radius:8px;padding:11px;color:var(--muted);font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
 .fault-add input{display:none}
-.btn-fault{background:#7f1d1d;color:#fecaca}
-.task-card{background:#1c2128;border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid #f59e0b}
+.btn-fault{background:var(--red);color:#fff}
+.task-card{background:var(--paper);border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid var(--amber)}
 .task-text{font-size:14px;font-weight:700;margin-bottom:6px}
-.task-meta{font-size:11px;color:#484f58;margin-bottom:8px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c2128;border:1px solid #30363d;border-radius:10px;padding:12px 20px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 8px 30px rgba(0,0,0,.5);transition:opacity .3s;white-space:nowrap}
-.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:#484f58;font-size:14px}
-.spinner{width:36px;height:36px;border:3px solid #21262d;border-top-color:#6366f1;border-radius:50%;animation:spin .8s linear infinite}
+.task-meta{font-size:11px;color:var(--muted);margin-bottom:8px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--paper);border:1px solid var(--line-strong);border-radius:10px;padding:12px 20px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 8px 30px rgba(90,29,74,.25);transition:opacity .3s;white-space:nowrap}
+.loading{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:12px;color:var(--muted);font-size:14px}
+.spinner{width:36px;height:36px;border:3px solid var(--line);border-top-color:var(--plum);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.empty{text-align:center;padding:40px 20px;color:#484f58}
+@keyframes slideup{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
 .empty-icon{font-size:40px;margin-bottom:12px}
 /* Team tab */
-.team-section{background:#161b22;border:1.5px solid #30363d;border-radius:12px;margin-bottom:10px;overflow:hidden}
-.team-section-title{padding:10px 14px;font-size:10px;font-weight:800;color:#484f58;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid #21262d}
-.worker-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #21262d}
+.team-section{background:var(--paper);border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
+.team-section-title{padding:10px 14px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.worker-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .worker-row:last-child{border-bottom:none}
 .worker-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0}
-.worker-bar-bg{height:4px;border-radius:999px;background:#21262d;margin-top:4px}
+.worker-bar-bg{height:4px;border-radius:999px;background:var(--tint);margin-top:4px}
 .worker-bar{height:100%;border-radius:999px;transition:width .3s}
-.log-row{display:flex;align-items:flex-start;gap:9px;padding:8px 14px;border-bottom:1px solid #21262d}
+.log-row{display:flex;align-items:flex-start;gap:9px;padding:8px 14px;border-bottom:1px solid var(--line)}
 .log-row:last-child{border-bottom:none}
 .log-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px}
 .log-text{font-size:12px;font-weight:600;line-height:1.4}
-.log-time{font-size:10px;color:#484f58;margin-top:2px}
-.ex-card{background:#161b22;border:2px solid #f59e0b;border-radius:12px;padding:13px 14px;margin-bottom:10px}
-.ex-title{font-size:13px;font-weight:800;color:#f59e0b;margin-bottom:6px}
+.log-time{font-size:10px;color:var(--muted);margin-top:2px}
+.ex-card{background:var(--paper);border:2px solid var(--amber);border-radius:12px;padding:13px 14px;margin-bottom:10px}
+.ex-title{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:6px}
 .ex-btns{display:flex;gap:8px;margin-top:10px}
-.ex-accept{flex:1;padding:11px;border-radius:9px;border:none;background:#16a34a;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
-.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(248,113,113,.4);background:rgba(248,113,113,.08);color:#f87171;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-accept{flex:1;padding:11px;border-radius:9px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(179,38,30,.35);background:rgba(179,38,30,.06);color:var(--red);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
 .ex-accept:active,.ex-reject:active{opacity:.7}
-.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(99,102,241,.35);background:rgba(99,102,241,.08);color:#a5b4fc;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
-.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(96,165,250,.35);background:rgba(96,165,250,.08);color:#60a5fa;font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--tint);color:var(--plum);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(37,99,235,.3);background:rgba(37,99,235,.07);color:var(--blue);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
 .transfer-btn:active,.request-btn:active{opacity:.7}
-.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#f59e0b;font-size:12px;font-weight:700;margin:3px}
+.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);color:var(--amber);font-size:12px;font-weight:700;margin:3px}
 </style>
 </head>
 <body>
@@ -102,12 +166,21 @@ let sb = null;
 const app = document.getElementById("app");
 
 const params  = new URLSearchParams(location.search);
-const WORKER  = params.get("w") || "";
+// ?w= z URL ma pierwszeństwo i jest zapamiętywany. Uruchomienie z ekranu
+// głównego iPhone'a idzie do start_url bez ?w= — wtedy bierzemy z localStorage.
+let WORKER = params.get("w") || "";
+// ?embed=1 — widok osadzony w panelu menedżera (tryb „Praca"). Wtedy nie
+// pokazujemy nakładki „Dodaj do ekranu" (instalacją zarządza panel).
+const EMBED = params.get("embed") === "1";
+try {
+  if (WORKER) localStorage.setItem("hk_worker", WORKER);
+  else WORKER = localStorage.getItem("hk_worker") || "";
+} catch (e) { /* tryb prywatny / brak storage */ }
 const TODAY   = new Date().toISOString().split("T")[0];
 // Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 
-const COLORS  = ["#6366f1","#f59e0b","#34d399","#f87171","#60a5fa","#a78bfa","#fb923c","#2dd4bf","#e879f9","#facc15"];
+const COLORS  = ["#5a1d4a","#9b598a","#a07820","#784b8e","#2563eb","#0f7a4a","#c2708a","#b3261e","#7a3a6a","#476d8e"];
 const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
 const wColor  = (name) => COLORS[Math.abs([...(name||"")].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
 
@@ -116,8 +189,7 @@ const LINEN = [
   {key:"przes_sr",label:"Prześ.Śr."},{key:"przes_duze",label:"Prześ.Duże"},
   {key:"recz_duzy",label:"Ręcz.Duży"},{key:"recz_sredni",label:"Ręcz.Śr."},
   {key:"dywanik",label:"Dywanik"},{key:"narzuta",label:"Narzuta"},
-  {key:"koldra",label:"Kołdra"},{key:"poduszka",label:"Poduszka"},
-  {key:"podklad",label:"Podkład"}
+  {key:"koldra",label:"Kołdra"},{key:"poduszka",label:"Poduszka"}
 ];
 
 // ─── State ───────────────────────────────────────────────────────────────────
@@ -132,16 +204,21 @@ let faultDrafts = {}; // room -> {desc, photos:[dataUrl...]}
 const MAX_FAULT_PHOTOS = 5;
 let isPm       = false;
 let pmRoomTypes = {};
+let roomTypes  = {}; // { roomNo: "DBL"|"TWIN"|... } — typ fizyczny pokoju (z hk_plan.room_types)
 let activeTab  = "rooms";
+let roomRequestSent = false; // czy pracownik wysłał już prośbę o pokój (dziś)
+let replyOpen  = null; // roomNo|null — otwarty panel odpowiedzi do recepcji
+let replyDraft = {};   // { roomNo: "tekst" } — robocza treść własnej odpowiedzi
 
 // Team state
 let allAssignments = {}; // { workerName: [roomNo, ...] }
 let allRoomStates  = {}; // { roomNo: roomRow }
 let allLogs        = []; // recent hk_logs
+let hkReminders    = []; // przypomnienia od kierownika HK (hk_reminders)
 let pendingExchanges = []; // parsed from logs
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
-function toast(msg, color="#34d399") {
+function toast(msg, color="var(--green)") {
   const el = document.createElement("div");
   el.className = "toast";
   el.style.color = color;
@@ -198,7 +275,7 @@ async function skipRoom(room) {
   roomStates[room] = {...(roomStates[room]||{}), status:"pominięte", done_at:done};
   openRoom = null;
   render();
-  toast(`Pokój ${room} — pominięty`,"#a78bfa");
+  toast(`Pokój ${room} — pominięty`,"var(--lilac)");
 }
 
 async function doneTask(id, text) {
@@ -240,7 +317,7 @@ function render() {
   <div class="header">
     <div class="avatar" style="background:${WCOLOR}">${WORKER.charAt(0).toUpperCase()}</div>
     <div class="name">${WORKER}</div>
-    <div class="shift-badge" style="background:${isPm?"rgba(167,139,250,.15)":"rgba(52,211,153,.15)"}; color:${isPm?"#a78bfa":"#34d399"}">${isPm?"PM":"Rano"}</div>
+    <div class="shift-badge" style="background:rgba(255,255,255,.16); color:${isPm?"#f0d6e8":"#cdeede"}">${isPm?"PM":"Rano"}</div>
   </div>
   <div class="tabs">
     <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
@@ -256,12 +333,12 @@ function render() {
   // Rooms tab
   html += `
   <div class="stats">
-    <div class="stat"><div class="stat-n" style="color:#8b949e">${waiting.length}</div><div class="stat-l">Czeka</div></div>
-    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:#60a5fa">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
-    <div class="stat"><div class="stat-n" style="color:#34d399">${done.length}</div><div class="stat-l">Gotowe</div></div>
-    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:#a78bfa">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
-    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:#f59e0b">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
-    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:#f59e0b">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
+    <div class="stat"><div class="stat-n" style="color:var(--muted)">${waiting.length}</div><div class="stat-l">Czeka</div></div>
+    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:var(--blue)">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
+    <div class="stat"><div class="stat-n" style="color:var(--green)">${done.length}</div><div class="stat-l">Gotowe</div></div>
+    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:var(--lilac)">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
+    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:var(--amber)">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
+    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:var(--amber)">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
   </div>
   <div class="sections">`;
 
@@ -293,7 +370,7 @@ function render() {
     skipped.forEach(r => { html += roomCard(r, "pominięte"); });
   }
   if (!allRooms.length) {
-    html += `<div class="empty"><div class="empty-icon">🧹</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:#484f58">Poczekaj na przypisanie przez recepcję.</div></div>`;
+    html += `<div class="empty"><div class="empty-icon">🧹</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:var(--muted)">Poczekaj na przypisanie przez recepcję.</div></div>`;
   }
   html += `</div>`;
   app.innerHTML = html;
@@ -310,45 +387,26 @@ function renderTeam() { render(); }
 function renderTeamHtml() {
   let html = `<div class="sections" style="padding-top:10px">`;
 
-  // ── Worker progress ──
-  html += `<div class="section-title">Postęp zespołu</div><div class="team-section">`;
-  const workers = Object.keys(allAssignments);
-  if (!workers.length) {
-    html += `<div style="padding:12px 14px;color:#484f58;font-size:12px">Brak danych o pracownikach</div>`;
-  } else {
-    workers.forEach(w => {
-      const rooms = allAssignments[w] || [];
-      const done  = rooms.filter(no => allRoomStates[no]?.status === "czyste").length;
-      const free  = rooms.filter(no => { const s=allRoomStates[no]; return !s||s.status==="W"; }).length;
-      const pct   = rooms.length ? Math.round(done/rooms.length*100) : 0;
-      const isMe  = w === WORKER;
-      const startLog = allLogs.slice().reverse().find(l => l.worker===w && l.action==="start");
-      const startTxt = startLog ? startLog.log_time : "—";
-      html += `<div class="worker-row" style="${isMe?"background:rgba(99,102,241,.06)":""}">
-        <div class="worker-av" style="background:${wColor(w)}">${w.charAt(0).toUpperCase()}</div>
-        <div style="flex:1">
-          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-            <span style="font-size:13px;font-weight:${isMe?900:700};color:#e6edf3">${escHtml(w)}${isMe?" <span style='font-size:10px;color:#6366f1'>Ty</span>":""}</span>
-            <span style="font-size:13px;font-weight:900;color:#34d399">${done}/${rooms.length}</span>
-          </div>
-          <div class="worker-bar-bg"><div class="worker-bar" style="width:${pct}%;background:${wColor(w)}"></div></div>
-          <div style="font-size:10px;color:#484f58;margin-top:3px">start: ${startTxt} · ${free} wolnych</div>
-        </div>
-      </div>`;
-    });
+  // ── Przypomnienia od kierownika HK ──
+  if (hkReminders && hkReminders.length) {
+    html += `<div class="team-section" style="padding:14px;margin-bottom:12px;border-left:3px solid var(--plum)">
+      <div style="font-size:13px;font-weight:800;color:var(--plum);margin-bottom:6px">🔔 Przypomnienia od kierownika</div>
+      ${hkReminders.map(r=>`<div style="font-size:13px;color:#2d1422;padding:6px 0;border-top:1px solid rgba(90,29,74,.08)">${escHtml(r.body)}</div>`).join("")}
+    </div>`;
   }
-  html += `</div>`;
 
-  // ── Vacated rooms ──
-  const vacatedNos = Object.entries(allRoomStates)
-    .filter(([,r]) => r.vacated && r.status==="W")
-    .map(([no]) => no);
-  if (vacatedNos.length) {
-    html += `<div class="section-title">🔔 Puste pokoje (czekają)</div>
-    <div class="team-section"><div style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:4px">
-    ${vacatedNos.map(no=>`<span class="vac-pill">${escHtml(no)}</span>`).join("")}
-    </div></div>`;
-  }
+  // ── Prośba o pokój ──
+  // Pracownik (np. ten, kto skończył) prosi recepcję o przydzielenie pokoju.
+  // Wpis trafia do hk_logs (action=room_request) → recepcja widzi go w HK Live
+  // i może użyć sugestii zamiany (agent/AI).
+  const myRemaining = [...myRooms, ...myPmRooms].filter(r => { const s=roomStates[r]; return !s||s.status==="W"; }).length;
+  html += `<div class="team-section" style="padding:14px;margin-bottom:12px">
+    <div style="font-size:13px;font-weight:800;color:var(--plum);margin-bottom:4px">🙋 Prośba o pokój</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${myRemaining>0?`Masz jeszcze ${myRemaining} do sprzątania.`:"Skończyłaś swoje pokoje?"} Poproś recepcję o kolejny pokój — zobaczą to od razu.</div>
+    ${roomRequestSent
+      ? `<div style="text-align:center;padding:10px;border-radius:10px;background:rgba(15,122,74,.1);color:var(--green);font-size:13px;font-weight:700">✓ Prośba wysłana do recepcji</div>`
+      : `<button class="btn btn-blue" onclick="requestRoom()" style="width:100%">🙋 Poproś o pokój</button>`}
+  </div>`;
 
   // ── Activity feed ──
   const LOG_TEXT = {
@@ -360,19 +418,25 @@ function renderTeamHtml() {
     exchange_accept:  l => { try{ const d=JSON.parse(l.extra||"{}"); return `⇄ ${escHtml(d.from||l.worker)} → ${escHtml(d.to||"")} (${(d.rooms||[]).length} pok.)`; }catch{return "wymiana";} },
     exchange_reject:  l => `${escHtml(l.worker)} odrzucił/a wymianę`,
     exchange_request: l => { try{ const d=JSON.parse(l.extra||"{}"); return `${escHtml(l.worker)} prosi o pokoje od ${escHtml(d.from||"")}`; }catch{return "prośba o pokoje";} },
+    room_request:     l => l.extra ? escHtml(l.extra) : `${escHtml(l.worker)} prosi o pokój`,
+    reassign:         l => l.extra ? `Recepcja: ${escHtml(l.extra)}` : `${escHtml(l.worker)} — zmiana przydziału`,
+    priority:         l => l.extra ? escHtml(l.extra) : `Recepcja: pok. ${escHtml(l.room)} w pierwszej kolejności`,
+    priority_off:     l => `Recepcja: anulowano priorytet pok. ${escHtml(l.room)}`,
+    info_request:     l => `Recepcja pyta o pok. ${escHtml(l.room)}`,
+    info_reply:       l => `pok. ${escHtml(l.room)} · ${escHtml(l.worker)}: ${escHtml(l.extra||"")}`,
   };
-  const LOG_COLOR = { start:"#60a5fa", done:"#34d399", skip:"#f59e0b", vacate:"#a78bfa", task_done:"#34d399", exchange_accept:"#34d399", exchange_reject:"#f87171", exchange_request:"#f59e0b" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
     html += `<div class="section-title">Aktywność dziś</div><div class="team-section">`;
     recentLogs.forEach((l,i) => {
-      const c = LOG_COLOR[l.action] || "#8b949e";
+      const c = LOG_COLOR[l.action] || "#8a6a7e";
       const fn = LOG_TEXT[l.action];
       const txt = fn ? fn(l) : escHtml(l.worker)+" "+escHtml(l.action);
       html += `<div class="log-row">
         <div class="log-icon" style="background:${c}22;color:${c}">●</div>
-        <div><div class="log-text" style="color:#e6edf3">${txt}</div><div class="log-time">${escHtml(l.log_time)}</div></div>
+        <div><div class="log-text" style="color:var(--ink)">${txt}</div><div class="log-time">${escHtml(l.log_time)}</div></div>
       </div>`;
     });
     html += `</div>`;
@@ -388,6 +452,83 @@ function switchTab(t) {
   else render();
 }
 
+// ─── Prośba o pokój → recepcja (hk_logs) ───────────────────────────────────────
+async function requestRoom() {
+  if (!sb || roomRequestSent) return;
+  roomRequestSent = true;
+  render(); // natychmiastowy feedback (przycisk → potwierdzenie)
+  const myRemaining = [...myRooms, ...myPmRooms].filter(r => { const s=roomStates[r]; return !s||s.status==="W"; }).length;
+  const note = myRemaining > 0
+    ? `${WORKER} prosi o pokój (zostało ${myRemaining})`
+    : `${WORKER} skończyła i prosi o pokój`;
+  try {
+    await addLog("room_request", null, note);
+    toast("Prośba wysłana do recepcji ✓", "var(--green)");
+  } catch (e) {
+    roomRequestSent = false;
+    toast("Nie udało się wysłać prośby", "var(--red)");
+    render();
+  }
+}
+
+// ─── Odpowiedź do recepcji (na pytanie o status pokoju) ────────────────────────
+const REPLY_PRESETS = ["Myję podłogę", "Już kończę", "Dopiero zaczynam"];
+
+// Czy recepcja oznaczyła pokój jako PILNY (w pierwszej kolejności)? priority bez późniejszego priority_off.
+function priorityFor(no) {
+  let on = false;
+  for (const l of allLogs) {
+    if (l.room !== no) continue;
+    if (l.action === "priority") on = true;
+    else if (l.action === "priority_off") on = false;
+  }
+  return on;
+}
+
+// Czy recepcja czeka na odpowiedź o tym pokoju? (info_request bez późniejszego info_reply)
+function pendingAskFor(no) {
+  let pending = false;
+  for (const l of allLogs) {
+    if (l.room !== no) continue;
+    if (l.action === "info_request") pending = true;
+    else if (l.action === "info_reply") pending = false;
+  }
+  return pending;
+}
+
+function toggleReply(no) {
+  replyOpen = replyOpen === no ? null : no;
+  render();
+}
+
+async function sendReply(no, text) {
+  const t = (text || "").trim();
+  if (!sb || !t) return;
+  replyOpen = null;
+  replyDraft[no] = "";
+  render();
+  try {
+    await addLog("info_reply", no, t.slice(0, 200));
+    toast("Odpowiedź wysłana do recepcji ✓", "var(--green)");
+  } catch (e) {
+    toast("Nie udało się wysłać odpowiedzi", "var(--red)");
+  }
+}
+
+function renderReplyPanel(no) {
+  const presets = REPLY_PRESETS.map(p =>
+    `<button type="button" class="reply-chip" onclick="sendReply('${no}',this.textContent)">${p}</button>`
+  ).join("");
+  return `<div class="reply-panel">
+    <div class="reply-presets">${presets}</div>
+    <div class="reply-custom">
+      <input id="replyin-${no}" placeholder="Własna odpowiedź…" value="${escHtml(replyDraft[no]||"")}"
+        oninput="replyDraft['${no}']=this.value">
+      <button type="button" class="btn btn-blue" onclick="sendReply('${no}',document.getElementById('replyin-${no}').value)">Wyślij</button>
+    </div>
+  </div>`;
+}
+
 // ─── Room card ────────────────────────────────────────────────────────────────
 function roomCard(no, status) {
   const rs    = roomStates[no] || {};
@@ -395,27 +536,45 @@ function roomCard(no, status) {
   const pm    = myPmRooms.includes(no);
   const pmt   = pmRoomTypes[no];
 
-  const colors = { W:"#8b949e", czyszczenie:"#60a5fa", czyste:"#34d399", "pominięte":"#a78bfa", vacated:"#f59e0b" };
+  const colors = { W:"var(--muted)", czyszczenie:"var(--blue)", czyste:"var(--green)", "pominięte":"var(--lilac)", vacated:"var(--amber)" };
   const labels = { W:"Czeka", czyszczenie:"Sprząta", czyste:"Czyste ✓", "pominięte":"Pominięte", vacated:"Pokój pusty" };
-  const col = colors[status] || "#8b949e";
+  const col = colors[status] || "var(--muted)";
   const lbl = labels[status] || "Czeka";
   const duration = (status==="czyste"||status==="czyszczenie") ? dur(rs.started_at, rs.done_at||new Date().toISOString()) : null;
 
+  const pendingAsk = pendingAskFor(no);
+  const isPriority  = priorityFor(no);
+  const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
+  const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
+  // Przycisk odpowiedzi (z gotowcami) pokazujemy TYLKO gdy recepcja faktycznie
+  // pyta o status pokoju. Bez pytania pracownik widzi sam "Zaczynam sprzątać".
+  const replyBtn   = pendingAsk ? `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>` : "";
+  const replyUI    = replyOpen === no ? renderReplyPanel(no) : "";
+
+  // Pobyt (PG/PGZ, zmiana popołudniowa) — gość może nie chcieć sprzątania.
+  // Wyjazdy (W/WP) zawsze trzeba posprzątać, więc bez tego przycisku.
+  const isPobyt = pmt === "PG" || pmt === "PGZ";
+
   let buttons = "";
   if (status === "W" || status === "vacated") {
-    buttons = `<button class="btn btn-blue" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>`;
-    if (status === "vacated") buttons = `<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:10px;font-size:12px;color:#f59e0b;font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
+    buttons = `<div class="btn-row"><button class="btn btn-blue" style="flex:3" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>${replyBtn}</div>`;
+    // Dla pobytów od razu drugi przycisk obok startu (nie po rozpoczęciu sprzątania).
+    if (isPobyt) buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
+    if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
-      <button class="btn btn-green" style="margin-bottom:8px" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>
+      <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
       <div id="rp-${no}" class="report-panel"></div>`;
-    // "Goście nie chcieli" tylko dla pokoi PGZ (nie PG, nie wyjazdy).
-    if (pmt === "PGZ") buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
+  } else if (pendingAsk) {
+    // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
+    buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
+  buttons = prioBanner + askBanner + buttons + replyUI;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
       <div class="room-no" style="color:${col}">${no}</div>
+      ${roomTypes[no]?`<div class="room-phystype">${escHtml(roomTypes[no])}</div>`:""}
       <div class="room-status" style="color:${col}">${lbl}</div>
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
@@ -453,13 +612,13 @@ function renderReportPanel(room) {
   });
   html += `</div>`;
 
-  html += `<div style="font-size:11px;font-weight:700;color:#484f58;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Dodatkowe pozycje</div>`;
+  html += `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Dodatkowe pozycje</div>`;
   ex.forEach((it,idx) => {
     html += `<div class="extra-row">
       <input placeholder="Nazwa…" value="${escHtml(it.name)}" oninput="getExtra('${room}')[${idx}].name=this.value"/>
       <input class="num-input" style="flex:0 0 70px" type="number" inputmode="numeric" min="0" value="${it.count||0}"
         onfocus="this.select()" oninput="getExtra('${room}')[${idx}].count=Math.max(0,parseInt(this.value)||0)">
-      <button onclick="removeExtraRow('${room}',${idx})" style="background:#21262d;border:1px solid #30363d;border-radius:7px;padding:6px 10px;color:#f87171;cursor:pointer">✕</button>
+      <button onclick="removeExtraRow('${room}',${idx})" style="background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--red);cursor:pointer">✕</button>
     </div>`;
   });
   html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
@@ -496,8 +655,8 @@ async function compressImage(file) {
 async function addFaultPhotos(room, input) {
   const fd=getFaultDraft(room);
   for (const f of [...(input.files||[])]) {
-    if (fd.photos.length>=MAX_FAULT_PHOTOS) { toast("Maks. "+MAX_FAULT_PHOTOS+" zdjęć","#f59e0b"); break; }
-    try { fd.photos.push(await compressImage(f)); } catch { toast("Nie udało się wczytać zdjęcia","#f87171"); }
+    if (fd.photos.length>=MAX_FAULT_PHOTOS) { toast("Maks. "+MAX_FAULT_PHOTOS+" zdjęć","var(--amber)"); break; }
+    try { fd.photos.push(await compressImage(f)); } catch { toast("Nie udało się wczytać zdjęcia","var(--red)"); }
   }
   input.value="";
   renderReportPanel(room);
@@ -505,9 +664,9 @@ async function addFaultPhotos(room, input) {
 function removeFaultPhoto(room, idx) { getFaultDraft(room).photos.splice(idx,1); renderReportPanel(room); }
 async function reportFault(room) {
   const fd=getFaultDraft(room);
-  if (!fd.desc.trim()) { toast("Opisz usterkę","#f87171"); return; }
-  if (!sb) { toast("Brak połączenia","#f87171"); return; }
-  toast("Wysyłanie usterki…","#60a5fa");
+  if (!fd.desc.trim()) { toast("Opisz usterkę","var(--red)"); return; }
+  if (!sb) { toast("Brak połączenia","var(--red)"); return; }
+  toast("Wysyłanie usterki…","var(--blue)");
   const urls=[];
   for (const dataUrl of fd.photos) {
     try {
@@ -521,43 +680,117 @@ async function reportFault(room) {
     tenant_id:TENANT_ID, source:"hk", floor:"hk", space_id:room, room,
     description:fd.desc.trim(), reported_by:WORKER, status:"open", priority:"normal", photos:urls
   });
-  if (error) { toast("Błąd zapisu usterki","#f87171"); return; }
+  if (error) { toast("Błąd zapisu usterki","var(--red)"); return; }
   await addLog("usterka", room, fd.desc.trim().slice(0,120));
   faultDrafts[room]={desc:"",photos:[]};
-  toast("Usterka zgłoszona ✓","#34d399");
+  toast("Usterka zgłoszona ✓","var(--green)");
   renderReportPanel(room);
 }
 
 // ─── Team data load ───────────────────────────────────────────────────────────
 async function loadTeamData() {
   if (!sb) return;
-  const [{ data: plan }, { data: rData }, { data: lData }] = await Promise.all([
-    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single(),
+  const [{ data: plan }, { data: rData }, { data: lData }, remRes] = await Promise.all([
+    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single(),
     sb.from("hk_rooms").select("*").eq("date", TODAY),
     sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
+    sb.from("hk_reminders").select("body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(20).then(r=>r, ()=>({data:[]})),
   ]);
 
   if (plan) {
     allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
+    roomTypes = plan.room_types || roomTypes;
   }
   if (rData) {
     allRoomStates = {};
     rData.forEach(r => { allRoomStates[r.room] = r; });
   }
   if (lData) allLogs = lData;
+  hkReminders = ((remRes && remRes.data) || []).filter(r => r.active !== false);
+}
+
+// ─── Polling fallback ─────────────────────────────────────────────────────────
+// Realtime bywa zawodny na telefonach (uśpiony ekran, zerwany websocket, wyłączony
+// Realtime na tabeli). Co 12 s dociągamy dane, by zadania i przypisania z recepcji
+// pojawiały się bez ręcznego odświeżania. Pomijamy odświeżenie, gdy ktoś właśnie pisze.
+async function refreshData() {
+  if (!WORKER || !sb) return;
+  const ae = document.activeElement;
+  if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // nie kasuj wpisywanego tekstu
+  try {
+    const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
+    if (plan) {
+      myRooms   = (plan.assignments   || {})[WORKER] || [];
+      myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
+      pmRoomTypes = plan.pm_room_types || {};
+      roomTypes = plan.room_types || {};
+      isPm = myPmRooms.length > 0 && myRooms.length === 0;
+      allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
+    }
+    const allRooms = [...myRooms, ...myPmRooms];
+    if (allRooms.length) {
+      const { data: rData } = await sb.from("hk_rooms").select("*").eq("date", TODAY);
+      if (rData) { roomStates = {}; allRoomStates = {}; rData.forEach(r => { roomStates[r.room]=r; allRoomStates[r.room]=r; }); }
+    }
+    const { data: tData } = await sb.from("hk_tasks").select("*").eq("date", TODAY).order("created_at");
+    if (tData) tasks = tData;
+    const { data: lData } = await sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at");
+    if (lData) allLogs = lData;
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+    checkAcks();
+  } catch (e) { /* sieć padła — spróbujemy za 12 s */ }
+}
+
+// ─── Wybór pracownika (gdy brak ?w=, np. start z ekranu głównego iPhone) ───────
+function setWorker(name) {
+  try { localStorage.setItem("hk_worker", name); } catch (e) {}
+  const u = new URL(location.href);
+  u.searchParams.set("w", name);
+  location.replace(u.toString());
+}
+
+async function pickWorker() {
+  if (!sb) { render(); return; }
+  app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
+  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments").eq("date", TODAY).single();
+  const names = [...new Set([
+    ...Object.keys(plan?.assignments || {}),
+    ...Object.keys(plan?.pm_assignments || {}),
+  ])].sort((a, b) => a.localeCompare(b, "pl"));
+
+  if (!names.length) {
+    app.innerHTML = `<div class="loading"><div class="empty-icon">⚠️</div><div>Brak planu na dziś.<br>Otwórz swój link <b>?w=Imię</b>.</div></div>`;
+    return;
+  }
+
+  let html = `<div style="padding:24px 16px;max-width:480px;margin:0 auto">
+    <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum)">Kto sprząta?</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Wybierz swoje imię — zapamiętamy je na tym telefonie.</div>`;
+  names.forEach(n => {
+    html += `<button data-name="${escHtml(n)}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;background:var(--paper);border:1px solid var(--line);border-radius:14px;color:var(--ink);font-size:16px;font-weight:700;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(90,29,74,.04)">
+      <span style="width:34px;height:34px;border-radius:50%;background:${wColor(n)};display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${escHtml((n[0] || "?").toUpperCase())}</span>
+      ${escHtml(n)}
+    </button>`;
+  });
+  html += `</div>`;
+  app.innerHTML = html;
+  app.querySelectorAll("button[data-name]").forEach(b => b.onclick = () => setWorker(b.dataset.name));
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  if (!WORKER) { render(); return; }
-  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:#f87171">Brak konfiguracji Supabase.</div>'; return; }
+  if (!WORKER) { await pickWorker(); return; }
+  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">Brak konfiguracji Supabase.</div>'; return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
 
-  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", TODAY).single();
+  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
   if (plan) {
     myRooms   = (plan.assignments   || {})[WORKER] || [];
     myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
     pmRoomTypes = plan.pm_room_types || {};
+    roomTypes = plan.room_types || {};
     isPm = myPmRooms.length > 0 && myRooms.length === 0;
     allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
   }
@@ -577,6 +810,7 @@ async function init() {
   if (lData) allLogs = lData;
 
   render();
+  checkAcks();
 
   // Realtime
   const allMyRooms = [...myRooms, ...myPmRooms];
@@ -601,6 +835,7 @@ async function init() {
       const newRooms   = (row.assignments   ||{})[WORKER] || [];
       const newPmRooms = (row.pm_assignments||{})[WORKER] || [];
       allAssignments = {...(row.assignments||{}), ...(row.pm_assignments||{})};
+      roomTypes = row.room_types || roomTypes;
       if (JSON.stringify(newRooms)!==JSON.stringify(myRooms)||JSON.stringify(newPmRooms)!==JSON.stringify(myPmRooms)) {
         myRooms=newRooms; myPmRooms=newPmRooms; pmRoomTypes=row.pm_room_types||{};
         isPm=myPmRooms.length>0&&myRooms.length===0;
@@ -609,7 +844,7 @@ async function init() {
           const {data}=await sb.from("hk_rooms").select("*").eq("date",TODAY).in("room",all);
           if (data) data.forEach(r=>{ roomStates[r.room]=r; allRoomStates[r.room]=r; });
         }
-        toast("Recepcja zaktualizowała plan","#60a5fa");
+        toast("Recepcja zaktualizowała plan","var(--blue)");
       }
       render();
     })
@@ -618,7 +853,105 @@ async function init() {
       allLogs = [...allLogs, row];
       render();
     })
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"hk_quality_checks",filter:`date=eq.${TODAY}`}, ({new:row})=>{
+      if (row && _firstName(row.target_worker)===_firstName(WORKER)) checkAcks();
+    })
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"hk_reminders"}, ()=> checkAcks())
     .subscribe();
+
+  // Fallback do Realtime — gwarantuje, że nowe zadania/przypisania pojawią się
+  // bez ręcznego odświeżania, nawet gdy websocket nie dostarczy zdarzenia.
+  if (!window.__hkPoll) window.__hkPoll = setInterval(refreshData, 12000);
+}
+
+// ─── Powiadomienia „do przeklikania" (kontrole pokoi + przypomnienia) ──────────
+// Imię porównujemy po pierwszym członie (plan: „Anna Kowalska" = ?w=Anna).
+const _firstName = (n) => String(n||"").trim().toLowerCase().split(/\s+/)[0];
+let _ackBusy = false;
+
+async function checkAcks() {
+  if (!sb || !WORKER || _ackBusy) return;
+  if (document.getElementById("ackModal")) return;   // jeden modal naraz
+  _ackBusy = true;
+  try {
+    // 1) Losowe kontrole pokoi przypisane do mnie (najpilniejsze).
+    const { data: qc } = await sb.from("hk_quality_checks")
+      .select("*").eq("date", TODAY).eq("status", "pending").order("created_at");
+    const mine = (qc||[]).filter(c => _firstName(c.target_worker) === _firstName(WORKER));
+    if (mine.length) { showQcModal(mine[0]); return; }
+
+    // 2) Przypomnienia bez mojego potwierdzenia. W trybie Praca kierownika (EMBED)
+    //    pomijamy — to ona je wysyła, nie musi sama sobie ich potwierdzać.
+    if (EMBED) return;
+    const { data: rems } = await sb.from("hk_reminders")
+      .select("id,body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at");
+    const active = (rems||[]).filter(r => r.active !== false);
+    if (active.length) {
+      const ids = active.map(r=>r.id);
+      const { data: acks } = await sb.from("hk_reminder_acks")
+        .select("reminder_id").eq("worker", WORKER).in("reminder_id", ids);
+      const acked = new Set((acks||[]).map(a=>a.reminder_id));
+      const todo = active.filter(r => !acked.has(r.id));
+      if (todo.length) { showReminderModal(todo[0]); return; }
+    }
+  } catch (e) { /* sieć — spróbujemy przy następnym odświeżeniu */ }
+  finally { _ackBusy = false; }
+}
+
+function _ackOverlay(inner) {
+  const o = document.createElement("div");
+  o.id = "ackModal";
+  o.style.cssText = "position:fixed;inset:0;z-index:1200;background:rgba(45,20,34,.55);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;font-family:inherit";
+  o.innerHTML = `<div style="background:var(--paper);width:100%;max-width:520px;border-top-left-radius:20px;border-top-right-radius:20px;padding:20px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(45,20,34,.4);max-height:90vh;overflow:auto;animation:slideup .25s ease">${inner}</div>`;
+  document.body.appendChild(o);
+  return o;
+}
+
+function showQcModal(c) {
+  const items = Array.isArray(c.items) ? c.items : [];
+  const rows = items.map((it,i)=>`
+    <label style="display:flex;align-items:center;gap:11px;padding:13px 12px;border:1.5px solid var(--line);border-radius:12px;margin-bottom:9px;font-size:14.5px;color:var(--ink);cursor:pointer">
+      <input type="checkbox" data-qi="${i}" style="width:22px;height:22px;flex-shrink:0;accent-color:var(--plum)"/>
+      <span>${escHtml(it.q)}</span>
+    </label>`).join("");
+  const o = _ackOverlay(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <span style="font-size:22px">🔍</span>
+      <div style="font-size:18px;font-weight:800;color:var(--plum)">Kontrola pokoju ${escHtml(c.room)}</div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${c.cleaned_by?("Sprzątał(a): "+escHtml(c.cleaned_by)+". "):""}Sprawdź pokój i potwierdź każdy punkt.</div>
+    <div id="qcItems">${rows||'<div style="color:var(--muted);font-size:13px">Brak pytań w checkliście.</div>'}</div>
+    <button id="qcConfirm" disabled style="width:100%;margin-top:8px;padding:14px;border:none;border-radius:12px;background:var(--plum);color:#fff;font-size:15px;font-weight:800;cursor:pointer;opacity:.5">Zatwierdź kontrolę</button>`);
+  const btn = o.querySelector("#qcConfirm");
+  const boxes = [...o.querySelectorAll("input[data-qi]")];
+  const sync = () => { const all = boxes.length>0 && boxes.every(b=>b.checked); btn.disabled=!all; btn.style.opacity = all?"1":".5"; };
+  boxes.forEach(b => b.onchange = sync);
+  if (!boxes.length) { btn.disabled=false; btn.style.opacity="1"; }
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const checkedItems = items.map((it,i)=>({ q: it.q, checked: boxes[i] ? boxes[i].checked : true }));
+    try {
+      await sb.from("hk_quality_checks").update({ status:"done", acked_at:new Date().toISOString(), items:checkedItems }).eq("id", c.id);
+    } catch(e){}
+    o.remove();
+    toast("Kontrola pokoju "+c.room+" zatwierdzona ✓");
+    setTimeout(checkAcks, 300);   // może czeka kolejne powiadomienie
+  };
+}
+
+function showReminderModal(r) {
+  const o = _ackOverlay(`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:22px">📌</span>
+      <div style="font-size:18px;font-weight:800;color:var(--plum)">Przypomnienie</div>
+    </div>
+    <div style="font-size:15px;color:var(--ink);line-height:1.55;background:rgba(90,29,74,.05);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">${escHtml(r.body)}</div>
+    <button id="remOk" style="width:100%;padding:14px;border:none;border-radius:12px;background:var(--plum);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Przeczytałam — OK</button>`);
+  o.querySelector("#remOk").onclick = async () => {
+    try { await sb.from("hk_reminder_acks").insert({ reminder_id:r.id, worker:WORKER }); } catch(e){}
+    o.remove();
+    setTimeout(checkAcks, 300);
+  };
 }
 
 (async()=>{
@@ -627,6 +960,10 @@ async function init() {
     "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb"
   );
   init();
+  if (WORKER && typeof mountPushButton === "function") {
+    mountPushButton({ sb, tenant: TENANT_ID, worker: WORKER, role: "hk" });
+  }
+  if (!EMBED && WORKER && typeof mountInstallPrompt === "function") setTimeout(mountInstallPrompt, 1500);
 })();
 </script>
 </body>

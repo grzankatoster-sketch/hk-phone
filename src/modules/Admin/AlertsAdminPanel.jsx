@@ -128,7 +128,7 @@ export default function AlertsAdminPanel({ currentManager, showToast, addAudit }
 
       {showForm && (
         <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div className="cc-form-grid cc-form-grid-2" style={{ marginBottom: 10 }}>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Tytul *</label>
               <input className="input" value={form.title} onChange={e => setF("title", e.target.value)} placeholder="np. Awaria windy, przerwa woda" />
@@ -146,7 +146,7 @@ export default function AlertsAdminPanel({ currentManager, showToast, addAudit }
             <textarea className="input" rows={3} value={form.body} onChange={e => setF("body", e.target.value)}
               placeholder="Szczegoly waznej informacji dla pracownikow..." style={{ resize: "vertical" }} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <div className="cc-form-grid cc-form-grid-3" style={{ marginBottom: 14 }}>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Zmiana (opcja)</label>
               <select className="input" value={form.target_shift} onChange={e => setF("target_shift", e.target.value)}>

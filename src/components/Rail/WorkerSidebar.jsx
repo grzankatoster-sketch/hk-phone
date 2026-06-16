@@ -2,9 +2,9 @@ import React from "react";
 import {
   ClipboardList, ArrowLeftRight, BellRing,
   Home, Sun as SunIcon, AlertTriangle, FileText,
-  Users, Star, MessageSquare, BookOpen, Search,
-  LogOut, AlertCircle, FileDown,
-  Car,
+  Users, Star, BookOpen,
+  LogOut, FileDown,
+  Car, History, MessageSquare,
 } from "lucide-react";
 import { SHIFT_SHORT_LABELS } from "../../lib/constants";
 import Logo from "../../ui/Logo";
@@ -14,12 +14,13 @@ export default function WorkerSidebar({
   activeTab, setActiveTab, started, overdueCount, datedCount,
   setShowWiki, setShowEmpReport, isAdmin, currentManager,
   setShowAdminPanel, setShowSearch, workerDark, setWorkerDark,
-  setShowPaymentForm, employeeName, selectedShift, onShowMsg,
+  setShowPaymentForm, employeeName, selectedShift,
   liveTime, shiftElapsed, progress, totalDone, totalMandatory,
-  onOpenFinish, inboxCount = 0, faultsCount = 0, showToast,
+  onOpenFinish, inboxCount = 0, faultsCount = 0, chatCount = 0, showToast, shiftLabel: shiftLabelProp,
 }) {
   const totalBadge = overdueCount + datedCount;
-  const shiftLabel = selectedShift ? (SHIFT_SHORT_LABELS[selectedShift] || selectedShift) : "";
+  // Preferuj etykietę z godzinami z grafiku (np. „Dzienna 7–20"); fallback na sztywną.
+  const shiftLabel = shiftLabelProp || (selectedShift ? (SHIFT_SHORT_LABELS[selectedShift] || selectedShift) : "");
 
   const now = new Date();
   const clockStr = liveTime
@@ -42,19 +43,6 @@ export default function WorkerSidebar({
       <span className="nsb-item-label">{label}</span>
       {badge > 0 && <span className="nsb-badge">{badge}</span>}
       {kbd && badge === 0 && <span className="nsb-kbd" aria-hidden="true">{kbd}</span>}
-    </button>
-  );
-
-  const soon = (icon, label) => (
-    <button
-      type="button"
-      aria-disabled="true"
-      className="nsb-item nsb-disabled"
-      onClick={() => showToast?.(`Moduł "${label}" — wkrótce dostępny.`, "info")}
-    >
-      <span className="nsb-item-icon" aria-hidden="true">{icon}</span>
-      <span className="nsb-item-label">{label}</span>
-      <span className="nsb-soon">Wkrótce</span>
     </button>
   );
 
@@ -105,6 +93,8 @@ export default function WorkerSidebar({
         {nb("zmiana",     <ClipboardList size={16} />, "Przegląd zmiany", totalBadge, false, "1")}
         {nb("przekazanie",<ArrowLeftRight size={16} />, "Przekaż zmianę", 0, !started, "2")}
         {nb("informacje", <BellRing size={16} />,      "Informacje", inboxCount, false, "3")}
+        {/* Czat między działami — tymczasowo ukryty (kod pozostaje, można przywrócić). */}
+        {/* {nb("czat",       <MessageSquare size={16} />,  "Czat zespołu", chatCount)} */}
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Pokoje</div>
@@ -119,19 +109,11 @@ export default function WorkerSidebar({
         {nb("opinie",  <Star size={16} />,           "Opinie gości", 0, false, "9")}
 
         <div className="nsb-divider" />
-        <div className="nsb-section-label">Komunikacja</div>
-        {soon(<MessageSquare size={16} />, "Czat zespołu")}
+        <div className="nsb-section-label">Narzędzia</div>
         <button className="nsb-item" onClick={() => setShowEmpReport(true)}>
           <span className="nsb-item-icon"><FileDown size={16} /></span>
           <span className="nsb-item-label">Notatka służbowa</span>
         </button>
-        <button className="nsb-item" onClick={onShowMsg}>
-          <span className="nsb-item-icon"><AlertCircle size={16} /></span>
-          <span className="nsb-item-label">Wiad. do kierownika</span>
-        </button>
-
-        <div className="nsb-divider" />
-        <div className="nsb-section-label">Narzędzia</div>
         <button className="nsb-item" onClick={() => setShowWiki(true)}>
           <span className="nsb-item-icon"><BookOpen size={16} /></span>
           <span className="nsb-item-label">Wiki</span>
@@ -141,6 +123,9 @@ export default function WorkerSidebar({
           <span className="nsb-item-label">Korekta płatności</span>
         </button>
         {/* "Panel kierownika" usunięty z paska narzędzi — przełącznik jest na górnym pasku. */}
+
+        <div className="nsb-divider" />
+        {nb("historia",<History size={16} />,         "Historia", 0, false, null)}
       </nav>
 
       {/* Finish shift button */}
@@ -160,9 +145,6 @@ export default function WorkerSidebar({
           </div>
         </div>
         <div className="nsb-bottom-actions">
-          <button className="nsb-icon-btn" onClick={() => setShowSearch(true)} title="Szukaj">
-            <Search size={14} />
-          </button>
           <button className="nsb-icon-btn" onClick={() => setWorkerDark(v => !v)} title="Motyw">
             <SunIcon size={14} />
           </button>

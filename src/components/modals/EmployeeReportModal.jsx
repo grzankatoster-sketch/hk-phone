@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { X, FileText, Download, AlertTriangle } from "lucide-react";
+import { X, FileText, Download, AlertTriangle, Sparkles } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { todayKey, fmtA } from "../../lib/dates";
 import { buildEmpFn } from "../../lib/format";
+import { polishText, llmReady } from "../../lib/llm";
+import { pushMirror } from "../../lib/cloudSync";
 
 export default function EmployeeReportModal({employees,dark,onClose,currentEmployeeName="",onDownload}){
   const today=todayKey();
@@ -13,6 +15,15 @@ export default function EmployeeReportModal({employees,dark,onClose,currentEmplo
   const [reportDate,setReportDate]=useState(today);
   const [content,setContent]=useState("");
   const [error,setError]=useState("");
+  const [polishing,setPolishing]=useState(false);
+
+  const polishContent=async()=>{
+    if(!content.trim()||polishing)return;
+    setPolishing(true);setError("");
+    try{ const out=await polishText(content.trim()); if(out)setContent(out); }
+    catch(err){ setError(err?.code==="rate_limited"?"Asystent AI przeciążony — spróbuj za chwilę.":"Redakcja AI chwilowo niedostępna."); }
+    finally{setPolishing(false);}
+  };
 
   const handleDownload=()=>{
     if(!author||!handoverTo||!subject||!content.trim()){setError("Wypełnij wszystkie pola przed pobraniem raportu.");return;}
@@ -20,7 +31,9 @@ export default function EmployeeReportModal({employees,dark,onClose,currentEmplo
     const now=new Date();
     const filename=buildEmpFn(author,now);
     const reportData={author,handoverTo,subject,reportDate,content,createdAt:fmtA(now),filename};
-    saveJson(STORAGE_KEYS.empReports,[{...reportData,id:crypto.randomUUID()},...loadJson(STORAGE_KEYS.empReports,[])]);
+    const nextReports=[{...reportData,id:crypto.randomUUID()},...loadJson(STORAGE_KEYS.empReports,[])];
+    saveJson(STORAGE_KEYS.empReports,nextReports);
+    pushMirror("employee_reports",nextReports.slice(0,100)); // panel menedżerski: koordynator/kierownik widzi notatki służbowe
     try{onDownload(reportData);}catch(e){console.error(e);}
     onClose();
   };
@@ -49,7 +62,14 @@ export default function EmployeeReportModal({employees,dark,onClose,currentEmplo
             <div><label>Temat raportu</label><input className={inp} placeholder="Np. Reklamacja pokój 214..." value={subject} onChange={e=>setSubject(e.target.value)}/></div>
             <div><label>Data raportu</label><input className={inp} type="date" value={reportDate} onChange={e=>setReportDate(e.target.value)}/></div>
           </div>
-          <div><label>Treść raportu</label><textarea className={ta} placeholder="Opisz zdarzenie, podjęte działania..." value={content} onChange={e=>setContent(e.target.value)} style={{minHeight:190}}/><div style={{fontSize:11.5,color:"var(--text-faint)",marginTop:4,textAlign:"right"}}>{content.length} znaków</div></div>
+          <div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:4}}>
+              <label style={{margin:0}}>Treść raportu</label>
+              {llmReady&&<button type="button" className={dark?"btn btn-outline-dark":"btn btn-outline"} style={{fontSize:11.5,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:5}} onClick={polishContent} disabled={polishing||!content.trim()}><Sparkles size={12}/>{polishing?"Redaguję…":"Zredaguj AI"}</button>}
+            </div>
+            <textarea className={ta} placeholder="Opisz zdarzenie, podjęte działania..." value={content} onChange={e=>setContent(e.target.value)} style={{minHeight:190}}/>
+            <div style={{fontSize:11.5,color:"var(--text-faint)",marginTop:4,textAlign:"right"}}>{content.length} znaków</div>
+          </div>
           {error&&<div className="alert" style={{display:"flex",alignItems:"center",gap:8}}><AlertTriangle size={14}/> {error}</div>}
         </div>
         <div className="modal-footer">

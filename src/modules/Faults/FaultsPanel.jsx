@@ -3,7 +3,7 @@ import { AnimatePresence } from "framer-motion";
 import { AlertTriangle, Plus, QrCode } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { FAULT_FLOORS, TENANT_ID } from "../../lib/constants";
-import { getKonserwatorzy, setKonserwatorzy } from "../../lib/konserwatorzy";
+import { getKonserwatorzy, setKonserwatorzy, getKonserwatorSpecs } from "../../lib/konserwatorzy";
 import { supabase } from "../../lib/supabase";
 import FloorMap from "../../components/FloorMap";
 import FaultFormModal from "../../components/modals/FaultFormModal";
@@ -19,22 +19,56 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
   const [showForm, setShowForm] = React.useState(false);
   const [showDetails, setShowDetails] = React.useState(null);
   const [filter, setFilter] = React.useState("active");
+  const [kpiView, setKpiView] = React.useState(null); // null | "urgent" | "normal" | "done" — klik w kartę KPI
   const [workerFilter, setWorkerFilter] = React.useState("");
   const [search, setSearch] = React.useState("");
   const [qrCodes, setQrCodes] = React.useState({});
   const [generatingQr, setGeneratingQr] = React.useState(null);
   const [konserwatorzy, setKons] = React.useState(getKonserwatorzy);
+  const specs = getKonserwatorSpecs(); // staly podzial: Kamil->Elektryka, Grzegorz->Hydraulika
   const [newKons, setNewKons] = React.useState("");
   const addKons = () => { const n = newKons.trim(); if (!n || konserwatorzy.includes(n)) { setNewKons(""); return; } const next = [...konserwatorzy, n]; setKons(next); setKonserwatorzy(next); setNewKons(""); showToast?.("Dodano konserwatora.", "success"); };
   const removeKons = (name) => { const next = konserwatorzy.filter(k => k !== name); setKons(next); setKonserwatorzy(next); showToast?.("Usunięto konserwatora.", "info"); };
 
+  // Brak osobnej zakładki „HK" — usterki z telefonów HK trafiają wprost na piętro/
+  // pokój przez resolveHkFloor (po numerze pokoju), więc nie potrzebują własnego worka.
   const floors = React.useMemo(() => [
     FAULT_FLOORS[0],
     { ...FAULT_FLOORS[1], rooms: floors1 },
     { ...FAULT_FLOORS[2], rooms: floors2 },
     { ...FAULT_FLOORS[3], rooms: floors3 },
-    { key: "hk", label: "📱 HK", spaces: [], rooms: [] }, // usterki zgłoszone z telefonów HK
   ], [floors1, floors2, floors3]);
+
+  // ─── Mapowanie numeru pokoju → realne piętro ──────────────────────────────
+  // Usterki z telefonów HK przychodzą z floor:"hk", ale niosą numer pokoju w
+  // space_id/room. Zamiast lądować w worku "HK", trafiają od razu na właściwe
+  // piętro/pokój (parter/1/2/3). Mapowanie po numerze pokoju, z fallbackiem na
+  // pierwszą cyfrę numeru.
+  const roomFloorMap = React.useMemo(() => {
+    const m = {};
+    (floors1 || []).forEach(r => { m[String(r.no)] = "pietro1"; });
+    (floors2 || []).forEach(r => { m[String(r.no)] = "pietro2"; });
+    (floors3 || []).forEach(r => { m[String(r.no)] = "pietro3"; });
+    (FAULT_FLOORS[0].spaces || []).forEach(s => { m[String(s.id)] = "parter"; });
+    return m;
+  }, [floors1, floors2, floors3]);
+
+  const resolveHkFloor = React.useCallback((room) => {
+    const key = String(room ?? "").trim();
+    if (roomFloorMap[key]) return roomFloorMap[key];
+    const d = key.match(/^(\d)/)?.[1];
+    if (d === "1") return "pietro1";
+    if (d === "2") return "pietro2";
+    if (d === "3") return "pietro3";
+    return "parter"; // nierozpoznany numer — ląduje na parterze (recepcja), nie znika
+  }, [roomFloorMap]);
+
+  // Usterki znormalizowane: HK przypisane do realnego piętra + flaga _fromHk.
+  const normFaults = React.useMemo(() => faults.map(f => {
+    const fromHk = f.source === "hk" || f.floor === "hk";
+    if (f.floor === "hk") return { ...f, floor: resolveHkFloor(f.space_id ?? f.room), _fromHk: true };
+    return fromHk ? { ...f, _fromHk: true } : f;
+  }), [faults, resolveHkFloor]);
 
   React.useEffect(() => { saveJson(STORAGE_KEYS.faults, faults); }, [faults]);
 
@@ -54,15 +88,15 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  const activeCount = faults.filter(f => f.status !== "done").length;
-  const urgentCount = faults.filter(f => f.status !== "done" && f.priority === "urgent").length;
-  const doneCount = faults.filter(f => f.status === "done").length;
+  const activeCount = normFaults.filter(f => f.status !== "done").length;
+  const urgentCount = normFaults.filter(f => f.status !== "done" && f.priority === "urgent").length;
+  const doneCount = normFaults.filter(f => f.status === "done").length;
 
   const generateKonserwatorQr = async (name) => {
     if (!hasElectron) return;
     setGeneratingQr(name);
     try {
-      const workerFaults = faults.filter(f => f.assigned_to === name && f.status !== "done");
+      const workerFaults = normFaults.filter(f => f.assigned_to === name && f.status !== "done");
       const qr = await window.electronAPI.hkGetKonserwatorQr(name, workerFaults);
       if (qr?.dataURL) setQrCodes(prev => ({ ...prev, [name]: qr.dataURL }));
     } finally {
@@ -70,8 +104,26 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
     }
   };
 
-  const visibleFaults = faults
-    .filter(f => filter === "active" ? f.status !== "done" : filter === "done" ? f.status === "done" : true)
+  // Auto-generowanie kodów QR — recepcja nie musi klikać „Generuj" za każdym
+  // razem. QR jest stały (link ?k=Imię); wywołanie odświeża też listę usterek
+  // po stronie serwera konserwacji, więc puszczamy je też przy zmianie usterek.
+  React.useEffect(() => {
+    if (!isManager || !hasElectron) return;
+    let cancelled = false;
+    (async () => {
+      for (const name of konserwatorzy) {
+        const workerFaults = normFaults.filter(f => f.assigned_to === name && f.status !== "done");
+        try {
+          const qr = await window.electronAPI.hkGetKonserwatorQr(name, workerFaults);
+          if (!cancelled && qr?.dataURL) setQrCodes(prev => ({ ...prev, [name]: qr.dataURL }));
+        } catch { /* QR niedostępny — pomijamy, przycisk „Odśwież" jako fallback */ }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isManager, konserwatorzy, normFaults]);
+
+  // Baza: filtr konserwatora + wyszukiwanie + sortowanie (bez statusu i piętra).
+  const baseFaults = normFaults
     .filter(f => !workerFilter || f.assigned_to === workerFilter)
     .filter(f => {
       const q = search.trim().toLowerCase();
@@ -79,6 +131,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
       return [f.description, f.space_id, f.floor, f.assigned_to, f.reported_by, f.category]
         .some(v => String(v || "").toLowerCase().includes(q));
     })
+    .slice()
     .sort((a, b) => {
       if (a.priority === "urgent" && b.priority !== "urgent") return -1;
       if (b.priority === "urgent" && a.priority !== "urgent") return 1;
@@ -86,10 +139,26 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
     });
 
   const selectedFloorObj = floors.find(f => f.key === activeFloor);
-  const floorFaults = visibleFaults.filter(f => f.floor === activeFloor);
-  const spaceFaults = selectedSpace
-    ? visibleFaults.filter(f => f.floor === activeFloor && f.space_id === selectedSpace)
+
+  // Widok po kliknięciu karty KPI — lista wszystkich usterek danego typu
+  // (ponad piętrami). null = tryb mapy (zakres wybranego piętra/pokoju).
+  const kpiFaults = kpiView === "done"
+    ? baseFaults.filter(f => f.status === "done")
+    : kpiView === "urgent"
+      ? baseFaults.filter(f => f.status !== "done" && f.priority === "urgent")
+      : kpiView === "normal"
+        ? baseFaults.filter(f => f.status !== "done" && f.priority !== "urgent")
+        : null;
+
+  // Tryb mapy: status wg zakładek + zakres aktywnego piętra/pokoju.
+  const statusFiltered = baseFaults.filter(f => filter === "active" ? f.status !== "done" : filter === "done" ? f.status === "done" : true);
+  const floorFaults = statusFiltered.filter(f => f.floor === activeFloor);
+  const mapFaults = selectedSpace
+    ? statusFiltered.filter(f => f.floor === activeFloor && f.space_id === selectedSpace)
     : floorFaults;
+
+  const spaceFaults = kpiFaults || mapFaults;
+  const toggleKpi = (v) => { setKpiView(prev => prev === v ? null : v); setSelectedSpace(""); };
 
   const addFault = async (fault) => {
     const row = { ...fault, tenant_id: TENANT_ID };
@@ -113,13 +182,8 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
   return (
     <div className="fault-layout">
       <div className="fault-toolbar">
-        <div className="filter-tabs">
-          {[["active", `Aktywne (${activeCount})`], ["all", "Wszystkie"], ["done", `Rozwiązane (${doneCount})`]].map(([k, lbl]) => (
-            <button key={k} className={`filter-tab${filter === k ? " active" : ""}`} onClick={() => setFilter(k)}>
-              {lbl}
-            </button>
-          ))}
-        </div>
+        {/* Tekstowe zakładki Aktywne/Wszystkie/Rozwiązane usunięte — filtrowanie
+            odbywa się przez kafelki KPI (Pilne/Normalne/Rozwiązane) poniżej. */}
         <div className="spacer" />
         <select className="input" value={workerFilter} onChange={e => setWorkerFilter(e.target.value)} style={{ width: 178, height: 34, fontSize: 12 }}>
           <option value="">Konserwator: wszyscy</option>
@@ -134,36 +198,36 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
 
       {/* ═══ KPI row v2 wg v2/03-faults — 4 cards z color-coded icons ═══ */}
       <div className="cc-faults-kpi-row">
-        <div className="cc-faults-kpi">
+        <button type="button" className={`cc-faults-kpi cc-faults-kpi--btn${kpiView === "urgent" ? " is-active" : ""}`} aria-pressed={kpiView === "urgent"} onClick={() => toggleKpi("urgent")}>
           <div className="cc-faults-kpi-ic cc-faults-kpi-ic--rose" aria-hidden="true">
             <AlertTriangle size={17}/>
           </div>
           <div className="cc-faults-kpi-info">
             <div className="cc-faults-kpi-lbl">Pilne</div>
             <div className="cc-faults-kpi-val">{urgentCount}</div>
-            <div className="cc-faults-kpi-sub">wymaga akcji</div>
+            <div className="cc-faults-kpi-sub">{kpiView === "urgent" ? "kliknij, by wyczyścić" : "pokaż listę"}</div>
           </div>
-        </div>
-        <div className="cc-faults-kpi">
+        </button>
+        <button type="button" className={`cc-faults-kpi cc-faults-kpi--btn${kpiView === "normal" ? " is-active" : ""}`} aria-pressed={kpiView === "normal"} onClick={() => toggleKpi("normal")}>
           <div className="cc-faults-kpi-ic cc-faults-kpi-ic--amber" aria-hidden="true">
             <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
           </div>
           <div className="cc-faults-kpi-info">
             <div className="cc-faults-kpi-lbl">Normalne</div>
             <div className="cc-faults-kpi-val">{activeCount - urgentCount}</div>
-            <div className="cc-faults-kpi-sub">aktywne zgłoszenia</div>
+            <div className="cc-faults-kpi-sub">{kpiView === "normal" ? "kliknij, by wyczyścić" : "pokaż listę"}</div>
           </div>
-        </div>
-        <div className="cc-faults-kpi">
+        </button>
+        <button type="button" className={`cc-faults-kpi cc-faults-kpi--btn${kpiView === "done" ? " is-active" : ""}`} aria-pressed={kpiView === "done"} onClick={() => toggleKpi("done")}>
           <div className="cc-faults-kpi-ic cc-faults-kpi-ic--teal" aria-hidden="true">
             <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
           <div className="cc-faults-kpi-info">
             <div className="cc-faults-kpi-lbl">Rozwiązane</div>
             <div className="cc-faults-kpi-val">{doneCount}</div>
-            <div className="cc-faults-kpi-sub">łącznie w bazie</div>
+            <div className="cc-faults-kpi-sub">{kpiView === "done" ? "kliknij, by wyczyścić" : "pokaż listę"}</div>
           </div>
-        </div>
+        </button>
         <div className="cc-faults-kpi">
           <div className="cc-faults-kpi-ic cc-faults-kpi-ic--sky" aria-hidden="true">
             <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -176,34 +240,34 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
         </div>
       </div>
 
-      <div className="data-card" style={{ marginBottom: 16 }}>
-        <div className="data-card-head">
-          <div className="data-card-title">Mapa piętra</div>
-          <div className="filter-tabs">
-            {floors.map(f => {
-              const cnt = faults.filter(x => x.floor === f.key && x.status !== "done").length;
-              return (
-                <button key={f.key} className={`filter-tab${activeFloor === f.key ? " active" : ""}`} onClick={() => { setActiveFloor(f.key); setSelectedSpace(""); }}>
-                  {f.label}{cnt > 0 ? ` (${cnt})` : ""}
-                </button>
-              );
-            })}
+      {/* Mapa piętra — ukryta gdy aktywny filtr KPI: wtedy pokazujemy wprost listę
+          pokoi z usterkami (klik w kartę KPI ponownie = powrót do mapy). */}
+      {!kpiView && (
+        <div className="data-card" style={{ marginBottom: 16 }}>
+          <div className="data-card-head">
+            <div className="data-card-title">Mapa piętra</div>
+            <div className="filter-tabs">
+              {floors.map(f => {
+                const cnt = normFaults.filter(x => x.floor === f.key && x.status !== "done").length;
+                return (
+                  <button key={f.key} className={`filter-tab${activeFloor === f.key ? " active" : ""}`} onClick={() => { setActiveFloor(f.key); setSelectedSpace(""); setKpiView(null); }}>
+                    {f.label}{cnt > 0 ? ` (${cnt})` : ""}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div style={{ padding: 18 }}>
+            <FloorMap floor={selectedFloorObj} faults={normFaults} onSelectSpace={(id) => { setSelectedSpace(id); setKpiView(null); }} selectedSpace={selectedSpace} />
+            {selectedSpace && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", textAlign: "center" }}>
+                Pokazuję: <strong style={{ color: "var(--text-0)" }}>{selectedSpace}</strong>
+                <button className="fault-action-btn" onClick={() => setSelectedSpace("")} style={{ marginLeft: 8, padding: "2px 8px" }}>Wyczyść</button>
+              </div>
+            )}
           </div>
         </div>
-        <div style={{ padding: 18 }}>
-          {activeFloor === "hk" ? (
-            <div className="cc-fault-hint" style={{ textAlign: "center" }}>📱 Usterki zgłoszone z telefonów HK (ze zdjęciami) — lista poniżej.</div>
-          ) : (
-            <FloorMap floor={selectedFloorObj} faults={faults} onSelectSpace={setSelectedSpace} selectedSpace={selectedSpace} />
-          )}
-          {selectedSpace && (
-            <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-2)", textAlign: "center" }}>
-              Pokazuję: <strong style={{ color: "var(--text-0)" }}>{selectedSpace}</strong>
-              <button className="fault-action-btn" onClick={() => setSelectedSpace("")} style={{ marginLeft: 8, padding: "2px 8px" }}>Wyczyść</button>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {spaceFaults.length === 0 ? (
         <div className="cc-faults-empty">
@@ -235,7 +299,7 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
                   <div className="cc-fault-room-sub">{fl?.label || f.floor}</div>
                 </div>
                 <div className="cc-fault-info">
-                  <div className="cc-fault-cat">{f.category || "Usterka"}</div>
+                  <div className="cc-fault-cat">{f._fromHk ? "📱 " : ""}{f.category || "Usterka"}</div>
                   <div className="cc-fault-desc">{f.description}</div>
                   <div className="cc-fault-meta">
                     <span>Zgłosił(a): <b>{f.reported_by || "Recepcja"}</b></span>
@@ -289,12 +353,16 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
           )}
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", padding: 16 }}>
             {konserwatorzy.map(name => {
-              const count = faults.filter(f => f.assigned_to === name && f.status !== "done").length;
+              const count = normFaults.filter(f => f.assigned_to === name && f.status !== "done").length;
               return (
                 <div key={name} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "14px 18px", borderRadius: 12, background: "var(--bg-1)", border: "1px solid var(--border)", minWidth: 140 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-0)" }}>{name}</div>
                   <div style={{ fontSize: 11, color: count > 0 ? "var(--rose)" : "var(--text-2)", fontWeight: 600 }}>
                     {count > 0 ? `${count} aktywnych` : "Brak usterek"}
+                  </div>
+                  <div title="Stała specjalność — AI kieruje tu usterki z tej kategorii"
+                    style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 999, background: "var(--bg-2)", border: "1px solid var(--border)", color: specs[name] ? "var(--text-0)" : "var(--text-2)" }}>
+                    {specs[name] ? `Specjalność: ${specs[name]}` : "Ogólne (wszystko)"}
                   </div>
                   {qrCodes[name] ? (
                     <>

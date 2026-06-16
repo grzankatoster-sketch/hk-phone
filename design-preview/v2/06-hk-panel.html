@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Plan HK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C; --ember-deeper:#4A1942;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10);
+  --indigo:#6366f1; --emerald:#10b981;
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1); --t-base:160ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input,select{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;outline:none;transition:border-color var(--t-fast)}
+input:focus,select:focus{border-color:var(--ember)}
+input[type=date]{color-scheme:dark}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-badge.amber{background:var(--amber);color:#0B0810}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--bg-0)}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.topbar{position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,var(--bg-0) 70%,transparent);padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast);cursor:pointer;white-space:nowrap}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.btn-emerald{background:var(--emerald);color:#fff;font-weight:700;border-color:var(--emerald)}
+.btn-emerald:hover{box-shadow:0 0 18px rgba(16,185,129,.4)}
+.btn-rose{color:var(--rose);border-color:var(--rose-border)}
+.btn-rose:hover{background:var(--rose-bg);color:var(--rose)}
+.btn-sky{background:var(--sky);color:#0B0810;font-weight:700;border-color:var(--sky)}
+.btn-sm{padding:5px 9px;font-size:12px}
+
+/* TAB SWITCHER: Plan HK / HK Live */
+.tab-switch{display:inline-flex;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:3px;gap:2px}
+.tab-switch button{padding:6px 16px;border-radius:var(--r-xs);font:600 12.5px var(--f-b);color:var(--text-2);transition:all var(--t-fast)}
+.tab-switch button.on.plan{background:var(--indigo);color:#fff;box-shadow:0 0 14px rgba(99,102,241,.4)}
+.tab-switch button.on.live{background:var(--teal);color:#0B0810;font-weight:700}
+
+.content{padding:18px 28px 28px;display:flex;flex-direction:column;gap:16px}
+
+/* CARDS */
+.card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden}
+.card-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-head-title{font:700 13px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.card-head-title svg{color:var(--ember);width:15px;height:15px}
+.count-pill{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:99px;font:600 11px var(--f-b);background:var(--bg-3);border:1px solid var(--border-1);color:var(--text-1)}
+
+/* ── TOP PANEL: data + dyżurny + popołudnie + statystyki ── */
+.setup-panel{padding:18px 22px;display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap}
+.field-group{display:flex;flex-direction:column;gap:5px}
+.field-label{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.field-row{display:flex;gap:6px;align-items:center}
+.field-row input[type=date]{width:160px}
+.field-row select{min-width:180px;cursor:pointer;background:var(--bg-3) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A89DAE' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>") no-repeat right 10px center;padding-right:30px;appearance:none}
+
+.stats-cluster{display:flex;gap:14px;margin-left:auto;align-items:flex-end;flex-wrap:wrap}
+.stat{text-align:center;min-width:54px}
+.stat-num{font:700 22px/1 var(--f-m);letter-spacing:-.02em;line-height:1}
+.stat-lbl{font:500 10px var(--f-b);color:var(--text-3);margin-top:4px;letter-spacing:.02em}
+.stat-num.w{color:#5BA8E8}
+.stat-num.p{color:#D97706}
+.stat-num.pg{color:#3B6D11}
+.stat-num.pgz{color:#854F0B}
+.stat-num.br{color:#B91C1C}
+.stat-num.zs{color:#7E22CE}
+
+.setup-actions{border-top:1px dashed var(--border-1);padding:14px 22px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kwh-info{margin-left:auto;text-align:right;line-height:1.5}
+.kwh-info-line{font:600 11px var(--f-m);color:var(--text-1)}
+.kwh-source-tags{display:flex;gap:6px;justify-content:flex-end;margin-top:3px;flex-wrap:wrap}
+.kwh-tag{font:600 10px var(--f-m);font-weight:700}
+.kwh-check{font:600 10px var(--f-m);color:var(--teal)}
+
+/* ── PRACOWNICY HK ── */
+.staff-add{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;gap:8px}
+.staff-add input{flex:1;padding:9px 14px;font-size:13.5px}
+.staff-list{padding:8px 22px 16px;display:flex;flex-direction:column;gap:4px}
+.staff-list.empty{padding:32px 22px;border:1.5px dashed var(--border-1);background:var(--bg-3);text-align:center;color:var(--text-2);font-size:13px}
+.staff-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:var(--r-sm);background:var(--bg-3);border:1px solid var(--border-1);transition:all var(--t-fast)}
+.staff-row:hover{border-color:var(--border-2)}
+.staff-chip{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 13px var(--f-d);color:#fff;flex-shrink:0}
+.staff-name{flex:1;font:600 13.5px var(--f-b);color:var(--text-0)}
+.staff-tags{display:flex;gap:5px}
+.staff-tag{font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:99px;border:1px solid transparent}
+.staff-tag.am{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.staff-tag.pm{background:var(--gold);color:#0B0810;border-color:var(--gold);opacity:.9}
+.staff-tag.duty{background:var(--violet-bg);color:var(--violet);border-color:rgba(180,154,255,.3)}
+.staff-actions{display:flex;gap:4px}
+.icon-btn{width:26px;height:26px;border-radius:var(--r-xs);color:var(--text-2);display:flex;align-items:center;justify-content:center;border:1px solid transparent;transition:all var(--t-fast)}
+.icon-btn:hover{background:var(--bg-elev);border-color:var(--border-2);color:var(--text-0)}
+.icon-btn.danger:hover{color:var(--rose);border-color:var(--rose-border);background:var(--rose-bg)}
+
+/* ── PLAN GRID: pokoje ── */
+.plan-toolbar{padding:12px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tab{padding:5px 12px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:transparent;display:inline-flex;align-items:center;gap:6px;transition:all var(--t-fast)}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}
+.tab.on .cnt{opacity:1}
+
+.floor-section{padding:14px 22px;border-bottom:1px solid var(--border-0)}
+.floor-section:last-child{border-bottom:none}
+.fl-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.fl-num{font:700 14px var(--f-d);color:var(--text-1)}
+.fl-meta{font:500 11px var(--f-m);color:var(--text-3)}
+.fl-progress{flex:1;max-width:200px;display:flex;align-items:center;gap:8px;margin-left:auto}
+.fl-bar{flex:1;height:3px;background:var(--bg-3);border-radius:99px;overflow:hidden}
+.fl-bar-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--ember));border-radius:99px}
+.fl-pct{font:600 11px var(--f-m);color:var(--text-2)}
+
+.rooms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:10px}
+.room-card{background:var(--bg-3);border:1.5px solid var(--border-1);border-radius:var(--r-md);padding:12px 14px;cursor:pointer;transition:all var(--t-fast);position:relative;display:flex;flex-direction:column;gap:8px;min-height:140px}
+.room-card:hover{border-color:var(--border-2);transform:translateY(-1px)}
+.room-card .top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.room-no{font:800 24px/1 var(--f-d);letter-spacing:-.02em;color:var(--text-0)}
+.room-status{font:700 10px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:99px;border:1px solid transparent}
+.room-status.w{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.room-status.wp{background:rgba(124,58,237,.12);color:#A78BFA;border-color:rgba(124,58,237,.32)}
+.room-status.p{background:var(--amber-bg);color:#D97706;border-color:var(--amber-border)}
+.room-status.pg{background:rgba(59,109,17,.18);color:#86EFAC;border-color:rgba(59,109,17,.4)}
+.room-status.pgz{background:rgba(133,79,11,.18);color:#FCD34D;border-color:rgba(133,79,11,.4)}
+.room-status.br{background:rgba(185,28,28,.14);color:#FCA5A5;border-color:rgba(185,28,28,.34)}
+.room-status.zs{background:rgba(126,34,206,.14);color:#C4B5FD;border-color:rgba(126,34,206,.34)}
+.room-info{font:500 11px var(--f-m);color:var(--text-3)}
+.room-info .apt-note{display:inline-block;background:var(--bg-2);border:1px solid var(--border-2);padding:1px 5px;border-radius:3px;color:var(--gold);margin-left:5px;font:700 10px var(--f-m)}
+
+.room-worker{margin-top:auto;display:flex;align-items:center;gap:7px;padding-top:8px;border-top:1px dashed var(--border-0)}
+.room-worker-chip{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 10px var(--f-d);color:#fff;flex-shrink:0}
+.room-worker.unassigned .room-worker-chip{background:var(--bg-elev);border:1px dashed var(--border-2);color:var(--text-3)}
+.room-worker-name{font:600 12px var(--f-b);color:var(--text-0)}
+.room-worker.unassigned .room-worker-name{color:var(--text-3);font-style:italic;font-weight:500}
+.room-locked{position:absolute;top:8px;right:8px;font:700 8.5px/1 var(--f-d);letter-spacing:.08em;color:var(--amber);background:var(--amber-bg);padding:2px 5px;border-radius:3px;border:1px solid var(--amber-border)}
+
+/* ── NOTATKI HK ── */
+.notes-add{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;gap:8px;align-items:center}
+.notes-add input{flex:1}
+.notes-add select{width:130px}
+.notes-list{padding:8px 22px 16px;display:flex;flex-direction:column;gap:6px}
+.note-row{display:flex;align-items:flex-start;gap:11px;padding:10px 12px;background:var(--bg-3);border-radius:var(--r-sm);border:1px solid var(--border-1)}
+.note-room-pill{font:700 12px var(--f-m);background:var(--ember-bg);color:var(--ember);padding:4px 9px;border-radius:99px;border:1px solid var(--ember-border);flex-shrink:0;min-width:48px;text-align:center}
+.note-text{flex:1;font-size:13px;color:var(--text-0);line-height:1.45}
+.note-meta{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:3px}
+.note-actions{display:flex;gap:4px}
+
+/* ── MODAL: przypisz pokój ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(11,8,16,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal{background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r-lg);max-width:440px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font:700 15px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.modal-title svg{color:var(--ember);width:15px;height:15px}
+.modal-close{width:26px;height:26px;border-radius:var(--r-xs);color:var(--text-2);display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--bg-3);color:var(--text-0)}
+.modal-section{padding:14px 20px;border-bottom:1px dashed var(--border-1)}
+.modal-section:last-child{border-bottom:none}
+.modal-sec-label{font:600 11px var(--f-d);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.modal-sec-label .lock-pill{font:700 9px/1 var(--f-d);letter-spacing:.08em;color:var(--amber);background:var(--amber-bg);padding:2px 5px;border-radius:3px;border:1px solid var(--amber-border)}
+.status-row{display:flex;gap:5px;flex-wrap:wrap}
+.status-btn{padding:5px 11px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--border-1);color:var(--text-2);background:transparent;transition:all var(--t-fast)}
+.status-btn:hover{color:var(--text-0);border-color:var(--border-2)}
+.status-btn.on.w{background:rgba(24,95,165,.18);color:#5BA8E8;border-color:rgba(24,95,165,.4)}
+.status-btn.on.wp{background:rgba(124,58,237,.18);color:#A78BFA;border-color:rgba(124,58,237,.4)}
+.status-btn.on.p{background:rgba(217,119,6,.18);color:#FCD34D;border-color:rgba(217,119,6,.4)}
+.status-btn.on.pg{background:rgba(59,109,17,.22);color:#86EFAC;border-color:rgba(59,109,17,.5)}
+.status-btn.on.pgz{background:rgba(133,79,11,.22);color:#FCD34D;border-color:rgba(133,79,11,.5)}
+.status-btn.unlock{margin-left:auto;color:var(--rose);border-color:var(--rose-border)}
+.status-hint{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:6px}
+
+.staff-pick{display:flex;flex-direction:column;gap:2px}
+.staff-pick-item{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:var(--r-sm);background:transparent;color:var(--text-0);text-align:left;width:100%;transition:background var(--t-fast)}
+.staff-pick-item:hover{background:var(--bg-3)}
+.staff-pick-item.current{background:var(--ember-bg);color:var(--ember);font-weight:700}
+.staff-pick-item.unassign{border-top:1px dashed var(--border-1);margin-top:4px;padding-top:11px;color:var(--text-2);font-style:italic}
+
+/* APARTMENT NOTE + ROOM NOTE inputs */
+.modal-input{width:100%;padding:8px 11px;font-size:13px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);color:var(--text-0)}
+.modal-input:focus{border-color:var(--ember);outline:none}
+
+/* Section header above plan grid */
+.plan-header{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between}
+.plan-header-title{font:700 13px var(--f-d);color:var(--text-0)}
+.plan-legend{display:flex;gap:10px;font:500 10.5px var(--f-m);color:var(--text-3);align-items:center;flex-wrap:wrap}
+.plan-legend .lg-dot{width:8px;height:8px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:4px}
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div>
+        <div class="sb-brand-name">Conrad Comfort</div>
+        <div class="sb-brand-sub">Plan HK · v2</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Zadania<span class="sb-badge">3</span></button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Przekazanie</button>
+
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item active">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Housekeeping
+    </button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+
+    <div class="sb-label" style="margin-top:8px">Komunikacja</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Wiadomości<span class="sb-badge">5</span></button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>Informacje</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Pokoje</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Housekeeping</span></div>
+      <h1 class="page-title">Housekeeping</h1>
+      <div class="page-meta">
+        <span>Plan: <b>12.05.2026</b></span>
+        <span>Pokoi: <b>26</b></span>
+        <span>Pracowników HK: <b>3</b></span>
+        <span>KWH sync: <b>06:42</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="tab-switch">
+        <button class="on plan">Plan HK</button>
+        <button>HK Live</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 1) SETUP PANEL: data, dyżurny, popołudnie, statystyki, akcje -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div class="card">
+
+      <div class="setup-panel">
+
+        <div class="field-group">
+          <label class="field-label">Data planu HK</label>
+          <div class="field-row">
+            <input type="date" value="2026-05-12"/>
+            <button class="btn btn-rose btn-sm" title="Wyczyść wszystkie dane HK">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Reset
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Kto ma dyżur</label>
+          <select>
+            <option value="">— wybierz —</option>
+            <option selected>Tetiana</option>
+            <option>Kasia</option>
+            <option>Maria</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Zmiana popołudniowa</label>
+          <select>
+            <option value="">— bez popołudnia —</option>
+            <option>Tetiana</option>
+            <option>Kasia</option>
+            <option selected>Aneta</option>
+          </select>
+        </div>
+
+        <div class="stats-cluster">
+          <div class="stat"><div class="stat-num w">9</div><div class="stat-lbl">Wyjazd</div></div>
+          <div class="stat"><div class="stat-num p">14</div><div class="stat-lbl">Przyjazd</div></div>
+          <div class="stat"><div class="stat-num pg">12</div><div class="stat-lbl">PG</div></div>
+          <div class="stat"><div class="stat-num pgz">4</div><div class="stat-lbl">PGZ</div></div>
+          <div class="stat"><div class="stat-num br">8</div><div class="stat-lbl">BR</div></div>
+          <div class="stat"><div class="stat-num zs">5</div><div class="stat-lbl">ZS</div></div>
+        </div>
+
+      </div>
+
+      <div class="setup-actions">
+        <button class="btn btn-sky">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Auto-przypisz
+        </button>
+        <button class="btn btn-emerald">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Raporty PDF
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Excel
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          QR kody pokojówek
+        </button>
+
+        <div class="kwh-info">
+          <div class="kwh-info-line">KWH: 12.05 06:42 · hist: 14</div>
+          <div class="kwh-source-tags">
+            <span class="kwh-tag" style="color:#5BA8E8">9W</span>
+            <span class="kwh-tag" style="color:#A78BFA">3WP</span>
+            <span class="kwh-tag" style="color:#0E7490">14P</span>
+            <span class="kwh-tag" style="color:#3B6D11">16PG/PGZ</span>
+            <span class="kwh-check">· 25/26✓</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 2) PRACOWNICY HK — z input "Imię pracownika HK" + Dodaj      -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Pracownicy HK
+        </div>
+        <div class="count-pill">3 osoby</div>
+      </div>
+
+      <!-- Add form -->
+      <div class="staff-add">
+        <input type="text" placeholder="Imię pracownika HK" id="hk-staff-input"/>
+        <button class="btn btn-sky">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Dodaj
+        </button>
+      </div>
+
+      <!-- Staff list -->
+      <div class="staff-list">
+        <div class="staff-row">
+          <div class="staff-chip" style="background:#dc2626">T</div>
+          <div class="staff-name">Tetiana</div>
+          <div class="staff-tags">
+            <span class="staff-tag duty">Dyżur</span>
+            <span class="staff-tag am">Poranna · 10 pok.</span>
+          </div>
+          <div class="staff-actions">
+            <button class="icon-btn" title="Edytuj imię">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="icon-btn danger" title="Usuń">
+              <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="staff-row">
+          <div class="staff-chip" style="background:#2563eb">K</div>
+          <div class="staff-name">Kasia</div>
+          <div class="staff-tags">
+            <span class="staff-tag am">Poranna · 9 pok.</span>
+          </div>
+          <div class="staff-actions">
+            <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="icon-btn danger"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="staff-row">
+          <div class="staff-chip" style="background:#7c3aed">M</div>
+          <div class="staff-name">Maria</div>
+          <div class="staff-tags">
+            <span class="staff-tag am">Poranna · 7 pok.</span>
+          </div>
+          <div class="staff-actions">
+            <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="icon-btn danger"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="staff-row" style="border-style:dashed;background:transparent">
+          <div class="staff-chip" style="background:var(--gold);color:#0B0810">A</div>
+          <div class="staff-name">Aneta <span style="font-weight:400;color:var(--text-3);font-size:11px">(popołudniówka)</span></div>
+          <div class="staff-tags">
+            <span class="staff-tag pm">Popołudnie · 4 pok.</span>
+          </div>
+          <div class="staff-actions">
+            <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="icon-btn danger"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 3) PLAN GRID — pokoje pogrupowane piętrami                    -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          Plan pokoi
+        </div>
+        <div class="plan-legend">
+          <span><span class="lg-dot" style="background:#5BA8E8"></span>W</span>
+          <span><span class="lg-dot" style="background:#A78BFA"></span>WP</span>
+          <span><span class="lg-dot" style="background:#D97706"></span>P</span>
+          <span><span class="lg-dot" style="background:#86EFAC"></span>PG</span>
+          <span><span class="lg-dot" style="background:#FCD34D"></span>PGZ</span>
+          <span><span class="lg-dot" style="background:#FCA5A5"></span>BR</span>
+          <span><span class="lg-dot" style="background:#C4B5FD"></span>ZS</span>
+        </div>
+      </div>
+
+      <div class="plan-toolbar">
+        <button class="tab on">Wszystkie <span class="cnt">26</span></button>
+        <button class="tab">Tetiana <span class="cnt">10</span></button>
+        <button class="tab">Kasia <span class="cnt">9</span></button>
+        <button class="tab">Maria <span class="cnt">7</span></button>
+        <button class="tab">Aneta · PM <span class="cnt">4</span></button>
+        <button class="tab" style="margin-left:auto;color:var(--rose);border-color:var(--rose-border)">⚠ 1 nieprzypisany</button>
+      </div>
+
+      <!-- FLOOR 4 -->
+      <section class="floor-section">
+        <div class="fl-head">
+          <div class="fl-num">Piętro 4</div>
+          <div class="fl-meta">10 pokoi · Tetiana</div>
+          <div class="fl-progress">
+            <div class="fl-bar"><div class="fl-bar-fill" style="width:60%"></div></div>
+            <div class="fl-pct">60%</div>
+          </div>
+        </div>
+        <div class="rooms-grid">
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">401</div>
+              <span class="room-status w">W</span>
+            </div>
+            <div class="room-info">DBL · Wyjazd 10:00</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">402</div>
+              <span class="room-status w">W</span>
+            </div>
+            <div class="room-info">TWN · 2 os.</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">403</div>
+              <span class="room-status br">BR</span>
+            </div>
+            <div class="room-info">DBL · 3 noc</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">404</div>
+              <span class="room-status wp">WP</span>
+            </div>
+            <div class="room-info">SGL · jutro przyjazd</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">405</div>
+              <span class="room-status p">P</span>
+            </div>
+            <div class="room-info">DBL · check-in 14:00</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <span class="room-locked">ZABLOK.</span>
+            <div class="top">
+              <div class="room-no">406</div>
+              <span class="room-status pg">PG</span>
+            </div>
+            <div class="room-info">DBL · 4 noc</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">407</div>
+              <span class="room-status zs">ZS</span>
+            </div>
+            <div class="room-info">APT <span class="apt-note">D+T</span></div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">408</div>
+              <span class="room-status w">W</span>
+            </div>
+            <div class="room-info">TRP · 3 os.</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">409</div>
+              <span class="room-status pgz">PGZ</span>
+            </div>
+            <div class="room-info">SGL · gość zostaje</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+          <div class="room-card">
+            <div class="top">
+              <div class="room-no">410</div>
+              <span class="room-status pg">PG</span>
+            </div>
+            <div class="room-info">DBL · 2 noc</div>
+            <div class="room-worker">
+              <div class="room-worker-chip" style="background:#dc2626">T</div>
+              <div class="room-worker-name">Tetiana</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- FLOOR 3 -->
+      <section class="floor-section">
+        <div class="fl-head">
+          <div class="fl-num">Piętro 3</div>
+          <div class="fl-meta">9 pokoi · Kasia</div>
+          <div class="fl-progress">
+            <div class="fl-bar"><div class="fl-bar-fill" style="width:44%"></div></div>
+            <div class="fl-pct">44%</div>
+          </div>
+        </div>
+        <div class="rooms-grid">
+          <div class="room-card">
+            <div class="top"><div class="room-no">301</div><span class="room-status w">W</span></div>
+            <div class="room-info">DBL · check-out 10:00</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">302</div><span class="room-status br">BR</span></div>
+            <div class="room-info">TWN · 4 noc</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">303</div><span class="room-status w">W</span></div>
+            <div class="room-info">DBL · 2 os.</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">304</div><span class="room-status p">P</span></div>
+            <div class="room-info">DBL · check-in 15:30</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">305</div><span class="room-status pg">PG</span></div>
+            <div class="room-info">SGL · 2 noc</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">306</div><span class="room-status pgz">PGZ</span></div>
+            <div class="room-info">DBL · pakiet SPA</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">307</div><span class="room-status zs">ZS</span></div>
+            <div class="room-info">TRP · 3 os.</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">308</div><span class="room-status w">W</span></div>
+            <div class="room-info">DBL · wyjazd 11:00</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">309</div><span class="room-status p">P</span></div>
+            <div class="room-info">DBL · check-in 16:00</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#2563eb">K</div><div class="room-worker-name">Kasia</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FLOOR 2 -->
+      <section class="floor-section">
+        <div class="fl-head">
+          <div class="fl-num">Piętro 2</div>
+          <div class="fl-meta">7 pokoi · Maria · 4 PM (Aneta)</div>
+          <div class="fl-progress">
+            <div class="fl-bar"><div class="fl-bar-fill" style="width:71%"></div></div>
+            <div class="fl-pct">71%</div>
+          </div>
+        </div>
+        <div class="rooms-grid">
+          <div class="room-card">
+            <div class="top"><div class="room-no">201</div><span class="room-status pg">PG</span></div>
+            <div class="room-info">DBL · 3 noc</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#7c3aed">M</div><div class="room-worker-name">Maria</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">202</div><span class="room-status p">P</span></div>
+            <div class="room-info">TWN · check-in 14:00 · PM</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:var(--gold);color:#0B0810">A</div><div class="room-worker-name">Aneta · PM</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">203</div><span class="room-status w">W</span></div>
+            <div class="room-info">DBL · 2 os.</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#7c3aed">M</div><div class="room-worker-name">Maria</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">204</div><span class="room-status br">BR</span></div>
+            <div class="room-info">DBL · 5 noc</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#7c3aed">M</div><div class="room-worker-name">Maria</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">205</div><span class="room-status pg">PG</span></div>
+            <div class="room-info">SGL · 2 noc</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#7c3aed">M</div><div class="room-worker-name">Maria</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">207</div><span class="room-status p">P</span></div>
+            <div class="room-info">APT <span class="apt-note">D+D</span> · PM</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:var(--gold);color:#0B0810">A</div><div class="room-worker-name">Aneta · PM</div></div>
+          </div>
+          <div class="room-card">
+            <div class="top"><div class="room-no">208</div><span class="room-status w">W</span></div>
+            <div class="room-info">DBL · wyjazd 11:00</div>
+            <div class="room-worker"><div class="room-worker-chip" style="background:#7c3aed">M</div><div class="room-worker-name">Maria</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FLOOR 1 — nieprzypisane -->
+      <section class="floor-section">
+        <div class="fl-head">
+          <div class="fl-num">Piętro 1</div>
+          <div class="fl-meta" style="color:var(--rose)">1 pokój nieprzypisany!</div>
+        </div>
+        <div class="rooms-grid">
+          <div class="room-card" style="border-color:var(--rose-border);background:linear-gradient(135deg,var(--rose-bg),var(--bg-3))">
+            <div class="top"><div class="room-no" style="color:var(--rose)">109</div><span class="room-status p">P</span></div>
+            <div class="room-info">SGL · check-in 16:00 · pilne</div>
+            <div class="room-worker unassigned">
+              <div class="room-worker-chip">+</div>
+              <div class="room-worker-name">Przypisz pokojówkę</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- 4) NOTATKI HK — uwagi per pokój                              -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Notatki HK
+        </div>
+        <div class="count-pill">3 uwagi</div>
+      </div>
+
+      <!-- Add note form -->
+      <div class="notes-add">
+        <select>
+          <option>Pokój...</option>
+          <option>401</option><option>402</option><option>403</option>
+          <option>404</option><option>405</option><option>406</option>
+          <option>407</option><option>408</option><option>409</option>
+          <option>410</option>
+        </select>
+        <input type="text" placeholder="Uwaga do pokoju (np. dodatkowa pościel, alergie, prośby gości...)"/>
+        <button class="btn btn-primary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Dodaj uwagę
+        </button>
+      </div>
+
+      <div class="notes-list">
+        <div class="note-row">
+          <div class="note-room-pill">407</div>
+          <div>
+            <div class="note-text">Apartament D+T — gość prosi o dodatkowe poduszki anty-alergiczne i wodę bez gazu w lodówce.</div>
+            <div class="note-meta">Natalia · 12 maj 09:14</div>
+          </div>
+          <div class="note-actions" style="margin-left:auto">
+            <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="icon-btn danger"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="note-row">
+          <div class="note-room-pill">203</div>
+          <div>
+            <div class="note-text">Drzwi do balkonu nie domykają się — zostawić instrukcję dla gościa, konserwator naprawia jutro.</div>
+            <div class="note-meta">Marek · 12 maj 08:20 · powiązane z usterką #F-2026-0079</div>
+          </div>
+          <div class="note-actions" style="margin-left:auto">
+            <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button class="icon-btn danger"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="note-row">
+          <div class="note-room-pill">109</div>
+          <div>
+            <div class="note-text">VIP — pakowanie powitalne (czekoladki + winko) na komodę. Kwiaty w łazience.</div>
+            <div class="note-meta">Manager · 11 maj 18:30</div>
+          </div>
+          <div class="note-actions" style="margin-left:auto">
+            <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button class="icon-btn danger"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- MODAL: Przypisz pokój (status override + osoba + apartment + uwaga) -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        Przypisz pokój 406
+      </div>
+      <button class="modal-close">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <!-- Status override -->
+    <div class="modal-section">
+      <div class="modal-sec-label">
+        Status pokoju
+        <span class="lock-pill">ZABLOK.</span>
+      </div>
+      <div class="status-row">
+        <button class="status-btn">W · Wyjazd</button>
+        <button class="status-btn">WP · W/P</button>
+        <button class="status-btn">P · Przyjazd</button>
+        <button class="status-btn on pg">PG</button>
+        <button class="status-btn">PGZ</button>
+        <button class="status-btn unlock">Odblokuj</button>
+      </div>
+      <div class="status-hint">Auto-import (KWHotel) nie nadpisze tego pokoju dopóki "ZABLOK." jest aktywne.</div>
+    </div>
+
+    <!-- Apartment note + general note -->
+    <div class="modal-section">
+      <div class="modal-sec-label">Dodatkowe uwagi pokoju</div>
+      <div style="display:grid;grid-template-columns:120px 1fr;gap:8px">
+        <input class="modal-input" placeholder="Apt. (D+T)"/>
+        <input class="modal-input" placeholder="Notatka HK..."/>
+      </div>
+      <div class="status-hint">Apt note pojawi się na karcie pokoju (np. dla apartamentów: D+T, D+D, SOFA…).</div>
+    </div>
+
+    <!-- Staff pick -->
+    <div class="modal-section">
+      <div class="modal-sec-label">Przypisz osobę</div>
+      <div class="staff-pick">
+        <button class="staff-pick-item current">
+          <div class="staff-chip" style="background:#dc2626">T</div>
+          <span style="flex:1">Tetiana</span>
+          <span style="color:var(--ember);font-weight:800;font-size:14px">✓</span>
+        </button>
+        <button class="staff-pick-item">
+          <div class="staff-chip" style="background:#2563eb">K</div>
+          <span style="flex:1">Kasia</span>
+        </button>
+        <button class="staff-pick-item">
+          <div class="staff-chip" style="background:#7c3aed">M</div>
+          <span style="flex:1">Maria</span>
+        </button>
+        <button class="staff-pick-item">
+          <div class="staff-chip" style="background:var(--gold);color:#0B0810">A</div>
+          <span style="flex:1">Aneta <span style="color:var(--text-3);font-size:11px">· popołudniówka</span></span>
+        </button>
+        <button class="staff-pick-item unassign">
+          <div class="staff-chip" style="background:var(--bg-elev);color:var(--text-3);border:1px dashed var(--border-2)">—</div>
+          <span style="flex:1">Bez przypisania</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

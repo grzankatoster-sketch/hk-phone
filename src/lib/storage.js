@@ -36,6 +36,8 @@ export const STORAGE_KEYS = Object.freeze({
   kwhotelCreds: "reception-kwhotel-creds",
   reviewsSeedVer: "reception-reviews-seed-v",
   bookingMeta: "reception-booking-reviews-meta",
+  reviewsInsights: "reception-reviews-insights",
+  pendingItems: "reception-pending-items",
 });
 
 export const loadJson = (key, fallback) => {

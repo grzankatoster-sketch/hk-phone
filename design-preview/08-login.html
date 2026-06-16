@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:        #07080C;
+  --bg-card:   #0F1119;
+  --bg-2:      #161921;
+  --bg-3:      #1D2130;
+  --plum:      #5a1d4a;
+  --plum-glow: rgba(90,29,74,.6);
+  --ember:     #E8943A;
+  --ember-dk:  #C4761F;
+  --teal:      #2BD4A0;
+  --amber:     #F4C055;
+  --t0:        #ECEEF5;
+  --t1:        #8B94AD;
+  --t2:        #4A5268;
+  --bd:        rgba(255,255,255,.07);
+  --bd-md:     rgba(255,255,255,.12);
+  --bd-plum:   rgba(90,29,74,.5);
+  --fd: 'Syne',sans-serif;
+  --fb: 'DM Sans',sans-serif;
+  --fm: 'JetBrains Mono',monospace;
+}
+
+html,body{
+  height:100%;overflow:hidden;
+  background:var(--bg);color:var(--t0);
+  font-family:var(--fb);font-size:14px;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── BG: subtle radial ──────────────────────────── */
+.bg-layer{
+  position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 55% at 50% 38%,
+      rgba(90,29,74,.18) 0%, transparent 70%),
+    radial-gradient(ellipse 35% 30% at 50% 38%,
+      rgba(90,29,74,.10) 0%, transparent 55%);
+}
+
+/* ── SHELL ──────────────────────────────────────── */
+.shell{
+  position:relative;z-index:1;
+  height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:32px 20px;
+  gap:0;
+}
+
+/* ══════════════════════════════════════════════════
+   LOGO
+══════════════════════════════════════════════════ */
+.logo-wrap{
+  position:relative;
+  margin-bottom:40px;
+  display:flex;align-items:center;justify-content:center;
+  animation:logo-enter .8s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* outer halo — slow breathe */
+.logo-halo{
+  position:absolute;
+  width:260px;height:130px;
+  border-radius:50%;
+  background:radial-gradient(ellipse,rgba(90,29,74,.55) 0%,transparent 70%);
+  filter:blur(28px);
+  animation:halo-breathe 4s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes halo-breathe{
+  0%,100%{opacity:.7;transform:scale(1)}
+  50%    {opacity:1; transform:scale(1.08)}
+}
+
+/* shimmer sweep across the logo text */
+.logo-shimmer{
+  position:absolute;inset:0;
+  background:linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255,255,255,.12) 50%,
+    transparent 65%
+  );
+  background-size:200% 100%;
+  animation:shimmer 3.5s ease-in-out infinite 1.2s;
+  pointer-events:none;border-radius:8px;
+}
+@keyframes shimmer{
+  0%  {background-position: 200% 0}
+  100%{background-position:-200% 0}
+}
+
+/* the actual SVG */
+.logo-svg{
+  position:relative;z-index:1;
+  filter:drop-shadow(0 0 20px rgba(90,29,74,.7))
+         drop-shadow(0 0 50px rgba(90,29,74,.35));
+  animation:logo-glow 4s ease-in-out infinite;
+}
+@keyframes logo-glow{
+  0%,100%{filter:drop-shadow(0 0 20px rgba(90,29,74,.7)) drop-shadow(0 0 50px rgba(90,29,74,.35))}
+  50%    {filter:drop-shadow(0 0 30px rgba(90,29,74,.9)) drop-shadow(0 0 70px rgba(90,29,74,.5))}
+}
+
+@keyframes logo-enter{
+  from{opacity:0;transform:translateY(-16px) scale(.95)}
+  to  {opacity:1;transform:none}
+}
+
+/* ══════════════════════════════════════════════════
+   CARD
+══════════════════════════════════════════════════ */
+.card{
+  width:100%;max-width:380px;
+  background:var(--bg-card);
+  border:1px solid var(--bd-md);
+  border-radius:18px;
+  overflow:hidden;
+  box-shadow:
+    0 0 0 1px rgba(90,29,74,.2),
+    0 24px 64px rgba(0,0,0,.55),
+    0 0 80px rgba(90,29,74,.08);
+  animation:card-enter .7s .1s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes card-enter{
+  from{opacity:0;transform:translateY(20px)}
+  to  {opacity:1;transform:none}
+}
+
+/* top accent bar — plum shimmer */
+.card-bar{
+  height:2px;
+  background:linear-gradient(90deg,
+    transparent 0%,
+    var(--plum) 30%,
+    rgba(180,80,150,.8) 50%,
+    var(--plum) 70%,
+    transparent 100%);
+  background-size:200% 100%;
+  animation:bar-move 3s ease-in-out infinite;
+}
+@keyframes bar-move{
+  0%,100%{background-position:0% 0%}
+  50%    {background-position:100% 0%}
+}
+
+/* ── STEPS ─────────────────────────────────────── */
+.step{padding:34px 34px 30px;min-height:220px}
+
+/* shared */
+.lbl{
+  display:block;font-size:10px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t2);font-family:var(--fd);margin-bottom:8px;
+}
+.field{
+  width:100%;height:50px;
+  background:var(--bg-2);
+  border:1.5px solid var(--bd-md);
+  border-radius:10px;padding:0 16px;
+  font-family:var(--fb);font-size:15.5px;
+  color:var(--t0);outline:none;
+  transition:border-color .18s,box-shadow .18s,background .18s;
+  caret-color:var(--plum);
+}
+.field::placeholder{color:var(--t2);font-size:14px}
+.field:focus{
+  border-color:rgba(90,29,74,.6);
+  background:var(--bg-3);
+  box-shadow:0 0 0 3px rgba(90,29,74,.14),0 0 20px rgba(90,29,74,.08);
+}
+
+.btn{
+  width:100%;height:50px;border-radius:10px;
+  font-family:var(--fd);font-size:14px;font-weight:700;
+  letter-spacing:.03em;cursor:pointer;border:none;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .2s cubic-bezier(.4,0,.2,1);
+}
+.btn-plum{
+  background:linear-gradient(135deg,#6b2258 0%,var(--plum) 100%);
+  color:#fff;
+  box-shadow:0 4px 20px rgba(90,29,74,.45);
+}
+.btn-plum:hover:not(:disabled){
+  box-shadow:0 6px 30px rgba(90,29,74,.65);
+  transform:translateY(-1px);
+}
+.btn-plum:active:not(:disabled){transform:none}
+.btn-plum:disabled{opacity:.25;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* ── STEP A: name ───────────────────────────────── */
+#sA .hint{
+  text-align:center;font-size:12px;color:var(--t2);margin-top:12px;
+}
+
+/* ── STEP A2: manager password (slides in) ────── */
+#sPwd{
+  border-top:1px solid var(--bd);
+  padding:22px 34px 28px;
+  animation:slide-down .28s cubic-bezier(.22,1,.36,1) both;
+  display:none;
+}
+@keyframes slide-down{
+  from{opacity:0;transform:translateY(-10px)}
+  to  {opacity:1;transform:none}
+}
+.mgr-banner{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-radius:9px;
+  background:rgba(90,29,74,.14);border:1px solid rgba(90,29,74,.3);
+  margin-bottom:18px;
+  font-size:12.5px;color:rgba(220,180,210,.9);
+}
+.mgr-icon{
+  width:28px;height:28px;flex-shrink:0;border-radius:7px;
+  background:rgba(90,29,74,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.btn-row{display:flex;gap:8px;margin-top:14px}
+.btn-back{
+  height:50px;padding:0 18px;border-radius:10px;
+  background:transparent;border:1.5px solid var(--bd-md);
+  color:var(--t1);font-family:var(--fd);font-size:13.5px;font-weight:700;
+  cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:6px;flex-shrink:0;
+}
+.btn-back:hover{background:var(--bg-3);color:var(--t0)}
+
+/* ── STEP B: greeting ───────────────────────────── */
+#sGreet{display:none;padding:34px 34px 30px}
+.greeting-text{
+  font-family:'DM Serif Display',serif;
+  font-size:28px;font-weight:400;
+  color:var(--t0);line-height:1.25;
+  margin-bottom:8px;
+  animation:greet-in .5s cubic-bezier(.22,1,.36,1) both;
+}
+.greeting-name{color:#fff}
+.greeting-sub{
+  font-size:13px;color:var(--t2);margin-bottom:28px;
+  animation:greet-in .5s .08s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes greet-in{
+  from{opacity:0;transform:translateY(10px)}
+  to  {opacity:1;transform:none}
+}
+.loading-bar-wrap{
+  height:3px;background:var(--bg-3);border-radius:2px;overflow:hidden;
+  animation:greet-in .5s .15s cubic-bezier(.22,1,.36,1) both;
+}
+.loading-bar{
+  height:100%;border-radius:2px;width:0;
+  background:linear-gradient(90deg,var(--plum),rgba(180,80,150,.7));
+  animation:load-fill 1.4s .3s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes load-fill{
+  0%  {width:0}
+  60% {width:80%}
+  100%{width:100%}
+}
+.loading-label{
+  font-size:11.5px;color:var(--t2);margin-top:10px;
+  font-family:var(--fm);letter-spacing:.04em;
+  animation:greet-in .5s .2s cubic-bezier(.22,1,.36,1) both;
+}
+
+/* ── CARD FOOT ─────────────────────────────────── */
+.card-foot{
+  padding:12px 34px;border-top:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.foot-clock{font-family:var(--fm);font-size:12px;color:var(--t2)}
+.foot-sep{color:var(--t2);opacity:.3}
+.foot-label{font-size:11px;color:var(--t2)}
+
+/* ── CLOCK BELOW ───────────────────────────────── */
+.below-clock{
+  margin-top:22px;text-align:center;
+  animation:card-enter .7s .22s cubic-bezier(.22,1,.36,1) both;
+}
+.bc-date{font-size:11.5px;color:var(--t2);text-transform:capitalize;letter-spacing:.03em}
+
+svg{display:block}
+</style>
+</head>
+<body>
+
+<div class="bg-layer"></div>
+
+<div class="shell">
+
+  <!-- ══ LOGO ══ -->
+  <div class="logo-wrap">
+    <div class="logo-halo"></div>
+    <div class="logo-shimmer"></div>
+
+    <!--
+      Wierne odwzorowanie Logo.jsx variant="full" tone="white"
+      viewBox="0 0 220 110" — 4 kropki + CONRAD + COMFORT
+    -->
+    <svg class="logo-svg"
+         viewBox="0 0 220 110" width="220" height="110"
+         role="img" aria-label="Conrad Comfort"
+         xmlns="http://www.w3.org/2000/svg">
+
+      <!-- 4 animowane kropki (staggered breathing) -->
+      <circle cx="92" cy="30" r="2.6" fill="#ffffff">
+        <animate attributeName="r"       values="2.6;4.4;2.6" dur="4s" begin="0s"   repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+        <animate attributeName="opacity" values="0.65;1;0.65"  dur="4s" begin="0s"   repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+      </circle>
+      <circle cx="100" cy="30" r="2.6" fill="#ffffff">
+        <animate attributeName="r"       values="2.6;4.4;2.6" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+        <animate attributeName="opacity" values="0.65;1;0.65"  dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+      </circle>
+      <circle cx="120" cy="30" r="2.6" fill="#ffffff">
+        <animate attributeName="r"       values="2.6;4.4;2.6" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+        <animate attributeName="opacity" values="0.65;1;0.65"  dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+      </circle>
+      <circle cx="128" cy="30" r="2.6" fill="#ffffff">
+        <animate attributeName="r"       values="2.6;4.4;2.6" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+        <animate attributeName="opacity" values="0.65;1;0.65"  dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
+      </circle>
+
+      <!-- CONRAD -->
+      <text x="110" y="62"
+            font-family="'DM Serif Display', serif"
+            font-size="22" font-weight="400"
+            letter-spacing="0.18em"
+            text-anchor="middle"
+            fill="#ffffff">CONRAD</text>
+
+      <!-- COMFORT -->
+      <text x="110" y="86"
+            font-family="'Inter', sans-serif"
+            font-size="11" font-weight="500"
+            letter-spacing="0.55em"
+            text-anchor="middle"
+            fill="rgba(255,255,255,.7)">COMFORT</text>
+    </svg>
+  </div>
+
+  <!-- ══ CARD ══ -->
+  <div class="card">
+    <div class="card-bar"></div>
+
+    <!-- STEP A — wpisz imię -->
+    <div class="step" id="sA">
+      <label class="lbl" for="nameIn">Kto zaczyna zmianę?</label>
+      <input
+        id="nameIn"
+        class="field"
+        type="text"
+        placeholder="Wpisz swoje imię…"
+        autocomplete="off"
+        autocorrect="off"
+        spellcheck="false"
+      />
+      <div style="margin-top:14px">
+        <button class="btn btn-plum" id="btnNext" disabled>
+          Dalej
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="hint">Kierownicy zostaną poproszeni o hasło</div>
+    </div>
+
+    <!-- STEP A2 — hasło kierownika (slide-in pod sA) -->
+    <div id="sPwd">
+      <div class="mgr-banner">
+        <div class="mgr-icon">
+          <svg width="14" height="14" fill="none" stroke="rgba(220,160,210,.9)" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        Konto kierownika — podaj hasło
+      </div>
+      <label class="lbl" for="pwdIn">Hasło</label>
+      <input
+        id="pwdIn"
+        class="field"
+        type="password"
+        placeholder="••••••••"
+        autocomplete="current-password"
+      />
+      <div class="btn-row">
+        <button class="btn-back" onclick="goBack()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+          Wstecz
+        </button>
+        <button class="btn btn-plum" id="btnLogin" style="flex:1" disabled>
+          Zaloguj
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div style="text-align:center;margin-top:12px">
+        <button onclick="skipToGreet()" style="font-size:12px;color:var(--t2);background:none;border:none;cursor:pointer;font-family:var(--fb);text-decoration:underline;text-underline-offset:2px">Pomiń — kontynuuj jako pracownik</button>
+      </div>
+    </div>
+
+    <!-- STEP B — powitanie + ładowanie -->
+    <div id="sGreet" class="step">
+      <div class="greeting-text">
+        Dzień dobry,<br/><span class="greeting-name" id="greetName">Natalia</span>
+      </div>
+      <div class="greeting-sub" id="greetSub">Trwa ładowanie panelu…</div>
+      <div class="loading-bar-wrap">
+        <div class="loading-bar" id="loadBar"></div>
+      </div>
+      <div class="loading-label" id="loadLabel">Inicjalizacja zmiany…</div>
+    </div>
+
+    <div class="card-foot">
+      <div class="foot-clock" id="footClock">07:42</div>
+      <span class="foot-sep">·</span>
+      <div class="foot-label">Conrad Comfort · Panel Recepcji</div>
+    </div>
+  </div>
+
+  <!-- data pod kartą -->
+  <div class="below-clock">
+    <div class="bc-date" id="bcDate">niedziela, 4 maja 2026</div>
+  </div>
+
+</div>
+
+<script>
+/* ── CLOCK ──────────────────────────────────────── */
+const DAYS=['niedziela','poniedziałek','wtorek','środa','czwartek','piątek','sobota'];
+const MONTHS=['stycznia','lutego','marca','kwietnia','maja','czerwca','lipca','sierpnia','września','października','listopada','grudnia'];
+function tick(){
+  const d=new Date();
+  const hh=d.getHours().toString().padStart(2,'0');
+  const mm=d.getMinutes().toString().padStart(2,'0');
+  document.getElementById('footClock').textContent=hh+':'+mm;
+  document.getElementById('bcDate').textContent=
+    `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+tick();setInterval(tick,10000);
+
+/* ── MANAGERS LIST ──────────────────────────────── */
+const MANAGERS=['paweł','pawel','adam','weronika kierownik','anna'];
+
+/* ── STEP A: name input ─────────────────────────── */
+const nameIn  = document.getElementById('nameIn');
+const btnNext = document.getElementById('btnNext');
+const pwdIn   = document.getElementById('pwdIn');
+const btnLogin= document.getElementById('btnLogin');
+
+nameIn.addEventListener('input',()=>{
+  btnNext.disabled=nameIn.value.trim().length<2;
+});
+nameIn.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!btnNext.disabled) onNext();
+});
+btnNext.addEventListener('click',onNext);
+
+function onNext(){
+  const raw=nameIn.value.trim();
+  if(raw.length<2)return;
+  const norm=raw.toLowerCase();
+  const isMgr=MANAGERS.includes(norm);
+
+  if(isMgr){
+    // slide in password block
+    const pwd=document.getElementById('sPwd');
+    pwd.style.display='block';
+    void pwd.offsetWidth; // reflow
+    pwd.style.animation='slide-down .28s cubic-bezier(.22,1,.36,1) both';
+    // disable name field
+    nameIn.disabled=true;btnNext.disabled=true;
+    btnNext.style.opacity='.3';
+    setTimeout(()=>pwdIn.focus(),80);
+  } else {
+    showGreeting(raw);
+  }
+}
+
+/* ── PASSWORD (manager) ─────────────────────────── */
+pwdIn.addEventListener('input',()=>{
+  btnLogin.disabled=pwdIn.value.length<3;
+});
+pwdIn.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!btnLogin.disabled) doLogin();
+});
+btnLogin.addEventListener('click',doLogin);
+
+function doLogin(){showGreeting(nameIn.value.trim());}
+function skipToGreet(){showGreeting(nameIn.value.trim());}
+
+function goBack(){
+  document.getElementById('sPwd').style.display='none';
+  nameIn.disabled=false;
+  nameIn.value='';
+  btnNext.disabled=true;
+  btnNext.style.opacity='';
+  pwdIn.value='';
+  btnLogin.disabled=true;
+  setTimeout(()=>nameIn.focus(),60);
+}
+
+/* ── GREETING ────────────────────────────────────── */
+const LABELS=[
+  'Inicjalizacja zmiany…',
+  'Wczytuję dane HK…',
+  'Sprawdzam usterki…',
+  'Prawie gotowe…',
+  'Witaj w panelu!',
+];
+function showGreeting(name){
+  const display=name.charAt(0).toUpperCase()+name.slice(1);
+  // determine greeting by hour
+  const h=new Date().getHours();
+  const grt=h>=5&&h<18?'Dzień dobry,':'Dobry wieczór,';
+
+  // hide all other sections
+  document.getElementById('sA').style.display='none';
+  document.getElementById('sPwd').style.display='none';
+
+  // set greeting text
+  document.getElementById('greetName').textContent=display;
+  document.querySelector('.greeting-text').firstChild.textContent=grt+' ';
+
+  // show greeting section
+  const sg=document.getElementById('sGreet');
+  sg.style.display='block';
+
+  // reset + retrigger bar animation
+  const bar=document.getElementById('loadBar');
+  bar.style.animation='none';
+  void bar.offsetWidth;
+  bar.style.animation='load-fill 1.6s .25s cubic-bezier(.4,0,.2,1) forwards';
+
+  // cycle loading labels
+  let li=0;
+  const lbl=document.getElementById('loadLabel');
+  lbl.textContent=LABELS[0];
+  const iv=setInterval(()=>{
+    li++;
+    if(li<LABELS.length) lbl.textContent=LABELS[li];
+    else clearInterval(iv);
+  },320);
+}
+
+/* ── focus name field on load ───────────────────── */
+setTimeout(()=>nameIn.focus(),600);
+</script>
+</body>
+</html>

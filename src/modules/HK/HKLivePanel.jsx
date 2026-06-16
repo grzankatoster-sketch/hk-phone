@@ -1,9 +1,11 @@
 import React from "react";
 import QRCode from "qrcode";
 import { supabase, phoneUrl } from "../../lib/supabase";
-import { HK_ALL, HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_LIVE_COLORS } from "../../lib/constants";
+import { HK_ALL, HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_LIVE_COLORS, TENANT_ID } from "../../lib/constants";
 import { loadJson, saveJson } from "../../lib/storage";
-import { suggestReassignments } from "../../lib/hkAgent";
+import { suggestReassignments, workerStats, suggestForRequest, HK_WORKER_ACTIONS } from "../../lib/hkAgent";
+import { markRequestHandled, getDismissedSwaps, markSwapDismissed } from "../../lib/useHKAgent";
+import { roomAdvisor, suggestAssignee, llmReady } from "../../lib/llm";
 
 const TODAY = () => new Date().toISOString().split("T")[0];
 const sugKey = (s) => `${s.from}->${s.to}:${s.rooms.join(",")}`;
@@ -38,6 +40,12 @@ const LOG_CFG = {
   exchange_request: { color: "#f59e0b", bg: "rgba(245,158,11,.08)",   bc: "rgba(245,158,11,.25)",   icon: "⇄", text: (l) => l.extra || `${l.worker} proponuje wymianę` },
   exchange_accept:  { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "⇄", text: (l) => l.extra || `${l.worker} przyjęła wymianę` },
   exchange_reject:  { color: "#f87171", bg: "rgba(248,113,113,.08)",  bc: "rgba(248,113,113,.25)",  icon: "✕", text: (l) => l.extra || `${l.worker} odrzuciła wymianę` },
+  room_request:     { color: "#60a5fa", bg: "rgba(96,165,250,.08)",   bc: "rgba(96,165,250,.25)",   icon: "🙋", text: (l) => l.extra || `${l.worker} prosi o pokój` },
+  reassign:         { color: "#a78bfa", bg: "rgba(167,139,250,.08)",  bc: "rgba(167,139,250,.25)",  icon: "⇄", text: (l) => l.extra ? `Recepcja: ${l.extra}` : `${l.worker} — zmiana przydziału` },
+  priority:         { color: "#f59e0b", bg: "rgba(245,158,11,.08)",   bc: "rgba(245,158,11,.25)",   icon: "⚡", text: (l) => l.extra || `Recepcja: pokój ${l.room} w pierwszej kolejności` },
+  priority_off:     { color: "#8b949e", bg: "rgba(139,148,158,.08)",  bc: "rgba(139,148,158,.25)",  icon: "○", text: (l) => l.extra || `Recepcja: anulowano priorytet pokoju ${l.room}` },
+  info_request:     { color: "#60a5fa", bg: "rgba(96,165,250,.08)",   bc: "rgba(96,165,250,.25)",   icon: "❓", text: (l) => l.extra || `Recepcja pyta o status pokoju ${l.room}` },
+  info_reply:       { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "💬", text: (l) => `Pokój ${l.room} · ${l.worker}: ${l.extra || ""}` },
 };
 
 const LINEN_FIELDS = [
@@ -51,7 +59,6 @@ const LINEN_FIELDS = [
   { key: "narzuta",     label: "Narzuta" },
   { key: "koldra",      label: "Kołdra" },
   { key: "poduszka",    label: "Poduszka" },
-  { key: "podklad",     label: "Podkład" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -64,6 +71,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   const [tasks,     setTasks]     = React.useState([]);
   const [logs,      setLogs]      = React.useState([]);
   const [planData,  setPlanData]  = React.useState(null); // hk_plan row from Supabase
+  const [roster,    setRoster]    = React.useState([]);   // hk_roster: [{name, role}] — kto ma dyżur/popołudnie
   const [qrCache,   setQrCache]   = React.useState(() => loadJson("hk-qr-cache-v2", {}));
   const qrCacheRef = React.useRef(qrCache);
   const [genFor,    setGenFor]    = React.useState(null);
@@ -110,6 +118,26 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     return m;
   }, [hkData, planData]);
 
+  // Pracownicy obecni dziś = mają przydzielone pokoje (rano + PM); fallback: cała lista HK.
+  const presentToday = React.useMemo(() => {
+    const set = new Set([...Object.keys(assignments), ...Object.keys(pmAssignments)]);
+    return set.size ? [...set] : workers;
+  }, [assignments, pmAssignments, workers]);
+
+  // Role z grafiku (hk_roster): kto ma dyżur, kto zmianę popołudniową (tydz. 10–18, weekend 12–20).
+  const dutyPerson      = React.useMemo(() => roster.find(r => r.role === "dyzur")?.name || "", [roster]);
+  const afternoonPerson = React.useMemo(
+    () => roster.find(r => r.role === "popoludnie")?.name || Object.keys(pmAssignments)[0] || "",
+    [roster, pmAssignments]
+  );
+  // Domyślni odbiorcy, gdy AI nie wie kogo przypisać: dyżur + popołudnie (oboje dostają).
+  const dutyPmTargets = React.useMemo(() => {
+    const out = [];
+    if (dutyPerson) out.push(dutyPerson);
+    if (afternoonPerson && afternoonPerson !== dutyPerson) out.push(afternoonPerson);
+    return out;
+  }, [dutyPerson, afternoonPerson]);
+
   const pmRoomTypes = React.useMemo(() => {
     const m = {};
     if (hkData) {
@@ -140,15 +168,18 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
         { data: tData },
         { data: lData },
         { data: pData },
+        { data: rosterRow },
       ] = await Promise.all([
         supabase.from("hk_workers").select("*").order("id"),
         supabase.from("hk_rooms").select("*").eq("date", date),
         supabase.from("hk_tasks").select("*").eq("date", date).order("created_at"),
         supabase.from("hk_logs").select("*").eq("date", date).order("created_at"),
         supabase.from("hk_plan").select("*").eq("date", date).maybeSingle(),
+        supabase.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", date).maybeSingle(),
       ]);
       if (!active) return;
       if (wData) setWorkers(wData.map(w => w.name));
+      setRoster(Array.isArray(rosterRow?.roster) ? rosterRow.roster : []);
       if (rData) {
         const m = {};
         rData.forEach(r => { m[r.room] = r; });
@@ -197,7 +228,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     if (!Object.values(hkData).some(rd => rd.person)) return;
     const sync = async () => {
       const rt = {};
-      HK_ALL.forEach(r => { rt[r.no] = r.type; });
+      HK_ALL.forEach(r => { rt[r.no] = hkData[r.no]?.roomType || r.type; });
       const { error: planErr } = await supabase.from("hk_plan").upsert({
         date, assignments, pm_assignments: pmAssignments, room_types: rt, pm_room_types: pmRoomTypes, updated_at: new Date().toISOString(),
       }, { onConflict: "date" });
@@ -298,18 +329,56 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
 
     // Wyślij push do telefonów pracownic (przez lokalny hkserver → Service Worker)
     let workersList = null;
-    if (target !== "all" && target !== "morning" && target !== "pm") {
-      workersList = [target];
+    if (target === "all") {
+      workersList = presentToday;          // wszyscy obecni dziś (rano + PM)
+    } else if (target === "duty_pm") {
+      workersList = dutyPmTargets.length ? dutyPmTargets : presentToday; // dyżur + popołudnie
     } else if (target === "morning") {
       workersList = Object.keys(assignments);
     } else if (target === "pm") {
       workersList = Object.keys(pmAssignments);
+    } else {
+      workersList = [target];              // konkretny pracownik
     }
     fetch("http://localhost:3737/push/task", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ task: { id: data?.id, text, room, target }, workers: workersList }),
     }).catch(() => {});
+  };
+
+  // Fallback gdy AI nie wskaże jednej osoby: kieruj do dyżuru + popołudnia (oboje dostają),
+  // a gdy ról brak w grafiku — do wszystkich obecnych dziś.
+  const applyDutyPmFallback = (reason) => {
+    if (dutyPmTargets.length) {
+      setTaskTarget("duty_pm");
+      setRouteNote(`${reason} — przypisuję dyżur + popołudnie: ${dutyPmTargets.join(" + ")}.`);
+    } else {
+      setTaskTarget("all");
+      const n = presentToday.length;
+      setRouteNote(`${reason} — wyślę do wszystkich obecnych dziś${n ? ` (${n})` : ""}.`);
+    }
+  };
+
+  // Routing zadania przez LLM: podpowiada KOMU przypisać (wg obciążenia/piętra).
+  const suggestWho = async () => {
+    if (routeBusy || !taskText.trim()) return;
+    setRouteBusy(true); setRouteNote("");
+    try {
+      const stats = Object.values(workerStats(assignments, rooms))
+        .map(w => ({ worker: w.worker, total: w.total, done: w.done, cleaning: w.cleaning, waiting: w.waiting }));
+      const r = await suggestAssignee({ text: taskText.trim(), room: taskRoom.trim(), workers, stats });
+      if (r.worker && workers.includes(r.worker)) {
+        setTaskTarget(r.worker);
+        setRouteNote(`AI proponuje: ${r.worker}${r.reason ? " — " + r.reason : ""}`);
+      } else {
+        // AI nie umie wskazać jednej osoby → przypisz dyżur + popołudnie (oboje dostają).
+        applyDutyPmFallback("AI nie wskazał jednej osoby");
+      }
+    } catch (e) {
+      // Asystent niedostępny/limit — też nie blokuj wysyłki, ten sam fallback.
+      applyDutyPmFallback(e?.code === "rate_limited" ? "Limit zapytań" : "Asystent niedostępny");
+    } finally { setRouteBusy(false); }
   };
 
   const doneTask = async (task) => {
@@ -369,23 +438,32 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   const [taskText,   setTaskText]   = React.useState("");
   const [taskRoom,   setTaskRoom]   = React.useState("");
   const [taskTarget, setTaskTarget] = React.useState("all");
+  const [routeBusy, setRouteBusy] = React.useState(false);
+  const [routeNote, setRouteNote] = React.useState("");
   const [newWorkerInput, setNewWorkerInput] = React.useState("");
   const [logDate,        setLogDate]        = React.useState(date);
   const [histLogs,       setHistLogs]       = React.useState(null);
   const [linenOpen,      setLinenOpen]      = React.useState(false);
   const [qrModal,        setQrModal]        = React.useState(null); // { name, dataURL }
   const [monitorPopover, setMonitorPopover] = React.useState(null); // roomNo | null
+  // Widok Monitora — każdy użytkownik wybiera swój (Lista/Kafelki/Po osobie).
+  // Wybór zapamiętany w localStorage per imię recepcjonisty.
+  const MON_VIEW_KEY = `hk-monitor-view-${employeeName || "default"}`;
+  const [monView, setMonView] = React.useState(() => {
+    try { const v = localStorage.getItem(MON_VIEW_KEY) || "lista"; return v === "tablica" ? "lista" : v; } catch { return "lista"; }
+  });
+  React.useEffect(() => {
+    try { const v = localStorage.getItem(MON_VIEW_KEY); if (v) setMonView(v === "tablica" ? "lista" : v); } catch {}
+  }, [MON_VIEW_KEY]);
+  const changeMonView = (v) => {
+    setMonView(v);
+    try { localStorage.setItem(MON_VIEW_KEY, v); } catch {}
+  };
 
   const loadHistLogs = async () => {
     const { data } = await supabase.from("hk_logs").select("*").eq("date", logDate).order("created_at");
     setHistLogs(data || []);
   };
-
-  // Grouped assignments for Monitor
-  const allGroups = [
-    ...Object.entries(assignments).map(([name, rms]) => ({ name, rooms: rms, pm: false })),
-    ...Object.entries(pmAssignments).map(([name, rms]) => ({ name, rooms: rms, pm: true })),
-  ];
 
   // ─── Styles ───────────────────────────────────────────────────────────────
   const card = {
@@ -440,16 +518,6 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     Object.entries(assignments).forEach(([w, rms]) => rms.forEach(r => { roomWorkerMap[r] = { worker: w, pm: false }; }));
     Object.entries(pmAssignments).forEach(([w, rms]) => rms.forEach(r => { roomWorkerMap[r] = { worker: w, pm: true }; }));
 
-    const allWNames = [...new Set([...Object.keys(assignments), ...Object.keys(pmAssignments)])];
-
-    const wStats = allWNames.map((name, i) => {
-      const rms = [...(assignments[name] || []), ...(pmAssignments[name] || [])];
-      const done     = rms.filter(r => rooms[r]?.status === "czyste").length;
-      const cleaning = rms.filter(r => rooms[r]?.status === "czyszczenie").length;
-      const pct = rms.length ? Math.round((done / rms.length) * 100) : 0;
-      return { name, total: rms.length, done, cleaning, pct, color: workerColor(i) };
-    });
-
     const gDone    = roomVals.filter(r => r.status === "czyste").length;
     const gClean   = roomVals.filter(r => r.status === "czyszczenie").length;
     const gSkipped = roomVals.filter(r => r.status === "pominięte").length;
@@ -489,148 +557,132 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
       return l?.log_time || null;
     };
 
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onClick={() => setMonitorPopover(null)}>
+    // ── Ujednolicona lista aktywnych pokoi — wspólne źródło dla wszystkich 4 widoków ──
+    const floorOf = {};
+    HK_FLOOR1.forEach(r => { floorOf[r.no] = "I piętro"; });
+    HK_FLOOR2.forEach(r => { floorOf[r.no] = "II piętro"; });
+    HK_FLOOR3.forEach(r => { floorOf[r.no] = "III piętro"; });
 
-        {/* ── Wymeldowania ─────────────────────────────────────────────────── */}
-        {checkoutRooms.length > 0 && (() => {
-          const pending = checkoutRooms.filter(r => !rooms[r.no]?.vacated);
-          const done    = checkoutRooms.filter(r =>  rooms[r.no]?.vacated);
-          return (
-            <div style={{ ...card, padding: "12px 14px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".07em", color: pending.length ? "#f59e0b" : "#34d399" }}>
-                  Wymeldowania
-                </span>
-                {pending.length > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#f59e0b", background: "rgba(245,158,11,.12)", padding: "1px 8px", borderRadius: 999 }}>
-                    {pending.length} {pending.length === 1 ? "czeka" : "czekają"}
-                  </span>
-                )}
-                {done.length > 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#34d399", background: "rgba(52,211,153,.12)", padding: "1px 8px", borderRadius: 999 }}>
-                    {done.length} przekazano HK
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {checkoutRooms.map(r => {
-                  const rs        = rooms[r.no] || {};
-                  const isVacated = !!rs.vacated;
-                  const worker    = hkData?.[r.no]?.person;
-                  const status    = hkData?.[r.no]?.status;
-                  const vt        = isVacated ? vacateTimeFor(r.no) : null;
-                  return (
-                    <div key={r.no} className="hk-checkout-pill" style={{
-                      border:     `1.5px solid ${isVacated ? "rgba(52,211,153,.3)" : "rgba(245,158,11,.35)"}`,
-                      background: isVacated ? "rgba(52,211,153,.06)" : "rgba(245,158,11,.06)",
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 900, fontSize: 17, lineHeight: 1, color: isVacated ? "#34d399" : "#f59e0b" }}>{r.no}</div>
-                        <div style={{ fontSize: 9, color: muted, fontWeight: 700, marginTop: 2, whiteSpace: "nowrap" }}>
-                          {status}{worker ? ` · ${worker.split(" ")[0]}` : ""}
-                        </div>
-                      </div>
-                      {isVacated ? (
-                        <div style={{ textAlign: "right", flexShrink: 0 }}>
-                          <div style={{ fontSize: 11, fontWeight: 800, color: "#34d399" }}>✓ HK</div>
-                          {vt && <div style={{ fontSize: 9, color: muted }}>{vt}</div>}
-                        </div>
-                      ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); markVacated(r.no); }}
-                          style={{
-                            padding: "5px 10px", borderRadius: 6, border: "none", flexShrink: 0,
-                            background: "rgba(245,158,11,.15)", color: "#f59e0b",
-                            fontWeight: 800, fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
-                          }}>
-                          Wymeld. →
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
+    const activeNos = new Set([
+      ...Object.keys(roomWorkerMap),
+      ...Object.keys(rooms),
+      ...checkoutRooms.map(r => r.no),
+    ]);
+    const roomNum = (no) => parseInt(String(no), 10) || 0;
+    const cfgOf = (rs) => (rs.vacated && (rs.status === "W" || !rs.status))
+      ? STATUS_CFG.vacated
+      : (STATUS_CFG[rs.status] || STATUS_CFG.W);
+    const statusKeyOf = (rs) => {
+      if (rs.vacated && (rs.status === "W" || !rs.status)) return "pusty";
+      if (rs.status === "czyszczenie") return "sprzata";
+      if (rs.status === "czyste" || rs.status === "pominięte") return "gotowe";
+      return "czeka";
+    };
+    const activeRooms = [...activeNos]
+      .filter(no => matchMon(no))
+      .map(no => {
+        const rs = rooms[no] || {};
+        const wa = roomWorkerMap[no];
+        return {
+          no, rs,
+          worker: wa?.worker || rs.worker || null,
+          pm: wa?.pm || false,
+          floor: floorOf[no] || "Inne",
+          statusKey: statusKeyOf(rs),
+          vt: rs.vacated ? vacateTimeFor(no) : null,
+        };
+      })
+      .sort((a, b) => roomNum(a.no) - roomNum(b.no) || String(a.no).localeCompare(String(b.no)));
 
-        {/* Stats strip — klikalne filtry (klik = filtruj siatkę, klik ponownie = wyczyść) */}
-        <div style={{ display: "flex", gap: 6 }}>
-          {[
-            { l: "Łącznie", v: gTotal,                      c: text,      key: null },
-            { l: "Czyste",  v: gDone,                       c: "#34d399", key: "czyste" },
-            { l: "Sprząta", v: gClean,                      c: "#60a5fa", key: "sprzata" },
-            { l: "Czeka",   v: gTotal - gDone - gClean - gSkipped, c: "#8b949e", key: "czeka" },
-          ].map(s => {
-            const active = monFilter === s.key && s.key !== null;
-            return (
-              <button key={s.l} type="button"
-                onClick={() => setMonFilter(s.key === null ? null : (monFilter === s.key ? null : s.key))}
-                style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, cursor: "pointer", fontFamily: "inherit",
-                  background: active ? (dark ? "rgba(99,102,241,.15)" : "var(--plum-soft,#f3e8f1)") : (dark ? "rgba(255,255,255,.04)" : "var(--bg-secondary)"),
-                  border: `1px solid ${active ? "#6366f1" : (dark ? "#21262d" : "var(--border-light)")}` }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
-                <div style={{ fontSize: 9, color: muted, fontWeight: 700, marginTop: 2, textTransform: "uppercase", letterSpacing: ".04em" }}>{s.l}</div>
-              </button>
-            );
-          })}
+    // Akcja na pokoju: "Pusty" (wyjazd) dla pokoi rannych W, "Nie chcieli" dla PM/PGZ.
+    const actionBtn = (r) => {
+      if (!r.pm && (r.rs.status === "W" || !r.rs.status) && !r.rs.vacated) {
+        return (
+          <button onClick={(e) => { e.stopPropagation(); markVacated(r.no); }}
+            style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid rgba(245,158,11,.4)", background: "rgba(245,158,11,.1)", color: "#f59e0b", cursor: "pointer", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
+            Pusty →
+          </button>
+        );
+      }
+      if (r.pm && pmRoomTypes[r.no] === "PGZ" && r.rs.status === "W") {
+        return (
+          <button onClick={(e) => { e.stopPropagation(); markSkipped(r.no); }}
+            style={{ fontSize: 11, padding: "4px 9px", borderRadius: 6, border: "1px solid rgba(167,139,250,.4)", background: "rgba(167,139,250,.1)", color: "#a78bfa", cursor: "pointer", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0 }}>
+            Nie chcieli
+          </button>
+        );
+      }
+      return null;
+    };
+    const softBg = (c) => c.bg === "transparent" ? (dark ? "rgba(255,255,255,.04)" : "rgba(0,0,0,.04)") : c.bg;
+
+    // ── WIDOK 1 — Lista (od góry do dołu, grupowana piętrami) ───────────────────
+    const listaRow = (r) => {
+      const c = cfgOf(r.rs);
+      return (
+        <div key={r.no} style={{ ...card, display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderLeft: `3px solid ${c.color}` }}>
+          <span style={{ fontWeight: 900, fontSize: 18, minWidth: 40, color: c.color, letterSpacing: "-.02em" }}>{r.no}</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.worker ? r.worker.split(" ")[0] : "—"}</span>
+          {r.pm && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 999, background: "rgba(167,139,250,.15)", color: "#a78bfa", fontWeight: 700, flexShrink: 0 }}>{pmRoomTypes[r.no] || "PM"}</span>}
+          <span style={{ fontSize: 10, fontWeight: 800, color: c.color, textTransform: "uppercase", letterSpacing: ".04em", padding: "2px 8px", borderRadius: 999, background: softBg(c), border: `1px solid ${c.bc}`, whiteSpace: "nowrap", flexShrink: 0 }}>{c.label}</span>
+          {r.vt && <span style={{ fontSize: 10, color: muted, flexShrink: 0 }}>{r.vt}</span>}
+          {actionBtn(r)}
         </div>
-
-        {/* Worker scoreboard */}
-        {wStats.length > 0 && (
-          <div style={{ ...card, padding: "10px 12px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: muted, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 8 }}>Postęp pracownic</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {wStats.map(s => (
-                <div key={s.name}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: "50%", background: s.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900, color: textColorFor(s.color), flexShrink: 0 }}>{initial(s.name)}</div>
-                    <span style={{ flex: 1, fontSize: 12, fontWeight: 700, color: text }}>{s.name}</span>
-                    <span style={{ fontSize: 11, color: "#34d399", fontWeight: 700 }}>{s.done}/{s.total}</span>
-                    {s.cleaning > 0 && <span style={{ fontSize: 10, color: "#60a5fa" }}>⋯{s.cleaning}</span>}
-                    <span style={{ fontSize: 10, color: muted, minWidth: 28, textAlign: "right" }}>{s.pct}%</span>
-                  </div>
-                  <div style={{ height: 4, borderRadius: 999, background: dark ? "#21262d" : "#e5e7eb" }}>
-                    <div style={{ height: "100%", width: `${s.pct}%`, background: s.color, borderRadius: 999, transition: "width .3s" }} />
-                  </div>
-                </div>
-              ))}
+      );
+    };
+    const renderViewLista = () => {
+      const FLOOR_ORDER = ["I piętro", "II piętro", "III piętro", "Inne"];
+      const byFloor = {};
+      activeRooms.forEach(r => { (byFloor[r.floor] = byFloor[r.floor] || []).push(r); });
+      const floors = FLOOR_ORDER.filter(f => byFloor[f]?.length);
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {floors.map(f => (
+            <div key={f} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".08em", padding: "0 2px" }}>{f} · {byFloor[f].length} pokoi</div>
+              {byFloor[f].map(listaRow)}
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      );
+    };
 
-        {/* Floor grids */}
+    // ── WIDOK 2 — Kafelki (mapa pięter, większe, z legendą + popover akcji) ─────
+    const renderViewKafelki = () => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", gap: 14, flexWrap: "wrap", padding: "0 2px" }}>
+          {[["Czeka", "#8b949e"], ["Pusty", "#f59e0b"], ["Sprząta", "#60a5fa"], ["Gotowe", "#34d399"]].map(([l, c]) => (
+            <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: muted, fontWeight: 600 }}>
+              <span style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />{l}
+            </span>
+          ))}
+        </div>
         {FLOORS.map(floor => {
-          const assigned = floor.rooms.filter(r => (roomWorkerMap[r.no] || rooms[r.no]) && matchMon(r.no));
-          if (!assigned.length) return null;
+          const rs = floor.rooms.filter(r => activeNos.has(r.no) && matchMon(r.no));
+          if (!rs.length) return null;
           return (
-            <div key={floor.label} style={{ ...card, overflow: "hidden" }}>
-              <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".08em", borderBottom: `1px solid ${dark ? "#21262d" : "var(--border-light)"}` }}>
-                {floor.label} · {assigned.length} pokoi
-              </div>
-              <div style={{ padding: "8px 10px", display: "flex", flexWrap: "wrap", gap: 5 }}>
-                {floor.rooms.map(({ no }) => {
-                  if ((!roomWorkerMap[no] && !rooms[no]) || !matchMon(no)) return null;
+            <div key={floor.label} style={{ ...card }}>
+              <div style={{ padding: "7px 12px", fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".08em", borderBottom: `1px solid ${dark ? "#21262d" : "var(--border-light)"}` }}>{floor.label} · {rs.length} pokoi</div>
+              <div style={{ padding: "10px", display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {rs.map(({ no }) => {
                   const { bg, bc } = cellCfg(no);
                   const wa = roomWorkerMap[no];
-                  const wIdx = wa ? allWNames.indexOf(wa.worker) : -1;
-                  const wColor = wIdx >= 0 ? workerColor(wIdx) : muted;
-                  const wName = wa ? wa.worker : rooms[no]?.worker;
-                  const rs = rooms[no] || {};
-                  const canVacate = !wa?.pm && rs.status === "W" && !rs.vacated;
-                  const canSkip = wa?.pm && pmRoomTypes[no] === "PGZ" && rs.status === "W";
+                  const wName = wa?.worker || rooms[no]?.worker;
+                  const cfg = cfgOf(rooms[no] || {});
                   const isSelected = monitorPopover === no;
+                  const rsr = rooms[no] || {};
+                  const canVacate = !wa?.pm && rsr.status === "W" && !rsr.vacated;
+                  const canSkip = wa?.pm && pmRoomTypes[no] === "PGZ" && rsr.status === "W";
                   return (
                     <div key={no} style={{ position: "relative" }}>
-                      <div
-                        onClick={(e) => { e.stopPropagation(); setMonitorPopover(isSelected ? null : no); }}
-                        style={{ width: 44, height: 44, borderRadius: 7, background: isSelected ? (dark ? "rgba(176,101,160,.2)" : "rgba(176,101,160,.12)") : bg, border: `1.5px solid ${isSelected ? "#B065A0" : bc}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1, cursor: "pointer", transition: "border-color .1s, background .1s" }}>
-                        <span style={{ fontSize: 11, fontWeight: 900, color: text, lineHeight: 1 }}>{no}</span>
-                        {wName && <span style={{ fontSize: 8, fontWeight: 900, color: wColor, lineHeight: 1 }}>{initial(wName)}</span>}
+                      <div onClick={(e) => { e.stopPropagation(); setMonitorPopover(isSelected ? null : no); }}
+                        style={{ width: 72, minHeight: 58, borderRadius: 9, background: isSelected ? (dark ? "rgba(176,101,160,.2)" : "rgba(176,101,160,.12)") : bg, border: `1.5px solid ${isSelected ? "#B065A0" : bc}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "6px 4px", cursor: "pointer", transition: "border-color .1s, background .1s" }}>
+                        <span style={{ fontSize: 16, fontWeight: 900, color: text, lineHeight: 1 }}>{no}</span>
+                        {wName && <span style={{ fontSize: 10, fontWeight: 700, color: muted, lineHeight: 1, maxWidth: 66, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wName.split(" ")[0]}</span>}
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color, marginTop: 1 }} />
                       </div>
                       {isSelected && (
-                        <div style={{ position: "absolute", top: 48, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: dark ? "#1c2128" : "#fff", border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, borderRadius: 9, padding: "8px 10px", boxShadow: "0 4px 20px rgba(0,0,0,.25)", minWidth: 130, display: "flex", flexDirection: "column", gap: 5 }}>
+                        <div style={{ position: "absolute", top: 64, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: dark ? "#1c2128" : "#fff", border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, borderRadius: 9, padding: "8px 10px", boxShadow: "0 4px 20px rgba(0,0,0,.25)", minWidth: 130, display: "flex", flexDirection: "column", gap: 5 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: muted, marginBottom: 2 }}>Pokój {no}{wName ? ` · ${wName}` : ""}</div>
                           {canVacate && (
                             <button onClick={(e) => { e.stopPropagation(); markVacated(no); setMonitorPopover(null); }}
@@ -660,14 +712,123 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
             </div>
           );
         })}
+      </div>
+    );
 
-        {allGroups.length === 0 && (
+    // ── WIDOK 3 — Po osobie (sekcje pracownic + ich pokoje) ────────────────────
+    const renderViewOsoby = () => {
+      // Stabilny indeks koloru per pracownik — unia obecnych dziś + pełnej listy HK
+      // (spójne z kolorowaniem w zakładce Pracownicy). Bez tego: ReferenceError.
+      const allWNames = [...new Set([...presentToday, ...workers])];
+      const byWorker = {};
+      const noWorker = [];
+      activeRooms.forEach(r => {
+        if (r.worker) (byWorker[r.worker] = byWorker[r.worker] || []).push(r);
+        else noWorker.push(r);
+      });
+      const workerCards = Object.entries(byWorker).map(([name, rms]) => {
+        const done = rms.filter(r => r.statusKey === "gotowe").length;
+        const waiting = rms.filter(r => r.statusKey === "czeka" || r.statusKey === "pusty").length;
+        const pct = rms.length ? Math.round(done / rms.length * 100) : 0;
+        const idx = allWNames.indexOf(name);
+        return { name, rms, done, waiting, pct, color: idx >= 0 ? workerColor(idx) : "#8b949e" };
+      }).sort((a, b) => b.waiting - a.waiting || a.name.localeCompare(b.name));
+      const chip = (r) => {
+        const c = cfgOf(r.rs);
+        return (
+          <div key={r.no} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 8, background: softBg(c), border: `1.5px solid ${c.bc}` }}>
+            <span style={{ fontSize: 14, fontWeight: 900, color: c.color }}>{r.no}</span>
+            {actionBtn(r)}
+          </div>
+        );
+      };
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {workerCards.map(w => (
+            <div key={w.name} style={{ ...card, overflow: "hidden" }}>
+              <div style={{ padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${dark ? "#21262d" : "var(--border-light)"}` }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: w.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: textColorFor(w.color), flexShrink: 0 }}>{initial(w.name)}</div>
+                <span style={{ flex: 1, fontSize: 14, fontWeight: 800, color: text }}>{w.name}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: "#34d399" }}>{w.done}/{w.rms.length}</span>
+                <div style={{ width: 80, height: 6, borderRadius: 999, background: dark ? "#21262d" : "#e5e7eb", overflow: "hidden", flexShrink: 0 }}>
+                  <div style={{ height: "100%", width: `${w.pct}%`, background: w.color, borderRadius: 999, transition: "width .3s" }} />
+                </div>
+              </div>
+              <div style={{ padding: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {w.rms.map(chip)}
+              </div>
+            </div>
+          ))}
+          {noWorker.length > 0 && (
+            <div style={{ ...card, overflow: "hidden" }}>
+              <div style={{ padding: "8px 12px", fontSize: 10, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".08em", borderBottom: `1px solid ${dark ? "#21262d" : "var(--border-light)"}` }}>Nieprzypisane · {noWorker.length}</div>
+              <div style={{ padding: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {noWorker.map(chip)}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    const VIEWS = [
+      { id: "lista",   n: "1", label: "Lista" },
+      { id: "kafelki", n: "2", label: "Kafelki" },
+      { id: "osoby",   n: "3", label: "Po osobie" },
+    ];
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }} onClick={() => setMonitorPopover(null)}>
+
+        {/* Stats strip — klikalne filtry (klik = filtruj siatkę, klik ponownie = wyczyść) */}
+        <div style={{ display: "flex", gap: 6 }}>
+          {[
+            { l: "Łącznie", v: gTotal,                      c: text,      key: null },
+            { l: "Czyste",  v: gDone,                       c: "#34d399", key: "czyste" },
+            { l: "Sprząta", v: gClean,                      c: "#60a5fa", key: "sprzata" },
+            { l: "Czeka",   v: gTotal - gDone - gClean - gSkipped, c: "#8b949e", key: "czeka" },
+          ].map(s => {
+            const active = monFilter === s.key && s.key !== null;
+            return (
+              <button key={s.l} type="button"
+                onClick={() => setMonFilter(s.key === null ? null : (monFilter === s.key ? null : s.key))}
+                style={{ flex: 1, textAlign: "center", padding: "8px 4px", borderRadius: 9, cursor: "pointer", fontFamily: "inherit",
+                  background: active ? (dark ? "rgba(99,102,241,.15)" : "var(--plum-soft,#f3e8f1)") : (dark ? "rgba(255,255,255,.04)" : "var(--bg-secondary)"),
+                  border: `1px solid ${active ? "#6366f1" : (dark ? "#21262d" : "var(--border-light)")}` }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: s.c, lineHeight: 1 }}>{s.v}</div>
+                <div style={{ fontSize: 9, color: muted, fontWeight: 700, marginTop: 2, textTransform: "uppercase", letterSpacing: ".04em" }}>{s.l}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Przełącznik widoku — każdy wybiera swój (zapamiętany per osoba) */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }} role="tablist" aria-label="Widok monitora">
+          {VIEWS.map(v => {
+            const active = monView === v.id;
+            return (
+              <button key={v.id} type="button" role="tab" aria-selected={active}
+                onClick={() => changeMonView(v.id)}
+                style={{ flex: "1 1 0", minWidth: 96, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 8px", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 800,
+                  color: active ? "#fff" : text,
+                  background: active ? "#B065A0" : (dark ? "rgba(255,255,255,.04)" : "var(--bg-secondary)"),
+                  border: `1px solid ${active ? "#B065A0" : (dark ? "#21262d" : "var(--border-light)")}` }}>
+                <span style={{ opacity: active ? 0.8 : 0.45, fontWeight: 900 }}>{v.n}</span>{v.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Ciało wybranego widoku */}
+        {activeRooms.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 24px", color: muted }}>
             <div style={{ fontSize: 36, marginBottom: 10 }}>🧹</div>
-            <div style={{ fontSize: 14, fontWeight: 700 }}>Brak przypisanych pokoi</div>
-            <div style={{ fontSize: 12, marginTop: 4 }}>Przypisz pokoje w zakładce Housekeeping.</div>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{monFilter ? "Brak pokoi dla tego filtra" : "Brak przypisanych pokoi"}</div>
+            <div style={{ fontSize: 12, marginTop: 4 }}>{monFilter ? "Kliknij ponownie kafelek statystyk, by wyczyścić filtr." : "Przypisz pokoje w zakładce Housekeeping."}</div>
           </div>
-        )}
+        ) : monView === "kafelki" ? renderViewKafelki()
+          : monView === "osoby" ? renderViewOsoby()
+          : renderViewLista()}
       </div>
     );
   };
@@ -676,7 +837,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   const renderZadania = () => {
     const open   = tasks.filter(t => t.status === "open");
     const done   = tasks.filter(t => t.status === "done");
-    const targetLabel = { all: "Wszyscy rano", morning: "Rano", pm: "PM" };
+    const targetLabel = { all: "Wszyscy obecni dziś", duty_pm: "Dyżur + Popołudnie", morning: "Rano", pm: "PM" };
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {/* Formularz */}
@@ -689,15 +850,26 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
               style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, background: dark ? "#161b22" : "#fff", color: text, fontSize: 13, width: 110 }} />
             <select value={taskTarget} onChange={e => setTaskTarget(e.target.value)}
               style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, background: dark ? "#161b22" : "#fff", color: text, fontSize: 13, flex: 1 }}>
-              <option value="all">Wszyscy rano</option>
-              <option value="morning">Rano</option>
-              <option value="pm">PM</option>
-              {workers.map(w => <option key={w} value={w}>{w}</option>)}
+              {dutyPerson && <option value={dutyPerson}>Dyżur ({dutyPerson})</option>}
+              {afternoonPerson && afternoonPerson !== dutyPerson && <option value={afternoonPerson}>Popołudnie ({afternoonPerson})</option>}
+              <option value="duty_pm">Dyżur + Popołudnie{dutyPmTargets.length ? ` (${dutyPmTargets.join(" + ")})` : ""}</option>
+              <option value="all">Wszyscy</option>
+              {/* Gdy „🔮 Komu?" wskaże konkretną osobę spoza powyższych — pokaż ją, by była widoczna w polu */}
+              {taskTarget && !["all", "duty_pm", dutyPerson, afternoonPerson].includes(taskTarget) && (
+                <option value={taskTarget}>{taskTarget}</option>
+              )}
             </select>
+            {llmReady && (
+              <button onClick={suggestWho} disabled={routeBusy || !taskText.trim()} title="LLM podpowie komu przypisać"
+                style={{ padding: "7px 12px", borderRadius: 7, border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, background: "transparent", color: text, fontWeight: 700, fontSize: 13, cursor: (routeBusy || !taskText.trim()) ? "not-allowed" : "pointer", opacity: (routeBusy || !taskText.trim()) ? 0.5 : 1 }}>
+                {routeBusy ? "…" : "🔮 Komu?"}
+              </button>
+            )}
             <button onClick={addTask} disabled={!taskText.trim()} style={{ padding: "7px 18px", borderRadius: 7, border: "none", background: "#B065A0", color: "#fff", fontWeight: 700, fontSize: 13, cursor: taskText.trim() ? "pointer" : "not-allowed", opacity: taskText.trim() ? 1 : 0.5 }}>
               Wyślij
             </button>
           </div>
+          {routeNote && <div style={{ marginTop: 8, fontSize: 12, color: dark ? "#8b949e" : "var(--text-muted)" }}>{routeNote}</div>}
         </div>
 
         {/* Otwarte */}
@@ -1281,11 +1453,63 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
   }, [date]);
 
   // ─── Agent regułowy: sugestie zamian pokoi (recepcja zatwierdza) ───────────
-  const [dismissedSug, setDismissedSug] = React.useState([]);
-  const agentSuggestions = React.useMemo(
-    () => suggestReassignments({ assignments, roomStates: rooms }).filter(s => !dismissedSug.includes(sugKey(s))),
-    [assignments, rooms, dismissedSug],
+  // Odrzucenia są TRWAŁE i wspólne z watcherem (localStorage per data) — odrzucona
+  // 1:1 propozycja nie wraca, nawet po przełączeniu zakładek.
+  const [dismissedSug, setDismissedSug] = React.useState(() => getDismissedSwaps(date));
+  React.useEffect(() => { setDismissedSug(getDismissedSwaps(date)); }, [date]);
+  React.useEffect(() => {
+    const onDismissed = () => setDismissedSug(getDismissedSwaps(date));
+    window.addEventListener("cc-agent-dismissed", onDismissed);
+    return () => window.removeEventListener("cc-agent-dismissed", onDismissed);
+  }, [date]);
+  const dismissSwap = React.useCallback((s) => {
+    markSwapDismissed(date, sugKey(s));
+    setDismissedSug(prev => prev.includes(sugKey(s)) ? prev : [...prev, sugKey(s)]);
+  }, [date]);
+  // Osoby obecne dziś (też idle bez pokoi) = przydziały ∪ grafik ∪ autorzy logów HK.
+  // Ta sama reguła co w useHKAgent — by popover/Uwaga AI zgadzały się z bannerem.
+  // Z logów tylko akcje sprzątających (HK_WORKER_ACTIONS) — akcje recepcji zapisane
+  // pod imieniem recepcjonisty są pomijane, by recepcja nie była kandydatem do pokoi.
+  const presentWorkers = React.useMemo(() => {
+    const set = new Set(presentToday);
+    (Array.isArray(roster) ? roster : []).forEach(r => { if (r?.name) set.add(r.name); });
+    (logs || []).forEach(l => {
+      if (l?.worker && HK_WORKER_ACTIONS.has(l.action) && !["Recepcja", "HK", "System"].includes(l.worker)) set.add(l.worker);
+    });
+    return [...set];
+  }, [presentToday, roster, logs]);
+  // Popołudniówka obsługuje tylko pobyty (PG/PGZ) + BR/ZS, nie wyjazdy — wyklucz ją
+  // z odbiorców rannego balansowania, by agent nie zrzucał jej cudzych wyjazdów.
+  const excludeTo = React.useMemo(
+    () => (afternoonPerson ? [afternoonPerson] : []),
+    [afternoonPerson],
   );
+  const agentSuggestions = React.useMemo(
+    () => suggestReassignments({ assignments, roomStates: rooms, presentWorkers, excludeTo }).filter(s => !dismissedSug.includes(sugKey(s))),
+    [assignments, rooms, presentWorkers, excludeTo, dismissedSug],
+  );
+
+  // Warstwa LLM: słowna uwaga do sugestii. Liczby liczone deterministycznie powyżej —
+  // LLM tylko formułuje czytelną poradę. Pyta tylko, gdy zmieni się sytuacja (nie co render).
+  const [aiNote, setAiNote] = React.useState("");
+  const [aiNoteBusy, setAiNoteBusy] = React.useState(false);
+  const aiNoteKeyRef = React.useRef("");
+  React.useEffect(() => {
+    if (!llmReady || agentSuggestions.length === 0) { setAiNote(""); aiNoteKeyRef.current = ""; return; }
+    const key = agentSuggestions.map(sugKey).join("|");
+    if (key === aiNoteKeyRef.current) return;
+    aiNoteKeyRef.current = key;
+    let cancelled = false;
+    setAiNoteBusy(true);
+    const stats = Object.values(workerStats(assignments, rooms, presentWorkers))
+      .map(w => ({ worker: w.worker, total: w.total, done: w.done, cleaning: w.cleaning, waiting: w.waiting }));
+    const sugg = agentSuggestions.map(s => ({ from: s.from, to: s.to, rooms: s.rooms }));
+    roomAdvisor({ stats, suggestions: sugg })
+      .then(t => { if (!cancelled) setAiNote(t || ""); })
+      .catch(() => { if (!cancelled) setAiNote(""); })
+      .finally(() => { if (!cancelled) setAiNoteBusy(false); });
+    return () => { cancelled = true; };
+  }, [agentSuggestions, assignments, rooms, presentWorkers]);
   const applySuggestion = async (s) => {
     const fromRooms = (assignments[s.from] || []).filter(r => !s.rooms.includes(r));
     const toRooms   = [...new Set([...(assignments[s.to] || []), ...s.rooms])];
@@ -1299,9 +1523,48 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
       date, log_time: new Date().toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }),
       worker: employeeName || "Recepcja", action: "reassign", room: null, extra: `${s.from}→${s.to}: ${s.rooms.join(", ")}`,
     });
-    setDismissedSug(prev => [...prev, sugKey(s)]);
+    // Zaktualizuj też lokalne źródło prawdy desktopu (hkData → localStorage), inaczej
+    // okresowy sync App.jsx (co 5 min) nadpisałby hk_plan starym przydziałem i cofnął zamianę.
+    if (setHkData && hkData && Object.keys(hkData).length > 0) {
+      setHkData(prev => {
+        const next = { ...prev };
+        s.rooms.forEach(no => { if (next[no]) next[no] = { ...next[no], person: s.to }; });
+        return next;
+      });
+    }
+    dismissSwap(s);
     showToast(`Przeniesiono ${s.rooms.length} pok.: ${s.from} → ${s.to}`, "success");
   };
+
+  // ─── Agent: prośby o pokój z telefonów (room_request) ──────────────────────
+  // Z logów panelu wyłuskujemy nierozpatrzone prośby i typujemy zamianę (dawca →
+  // proszący). markRequestHandled gasi też banner App-level (wspólny localStorage).
+  const [handledReqTick, setHandledReqTick] = React.useState(0);
+  const agentRequests = React.useMemo(() => {
+    let handled = new Set();
+    try { handled = new Set(JSON.parse(localStorage.getItem(`hk-agent-handled-${date}`) || "[]")); } catch {}
+    return logs
+      .filter(l => l.action === "room_request" && !handled.has(String(l.id)))
+      .map(log => ({ log, suggestion: suggestForRequest({ requester: log.worker, assignments, roomStates: rooms }) }));
+  }, [logs, assignments, rooms, date, handledReqTick]);
+
+  const applyRequest = async ({ log, suggestion }) => {
+    if (suggestion) await applySuggestion(suggestion);
+    markRequestHandled(date, log.id);
+    setHandledReqTick(t => t + 1);
+  };
+  const dismissRequest = ({ log }) => {
+    markRequestHandled(date, log.id);
+    setHandledReqTick(t => t + 1);
+  };
+
+  // ─── Otwarcie widgetu po kliknięciu powiadomienia Windows / bannera ────────
+  const [agentOpenSignal, setAgentOpenSignal] = React.useState(0);
+  React.useEffect(() => {
+    const onFocus = () => { setActiveTab("monitor"); setAgentOpenSignal(s => s + 1); };
+    window.addEventListener("cc-agent-focus", onFocus);
+    return () => window.removeEventListener("cc-agent-focus", onFocus);
+  }, []);
 
   return (
     <div className="hk-live-wrap cc-hkl-wrap">
@@ -1345,26 +1608,23 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
         </div>
       </header>
 
-      {/* Agent — sugestie zamian pokoi (recepcja zatwierdza) */}
-      {agentSuggestions.length > 0 && (
-        <div style={{ margin: "0 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-          {agentSuggestions.map((s) => (
-            <div key={sugKey(s)} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "10px 14px", borderRadius: 10, background: "var(--plum-soft, rgba(109,40,217,.08))", border: "1px solid var(--plum-border, rgba(109,40,217,.25))" }}>
-              <span style={{ fontSize: 18 }} aria-hidden="true">🤖</span>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
-                  Przenieś {s.rooms.length} pok. ({s.rooms.join(", ")}): <strong>{s.from}</strong> → <strong>{s.to}</strong>
-                </div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{s.reason}</div>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-outline" style={{ fontSize: 12.5 }} onClick={() => setDismissedSug(prev => [...prev, sugKey(s)])}>Odrzuć</button>
-                <button className="btn btn-rose" style={{ fontSize: 12.5 }} onClick={() => applySuggestion(s)}>Zastosuj</button>
-              </div>
+      {/* Uwaga AI — słowne podsumowanie nierównowagi (liczby z agenta regułowego).
+          „Analizuję…" celowo ukryte — LLM liczy w tle, karta pojawia się dopiero z gotowym tekstem. */}
+      {llmReady && agentSuggestions.length > 0 && aiNote && (
+        <div style={{ margin: "0 0 10px", padding: "10px 14px", borderRadius: 10, background: "var(--gold-bg, rgba(245,158,11,.08))", border: "1px solid var(--gold-border, rgba(245,158,11,.3))", display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <span aria-hidden="true" style={{ fontSize: 15 }}>🔮</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".04em", color: "var(--amber, #b45309)", marginBottom: 2 }}>Uwaga AI</div>
+            <div style={{ fontSize: 13.5, lineHeight: 1.5, color: "var(--text-primary)" }}>
+              {aiNote}
             </div>
-          ))}
+          </div>
         </div>
       )}
+
+      {/* Sugestie zamian pokoi NIE renderują się tu jako osobny baner — pojawiają się
+          wyłącznie w oknie bota (AgentBot popover/dymek). Logika agentSuggestions zostaje,
+          bo zasila „Uwagę AI" powyżej oraz applySuggestion (zatwierdzanie z bota). */}
 
       {/* Body */}
       <div className="hk-live-body">
@@ -1416,6 +1676,9 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
           </div>
         </div>
       )}
+
+      {/* Bot agenta AI (FAB + popover) jest globalny — renderowany w App.jsx,
+          stale widoczny w całym HK. Tu zostają tylko inline karty sugestii. */}
     </div>
   );
 }

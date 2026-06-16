@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Parking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10); --violet-border:rgba(180,154,255,.30);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input,select{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;outline:none}
+input:focus,select:focus{border-color:var(--ember)}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+
+/* Main */
+.main{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--bg-0)}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.topbar{position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,var(--bg-0) 70%,transparent);padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast);cursor:pointer}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+
+.content{padding:18px 28px 28px;display:flex;flex-direction:column;gap:14px}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);padding:14px 16px}
+.kpi-label{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.kpi-val{font:700 24px/1 var(--f-m);letter-spacing:-.02em;color:var(--text-0)}
+.kpi-val.ember{color:var(--ember)}.kpi-val.amber{color:var(--amber)}.kpi-val.teal{color:var(--teal)}.kpi-val.rose{color:var(--rose)}
+.kpi-sub{font-size:11px;color:var(--text-2);margin-top:4px}
+
+/* Pinned alert */
+.pin-alert{display:flex;align-items:center;gap:11px;padding:11px 16px;background:linear-gradient(90deg,rgba(244,192,85,.14),transparent);border:1px solid var(--amber-border);border-radius:var(--r-md)}
+.pin-alert svg{color:var(--amber);flex-shrink:0}
+
+/* Toolbar */
+.toolbar{display:flex;gap:8px;align-items:center;padding:14px 22px;border-bottom:1px solid var(--border-0);flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:transparent;display:inline-flex;align-items:center;gap:6px;transition:all var(--t-fast)}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}
+.tab.on .cnt{opacity:1}
+.tab .dot{width:6px;height:6px;border-radius:50%}
+.tab .dot.abonament{background:var(--violet)}
+.tab .dot.pracownik{background:var(--teal)}
+.tab .dot.krotki{background:var(--gold)}
+
+.search{flex:1;min-width:160px;max-width:260px;display:flex;align-items:center;gap:8px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:5px 10px}
+.search input{flex:1;background:none;border:none;padding:0;font-size:12.5px}
+
+/* CARD */
+.card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden}
+.card-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-head-title{font:700 13px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.card-head-title svg{color:var(--ember);width:15px;height:15px}
+
+/* Parking table */
+.pt-head,.pt-row{display:grid;grid-template-columns:130px 1fr 110px 110px 80px 50px;gap:14px;align-items:center;padding:11px 18px}
+.pt-head{font:700 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-1);padding-top:10px;padding-bottom:10px;background:var(--bg-1)}
+.pt-row{border-bottom:1px solid var(--border-0);transition:background var(--t-fast);cursor:pointer}
+.pt-row:hover{background:var(--bg-3)}
+.pt-row:last-child{border-bottom:none}
+
+.plate{display:inline-flex;align-items:center;gap:6px;font:700 14px var(--f-m);background:var(--bg-3);color:var(--text-0);padding:6px 11px;border-radius:var(--r-sm);border:1px solid var(--border-1);letter-spacing:.06em}
+.plate.alert{background:var(--rose-bg);border-color:var(--rose-border);color:var(--rose)}
+.plate-flag{width:13px;height:9px;background:linear-gradient(to bottom,#FFCB05 50%,#0033A0 50%);border-radius:1px;flex-shrink:0}
+
+.owner-name{font:700 13.5px var(--f-b);color:var(--text-0)}
+.owner-sub{font:500 11px var(--f-m);color:var(--text-3);margin-top:2px;display:flex;gap:9px;align-items:center}
+.owner-sub b{color:var(--text-2);font-weight:500}
+.note{font-size:11px;color:var(--text-2);margin-top:3px;font-style:italic}
+
+.t-tag{font:700 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:99px;display:inline-block;border:1px solid transparent;width:fit-content}
+.t-tag.abonament{background:var(--violet-bg);color:var(--violet);border-color:var(--violet-border)}
+.t-tag.pracownik{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.t-tag.krotki{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+
+.paid-info{font:500 11.5px var(--f-m);color:var(--text-1);line-height:1.3}
+.paid-info b{font-weight:700;color:var(--text-0)}
+.paid-info.expired{color:var(--rose)}
+.paid-info.warn{color:var(--amber)}
+.paid-info .doc{font-size:10px;color:var(--text-3);margin-top:2px}
+
+.days-pill{font:700 11px var(--f-m);padding:5px 9px;border-radius:99px;border:1px solid transparent;text-align:center}
+.days-pill.ok{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.days-pill.warn{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.days-pill.danger{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.days-pill.muted{background:var(--bg-3);color:var(--text-3);border-color:var(--border-1)}
+
+.action-btn{width:30px;height:30px;border-radius:var(--r-xs);color:var(--text-2);display:flex;align-items:center;justify-content:center;border:1px solid var(--border-1);background:transparent;transition:all var(--t-fast)}
+.action-btn:hover{background:var(--bg-elev);color:var(--text-0);border-color:var(--border-2)}
+.action-btn.pay{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.action-btn.pay:hover{background:var(--ember);color:#0B0810}
+
+/* ADD MODAL */
+.modal-backdrop{position:fixed;inset:0;background:rgba(11,8,16,.7);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px}
+.modal{background:var(--bg-2);border:1px solid var(--border-2);border-radius:var(--r-lg);max-width:520px;width:100%;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font:700 15px var(--f-d);color:var(--text-0)}
+.modal-close{width:26px;height:26px;border-radius:var(--r-xs);color:var(--text-2);display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--bg-3);color:var(--text-0)}
+.modal-body{padding:18px 20px}
+.mode-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px}
+.mode-tab{padding:10px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:transparent;transition:all var(--t-fast);text-align:center}
+.mode-tab:hover{color:var(--text-0)}
+.mode-tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-field{display:flex;flex-direction:column;gap:5px}
+.form-field.full{grid-column:span 2}
+.form-label{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border-0);display:flex;justify-content:flex-end;gap:8px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div><div class="sb-brand-name">Conrad Comfort</div><div class="sb-brand-sub">Parking · v2</div></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Housekeeping</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Obsługa</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Parking</span></div>
+      <h1 class="page-title">Parking</h1>
+      <div class="page-meta">
+        <span>Aktywne: <b>16</b></span>
+        <span>Abonamenty: <b>4</b></span>
+        <span>Pracownicy: <b>10</b></span>
+        <span>Wygasają w tym tyg.: <b style="color:var(--amber)">2</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Eksport
+      </button>
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Historia
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Nowy wpis
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Pinned alert -->
+    <div class="pin-alert">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+      <span style="font:600 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--amber);flex-shrink:0">Uwaga</span>
+      <span style="flex:1;font-size:13px;color:var(--text-0)">2 abonamenty kończą się w tym tygodniu: <b>Otfinowska (WF1925X) — za 3 dni</b>, <b>CFE Polska (WN4740N) — wygasł!</b></span>
+      <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px">Pokaż tylko wygasające</button>
+    </div>
+
+    <!-- KPI -->
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Aktywne wpisy</div>
+        <div class="kpi-val">16</div>
+        <div class="kpi-sub">+2 nowe / tydz.</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Przychód mies.</div>
+        <div class="kpi-val ember">1 250<span style="font-size:13px;color:var(--text-2);font-weight:500"> PLN</span></div>
+        <div class="kpi-sub">4 abonamenty × ~250 PLN</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Wygasające (≤3 dni)</div>
+        <div class="kpi-val amber">2</div>
+        <div class="kpi-sub">WF1925X · WN4740N</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Krótkoterminowe</div>
+        <div class="kpi-val">1</div>
+        <div class="kpi-sub">Auto-expire o północy</div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Rejestr parking
+        </div>
+        <div style="font:500 12px var(--f-m);color:var(--text-3)">16 aktywnych · 4 nieaktywne</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="tab on">Wszystkie <span class="cnt">16</span></button>
+        <button class="tab"><span class="dot abonament"></span>Abonament <span class="cnt">4</span></button>
+        <button class="tab"><span class="dot pracownik"></span>Pracownik <span class="cnt">10</span></button>
+        <button class="tab"><span class="dot krotki"></span>Krótki <span class="cnt">2</span></button>
+        <div class="search">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Tablica, imię, telefon..."/>
+        </div>
+        <button class="tab" style="color:var(--rose);border-color:var(--rose-border);margin-left:auto">⚠ Tylko wygasające</button>
+      </div>
+
+      <div class="pt-head">
+        <div>Tablica</div>
+        <div>Właściciel · firma</div>
+        <div>Typ</div>
+        <div>Opłacone do</div>
+        <div>Dni</div>
+        <div></div>
+      </div>
+
+      <!-- ROW: Abonament expired -->
+      <div class="pt-row" style="background:rgba(255,84,113,.04)">
+        <div class="plate alert">WN4740N <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Damian Myśliwski (CFE Polska)</div>
+          <div class="owner-sub"><b>📞 697 901 416</b> · Comfort wewnętrzny</div>
+          <div class="note">Faktura co miesiąc na początku — CFE POLSKA</div>
+        </div>
+        <span class="t-tag abonament">Abonament</span>
+        <div class="paid-info expired">
+          <div><b>31.08.2025</b></div>
+          <div class="doc">FV · ostatnia: 03.08.2021</div>
+        </div>
+        <span class="days-pill danger">–185</span>
+        <button class="action-btn pay" title="Oznacz jako opłacone">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </button>
+      </div>
+
+      <!-- ROW: Abonament 3 days -->
+      <div class="pt-row" style="background:rgba(244,192,85,.05)">
+        <div class="plate" style="border-color:var(--amber-border);color:var(--amber)">WF1925X <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Agata Otfinowska</div>
+          <div class="owner-sub"><b>📞 601 132 204</b> · Os. prywatna</div>
+          <div class="note">250 zł/miesiąc od 1 do 31</div>
+        </div>
+        <span class="t-tag abonament">Abonament</span>
+        <div class="paid-info warn">
+          <div><b>15.05.2026</b></div>
+          <div class="doc">FS 174/CC/07/2025 · 23.07.2025</div>
+        </div>
+        <span class="days-pill warn">3 dni</span>
+        <button class="action-btn pay"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/></svg></button>
+      </div>
+
+      <!-- ROW: Abonament OK -->
+      <div class="pt-row">
+        <div class="plate">KPR8Y53 <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Natkaniec Monika</div>
+          <div class="owner-sub"><b>📞 690 671 884</b> · Os. prywatna — z osiedla</div>
+          <div class="note">250 zł/mies. od 15 do 15</div>
+        </div>
+        <span class="t-tag abonament">Abonament</span>
+        <div class="paid-info">
+          <div><b>15.03.2026</b></div>
+          <div class="doc">PA 99/02/26 · 04.02.2026</div>
+        </div>
+        <span class="days-pill ok">307</span>
+        <button class="action-btn pay"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/></svg></button>
+      </div>
+
+      <!-- ROW: Pracownik -->
+      <div class="pt-row">
+        <div class="plate">RT55807 <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Natalia Szymańska</div>
+          <div class="owner-sub">Recepcjonistka · Conrad</div>
+        </div>
+        <span class="t-tag pracownik">Pracownik</span>
+        <div class="paid-info" style="color:var(--text-3)">—</div>
+        <span class="days-pill muted">stały</span>
+        <button class="action-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+      </div>
+
+      <!-- ROW: Pracownik -->
+      <div class="pt-row">
+        <div class="plate">KK7283C <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Tetiana Tymoshenko</div>
+          <div class="owner-sub"><b>📞 795 009 296</b> · Housekeeping</div>
+        </div>
+        <span class="t-tag pracownik">Pracownik</span>
+        <div class="paid-info" style="color:var(--text-3)">—</div>
+        <span class="days-pill muted">stały</span>
+        <button class="action-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+      </div>
+
+      <!-- ROW: Pracownik NORCONSULT -->
+      <div class="pt-row">
+        <div class="plate">SC1961R <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Piotr Sułkowski</div>
+          <div class="owner-sub">NORCONSULT</div>
+        </div>
+        <span class="t-tag pracownik">Pracownik</span>
+        <div class="paid-info" style="color:var(--text-3)">—</div>
+        <span class="days-pill muted">stały</span>
+        <button class="action-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+      </div>
+
+      <!-- ROW: Pracownik NORCONSULT 2 -->
+      <div class="pt-row">
+        <div class="plate">KK3956T <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Zuzanna Fedczyna</div>
+          <div class="owner-sub">NORCONSULT</div>
+        </div>
+        <span class="t-tag pracownik">Pracownik</span>
+        <div class="paid-info" style="color:var(--text-3)">—</div>
+        <span class="days-pill muted">stały</span>
+        <button class="action-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/></svg></button>
+      </div>
+
+      <!-- ROW: Gabinet -->
+      <div class="pt-row">
+        <div class="plate">WU5450M <span class="plate-flag"></span></div>
+        <div>
+          <div class="owner-name">Anna Markowska</div>
+          <div class="owner-sub">Gabinet Doktor Green</div>
+        </div>
+        <span class="t-tag pracownik">Pracownik</span>
+        <div class="paid-info" style="color:var(--text-3)">—</div>
+        <span class="days-pill muted">stały</span>
+        <button class="action-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/></svg></button>
+      </div>
+
+      <!-- ROW: Krótki -->
+      <div class="pt-row" style="background:rgba(244,192,85,.03)">
+        <div class="plate" style="border-color:var(--amber-border)">KR9920PL <span style="font-size:9px;background:var(--amber);color:#0B0810;padding:1px 4px;border-radius:2px;font-weight:700;letter-spacing:.04em">3d</span></div>
+        <div>
+          <div class="owner-name">Goście pok. 304 (Mueller)</div>
+          <div class="owner-sub"><b>📞 +49 152 339 2014</b> · Krótki najem</div>
+          <div class="note">3 noce · 150 PLN łącznie · auto-expire o północy 15.05</div>
+        </div>
+        <span class="t-tag krotki">Krótki</span>
+        <div class="paid-info">
+          <div><b>15.05.2026</b></div>
+          <div class="doc">Cash · 12.05</div>
+        </div>
+        <span class="days-pill warn">3 dni</span>
+        <button class="action-btn" title="Auto-usuń o północy"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+      </div>
+
+      <!-- ROW: Krótki nowy -->
+      <div class="pt-row">
+        <div class="plate">KAT5821Q</div>
+        <div>
+          <div class="owner-name">Walk-in 12 maj</div>
+          <div class="owner-sub">Pokój 405 · 1 noc</div>
+          <div class="note">50 PLN · płacone gotówką</div>
+        </div>
+        <span class="t-tag krotki">Krótki</span>
+        <div class="paid-info">
+          <div><b>13.05.2026</b></div>
+          <div class="doc">Cash · 12.05</div>
+        </div>
+        <span class="days-pill warn">1 dzień</span>
+        <button class="action-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ADD MODAL -->
+<div class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Nowy wpis parking</div>
+      <button class="modal-close"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="mode-tabs">
+        <button class="mode-tab on">Abonament</button>
+        <button class="mode-tab">Pracownik</button>
+        <button class="mode-tab">Krótki</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-field"><label class="form-label">Tablica</label><input placeholder="np. WF1925X"/></div>
+        <div class="form-field"><label class="form-label">Telefon</label><input placeholder="601 132 204"/></div>
+        <div class="form-field full"><label class="form-label">Imię i nazwisko / firma</label><input placeholder="Agata Otfinowska"/></div>
+        <div class="form-field"><label class="form-label">Status</label><select><option>Os. prywatna</option><option>Os. prywatna — z osiedla</option><option>Comfort wewnętrzny</option><option>Klient zewnętrzny</option></select></div>
+        <div class="form-field"><label class="form-label">Cena (PLN/mc)</label><input placeholder="250"/></div>
+        <div class="form-field"><label class="form-label">Opłacone do</label><input type="date"/></div>
+        <div class="form-field"><label class="form-label">Nr dokumentu</label><input placeholder="FS 174/CC/07/2025"/></div>
+        <div class="form-field full"><label class="form-label">Notatka</label><input placeholder="250 zł/miesiąc od 1 do 31"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost">Anuluj</button>
+      <button class="btn btn-primary">Dodaj</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

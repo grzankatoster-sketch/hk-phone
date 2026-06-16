@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Wiadomości</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input,textarea{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:9px 12px;font-size:13.5px;outline:none;width:100%}
+input:focus,textarea:focus{border-color:var(--ember)}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+
+/* Main */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;background:var(--bg-0);overflow:hidden}
+.topbar{padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:10px}
+.live-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--teal-bg);border:1px solid var(--teal-border);color:var(--teal);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.live-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast);cursor:pointer}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+
+/* Body 3-column */
+.body{flex:1;display:grid;grid-template-columns:320px 1fr 280px;overflow:hidden;min-height:0}
+
+/* LEFT: conversations */
+.convo-col{background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column}
+.convo-search{padding:12px 16px;border-bottom:1px solid var(--border-0)}
+.convo-search-row{display:flex;gap:6px}
+.convo-search-input{flex:1;display:flex;align-items:center;gap:8px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:6px 11px}
+.convo-search-input input{flex:1;background:none;border:none;padding:0;font-size:12.5px}
+.convo-tabs{padding:8px 16px;display:flex;gap:5px;border-bottom:1px solid var(--border-0);overflow-x:auto}
+.convo-tabs::-webkit-scrollbar{height:0}
+.convo-tab{padding:5px 10px;border-radius:var(--r-sm);font:600 11px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:transparent;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.convo-tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.convo-tab .cnt{font:500 9.5px var(--f-m);opacity:.6}.convo-tab.on .cnt{opacity:1}
+
+.convo-list{flex:1;overflow-y:auto}
+.convo-list::-webkit-scrollbar{width:6px}
+.convo-list::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+.convo-item{padding:12px 16px;border-bottom:1px solid var(--border-0);display:flex;gap:11px;cursor:pointer;transition:background var(--t-fast);position:relative}
+.convo-item:hover{background:var(--bg-3)}
+.convo-item.active{background:linear-gradient(90deg,var(--ember-bg),transparent);border-left:3px solid var(--ember)}
+.convo-item.unread .convo-name{font-weight:700;color:var(--text-0)}
+.convo-item.unread .convo-preview{color:var(--text-1)}
+.convo-item.unread::after{content:'';position:absolute;right:14px;top:50%;width:6px;height:6px;border-radius:50%;background:var(--ember);box-shadow:var(--ember-glow);transform:translateY(-50%)}
+.convo-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 13px var(--f-d);color:#fff;flex-shrink:0;position:relative}
+.convo-avatar.online::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:var(--teal);border:2px solid var(--bg-1)}
+.convo-info{flex:1;min-width:0}
+.convo-name{font:600 13px var(--f-b);color:var(--text-1);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.convo-time{font:500 10.5px var(--f-m);color:var(--text-3);flex-shrink:0}
+.convo-preview{font-size:12px;color:var(--text-2);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.convo-channel-tag{display:inline-block;font:600 9px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:2px 5px;border-radius:3px;margin-right:5px}
+.convo-channel-tag.zmiana{background:var(--ember-bg);color:var(--ember)}
+.convo-channel-tag.bug{background:var(--rose-bg);color:var(--rose)}
+.convo-channel-tag.hk{background:var(--sky-bg);color:var(--sky)}
+.convo-channel-tag.general{background:var(--bg-3);color:var(--text-2)}
+
+/* CENTER: thread */
+.thread-col{display:flex;flex-direction:column;overflow:hidden}
+.thread-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;gap:12px;background:var(--bg-1)}
+.thread-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 14px var(--f-d);color:#fff;background:linear-gradient(135deg,var(--ember),var(--ember-deep))}
+.thread-info{flex:1;min-width:0}
+.thread-name{font:700 14px var(--f-d);color:var(--text-0)}
+.thread-meta{font:500 11px var(--f-m);color:var(--text-3);margin-top:2px;display:flex;align-items:center;gap:8px}
+.thread-actions{display:flex;gap:5px}
+.icon-btn{width:32px;height:32px;border-radius:var(--r-sm);color:var(--text-2);display:flex;align-items:center;justify-content:center;border:1px solid var(--border-1);background:transparent;transition:all var(--t-fast)}
+.icon-btn:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+
+.messages{flex:1;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:14px}
+.messages::-webkit-scrollbar{width:8px}
+.messages::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.day-sep{display:flex;align-items:center;gap:12px;margin:6px 0}
+.day-sep::before,.day-sep::after{content:'';flex:1;height:1px;background:var(--border-1)}
+.day-sep span{font:600 10px var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3)}
+
+.msg{display:flex;gap:10px;max-width:75%}
+.msg.mine{align-self:flex-end;flex-direction:row-reverse}
+.msg-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 11px var(--f-d);color:#fff;flex-shrink:0}
+.msg-body{display:flex;flex-direction:column;gap:3px}
+.msg.mine .msg-body{align-items:flex-end}
+.msg-meta{font:500 10.5px var(--f-m);color:var(--text-3);display:flex;align-items:center;gap:5px;padding:0 3px}
+.msg-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-b)}
+.msg-bubble{padding:10px 14px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border-1);font-size:13.5px;line-height:1.55;color:var(--text-0);white-space:pre-wrap;word-break:break-word}
+.msg.mine .msg-bubble{background:var(--ember-bg);border-color:var(--ember-border);color:var(--text-0)}
+.msg-bubble.bug{background:linear-gradient(135deg,var(--rose-bg),var(--bg-2));border-color:var(--rose-border)}
+.msg-bubble.bug::before{content:'🐛 BUG REPORT';display:block;font:700 10px var(--f-d);letter-spacing:.1em;color:var(--rose);margin-bottom:6px}
+.msg-attach{margin-top:6px;display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-xs);font-size:12px;color:var(--text-1)}
+.msg-attach svg{color:var(--ember)}
+
+.composer{padding:14px 22px;border-top:1px solid var(--border-0);background:var(--bg-1)}
+.composer-row{display:flex;align-items:flex-end;gap:8px}
+.composer-input{flex:1;display:flex;align-items:flex-end;gap:8px;background:var(--bg-3);border:1.5px solid var(--border-1);border-radius:var(--r-md);padding:8px 12px;transition:border-color var(--t-fast)}
+.composer-input:focus-within{border-color:var(--ember)}
+.composer-input textarea{flex:1;background:transparent;border:none;padding:0;min-height:36px;max-height:120px;resize:none;line-height:1.5;color:var(--text-0);font-size:13.5px;outline:none}
+.composer-tools{display:flex;gap:4px}
+.composer-tool{width:30px;height:30px;border-radius:var(--r-xs);display:flex;align-items:center;justify-content:center;color:var(--text-2);background:transparent;border:1px solid transparent;transition:all var(--t-fast)}
+.composer-tool:hover{color:var(--text-0);background:var(--bg-elev)}
+.composer-send{width:38px;height:38px;border-radius:var(--r-md);background:var(--ember);color:#0B0810;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;border:none}
+.composer-send:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.composer-meta{display:flex;align-items:center;justify-content:space-between;margin-top:8px;font:500 10.5px var(--f-m);color:var(--text-3)}
+
+/* RIGHT: details */
+.detail-col{background:var(--bg-1);border-left:1px solid var(--border-0);overflow-y:auto}
+.detail-col::-webkit-scrollbar{width:6px}
+.detail-col::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+
+.det-sec{padding:16px 20px;border-bottom:1px solid var(--border-0)}
+.det-sec-title{font:700 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+
+.profile{text-align:center}
+.profile-avatar{width:60px;height:60px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font:700 22px var(--f-d);color:#fff;background:linear-gradient(135deg,var(--ember),var(--ember-deep));box-shadow:var(--ember-glow)}
+.profile-name{font:700 16px var(--f-d);color:var(--text-0)}
+.profile-role{font:500 12px var(--f-m);color:var(--text-2);margin-top:3px}
+.profile-status{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font:600 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;color:var(--teal)}
+.profile-status::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)}
+
+.fact{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border-0);font-size:12.5px}
+.fact:last-child{border-bottom:none}
+.fact .l{color:var(--text-2)}
+.fact .v{color:var(--text-0);font-weight:600;font-family:var(--f-m)}
+
+.shared{display:flex;flex-direction:column;gap:7px}
+.shared-item{display:flex;align-items:center;gap:9px;padding:7px 10px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);cursor:pointer;transition:all var(--t-fast)}
+.shared-item:hover{border-color:var(--border-2)}
+.shared-item svg{color:var(--ember);width:16px;height:16px;flex-shrink:0}
+.shared-info{flex:1;min-width:0}
+.shared-name{font:600 12px var(--f-b);color:var(--text-0);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shared-meta{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:1px}
+
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div><div class="sb-brand-name">Conrad Comfort</div><div class="sb-brand-sub">Wiadomości · v2</div></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Housekeeping</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+    <div class="sb-label" style="margin-top:8px">Komunikacja</div>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>Wiadomości<span class="sb-badge">5</span></button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>Informacje</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Komunikacja</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Wiadomości</span></div>
+      <h1 class="page-title">
+        Wiadomości
+        <span class="live-pill"><span class="dot pulse"></span>Live · Supabase</span>
+      </h1>
+      <div class="page-meta">
+        <span>Nieprzeczytane: <b style="color:var(--rose)">5</b></span>
+        <span>Aktywne czaty: <b>3</b></span>
+        <span>Bug reports: <b style="color:var(--rose)">1</b></span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33"/></svg>
+        Ustawienia
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Nowa wiadomość
+      </button>
+    </div>
+  </div>
+
+  <!-- BODY 3-col -->
+  <div class="body">
+
+    <!-- LEFT: conversations -->
+    <aside class="convo-col">
+
+      <div class="convo-search">
+        <div class="convo-search-row">
+          <div class="convo-search-input">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input placeholder="Szukaj rozmowy..."/>
+          </div>
+          <button class="icon-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></button>
+        </div>
+      </div>
+
+      <div class="convo-tabs">
+        <button class="convo-tab on">Wszystkie <span class="cnt">12</span></button>
+        <button class="convo-tab">Nieprzeczytane <span class="cnt">5</span></button>
+        <button class="convo-tab">Kanały <span class="cnt">4</span></button>
+        <button class="convo-tab">DM <span class="cnt">8</span></button>
+      </div>
+
+      <div class="convo-list">
+
+        <!-- ACTIVE -->
+        <div class="convo-item active unread">
+          <div class="convo-avatar online" style="background:linear-gradient(135deg,#dc2626,#991b1b)">T</div>
+          <div class="convo-info">
+            <div class="convo-name">Tetiana<span class="convo-time">11:42</span></div>
+            <div class="convo-preview"><span class="convo-channel-tag hk">HK</span>Czy mogę przekazać pokoje 404 i 407 Kasi? Mam dziś problem zdrowotny...</div>
+          </div>
+        </div>
+
+        <!-- BUG REPORT -->
+        <div class="convo-item unread">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#FF5471,#9D2A40)">M</div>
+          <div class="convo-info">
+            <div class="convo-name">Marek W.<span class="convo-time">11:18</span></div>
+            <div class="convo-preview"><span class="convo-channel-tag bug">BUG</span>Voucher PDF nie generuje się dla typu "Free" — kliknij i system zwraca błąd</div>
+          </div>
+        </div>
+
+        <!-- General -->
+        <div class="convo-item unread">
+          <div class="convo-avatar online" style="background:linear-gradient(135deg,#B065A0,#6E2B5C)">A</div>
+          <div class="convo-info">
+            <div class="convo-name">Anna L.<span class="convo-time">10:54</span></div>
+            <div class="convo-preview">OK przyjmuję przekazanie. Notatkę widzę, dzięki za szczegóły.</div>
+          </div>
+        </div>
+
+        <!-- Channel -->
+        <div class="convo-item unread">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#FCD34D,#B58626);color:#0B0810">#</div>
+          <div class="convo-info">
+            <div class="convo-name">#zmiana-dzienna<span class="convo-time">09:42</span></div>
+            <div class="convo-preview"><span class="convo-channel-tag zmiana">ZMIANA</span>Tymek: papier toaletowy będzie po 11:00, ekipa właśnie wyruszyła</div>
+          </div>
+        </div>
+
+        <!-- Read -->
+        <div class="convo-item">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#7c3aed,#5b21b6)">K</div>
+          <div class="convo-info">
+            <div class="convo-name">Kasia<span class="convo-time">09:15</span></div>
+            <div class="convo-preview">Skończyłam pokoje 301, 302. Zaczynam 303.</div>
+          </div>
+        </div>
+
+        <!-- Channel -->
+        <div class="convo-item unread">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#FCD34D,#B58626);color:#0B0810">#</div>
+          <div class="convo-info">
+            <div class="convo-name">#bugs-feedback<span class="convo-time">wczoraj</span></div>
+            <div class="convo-preview"><span class="convo-channel-tag bug">BUG</span>2 nowe zgłoszenia · ostatnie: KWHotel sync timeout</div>
+          </div>
+        </div>
+
+        <!-- Read DM -->
+        <div class="convo-item">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#5BA8E8,#1e40af)">M</div>
+          <div class="convo-info">
+            <div class="convo-name">Maria<span class="convo-time">wczoraj</span></div>
+            <div class="convo-preview">Pokój 412 — usterka zgłoszona. Maria.</div>
+          </div>
+        </div>
+
+        <!-- Read Manager -->
+        <div class="convo-item">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#C8A269,#8A6E3F);color:#0B0810">T</div>
+          <div class="convo-info">
+            <div class="convo-name">Manager (Tymek)<span class="convo-time">2 dni</span></div>
+            <div class="convo-preview">Przypomnienie: w przyszłym tygodniu szkolenie BHP, środa 14:00.</div>
+          </div>
+        </div>
+
+        <!-- Read channel -->
+        <div class="convo-item">
+          <div class="convo-avatar" style="background:linear-gradient(135deg,#766A7E,#4A3F52)">#</div>
+          <div class="convo-info">
+            <div class="convo-name">#general<span class="convo-time">3 dni</span></div>
+            <div class="convo-preview">Witajcie nowi! W tym kanale ogłaszamy ogólne sprawy.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </aside>
+
+    <!-- CENTER: thread -->
+    <div class="thread-col">
+
+      <div class="thread-head">
+        <div class="thread-avatar">T</div>
+        <div class="thread-info">
+          <div class="thread-name">Tetiana Tymoshenko</div>
+          <div class="thread-meta">
+            <span style="display:flex;align-items:center;gap:5px;color:var(--teal)"><span style="width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)"></span>online</span>
+            <span>·</span>
+            <span>Pokojówka · piętro 4</span>
+            <span>·</span>
+            <span>HK kanał</span>
+          </div>
+        </div>
+        <div class="thread-actions">
+          <button class="icon-btn" title="Połącz"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>
+          <button class="icon-btn" title="Wycisz"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+          <button class="icon-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+      </div>
+
+      <div class="messages">
+
+        <div class="day-sep"><span>Dziś · 12 maj 2026</span></div>
+
+        <div class="msg">
+          <div class="msg-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">T</div>
+          <div class="msg-body">
+            <div class="msg-meta"><b>Tetiana</b> · 09:42</div>
+            <div class="msg-bubble">Cześć Natalia! Rozpoczęłam zmianę, jestem na piętrze 4. Pokoje OK, zaczynam od 401.</div>
+          </div>
+        </div>
+
+        <div class="msg mine">
+          <div class="msg-avatar" style="background:linear-gradient(135deg,#B065A0,#6E2B5C)">N</div>
+          <div class="msg-body">
+            <div class="msg-meta">09:43 · <b>Natalia</b> · ✓✓</div>
+            <div class="msg-bubble">Cześć! Dziękuję. Plan masz na telefonie? Aneta dziś popołudniówka od 15:00 — bierze 407 i 202.</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="msg-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">T</div>
+          <div class="msg-body">
+            <div class="msg-meta"><b>Tetiana</b> · 09:44</div>
+            <div class="msg-bubble">Tak, mam wszystko. 407 to ten apartament D+T — VIP. OK pamiętam.</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="msg-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">T</div>
+          <div class="msg-body">
+            <div class="msg-meta"><b>Tetiana</b> · 11:18</div>
+            <div class="msg-bubble">Pokój 412 — przeciekająca bateria w łazience. Zgłosiłam usterkę przez telefon. Maria była ze mną i potwierdza.</div>
+            <div class="msg-attach">
+              <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <div>
+                <div style="font-weight:600;color:var(--text-0)">usterka_412_bateria.jpg</div>
+                <div style="font:500 10.5px var(--f-m);color:var(--text-3)">1.2 MB · pobierz</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="msg mine">
+          <div class="msg-avatar" style="background:linear-gradient(135deg,#B065A0,#6E2B5C)">N</div>
+          <div class="msg-body">
+            <div class="msg-meta">11:22 · <b>Natalia</b> · ✓✓</div>
+            <div class="msg-bubble">Dzięki! Konserwator powiadomiony, przyjdzie po 16:00. Mogę liczyć że zostawisz pokój 412 na koniec żeby konserwator miał dostęp?</div>
+          </div>
+        </div>
+
+        <div class="msg">
+          <div class="msg-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">T</div>
+          <div class="msg-body">
+            <div class="msg-meta"><b>Tetiana</b> · 11:42</div>
+            <div class="msg-bubble">Natalia, czy mogę przekazać pokoje 404 i 407 Kasi? Mam dziś problem zdrowotny, ciężko mi się schylać i 407 apartament to dużo pracy. Kasia ma jeszcze 3 wolne pokoje.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="composer">
+        <div class="composer-row">
+          <div class="composer-input">
+            <textarea placeholder="Napisz wiadomość do Tetiana..."></textarea>
+            <div class="composer-tools">
+              <button class="composer-tool" title="Załącznik"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>
+              <button class="composer-tool" title="Emoji"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              <button class="composer-tool" title="Bug"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M12 10v9M16 9l3-3M5 6l3 3M19 13h3M2 13h3"/></svg></button>
+            </div>
+          </div>
+          <button class="composer-send"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        </div>
+        <div class="composer-meta">
+          <span>Enter aby wysłać · Shift+Enter nowa linia</span>
+          <span>Tetiana czyta...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: details -->
+    <aside class="detail-col">
+      <div class="det-sec">
+        <div class="profile">
+          <div class="profile-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">T</div>
+          <div class="profile-name">Tetiana Tymoshenko</div>
+          <div class="profile-role">Pokojówka HK · Piętro 4</div>
+          <div class="profile-status">online</div>
+        </div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">Informacje</div>
+        <div class="fact"><span class="l">Rola</span><span class="v">HK</span></div>
+        <div class="fact"><span class="l">Telefon</span><span class="v">795 009 296</span></div>
+        <div class="fact"><span class="l">Start zmiany</span><span class="v">07:42</span></div>
+        <div class="fact"><span class="l">Postęp dnia</span><span class="v" style="color:var(--teal)">7/10</span></div>
+        <div class="fact"><span class="l">Aktywna od</span><span class="v">styczeń 2023</span></div>
+        <div class="fact"><span class="l">Wiadomości</span><span class="v">214 / mc</span></div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">Udostępnione</div>
+        <div class="shared">
+          <div class="shared-item">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <div class="shared-info">
+              <div class="shared-name">usterka_412_bateria.jpg</div>
+              <div class="shared-meta">12 maj 11:18 · 1.2 MB</div>
+            </div>
+          </div>
+          <div class="shared-item">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            <div class="shared-info">
+              <div class="shared-name">raport_pokoj_407.pdf</div>
+              <div class="shared-meta">9 maj 14:02 · 340 KB</div>
+            </div>
+          </div>
+          <div class="shared-item">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            <div class="shared-info">
+              <div class="shared-name">apt_407_setup.jpg</div>
+              <div class="shared-meta">2 maj · 880 KB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">Akcje</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;padding:8px 12px">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Otwórz profil HK
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;padding:8px 12px">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/></svg>
+            Pokaż jej QR pokojówki
+          </button>
+          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;padding:8px 12px;color:var(--rose);border-color:var(--rose-border)">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/></svg>
+            Wycisz powiadomienia
+          </button>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</main>
+</body>
+</html>

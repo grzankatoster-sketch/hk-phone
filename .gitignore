@@ -4,3 +4,6 @@ release/
 .env
 .env.local
 *.log
+scripts/hk-automation/config.local.json
+scripts/hk-automation/.out/
+recepcja-mail-setup/

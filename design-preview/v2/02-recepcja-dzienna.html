@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Recepcja dzienna</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.30);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8;   --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:7px 10px;font-size:13px;outline:none;transition:border-color var(--t-fast)}
+input:focus,select:focus{border-color:var(--ember-border)}
+svg{display:block;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:#fff;box-shadow:var(--ember-glow);flex-shrink:0}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;border-radius:0 2px 2px 0;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+
+/* ═══ MAIN ═══ */
+.main{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--bg-0)}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.topbar{position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,var(--bg-0) 70%,transparent);padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px;align-items:center}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast)}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.btn-teal{background:var(--teal);color:#0B0810;font-weight:700;border-color:var(--teal)}
+.btn-teal:hover{box-shadow:0 0 18px rgba(43,212,160,.4)}
+
+/* ── DATE PICKER PILL ── */
+.date-pill{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:5px 10px}
+.date-pill svg{width:13px;height:13px;color:var(--text-2)}
+.date-pill .v{font:600 13px var(--f-m);color:var(--text-0)}
+
+/* ═══ STEPPER ═══ */
+.stepper{padding:0 28px 16px;display:flex;align-items:center;gap:0}
+.step{display:flex;align-items:center;gap:9px;padding:7px 14px;border-radius:99px;background:var(--bg-2);border:1px solid var(--border-1);font:600 12px var(--f-b);color:var(--text-2);transition:all var(--t-fast)}
+.step.done{color:var(--teal);border-color:var(--teal-border);background:var(--teal-bg)}
+.step.active{color:var(--ember);border-color:var(--ember-border);background:var(--ember-bg);box-shadow:var(--ember-glow)}
+.step-num{width:18px;height:18px;border-radius:50%;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font:700 11px var(--f-m);color:var(--text-2)}
+.step.done .step-num{background:var(--teal);color:#0B0810}
+.step.active .step-num{background:var(--ember);color:#0B0810}
+.step-line{flex:0 0 18px;height:1px;background:var(--border-1)}
+
+/* ═══ CONTENT GRID ═══ */
+.content{padding:0 28px 28px;display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start}
+@media (max-width:1280px){.content{grid-template-columns:1fr}}
+
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.section-title{display:flex;align-items:center;gap:8px;font:700 13px var(--f-d);color:var(--text-0)}
+.section-title .dot{width:6px;height:6px;border-radius:50%;background:var(--ember);box-shadow:var(--ember-glow)}
+.section-meta{font:500 11.5px var(--f-m);color:var(--text-3)}
+
+.card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden;margin-bottom:18px}
+.card-pad{padding:18px 22px}
+.card-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between}
+.card-head-title{font:700 13px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.card-head-title .ic{color:var(--ember)}
+
+/* ── CASH PANEL ── */
+.cash-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:20px 22px}
+.cash-cell{display:flex;flex-direction:column;gap:6px}
+.cash-cell label{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.cash-cell .val{display:flex;align-items:baseline;gap:6px}
+.cash-cell .val input{flex:1;font:600 22px var(--f-m);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:10px 12px;color:var(--text-0);outline:none}
+.cash-cell .val input:focus{border-color:var(--ember-border)}
+.cash-cell .val .unit{font:600 12px var(--f-m);color:var(--text-2)}
+.cash-cell.computed .val .num{font:600 22px var(--f-m);color:var(--text-0);padding:10px 0}
+.cash-cell.computed .val .num.ember{color:var(--ember)}
+.cash-cell.computed .val .num.teal{color:var(--teal)}
+
+.cash-result{margin:0 22px 18px;padding:16px 18px;background:linear-gradient(135deg,var(--ember-bg) 0%,rgba(240,152,68,.02) 100%);border:1px solid var(--ember-border);border-radius:var(--r-md);display:flex;align-items:center;justify-content:space-between;gap:18px}
+.cash-result-lbl{font:600 11px/1.3 var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--ember)}
+.cash-result-formula{font:500 11px var(--f-m);color:var(--text-2);margin-top:5px}
+.cash-result-val{font:700 32px var(--f-m);color:var(--ember);letter-spacing:-.02em}
+.cash-result-val .u{font:500 14px var(--f-b);color:var(--ember-deep)}
+
+/* ── SAFE DEPOSIT ── */
+.safe{padding:16px 22px;border-top:1px solid var(--border-0);display:grid;grid-template-columns:auto 1fr auto auto;gap:14px;align-items:center}
+.safe-ic{width:40px;height:40px;border-radius:var(--r-sm);background:var(--bg-3);border:1px solid var(--border-1);display:flex;align-items:center;justify-content:center;color:var(--ember)}
+.safe-info-title{font:700 13px var(--f-d);color:var(--text-0)}
+.safe-info-sub{font-size:11.5px;color:var(--text-2);margin-top:2px}
+.safe-input{width:110px}
+.safe-input input{width:100%;font:600 14px var(--f-m);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:7px 10px;color:var(--text-0);outline:none;text-align:right}
+.safe-toggle{display:flex;align-items:center;gap:8px}
+.toggle{position:relative;width:36px;height:20px;border-radius:99px;background:var(--bg-3);border:1px solid var(--border-1);cursor:pointer;transition:all var(--t-fast)}
+.toggle::after{content:'';position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:var(--text-2);transition:all var(--t-fast)}
+.toggle.on{background:var(--ember-bg);border-color:var(--ember-border)}
+.toggle.on::after{transform:translateX(16px);background:var(--ember);box-shadow:var(--ember-glow)}
+
+/* ── INCIDENTS ── */
+.inc-list{display:flex;flex-direction:column}
+.inc{display:flex;gap:12px;padding:12px 22px;border-bottom:1px solid var(--border-0)}
+.inc:last-child{border-bottom:none}
+.inc-time{font:500 11px var(--f-m);color:var(--text-3);min-width:42px;padding-top:1px}
+.inc-cat{font:600 10px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1);align-self:flex-start;flex-shrink:0;margin-top:1px}
+.inc-cat.guest{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.inc-cat.tech{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.inc-cat.cash{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.inc-body{flex:1;min-width:0}
+.inc-text{font-size:13px;color:var(--text-0);line-height:1.4}
+.inc-meta{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:3px}
+.inc-add{padding:14px 22px;display:flex;gap:8px;border-bottom:1px solid var(--border-0)}
+.inc-add input{flex:1;padding:8px 12px;font-size:13px}
+.inc-add select{padding:8px 10px;font-size:13px;min-width:120px}
+
+/* ── HANDOVER ── */
+.hov-textarea{width:100%;min-height:120px;padding:14px 16px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.6;resize:vertical;outline:none}
+.hov-textarea:focus{border-color:var(--ember-border)}
+
+/* ── RIGHT COLUMN: SUMMARY ── */
+.summary{position:sticky;top:90px}
+.sum-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border-0)}
+.sum-row:last-child{border-bottom:none}
+.sum-row .l{font-size:12.5px;color:var(--text-1)}
+.sum-row .v{font:600 13px var(--f-m);color:var(--text-0)}
+.sum-row .v.ember{color:var(--ember)}
+.sum-row .v.teal{color:var(--teal)}
+.sum-row .v.rose{color:var(--rose)}
+
+.sum-actions{padding:16px 22px;border-top:1px solid var(--border-0);display:flex;flex-direction:column;gap:8px}
+.sum-actions .btn{width:100%;justify-content:center;padding:11px}
+
+/* ── INFO TILE ── */
+.info-tile{background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:12px 14px;display:flex;align-items:center;gap:10px;margin:14px 22px 0}
+.info-tile svg{color:var(--sky);flex-shrink:0}
+.info-tile .t{font-size:12px;color:var(--text-1);line-height:1.5}
+.info-tile .t b{color:var(--text-0);font-weight:600}
+
+/* ── INPUT CHIP ── */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip-mini{font:600 10.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:99px;background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1);cursor:pointer;transition:all var(--t-fast)}
+.chip-mini:hover{color:var(--text-0);border-color:var(--border-2)}
+.chip-mini.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+
+</style>
+</head>
+<body>
+
+<!-- ─────────── SIDEBAR ─────────── -->
+<aside class="sidebar" data-od-id="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div>
+        <div class="sb-brand-name">Conrad Comfort</div>
+        <div class="sb-brand-sub">Recepcja dzienna · v2</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Zadania<span class="sb-badge">3</span></button>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 12h16M12 4v16"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>HK Live</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<!-- ─────────── MAIN ─────────── -->
+<main class="main" data-od-id="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Zmiana</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Recepcja dzienna</span></div>
+      <h1 class="page-title">Karta dnia · 12 maj 2026</h1>
+      <div class="page-meta">
+        <span>Zmiana: <b>Dzienna 07:00–15:00</b></span>
+        <span>Operator: <b>Natalia Sz.</b></span>
+        <span style="color:var(--teal);display:flex;align-items:center;gap:5px"><span style="width:5px;height:5px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)" class="pulse"></span> autosave</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <div class="date-pill">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <span class="v">12.05.2026</span>
+      </div>
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Podgląd PDF
+      </button>
+      <button class="btn btn-teal">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Zamknij zmianę
+      </button>
+    </div>
+  </div>
+
+  <!-- STEPPER -->
+  <div class="stepper">
+    <div class="step done"><div class="step-num">✓</div>Otwarcie</div>
+    <div class="step-line"></div>
+    <div class="step done"><div class="step-num">✓</div>Zadania</div>
+    <div class="step-line"></div>
+    <div class="step active"><div class="step-num">3</div>Kasa & rozliczenie</div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num">4</div>Incydenty</div>
+    <div class="step-line"></div>
+    <div class="step"><div class="step-num">5</div>Przekazanie</div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- TASKS CARD — spójne z Przeglądem -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Zadania zmiany
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="section-meta" style="display:flex;align-items:center;gap:6px"><span style="width:5px;height:5px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)" class="pulse"></span>9 / 12 ukończono · sync z Przeglądu</div>
+          </div>
+        </div>
+
+        <div style="padding:0">
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <div style="width:17px;height:17px;border-radius:var(--r-xs);background:var(--teal);border:1.5px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="11" height="11" fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="flex:1;font-size:13px;color:var(--text-2);text-decoration:line-through">Odebrać klucze od nocnej zmiany, sprawdzić sejf</div>
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)">Otwarcie</span>
+            <div style="font:500 10.5px var(--f-m);color:var(--text-3);min-width:36px;text-align:right">07:05</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <div style="width:17px;height:17px;border-radius:var(--r-xs);background:var(--teal);border:1.5px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="11" height="11" fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="flex:1;font-size:13px;color:var(--text-2);text-decoration:line-through">Sprawdzić rezerwacje, przygotować arkusz przyjazdów</div>
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--ember-bg);color:var(--ember);border:1px solid var(--ember-border)">Wymagane</span>
+            <div style="font:500 10.5px var(--f-m);color:var(--text-3);min-width:36px;text-align:right">07:30</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <div style="width:17px;height:17px;border-radius:var(--r-xs);background:var(--teal);border:1.5px solid var(--teal);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg width="11" height="11" fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div style="flex:1;font-size:13px;color:var(--text-2);text-decoration:line-through">Przygotować QR kody dla pokojówek (3 osoby)</div>
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)">HK</span>
+            <div style="font:500 10.5px var(--f-m);color:var(--text-3);min-width:36px;text-align:right">08:00</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <div style="width:17px;height:17px;border-radius:var(--r-xs);border:1.5px solid var(--border-2);flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;color:var(--text-0)">Zamówić ręczniki — magazynek 2 piętro pusty</div>
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-border)">Pilne</span>
+            <div style="font:500 10.5px var(--f-m);color:var(--text-3);min-width:36px;text-align:right">12:00</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <div style="width:17px;height:17px;border-radius:var(--r-xs);border:1.5px solid var(--border-2);flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;color:var(--text-0)">Skontaktować się z gościem 304 ws. późnego check-outu</div>
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)">Gość</span>
+            <div style="font:500 10.5px var(--f-m);color:var(--text-3);min-width:36px;text-align:right">13:00</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 22px">
+            <div style="width:17px;height:17px;border-radius:var(--r-xs);border:1.5px solid var(--border-2);flex-shrink:0"></div>
+            <div style="flex:1;font-size:13px;color:var(--text-0)">Przygotować raport dzienny, przekazać zmianie wieczornej</div>
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--ember-bg);color:var(--ember);border:1px solid var(--ember-border)">Wymagane</span>
+            <div style="font:500 10.5px var(--f-m);color:var(--text-3);min-width:36px;text-align:right">14:30</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOREKTY WYPŁAT (pending corrections) -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Korekty wypłat
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font:700 10px var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)">2 oczekują</span>
+          </div>
+        </div>
+        <div style="padding:14px 22px;display:flex;flex-direction:column;gap:8px">
+
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:linear-gradient(90deg,var(--amber-bg),transparent);border:1px solid var(--amber-border);border-radius:var(--r-sm)">
+            <div style="width:34px;height:34px;border-radius:50%;background:#7c3aed;display:flex;align-items:center;justify-content:center;font:700 13px var(--f-d);color:#fff;flex-shrink:0">M</div>
+            <div style="flex:1;min-width:0">
+              <div style="font:700 13px var(--f-b);color:var(--text-0)">Maria Kowal. · <span style="color:var(--amber)">+ 80,00 PLN</span></div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:2px">Powód: nadgodziny 09 maj (1h 30min) · ext. sprz. apt. 407</div>
+              <div style="font:500 10.5px var(--f-m);color:var(--text-3);margin-top:3px">Zgłoszone: 11 maj 16:20</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-teal" style="padding:6px 10px;font-size:11.5px">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                Zatwierdź
+              </button>
+              <button class="btn btn-ghost" style="padding:6px 10px;font-size:11.5px;color:var(--rose);border-color:var(--rose-border)">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                Odrzuć
+              </button>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 14px;background:linear-gradient(90deg,var(--amber-bg),transparent);border:1px solid var(--amber-border);border-radius:var(--r-sm)">
+            <div style="width:34px;height:34px;border-radius:50%;background:#dc2626;display:flex;align-items:center;justify-content:center;font:700 13px var(--f-d);color:#fff;flex-shrink:0">T</div>
+            <div style="flex:1;min-width:0">
+              <div style="font:700 13px var(--f-b);color:var(--text-0)">Tetiana · <span style="color:var(--rose)">– 30,00 PLN</span></div>
+              <div style="font-size:12px;color:var(--text-2);margin-top:2px">Powód: nie zostawione raporty pok. 409 (zła kategoryzacja PGZ vs ZS)</div>
+              <div style="font:500 10.5px var(--f-m);color:var(--text-3);margin-top:3px">Zgłoszone: 11 maj 20:14 przez Manager</div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-teal" style="padding:6px 10px;font-size:11.5px"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Zatwierdź</button>
+              <button class="btn btn-ghost" style="padding:6px 10px;font-size:11.5px;color:var(--rose);border-color:var(--rose-border)"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>Odrzuć</button>
+            </div>
+          </div>
+
+          <div class="info-tile" style="margin:6px 0 0">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <div class="t">Korekty wpływają na <b>ewidencję wynagrodzeń</b>. Po zatwierdzeniu zostaną dopisane do zmiany pracownika.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STANDING REMINDERS (przypomnienia stałe) -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            Przypomnienia stałe
+          </div>
+          <div class="section-meta">4 aktywne · zawsze widoczne</div>
+        </div>
+        <div style="padding:0">
+          <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:6px;flex-shrink:0"></span>
+            <div style="flex:1">
+              <div style="font:600 13px var(--f-b);color:var(--text-0)">Sprawdzić temperaturę lodówki (jadalnia) — 08:00 i 16:00</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">Dziennie · sanepid</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:6px;flex-shrink:0"></span>
+            <div style="flex:1">
+              <div style="font:600 13px var(--f-b);color:var(--text-0)">Test alarmu pożarowego — pierwsza środa miesiąca</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">Miesięcznie · BHP</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 22px;border-bottom:1px solid var(--border-0)">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:6px;flex-shrink:0"></span>
+            <div style="flex:1">
+              <div style="font:600 13px var(--f-b);color:var(--text-0)">Zamknąć kasę — KW total wpisać ręcznie z drukarki</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">Każda zmiana · kasowa</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 22px">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:6px;flex-shrink:0"></span>
+            <div style="flex:1">
+              <div style="font:600 13px var(--f-b);color:var(--text-0)">VIP: P. Kowalski (pok. 304) — zawsze 1 dodatkowa kawa rano</div>
+              <div style="font-size:11.5px;color:var(--text-3);margin-top:2px">Stałe · gość · od marca</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CASH CARD -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            Kasa zmiany
+          </div>
+          <div class="section-meta">PLN · zaokrąglanie 0,01</div>
+        </div>
+
+        <div class="cash-grid">
+          <div class="cash-cell">
+            <label>Stała kasowa</label>
+            <div class="val">
+              <input value="500,00"/>
+              <span class="unit">PLN</span>
+            </div>
+          </div>
+          <div class="cash-cell">
+            <label>KW total (poprzednia)</label>
+            <div class="val">
+              <input value="12 384,00"/>
+              <span class="unit">PLN</span>
+            </div>
+          </div>
+          <div class="cash-cell">
+            <label>KW total (wpisz końcowy)</label>
+            <div class="val">
+              <input value="16 664,00" style="border-color:var(--ember-border)"/>
+              <span class="unit">PLN</span>
+            </div>
+          </div>
+          <div class="cash-cell computed">
+            <label>Przyrost KW (auto)</label>
+            <div class="val">
+              <span class="num teal">+ 4 280,00</span>
+              <span class="unit" style="color:var(--teal)">PLN</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cash-result">
+          <div>
+            <div class="cash-result-lbl">Kasa końcowa zmiany</div>
+            <div class="cash-result-formula">500,00 + 4 280,00 (przyrost KW)</div>
+          </div>
+          <div class="cash-result-val">4 780,00<span class="u"> PLN</span></div>
+        </div>
+
+        <!-- SAFE DEPOSIT TOGGLE -->
+        <div class="safe">
+          <div class="safe-ic">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2"/></svg>
+          </div>
+          <div>
+            <div class="safe-info-title">Wpłata do sejfu</div>
+            <div class="safe-info-sub">Po wpłacie KW total spadnie do wartości post-deposit</div>
+          </div>
+          <div class="safe-input"><input value="2 000,00"/></div>
+          <div class="safe-toggle">
+            <span style="font:600 10.5px var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--ember)">Wpłacam</span>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+
+        <div class="info-tile">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <div class="t">Po wpłacie sejfu wpisz <b>nowe KW total</b> (post-deposit) — automatycznie odjęte od kasy końcowej.</div>
+        </div>
+
+      </div>
+
+      <!-- INCIDENTS CARD -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Incydenty zmiany
+          </div>
+          <div class="section-meta">3 zarejestrowane</div>
+        </div>
+
+        <div class="inc-add">
+          <input placeholder="Krótki opis incydentu (np. gość 304 zostawił klucze w pokoju)..."/>
+          <select>
+            <option>Kategoria...</option>
+            <option>Gość</option>
+            <option>Techniczne</option>
+            <option>Kasa</option>
+            <option>Inne</option>
+          </select>
+          <button class="btn btn-primary">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            Dodaj
+          </button>
+        </div>
+
+        <div class="inc-list">
+          <div class="inc">
+            <div class="inc-time">10:54</div>
+            <div class="inc-cat cash">Kasa</div>
+            <div class="inc-body">
+              <div class="inc-text">Wystawiono voucher 50 PLN dla gościa 218 (rekompensata za hałas).</div>
+              <div class="inc-meta">Operator: Natalia · powiązane: voucher #V-2026-0148</div>
+            </div>
+          </div>
+          <div class="inc">
+            <div class="inc-time">11:18</div>
+            <div class="inc-cat tech">Techniczne</div>
+            <div class="inc-body">
+              <div class="inc-text">Usterka 412 — przeciekająca bateria w łazience. Maria zgłosiła, konserwator powiadomiony.</div>
+              <div class="inc-meta">Operator: Natalia · powiązane: usterka #F-2026-0083</div>
+            </div>
+          </div>
+          <div class="inc">
+            <div class="inc-time">11:38</div>
+            <div class="inc-cat guest">Gość</div>
+            <div class="inc-body">
+              <div class="inc-text">Gość 304 prosi o późny check-out do 13:00. Zatwierdzone.</div>
+              <div class="inc-meta">Operator: Natalia · rezerwacja KW#9914</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HANDOVER CARD -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Przekazanie zmianie wieczornej
+          </div>
+          <div class="section-meta">→ Marek (15:00)</div>
+        </div>
+        <div style="padding:16px 22px">
+          <textarea class="hov-textarea" placeholder="Co warto przekazać zmianie wieczornej? (autosave co 5s)">- Pokój 304: późny check-out do 13:00 (zatwierdzony, gość zostawił 100 PLN za extra hour).
+- Usterka 412: konserwator obiecał przyjść po 16:00, jeśli nie przyjdzie — zadzwoń do firmy ABC Service (kontakt w wiki).
+- Zamówić ręczniki, magazynek 2 piętro pusty (info do Tymka).
+- Klient z pok. 218 (voucher 50 PLN) zapowiedział wczesny check-out — ma 250 PLN do dopłaty.</textarea>
+          <div class="chip-row">
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);align-self:center;margin-right:4px">Szybkie tagi:</span>
+            <button class="chip-mini on">#klucze</button>
+            <button class="chip-mini">#kasa</button>
+            <button class="chip-mini">#gość</button>
+            <button class="chip-mini">#dostawa</button>
+            <button class="chip-mini">#usterka</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: SUMMARY -->
+    <div class="summary">
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg width="15" height="15" class="ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Podsumowanie zmiany
+          </div>
+        </div>
+        <div style="padding:6px 22px 14px">
+          <div class="sum-row"><span class="l">Czas pracy</span><span class="v">4:42 / 8:00</span></div>
+          <div class="sum-row"><span class="l">Zadania zmiany</span><span class="v teal">9 / 12</span></div>
+          <div class="sum-row"><span class="l">Pokoje gotowe</span><span class="v teal">14 / 26</span></div>
+          <div class="sum-row"><span class="l">Wystawione vouchery</span><span class="v">1 (50 PLN)</span></div>
+          <div class="sum-row"><span class="l">Zgłoszone usterki</span><span class="v rose">1 nowa</span></div>
+          <div class="sum-row"><span class="l">Wpłaty parking</span><span class="v">340 PLN</span></div>
+          <div class="sum-row"><span class="l">Stała kasowa</span><span class="v">500,00 PLN</span></div>
+          <div class="sum-row"><span class="l">Przyrost KW</span><span class="v teal">+ 4 280,00 PLN</span></div>
+          <div class="sum-row"><span class="l">Wpłata sejf</span><span class="v rose">– 2 000,00 PLN</span></div>
+          <div class="sum-row" style="border-top:1px solid var(--ember-border);padding-top:14px;margin-top:6px">
+            <span class="l" style="font-weight:700;color:var(--text-0);font-family:var(--f-d)">Saldo końcowe</span>
+            <span class="v ember" style="font-size:18px">2 780,00 PLN</span>
+          </div>
+        </div>
+
+        <div class="sum-actions">
+          <button class="btn btn-ghost">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            Generuj PDF
+          </button>
+          <button class="btn btn-teal">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Zamknij i przekaż
+          </button>
+        </div>
+      </div>
+
+      <!-- LAST 3 SHIFT REPORTS -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">Ostatnie zmiany</div>
+          <div class="section-meta">3</div>
+        </div>
+        <div style="padding:8px 22px 14px">
+          <div class="sum-row">
+            <span class="l">11 maj · D · Natalia</span>
+            <span class="v teal">3 920 PLN</span>
+          </div>
+          <div class="sum-row">
+            <span class="l">10 maj · W · Marek</span>
+            <span class="v">2 480 PLN</span>
+          </div>
+          <div class="sum-row">
+            <span class="l">10 maj · D · Anna</span>
+            <span class="v">3 180 PLN</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

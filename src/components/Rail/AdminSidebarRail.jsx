@@ -12,13 +12,13 @@ export default function AdminSidebarRail({
   activeTab, setActiveTab, setShowWiki, setShowAuditLog, handleAdminLogout, setShowSearch,
   adminDark, setAdminDark, onCheckUpdate, currentManager, unreadMsgCount=0,
   updateState, updateInfo, updateProgress, onDownloadUpdate, onInstallUpdate,
-  pendingCorrections=0, faultsCount=0, voucherCount=0, showToast,
+  pendingCorrections=0, faultsCount=0, voucherCount=0, chatCount=0, showToast,
 }){
   const tabToGroup={
     wiadomosci:"dashboard", statystyki:"dashboard",
     pracownicy:"zespol", ewidencja:"zespol", historia:"zespol", grafik:"zespol",
     usterki:"pokoje", goscie:"pokoje", parking:"pokoje", opinie:"pokoje",
-    alerty:"komunikacja", przypomnienia:"komunikacja",
+    alerty:"komunikacja", przypomnienia:"komunikacja", czat:"komunikacja",
     korekty:"finanse", kasa:"finanse", vouchery:"finanse",
     zadania:"konfig", wiki:"konfig",
     ustawienia:"system",
@@ -30,6 +30,7 @@ export default function AdminSidebarRail({
   const groupBadge={
     dashboard: unreadMsgCount,
     pokoje: faultsCount,
+    komunikacja: chatCount,
     finanse: pendingCorrections + voucherCount,
   };
   const groups=[
@@ -139,6 +140,8 @@ export default function AdminSidebarRail({
             {nb("opinie",<Star size={14}/>,"Opinie gosci")}
           </>}
           {activeGroup==="komunikacja"&&<>
+            {/* Czat między działami — tymczasowo ukryty (kod pozostaje, można przywrócić). */}
+            {/* {nb("czat",<MessageSquare size={14}/>,"Czat zespołu",chatCount)} */}
             {nb("alerty",<AlertCircle size={14}/>,"Pilne informacje")}
             {nb("przypomnienia",<BellRing size={14}/>,"Stale przypomnienia")}
           </>}

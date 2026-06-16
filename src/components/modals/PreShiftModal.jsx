@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
 import { STORAGE_KEYS, loadJson } from "../../lib/storage";
+import { parsePlDateTime } from "../../lib/dates";
 import { SHIFT_LABELS_PL } from "../../lib/constants";
 import Logo from "../../ui/Logo";
 
@@ -25,7 +26,7 @@ export default function PreShiftModal({ employeeName, selectedShift, shiftLabel,
   const wikiEntries    = loadJson(STORAGE_KEYS.wiki, []);
   const wikiLastSeenKey = `${STORAGE_KEYS.wikiLastSeen}-${employeeName}`;
   const lastSeenMs     = parseInt(localStorage.getItem(wikiLastSeenKey) || "0");
-  const newWiki        = wikiEntries.filter(w => (w.updatedAt ? new Date(w.updatedAt).getTime() : 0) > lastSeenMs);
+  const newWiki        = wikiEntries.filter(w => parsePlDateTime(w.updatedAt) > lastSeenMs);
 
   // Hash po TREŚCI (tytuł+treść), nie po ID — ID są niestabilne (seed/sync Supabase),
   // a liczy się to, co pracownik potwierdza. Musi być identyczny jak w handleStartShift.

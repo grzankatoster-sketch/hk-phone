@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Informacje</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10); --violet-border:rgba(180,154,255,.30);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input,select,textarea{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--ember)}
+
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+
+.main{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--bg-0)}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.topbar{position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,var(--bg-0) 70%,transparent);padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast);cursor:pointer}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.btn-sm{padding:5px 9px;font-size:12px}
+.topbar-actions{display:flex;gap:8px}
+
+.content{padding:18px 28px 28px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media (max-width:1100px){.content{grid-template-columns:1fr}}
+
+.card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden}
+.card-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-head-title{font:700 13px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.card-head-title svg{width:15px;height:15px}
+.card-head-title.alert svg{color:var(--rose)}
+.card-head-title.standing svg{color:var(--gold)}
+.card-head-title.wiki svg{color:var(--sky)}
+.card-head-title.shift svg{color:var(--ember)}
+.count-pill{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:99px;font:600 11px var(--f-b);background:var(--bg-3);border:1px solid var(--border-1);color:var(--text-1)}
+
+/* Alerts list */
+.alert-item{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;gap:12px;align-items:flex-start}
+.alert-item:last-child{border-bottom:none}
+.alert-icon{width:34px;height:34px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid transparent}
+.alert-icon.urgent{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.alert-icon.warn{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.alert-icon.info{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.alert-body{flex:1;min-width:0}
+.alert-title{font:700 13.5px var(--f-d);color:var(--text-0);margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.alert-text{font-size:13px;color:var(--text-1);line-height:1.5}
+.alert-meta{display:flex;gap:12px;font:500 11px var(--f-m);color:var(--text-3);margin-top:6px}
+.pin-flag{font:700 9px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--ember-bg);color:var(--ember);border:1px solid var(--ember-border)}
+.urgent-flag{font:700 9px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-border)}
+.alert-actions{display:flex;gap:4px;flex-shrink:0}
+.icon-btn{width:28px;height:28px;border-radius:var(--r-xs);color:var(--text-2);display:flex;align-items:center;justify-content:center;border:1px solid transparent;transition:all var(--t-fast)}
+.icon-btn:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.icon-btn.pinned{color:var(--ember)}
+.icon-btn.danger:hover{color:var(--rose);border-color:var(--rose-border)}
+
+/* Reminder */
+.reminder-item{padding:12px 22px;border-bottom:1px solid var(--border-0);display:flex;gap:12px;align-items:flex-start}
+.reminder-item:last-child{border-bottom:none}
+.reminder-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);margin-top:6px;flex-shrink:0;box-shadow:0 0 8px rgba(200,162,105,.5)}
+.reminder-body{flex:1}
+.reminder-title{font:600 13.5px var(--f-b);color:var(--text-0);line-height:1.4}
+.reminder-freq{display:inline-flex;align-items:center;gap:4px;font:500 11px var(--f-m);color:var(--text-3);margin-top:4px}
+.reminder-freq svg{width:11px;height:11px}
+
+/* Wiki entries */
+.wiki-search{padding:14px 22px;border-bottom:1px solid var(--border-0)}
+.wiki-search-input{display:flex;align-items:center;gap:8px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:8px 12px}
+.wiki-search-input input{flex:1;background:none;border:none;padding:0;font-size:13px}
+.wiki-cats{padding:10px 22px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border-0)}
+.wiki-cat{padding:5px 11px;border-radius:var(--r-sm);font:600 11.5px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:transparent}
+.wiki-cat.on{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+
+.wiki-entry{padding:14px 22px;border-bottom:1px solid var(--border-0);cursor:pointer;transition:background var(--t-fast)}
+.wiki-entry:hover{background:var(--bg-3)}
+.wiki-entry:last-child{border-bottom:none}
+.wiki-cat-tag{display:inline-block;font:600 9.5px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:99px;margin-bottom:6px;background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-border)}
+.wiki-cat-tag.proc{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.wiki-cat-tag.tech{background:var(--violet-bg);color:var(--violet);border-color:var(--violet-border)}
+.wiki-cat-tag.guest{background:var(--gold);color:#0B0810;border-color:var(--gold)}
+.wiki-title{font:700 14px var(--f-d);color:var(--text-0);margin-bottom:4px}
+.wiki-excerpt{font-size:12.5px;color:var(--text-2);line-height:1.5}
+.wiki-meta{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:6px}
+
+/* Add forms */
+.add-form{padding:14px 22px;border-bottom:1px solid var(--border-0)}
+.add-form-row{display:grid;grid-template-columns:1fr 110px 100px;gap:8px;margin-bottom:8px}
+.add-form-row.full{grid-template-columns:1fr}
+.add-form-row textarea{width:100%}
+.add-form-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+
+/* Pre-shift card */
+.preshift{padding:18px 22px;background:linear-gradient(135deg,var(--ember-bg),transparent);border-bottom:1px solid var(--border-0)}
+.preshift-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.preshift-item{}
+.preshift-lbl{font:600 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px}
+.preshift-val{font:700 16px var(--f-d);color:var(--text-0)}
+.preshift-sub{font:500 11px var(--f-m);color:var(--text-2);margin-top:3px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div><div class="sb-brand-name">Conrad Comfort</div><div class="sb-brand-sub">Informacje · v2</div></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Przekazanie</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Housekeeping</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+    <div class="sb-label" style="margin-top:8px">Komunikacja</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7"/></svg>Wiadomości<span class="sb-badge">5</span></button>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Informacje</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Komunikacja</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Informacje</span></div>
+      <h1 class="page-title">Informacje · centrala wiedzy</h1>
+      <div class="page-meta">
+        <span>Alerty: <b style="color:var(--rose)">3 pilne</b></span>
+        <span>Przypomnienia: <b>4 stałe</b></span>
+        <span>Wiki: <b>47 wpisów</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Szukaj wszędzie
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Nowy wpis
+      </button>
+    </div>
+  </div>
+
+  <!-- PRE-SHIFT (start zmiany info) -->
+  <div class="preshift">
+    <div class="preshift-grid">
+      <div class="preshift-item">
+        <div class="preshift-lbl">Twoja zmiana</div>
+        <div class="preshift-val">Dzienna · Natalia</div>
+        <div class="preshift-sub">07:00 → 15:00 · pozostało 3h 18m</div>
+      </div>
+      <div class="preshift-item">
+        <div class="preshift-lbl">Wymaga uwagi</div>
+        <div class="preshift-val" style="color:var(--rose)">3 alerty managera</div>
+        <div class="preshift-sub">1 pilny (Tymek · od 09 maj)</div>
+      </div>
+      <div class="preshift-item">
+        <div class="preshift-lbl">Pogoda · obłożenie</div>
+        <div class="preshift-val">18°C · 87% obł.</div>
+        <div class="preshift-sub">Słońce, 14 check-inów, 9 wyjazdów</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- LEWA: ALERTY -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Manager alerts -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title alert">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Alerty managera
+          </div>
+          <div class="count-pill">3 aktywne</div>
+        </div>
+
+        <!-- Add form -->
+        <div class="add-form">
+          <div class="add-form-row">
+            <input placeholder="Tytuł alertu (np. Zakaz wymeldowań po 12:00)"/>
+            <select>
+              <option>Priorytet</option>
+              <option>Urgent</option>
+              <option>Normal</option>
+              <option>Info</option>
+            </select>
+            <select>
+              <option>Zmiana</option>
+              <option>Wszystkie</option>
+              <option>Dzienna</option>
+              <option>Wieczorna</option>
+              <option>Nocna</option>
+            </select>
+          </div>
+          <div class="add-form-row full">
+            <textarea placeholder="Treść alertu..."></textarea>
+          </div>
+          <div class="add-form-actions">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);margin-right:auto">
+              <input type="checkbox" style="width:auto" checked/>
+              Przypnij na górze ekranu
+            </label>
+            <button class="btn btn-ghost btn-sm">Anuluj</button>
+            <button class="btn btn-primary btn-sm">Dodaj alert</button>
+          </div>
+        </div>
+
+        <!-- Items -->
+        <div class="alert-item">
+          <div class="alert-icon urgent">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+          </div>
+          <div class="alert-body">
+            <div class="alert-title">
+              Zakaz wymeldowań po 12:00 bez kontaktu z managerem
+              <span class="pin-flag">Pin</span>
+              <span class="urgent-flag">Pilne</span>
+            </div>
+            <div class="alert-text">Każda prośba o późny check-out po 12:00 musi być uzgodniona z managerem przez telefon (Tymek 602...). Bez wyjątków.</div>
+            <div class="alert-meta">
+              <span>👤 Manager (Tymek)</span>
+              <span>📅 09 maj · 3 dni temu</span>
+              <span>🎯 Wszystkie zmiany</span>
+            </div>
+          </div>
+          <div class="alert-actions">
+            <button class="icon-btn pinned" title="Przypięte"><svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg></button>
+            <button class="icon-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button class="icon-btn danger"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="alert-item">
+          <div class="alert-icon warn">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+          </div>
+          <div class="alert-body">
+            <div class="alert-title">Brakuje papieru toaletowego — magazyn główny</div>
+            <div class="alert-text">Tymek zamawia, dostawa we czwartek (14 maj). Do tego czasu używać zapasów z 2. piętra.</div>
+            <div class="alert-meta">
+              <span>👤 Tymek</span>
+              <span>📅 11 maj · 1 dzień temu</span>
+              <span>⏳ Wygasa: 15 maj</span>
+            </div>
+          </div>
+          <div class="alert-actions">
+            <button class="icon-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button class="icon-btn danger"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+
+        <div class="alert-item">
+          <div class="alert-icon info">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          </div>
+          <div class="alert-body">
+            <div class="alert-title">Sprawdzić rachunek za prąd — dostawca dzwonił</div>
+            <div class="alert-text">Tauron prosi o weryfikację stanu licznika na koniec maja. Numer kontaktu w wiki.</div>
+            <div class="alert-meta">
+              <span>👤 Anna L.</span>
+              <span>📅 11 maj · 1 dzień temu</span>
+            </div>
+          </div>
+          <div class="alert-actions">
+            <button class="icon-btn"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button>
+            <button class="icon-btn danger"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Standing reminders -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title standing">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+            Przypomnienia stałe
+          </div>
+          <div class="count-pill">4 aktywne</div>
+        </div>
+
+        <div class="add-form">
+          <div class="add-form-row" style="grid-template-columns:1fr 130px">
+            <input placeholder="Tytuł przypomnienia"/>
+            <select>
+              <option>Codziennie</option>
+              <option>Każda zmiana</option>
+              <option>Tygodniowo</option>
+              <option>Miesięcznie</option>
+              <option>Stałe</option>
+            </select>
+          </div>
+          <div class="add-form-row full">
+            <textarea placeholder="Treść (opcjonalnie)"></textarea>
+          </div>
+          <div class="add-form-actions">
+            <button class="btn btn-primary btn-sm">+ Dodaj przypomnienie</button>
+          </div>
+        </div>
+
+        <div class="reminder-item">
+          <div class="reminder-dot"></div>
+          <div class="reminder-body">
+            <div class="reminder-title">Sprawdzić temperaturę lodówki w jadalni — codziennie 08:00 i 16:00</div>
+            <div class="reminder-freq">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Dziennie · sanepid · od stycznia 2026
+            </div>
+          </div>
+          <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+        </div>
+
+        <div class="reminder-item">
+          <div class="reminder-dot"></div>
+          <div class="reminder-body">
+            <div class="reminder-title">Test alarmu pożarowego — pierwsza środa miesiąca</div>
+            <div class="reminder-freq">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+              Miesięcznie · BHP
+            </div>
+          </div>
+          <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/></svg></button>
+        </div>
+
+        <div class="reminder-item">
+          <div class="reminder-dot"></div>
+          <div class="reminder-body">
+            <div class="reminder-title">Zamknąć kasę przed przekazaniem — KW total wpisać ręcznie</div>
+            <div class="reminder-freq">Każda zmiana · kasowa</div>
+          </div>
+          <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/></svg></button>
+        </div>
+
+        <div class="reminder-item">
+          <div class="reminder-dot"></div>
+          <div class="reminder-body">
+            <div class="reminder-title">VIP: P. Kowalski (pok. 304) — zawsze 1 dodatkowa kawa rano</div>
+            <div class="reminder-freq">Stałe · gość VIP · od marca</div>
+          </div>
+          <button class="icon-btn"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/></svg></button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PRAWA: WIKI -->
+    <div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title wiki">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Wiki recepcji
+          </div>
+          <div class="count-pill">47 wpisów</div>
+        </div>
+
+        <div class="wiki-search">
+          <div class="wiki-search-input">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input placeholder="Wyszukaj w wiki..."/>
+          </div>
+        </div>
+
+        <div class="wiki-cats">
+          <button class="wiki-cat on">Wszystkie</button>
+          <button class="wiki-cat">Procedury</button>
+          <button class="wiki-cat">Techniczne</button>
+          <button class="wiki-cat">Goście</button>
+          <button class="wiki-cat">Kontakty</button>
+          <button class="wiki-cat">Awaryjne</button>
+          <button class="wiki-cat">Kasa & FV</button>
+        </div>
+
+        <div class="wiki-entry">
+          <span class="wiki-cat-tag proc">Procedury</span>
+          <div class="wiki-title">Procedura check-in nocną zmianą</div>
+          <div class="wiki-excerpt">Po 22:00 obowiązkowa weryfikacja gościa: dokument tożsamości + porównanie z rezerwacją KW. Klucze przekazujemy tylko osobie z rezerwacji...</div>
+          <div class="wiki-meta">Aktualizacja: 8 maj 2026 · Anna L. · 142 wyświetleń</div>
+        </div>
+
+        <div class="wiki-entry">
+          <span class="wiki-cat-tag tech">Techniczne</span>
+          <div class="wiki-title">Reset router-a WiFi (sala konferencyjna 2 piętro)</div>
+          <div class="wiki-excerpt">Jeśli goście zgłaszają brak WiFi w sali konf. — router w szafce po prawej stronie wejścia. Przycisk reset 10 sek...</div>
+          <div class="wiki-meta">Aktualizacja: 2 maj 2026 · Marek · 87 wyświetleń</div>
+        </div>
+
+        <div class="wiki-entry">
+          <span class="wiki-cat-tag guest">Goście</span>
+          <div class="wiki-title">Stała gościni Schmitt Christelle — preferencje</div>
+          <div class="wiki-excerpt">Pani Christelle nocuje od wielu lat, czasami miesiącami. Bezproblemowa. Ostatnio rezerwacje przez Expedia. Lubi pokoje od strony osiedla...</div>
+          <div class="wiki-meta">Aktualizacja: 12 kwi 2026 · Natalia · 23 wyświetleń</div>
+        </div>
+
+        <div class="wiki-entry">
+          <span class="wiki-cat-tag" style="background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)">Awaryjne</span>
+          <div class="wiki-title">Kontakt 24/7: hydraulik, elektryk, konserwator</div>
+          <div class="wiki-excerpt">Hydraulik (poważne wycieki): Marek 602 113 887 · Elektryk: Janusz 698 552 100 · Konserwator (codzienne): Marek W. — biuro do 18:00...</div>
+          <div class="wiki-meta">Aktualizacja: 28 mar 2026 · Manager · 256 wyświetleń</div>
+        </div>
+
+        <div class="wiki-entry">
+          <span class="wiki-cat-tag proc">Procedury</span>
+          <div class="wiki-title">Zamknięcie kasy — krok po kroku</div>
+          <div class="wiki-excerpt">1. Wydrukuj raport KW z drukarki fiskalnej. 2. Wpisz KW total do formularza w panelu (NIE pole "stała"). 3. Sprawdź czy zgadza się ze stanem fizycznym...</div>
+          <div class="wiki-meta">Aktualizacja: 20 mar 2026 · Manager · 198 wyświetleń</div>
+        </div>
+
+        <div class="wiki-entry">
+          <span class="wiki-cat-tag" style="background:var(--gold);color:#0B0810;border-color:var(--gold)">Kasa & FV</span>
+          <div class="wiki-title">Wystawianie faktur firmowych — schemat</div>
+          <div class="wiki-excerpt">Po wystawieniu paragonu fiskalnego, jeśli gość prosi o fakturę: 1. Sprawdź NIP w bazie stałych gości. 2. Jeśli nowa firma — pełne dane...</div>
+          <div class="wiki-meta">Aktualizacja: 12 mar 2026 · Anna L. · 312 wyświetleń</div>
+        </div>
+
+        <button style="width:100%;padding:14px;border:none;background:transparent;color:var(--ember);font:700 12px var(--f-d);letter-spacing:.06em;text-transform:uppercase;cursor:pointer">
+          Pokaż wszystkie 47 wpisów →
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

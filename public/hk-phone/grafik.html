@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#5a1d4a"/>
+<link rel="icon" type="image/svg+xml" href="icon.svg"/>
+<link rel="apple-touch-icon" href="icon.svg"/>
+<script>
+/* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
+   dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
+   jej zamykać ani usuwać i dodawać ponownie. */
+(function(){
+  var url = location.pathname + (location.search || "");
+  var baseline = null, busy = false, INTERVAL = 5 * 60 * 1000;
+  function fp(s){ var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ":" + h; }
+  async function check(){
+    if (busy || navigator.onLine === false) return;
+    busy = true;
+    try {
+      var res = await fetch(url, { cache: "no-store" });
+      if (res.ok){
+        var cur = fp(await res.text());
+        if (baseline === null) baseline = cur;
+        else if (cur !== baseline){ location.reload(); return; }
+      }
+    } catch (e) { /* offline / chwilowy błąd — sprawdzimy później */ }
+    busy = false;
+  }
+  if ("serviceWorker" in navigator)
+    navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){});
+  check();
+  setInterval(function(){ if (!document.hidden) check(); }, INTERVAL);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+})();
+</script>
+<title>Mój grafik • Conrad Comfort</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--plum:#5a1d4a;--cream:#fdfaf7;--paper:#fff;--ink:#2d1422;--muted:#8a6a7e;--line:rgba(90,29,74,.14);--line-strong:rgba(90,29,74,.28);--ok:#0f7a4a;--bad:#c2415a}
+html,body{background:var(--cream)}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
+.hdr{background:var(--plum);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:10}
+.hdr .t1{font-family:'DM Serif Display',Georgia,serif;font-size:15px;letter-spacing:.16em}
+.hdr .t2{font-size:11px;color:rgba(255,255,255,.78);margin-top:3px}
+.wrap{max-width:560px;margin:0 auto;padding:16px 12px 60px}
+.hi{font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:var(--plum);margin-bottom:2px}
+.sub{font-size:12.5px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+.legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:11px;color:var(--muted)}
+.day{background:var(--paper);border:1.5px solid var(--line);border-radius:13px;padding:11px 13px;margin-bottom:8px}
+.day.today{border-color:var(--plum)}
+.day.weekend{background:rgba(90,29,74,.03)}
+.dtop{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+.ddow{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.ddate{font-weight:800;font-size:15px;color:var(--ink)}
+.opts{display:flex;gap:6px}
+.opt{flex:1;padding:10px 4px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit}
+.opt.sel{color:#fff;border-color:var(--plum);background:var(--plum)}
+.opt.off.sel{background:var(--muted);border-color:var(--muted)}
+.foot{text-align:center;color:var(--muted);font-size:11px;padding:16px 10px}
+.spin{text-align:center;color:var(--muted);font-size:13px;padding:40px 10px}
+.box{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:22px 16px;text-align:center}
+.box .big{font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:var(--plum);margin-bottom:8px}
+.box .sm{font-size:13px;color:var(--muted);line-height:1.6}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--line-strong);border-radius:10px;padding:11px 18px;font-size:13.5px;font-weight:800;z-index:99;box-shadow:0 8px 30px rgba(90,29,74,.25);transition:opacity .3s}
+.done-note{margin-top:14px;font-size:12px;color:var(--ok);font-weight:700;text-align:center}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* premium look — spójny z panelem */
+:root{--serif:'Fraunces',Georgia,serif;--ui:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--gold:#b0863a}
+body{font-family:var(--ui);background:
+  radial-gradient(900px 420px at 100% -10%, rgba(122,58,106,.10), transparent 60%), var(--cream)}
+.hdr .t1,.hi,.box .big{font-family:var(--serif);font-weight:500;letter-spacing:-.01em}
+.wrap{max-width:600px}
+.day{box-shadow:0 1px 2px rgba(58,18,48,.05),0 12px 28px -18px rgba(58,18,48,.32);border-radius:15px;transition:border-color .15s}
+.opt{border-radius:12px;transition:transform .08s,background .15s,border-color .15s}
+.opt:active{transform:scale(.96)}
+.opt.sel{box-shadow:0 6px 16px -7px rgba(90,29,74,.6)}
+.legend{gap:12px}.legend span{font-weight:600}
+.sub b,.hi{color:var(--plum)}
+.modes{display:flex;gap:6px;background:rgba(90,29,74,.06);padding:4px;border-radius:12px;margin-bottom:14px}
+.modebtn{flex:1;padding:10px;border:none;background:transparent;border-radius:9px;font-weight:800;font-size:13.5px;color:var(--muted);cursor:pointer;font-family:inherit}
+.modebtn.on{background:var(--paper);color:var(--plum);box-shadow:0 1px 3px rgba(90,29,74,.14)}
+.hsel{flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
+.cdbar{position:sticky;top:0;z-index:9;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.42);color:#8a6a1e;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:13px;text-align:center}
+.cdbar.warn{background:rgba(194,65,90,.1);border-color:rgba(194,65,90,.45);color:var(--bad)}
+.cdbar b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+</style>
+</head>
+<body>
+<div class="hdr"><div class="t1">CONRAD COMFORT</div><div class="t2">Mój grafik — zaznacz dyspozycyjność</div></div>
+<div class="wrap" id="app"><div class="spin">Wczytywanie…</div></div>
+<div class="foot">Twój indywidualny link — nie udostępniaj go innym.</div>
+<script>
+const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
+const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+const TOKEN = new URLSearchParams(location.search).get("t") || "";
+const app = document.getElementById("app");
+
+const DOW = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+const pad = n => n<10 ? "0"+n : ""+n;
+const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+const OPTS = {
+  hk:       [["dzien","Dzień"],["popoludnie","Popołudnie"],["off","Nie mogę"]],
+  recepcja: [["poranna","Poranna"],["popoludniowa","Popoł."],["nocna","Nocna"],["off","Nie mogę"]],
+};
+
+let META = null;             // { person, kind, period_type, period_start }
+let CHOICE = {};             // { 'YYYY-MM-DD': choice }
+let MODE = "shift", HOURS = {};                 // tryb wyboru + { date: {start,end} }
+const HOPT = Array.from({length:25}, (_,i)=>i); // 0..24
+
+function toast(msg, color="#0f7a4a"){
+  const e=document.createElement("div"); e.className="toast"; e.style.color=color; e.textContent=msg;
+  document.body.appendChild(e); setTimeout(()=>{ e.style.opacity="0"; setTimeout(()=>e.remove(),300); },1800);
+}
+
+function buildDays(meta){
+  const out=[]; const [y,m,d]=String(meta.period_start).split("-").map(Number);
+  if (meta.period_type==="week"){
+    const start=new Date(y,m-1,d);
+    for(let i=0;i<7;i++) out.push(new Date(start.getTime()+i*86400000));
+  } else {
+    const last=new Date(y,m,0).getDate();
+    for(let i=1;i<=last;i++) out.push(new Date(y,m-1,i));
+  }
+  return out;
+}
+
+async function boot(){
+  if(!sb){ app.innerHTML='<div class="box"><div class="big">Błąd</div><div class="sm">Brak biblioteki — odśwież stronę.</div></div>'; return; }
+  if(!TOKEN){ app.innerHTML='<div class="box"><div class="big">Brak linku</div><div class="sm">Otwórz swój indywidualny link z grafikiem.</div></div>'; return; }
+  let data=null;
+  try { const r=await sb.rpc("get_availability",{p_token:TOKEN}); data=r.data; }
+  catch { app.innerHTML='<div class="box"><div class="big">Błąd połączenia</div><div class="sm">Spróbuj ponownie za chwilę.</div></div>'; return; }
+  if(!data){ app.innerHTML='<div class="box"><div class="big">Link nieaktywny</div><div class="sm">Ten link wygasł lub jest nieprawidłowy. Poproś menedżera o nowy.</div></div>'; return; }
+  META=data; CHOICE={}; HOURS={};
+  (data.entries||[]).forEach(e=>{ CHOICE[e.date]=e.choice; if(e.start||e.end) HOURS[e.date]={start:e.start||"",end:e.end||""}; });
+  if (Object.values(CHOICE).some(c=>c==="godziny")) MODE="hours";
+  render();
+}
+
+function render(){
+  const kind = (META.kind==="recepcja") ? "recepcja" : "hk";
+  const hoursAllowed = kind==="recepcja";        // godziny tylko dla recepcji; HK = same zmiany
+  if (!hoursAllowed) MODE = "shift";
+  const opts = OPTS[kind];
+  const days = buildDays(META);
+  const todayIso = iso(new Date());
+  const periodLbl = META.period_type==="week" ? "tydzień" : "miesiąc";
+  const toggle = hoursAllowed ? `<div class="modes">
+    <button class="modebtn ${MODE==='shift'?'on':''}" onclick="setMode('shift')">Zmiana</button>
+    <button class="modebtn ${MODE==='hours'?'on':''}" onclick="setMode('hours')">Godziny (od–do)</button></div>` : "";
+  const rows = days.map(dt=>{
+    const k=iso(dt); const cur=CHOICE[k]||"";
+    const wknd = (dt.getDay()===0||dt.getDay()===6) ? " weekend":"";
+    const today = k===todayIso ? " today":"";
+    let inner;
+    if (MODE==="shift" && kind==="hk"){
+      // HK = dwie wersje zmiany: Rano i Popołudnie. Można zaznaczyć jedną LUB obie ('oba').
+      const rano = cur==="poranna"||cur==="oba"||cur==="dzien";
+      const pop  = cur==="popoludnie"||cur==="oba";
+      const isOff= cur==="off";
+      inner = `<div class="opts">
+        <button class="opt ${rano?"sel":""}" onclick="pickHK('${k}','rano')">Rano</button>
+        <button class="opt ${pop?"sel":""}" onclick="pickHK('${k}','pop')">Popołudnie</button>
+        <button class="opt off ${isOff?"sel":""}" onclick="pickHK('${k}','off')">Nie mogę</button>
+      </div>${(rano&&pop)?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę cały dzień — rano i popołudnie ✓</div>`:""}`;
+    } else if (MODE==="shift"){
+      inner = `<div class="opts">${opts.map(([v,l])=>`<button class="opt ${v==="off"?"off":""} ${cur===v?"sel":""}" onclick="pick('${k}','${v}')">${esc(l)}</button>`).join("")}</div>`;
+    } else {
+      const h = HOURS[k]||{}; const isOff = cur==="off";
+      const sel = (id,val,ph)=>`<select class="hsel" onchange="setH('${k}','${id}',this.value)"><option value="">${ph}</option>${HOPT.map(x=>`<option value="${x}"${String(val)===String(x)?" selected":""}>${x}:00</option>`).join("")}</select>`;
+      inner = `<div class="opts" style="align-items:center">
+        ${sel("start",h.start,"od")}<span style="color:var(--muted);font-weight:800">–</span>${sel("end",h.end,"do")}
+        <button class="opt off ${isOff?"sel":""}" style="flex:0 0 auto;min-width:88px" onclick="pick('${k}','off')">Nie mogę</button>
+      </div>${(cur==="godziny"&&(h.start||h.end))?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę ${h.start||"?"}:00–${h.end||"?"}:00 ✓</div>`:""}`;
+    }
+    return `<div class="day${today}${wknd}">
+      <div class="dtop"><span class="ddow">${DOW[dt.getDay()]}</span><span class="ddate">${dt.getDate()} ${MON[dt.getMonth()]}</span></div>
+      ${inner}</div>`;
+  }).join("");
+  const filled = Object.keys(CHOICE).length;
+  const cdBar = META.expires_at ? `<div id="cd" class="cdbar"></div>` : "";
+  app.innerHTML = `
+    ${cdBar}
+    <div class="hi">Cześć ${esc(META.person||"")}!</div>
+    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Wybierz gotową zmianę."} Zapisuje się automatycznie.</div>
+    ${toggle}
+    ${rows}
+    <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>
+    <button id="confirmBtn" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:#0f7a4a;color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer" onclick="confirmAvail()">Gotowe — wyślij do kierownika</button>`;
+  startCountdown();
+}
+window.setMode = (m)=>{ MODE=m; render(); };
+
+// ── Licznik: ile czasu zostało na edycję; po 0 grafik się zamyka ──
+let CD_TIMER = null;
+function showClosed(){
+  if (CD_TIMER){ clearInterval(CD_TIMER); CD_TIMER = null; }
+  app.innerHTML = '<div class="box"><div class="big">Zbiórka zamknięta</div><div class="sm">Czas na edycję grafiku minął. Jeśli chcesz coś jeszcze zmienić, poproś menedżera o nowy link.</div></div>';
+}
+function startCountdown(){
+  if (CD_TIMER){ clearInterval(CD_TIMER); CD_TIMER = null; }
+  if (!META || !META.expires_at) return;
+  const exp = new Date(META.expires_at).getTime();
+  if (isNaN(exp)) return;
+  const tick = ()=>{
+    const ms = exp - Date.now();
+    if (ms <= 0){ showClosed(); return; }
+    const el = document.getElementById("cd");
+    if (!el) return;
+    const h = Math.floor(ms/3600000), m = Math.floor(ms%3600000/60000), s = Math.floor(ms%60000/1000);
+    const warn = ms < 3600000;              // ostatnia godzina — na czerwono
+    el.className = "cdbar" + (warn ? " warn" : "");
+    el.innerHTML = `⏳ Edycja możliwa jeszcze <b>${h>0?h+"h ":""}${pad(m)}m ${pad(s)}s</b> — potem grafik się zamknie.`;
+  };
+  tick();
+  CD_TIMER = setInterval(tick, 1000);
+}
+async function saveAvail(date, choice, start, end){
+  // Godziny → wersja 5-arg (wymaga migracji 0024). Zwykła zmiana → wersja 3-arg (działa zawsze).
+  const args = { p_token:TOKEN, p_date:date, p_choice:choice };
+  if (start != null || end != null) { args.p_start = start; args.p_end = end; }
+  try { const { error } = await sb.rpc("set_availability", args); if(error) throw error; return true; }
+  catch { toast("Nie zapisano — spróbuj ponownie.", "#c2415a"); return false; }
+}
+window.setH = async (date, which, val)=>{
+  const h = HOURS[date] = HOURS[date] || { start:"", end:"" };
+  h[which] = val;
+  if (h.start && h.end){ CHOICE[date]="godziny"; render(); await saveAvail(date,"godziny",h.start,h.end); }
+  else render();
+};
+window.confirmAvail = () => {
+  const filled = Object.keys(CHOICE).length;
+  if (!filled) return toast("Najpierw zaznacz przynajmniej jeden dzień.", "#c2415a");
+  const b = document.getElementById("confirmBtn");
+  if (b){ b.textContent = "Wysłano ✓ Dziękujemy!"; b.style.background = "#0a5c38"; }
+  toast("Dziękujemy! Twoja dyspozycyjność jest zapisana ✓");
+};
+
+window.pick = async (date, choice)=>{
+  const prev = CHOICE[date], prevH = HOURS[date];
+  CHOICE[date] = choice;        // optymistycznie
+  if (choice !== "godziny") delete HOURS[date];
+  render();
+  const ok = await saveAvail(date, choice, null, null);
+  if (!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; if(prevH) HOURS[date]=prevH; render(); }
+};
+
+// HK: Rano/Popołudnie to przełączniki — można mieć jedną, obie ('oba') lub żadną.
+window.pickHK = async (date, which)=>{
+  const cur = CHOICE[date] || "";
+  let rano = cur==="poranna"||cur==="oba"||cur==="dzien";
+  let pop  = cur==="popoludnie"||cur==="oba";
+  if (which==="off"){ rano = false; pop = false; }
+  else if (which==="rano"){ rano = !rano; }
+  else if (which==="pop"){ pop = !pop; }
+  let choice;
+  if (which==="off") choice = "off";
+  else if (rano && pop) choice = "oba";
+  else if (rano) choice = "poranna";
+  else if (pop) choice = "popoludnie";
+  else choice = null;           // odznaczono wszystko → wpis znika (lokalnie)
+  const prev = CHOICE[date];
+  if (choice === null){ delete CHOICE[date]; render(); return; }
+  CHOICE[date] = choice;        // optymistycznie
+  render();
+  const ok = await saveAvail(date, choice, null, null);
+  if (!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; render(); }
+};
+
+boot();
+</script>
+</body>
+</html>

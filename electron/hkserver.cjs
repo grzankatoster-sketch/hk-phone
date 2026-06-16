@@ -413,6 +413,34 @@ function pushTaskToWorkers(task, workers) {
   });
 }
 
+// Recepcja prosi o pokój w pierwszej kolejności (przycisk „!" → Pilne w HKPanel)
+function pushPriorityToWorkers(room, workers) {
+  if (!room) return;
+  const targets = Array.isArray(workers) && workers.length ? workers : Object.keys(_pushSubs);
+  targets.forEach(w => {
+    sendPushToWorker(w, {
+      title: "⚡ Pilne — pokój " + room,
+      body: "Recepcja prosi o pokój " + room + " w pierwszej kolejności",
+      tag: "priority-" + room,
+      requireInteraction: true,
+    }).catch(() => {});
+  });
+}
+
+// Recepcja pyta o status pokoju (przycisk „!" → Zapytaj o status) — pracownik może odpisać
+function pushInfoToWorkers(room, workers) {
+  if (!room) return;
+  const targets = Array.isArray(workers) && workers.length ? workers : Object.keys(_pushSubs);
+  targets.forEach(w => {
+    sendPushToWorker(w, {
+      title: "💬 Pytanie o pokój " + room,
+      body: "Recepcja pyta o status pokoju " + room + " — otwórz i odpowiedz",
+      tag: "info-" + room,
+      requireInteraction: true,
+    }).catch(() => {});
+  });
+}
+
 function getState() { return _state; }
 
 // Merguje zmiany statusów pokoi z Railway (nie nadpisuje vacated — to kontroluje Electron)
@@ -682,8 +710,7 @@ function mobilePage(workerName) {
   + '<div class="report-row"><span class="report-label">Dywanik<\/span><input class="report-input" id="r-dywanik" type="number" min="0" value="0"><\/div>\n'
   + '<div class="report-row"><span class="report-label">Narzuta<\/span><input class="report-input" id="r-narzuta" type="number" min="0" value="0"><\/div>\n'
   + '<div class="report-row"><span class="report-label">Kołdra<\/span><input class="report-input" id="r-koldra" type="number" min="0" value="0"><\/div>\n'
-  + '<div class="report-row"><span class="report-label">Poduszka<\/span><input class="report-input" id="r-poduszka" type="number" min="0" value="0"><\/div>\n'
-  + '<div class="report-row"><span class="report-label">Podkład<\/span><input class="report-input" id="r-podklad" type="number" min="0" value="0"><\/div><\/div>\n'
+  + '<div class="report-row"><span class="report-label">Poduszka<\/span><input class="report-input" id="r-poduszka" type="number" min="0" value="0"><\/div><\/div>\n'
   + '<button onclick="addExtraRow()" style="width:100%;margin:8px 0;padding:10px;border-radius:9px;border:1.5px dashed #30363d;background:transparent;color:#8b949e;font-size:13px;font-weight:700;cursor:pointer;">+ Dodaj pozycję spoza listy<\/button>\n'
   + '<div id="rv-done-info" style="display:none" class="done-info"><\/div>\n'
   + '<button id="rv-btn-done" class="btn btn-done" onclick="submitDone()" style="display:none">✓ Gotowe!<\/button>\n'
@@ -776,7 +803,6 @@ function mobilePage(workerName) {
   + '  document.getElementById("r-narzuta").value=rpt.narzuta||0;\n'
   + '  document.getElementById("r-koldra").value=rpt.koldra||0;\n'
   + '  document.getElementById("r-poduszka").value=rpt.poduszka||0;\n'
-  + '  document.getElementById("r-podklad").value=rpt.podklad||0;\n'
   + '  initExtraRows(rpt);\n'
   + '  var btnD=document.getElementById("rv-btn-done");\n'
   + '  var doneInfo=document.getElementById("rv-done-info");\n'
@@ -795,7 +821,7 @@ function mobilePage(workerName) {
   + '}\n'
   + 'function addExtraRow(nv,cv){var t=document.getElementById("rv-report");var row=document.createElement("div");row.className="report-row extra-row";row.style.gap="8px";var ni=document.createElement("input");ni.type="text";ni.className="report-label";ni.placeholder="Nazwa (np. firanki)";ni.style.cssText="flex:1;background:#0d1117;border:1.5px solid #30363d;border-radius:8px;padding:6px 10px;color:#e6edf3;font-size:14px;min-width:0;";if(nv)ni.value=nv;var ci=document.createElement("input");ci.type="number";ci.className="report-input";ci.min="0";ci.value=cv||0;var db=document.createElement("button");db.textContent="\u00d7";db.style.cssText="background:none;border:none;color:#f87171;font-size:18px;cursor:pointer;padding:0 4px;flex-shrink:0;";db.onclick=function(){row.parentNode&&row.parentNode.removeChild(row);};row.appendChild(ni);row.appendChild(ci);row.appendChild(db);t.appendChild(row);}\n'
   + 'function initExtraRows(rpt){document.querySelectorAll(".extra-row").forEach(function(r){r.parentNode&&r.parentNode.removeChild(r);});((rpt&&rpt.extraItems)||[]).forEach(function(item){addExtraRow(item.name,item.count);});}\n'
-  + 'function getReport(){var ex=[];document.querySelectorAll(".extra-row").forEach(function(row){var inp=row.querySelectorAll("input");if(inp.length>=2){var n=inp[0].value.trim();var c=parseInt(inp[1].value)||0;if(n)ex.push({name:n,count:c});}});return{poszwa:+document.getElementById("r-poszwa").value||0,poszewki:+document.getElementById("r-poszewki").value||0,przes_sr:+document.getElementById("r-przes-sr").value||0,przes_duze:+document.getElementById("r-przes-duze").value||0,recz_duzy:+document.getElementById("r-recz-duzy").value||0,recz_sredni:+document.getElementById("r-recz-sredni").value||0,dywanik:+document.getElementById("r-dywanik").value||0,narzuta:+document.getElementById("r-narzuta").value||0,koldra:+document.getElementById("r-koldra").value||0,poduszka:+document.getElementById("r-poduszka").value||0,podklad:+document.getElementById("r-podklad").value||0,extraItems:ex};}\n'
+  + 'function getReport(){var ex=[];document.querySelectorAll(".extra-row").forEach(function(row){var inp=row.querySelectorAll("input");if(inp.length>=2){var n=inp[0].value.trim();var c=parseInt(inp[1].value)||0;if(n)ex.push({name:n,count:c});}});return{poszwa:+document.getElementById("r-poszwa").value||0,poszewki:+document.getElementById("r-poszewki").value||0,przes_sr:+document.getElementById("r-przes-sr").value||0,przes_duze:+document.getElementById("r-przes-duze").value||0,recz_duzy:+document.getElementById("r-recz-duzy").value||0,recz_sredni:+document.getElementById("r-recz-sredni").value||0,dywanik:+document.getElementById("r-dywanik").value||0,narzuta:+document.getElementById("r-narzuta").value||0,koldra:+document.getElementById("r-koldra").value||0,poduszka:+document.getElementById("r-poduszka").value||0,extraItems:ex};}\n'
   + 'function submitDone(){if(!_currentRoom)return;act("done",_currentRoom.no,getReport());goBack();}\n'
   + 'function showToast(msg){clearTimeout(toastT);var old=document.querySelector(".toast");if(old)old.remove();var t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);toastT=setTimeout(function(){t.remove();},5000);}\n'
   + 'function act(action,room,extra){var body={action:action,room:room};if(extra!==null&&extra!==undefined)body.extra=extra;fetch("/hk/"+encodeURIComponent(W)+"/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(){poll();}).catch(function(){});}\n'
@@ -1433,6 +1459,40 @@ function _tryStart() {
           const { task, workers } = JSON.parse(body || "{}");
           if (!task || !task.text) { res.writeHead(400); res.end(JSON.stringify({ ok: false })); return; }
           pushTaskToWorkers(task, workers);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+      });
+      return;
+    }
+
+    // POST /push/priority — recepcja prosi o pokój w pierwszej kolejności
+    // Body: { room: "112", workers: ["Tetiana"] (opcjonalne) }
+    if (req.method === "POST" && p === "/push/priority") {
+      let body = "";
+      req.on("data", c => body += c);
+      req.on("end", () => {
+        try {
+          const { room, workers } = JSON.parse(body || "{}");
+          if (!room) { res.writeHead(400); res.end(JSON.stringify({ ok: false })); return; }
+          pushPriorityToWorkers(String(room).slice(0, 10), workers);
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }
+      });
+      return;
+    }
+
+    // POST /push/info — recepcja pyta o status pokoju (pracownik może odpisać)
+    // Body: { room: "112", workers: ["Tetiana"] (opcjonalne) }
+    if (req.method === "POST" && p === "/push/info") {
+      let body = "";
+      req.on("data", c => body += c);
+      req.on("end", () => {
+        try {
+          const { room, workers } = JSON.parse(body || "{}");
+          if (!room) { res.writeHead(400); res.end(JSON.stringify({ ok: false })); return; }
+          pushInfoToWorkers(String(room).slice(0, 10), workers);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ ok: true }));
         } catch (e) { res.writeHead(500); res.end(JSON.stringify({ ok: false, error: e.message })); }

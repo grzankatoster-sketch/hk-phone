@@ -61,4 +61,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   kwhotelArrivals: ({ date }) => ipcRenderer.invoke("kwhotel-arrivals", { date }),
   kwhotelDepartures: ({ date }) => ipcRenderer.invoke("kwhotel-departures", { date }),
   kwhotelRooms: ({ date }) => ipcRenderer.invoke("kwhotel-rooms", { date }),
+
+  // Agent AI — natywne powiadomienia Windows + nawigacja po kliknięciu
+  notify: (payload) => ipcRenderer.invoke("notify", payload),
+  focusWindow: () => ipcRenderer.invoke("focus-window"),
+  onAgentNavigate: (cb) => on("agent-navigate", cb),
+  removeAgentNavigate: () => ipcRenderer.removeAllListeners("agent-navigate"),
 });

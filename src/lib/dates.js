@@ -33,6 +33,24 @@ export const parseDayKey = (s) => {
   return new Date(y, m - 1, d);
 };
 
+// Parsuje datę z fmt()/toLocaleString("pl-PL"): "13.06.2026, 14:30:00" → ms epoch.
+// UWAGA: new Date("13.06.2026, ...") zwraca Invalid Date (NaN) w silnikach JS — przez to
+// porównania typu "nowy wpis > ostatnio widziane" zawsze wychodziły false (np. brak
+// powiadomień o nowych wpisach Wiki). Zwraca 0 dla pustych/niepoprawnych wartości.
+export const parsePlDateTime = (s) => {
+  if (!s) return 0;
+  const str = String(s).trim();
+  // ISO lub inny format, który Date rozumie natywnie.
+  if (str.includes("T") || /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const t = new Date(str).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  const m = str.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (!m) { const t = new Date(str).getTime(); return Number.isNaN(t) ? 0 : t; }
+  const [, d, mo, y, h = 0, mi = 0, se = 0] = m;
+  return new Date(+y, +mo - 1, +d, +h, +mi, +se).getTime();
+};
+
 const normalizeScheduleEmployeeName = (name) =>
   String(name || "")
     .trim()
@@ -121,4 +139,28 @@ export function shiftStartMinutes(schedule, empName, date = new Date()) {
   const fromRaw = parseStartMinutes(entry.raw);
   if (fromRaw !== null) return fromRaw;
   return entry.shift ? (SHIFT_START_MIN[entry.shift] ?? null) : null;
+}
+
+// Nominal shift end (minutes from midnight). wieczorowa/nocna kończą się o 7:00
+// następnego dnia — shiftEndDate przewija datę gdy koniec wypada przed startem.
+const SHIFT_END_MIN = Object.freeze({
+  poranna: 17 * 60,
+  popoludniowa: 23 * 60,
+  wieczorowa: 7 * 60,
+  dzienna: 19 * 60,
+  nocna: 7 * 60,
+});
+
+// Zwraca moment końca zmiany jako Date, licząc od daty startu (shiftStartTime).
+// Gdy koniec wypada przed/o starcie (zmiana przez północ — nocna/wieczorowa),
+// przewija na dzień następny. Zwraca null gdy brak danych. Czysta funkcja.
+export function shiftEndDate(shiftKey, startTime) {
+  const endMin = SHIFT_END_MIN[shiftKey];
+  if (endMin == null || !startTime) return null;
+  const base = new Date(startTime);
+  if (isNaN(base.getTime())) return null;
+  const end = new Date(base);
+  end.setHours(Math.floor(endMin / 60), endMin % 60, 0, 0);
+  if (end <= base) end.setDate(end.getDate() + 1);
+  return end;
 }

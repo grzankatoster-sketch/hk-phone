@@ -1,8 +1,12 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { BarChart2, Trash2 } from "lucide-react";
-import { SHIFT_SHORT_LABELS } from "../../lib/constants";
+import { BarChart2, Trash2, Sparkles } from "lucide-react";
+import { SHIFT_SHORT_LABELS, TENANT_ID } from "../../lib/constants";
 import { todayKey } from "../../lib/dates";
+import { supabase } from "../../lib/supabase";
+import { generateWeeklyReport, llmReady } from "../../lib/llm";
+import jsPDF from "jspdf";
+import { mkPDF_header, mkPDF_paragraph, savePDF } from "../../lib/pdf";
 
 export default function StatystykiPanel({
   weeklyStats,
@@ -28,6 +32,76 @@ export default function StatystykiPanel({
       addAudit(currentManager, "Reset wszystkich statystyk");
       showToast("Statystyki zresetowane.", "info");
     });
+
+  const [weeklyReport, setWeeklyReport] = React.useState("");
+  const [wrBusy, setWrBusy] = React.useState(false);
+  const [wrError, setWrError] = React.useState("");
+  const runWeekly = async () => {
+    if (wrBusy) return;
+    setWrBusy(true); setWrError(""); setWeeklyReport("");
+    try {
+      const today = new Date();
+      const from = new Date(today); from.setDate(today.getDate() - 6);
+      const fromKey = todayKey(from), toKey = todayKey(today);
+      const fromIso = new Date(fromKey + "T00:00:00").toISOString();
+      const toIso = new Date(toKey + "T23:59:59").toISOString();
+      let reports = [], faults = [], rooms = [];
+      if (supabase) {
+        const [r1, r2, r3] = await Promise.all([
+          supabase.from("shift_reports").select("*").eq("tenant_id", TENANT_ID).gte("day_key", fromKey).lte("day_key", toKey).order("saved_at"),
+          supabase.from("faults").select("source,status,room,space_id,description,assigned_to,reported_at").eq("tenant_id", TENANT_ID).gte("reported_at", fromIso).lte("reported_at", toIso),
+          supabase.from("hk_rooms").select("status,worker,date").gte("date", fromKey).lte("date", toKey),
+        ]);
+        reports = r1.data || []; faults = r2.data || []; rooms = r3.data || [];
+      }
+      // Per osoba: zmiany + zadania
+      const perPerson = {};
+      reports.forEach(r => {
+        const e = r.employee || "—";
+        perPerson[e] = perPerson[e] || { zmiany: 0, zadaniaWykonane: 0, zadaniaLacznie: 0 };
+        perPerson[e].zmiany++; perPerson[e].zadaniaWykonane += r.tasks_done || 0; perPerson[e].zadaniaLacznie += r.tasks_total || 0;
+      });
+      // Kasa po kolei
+      const kasaPoKolei = reports.map(r => ({ dzien: r.day_key, zmiana: SHIFT_SHORT_LABELS[r.shift_key] || r.shift_key, osoba: r.employee, koncowa: r.cash_closing, sejf: r.safe_total }));
+      // Notatki służbowe (z raportów dobowych)
+      const notatki = reports.map(r => r.handover).filter(Boolean);
+      // Sprzątanie per osoba
+      const sprzatanie = {};
+      rooms.filter(r => r.status === "czyste").forEach(r => { const w = r.worker || "—"; sprzatanie[w] = (sprzatanie[w] || 0) + 1; });
+      const ctx = {
+        okres: `${fromKey} – ${toKey}`,
+        zmiany: reports.length,
+        praceWgOsoby: perPerson,
+        kasaPoKolei,
+        sprzataniePokoiWgOsoby: sprzatanie,
+        usterki: {
+          otwarte: faults.filter(f => f.status === "open").length,
+          wToku: faults.filter(f => f.status === "in_progress").length,
+          naprawione: faults.filter(f => f.status === "done").length,
+          zHK: faults.filter(f => f.source === "hk").length,
+          zRecepcji: faults.filter(f => f.source !== "hk").length,
+          konserwatorzy: faults.filter(f => f.assigned_to).map(f => ({ pokoj: f.room || f.space_id, opis: f.description, osoba: f.assigned_to, status: f.status })),
+        },
+        notatkiSluzbowe: notatki,
+        korektyPlatnosci: paymentCorrections.length,
+      };
+      const text = await generateWeeklyReport(ctx);
+      setWeeklyReport(text || "Brak danych do sprawozdania.");
+    } catch (e) {
+      setWrError(e?.code === "rate_limited" ? "Limit zapytań — spróbuj za chwilę." : "Sprawozdanie niedostępne.");
+    } finally { setWrBusy(false); }
+  };
+  const downloadWeeklyPdf = () => {
+    if (!weeklyReport) return;
+    const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+    const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight();
+    const ml = 14, cw = pw - 28;
+    mkPDF_header(doc, pw, "Sprawozdanie tygodniowe", new Date().toLocaleDateString("pl-PL"));
+    let y = 38;
+    const chk = (need) => { if (y + need > ph - 14) { doc.addPage(); y = 20; return y; } return null; };
+    y = mkPDF_paragraph(doc, ml, cw, y, weeklyReport, 10, chk);
+    savePDF(doc, `sprawozdanie_tygodniowe_${todayKey()}`);
+  };
 
   const dayLog = employeeActivityLog.filter(item => {
     if(!item.loginAt)return false;
@@ -69,6 +143,21 @@ export default function StatystykiPanel({
           <div className="cc-kpi-sub">płatności</div>
         </div>
       </div>
+
+      {llmReady && (
+        <div className="panel glass dark-panel" style={{ marginBottom: 16, borderLeft: "4px solid var(--gold)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <div className="panel-title" style={{ marginBottom: 0 }}><Sparkles size={16} style={{ color: "var(--gold)" }} /> Sprawozdanie tygodniowe (AI)</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {weeklyReport && <button className="btn btn-outline" style={{ fontSize: 12.5 }} onClick={downloadWeeklyPdf}>Pobierz PDF</button>}
+              <button className="btn btn-gold" style={{ fontSize: 12.5 }} onClick={runWeekly} disabled={wrBusy}>{wrBusy ? "Generuję…" : weeklyReport ? "Odśwież" : "Wygeneruj za 7 dni"}</button>
+            </div>
+          </div>
+          <div className="tiny muted" style={{ marginTop: 4 }}>Kto ile zadań, stany kasy po kolei, usterki/konserwatorzy, notatki służbowe — z ostatnich 7 dni.</div>
+          {wrError && <div style={{ color: "var(--rose)", fontSize: 12.5, marginTop: 10 }}>{wrError}</div>}
+          {weeklyReport && <div style={{ marginTop: 12, whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.7, color: "var(--text-primary)", background: "rgba(245,158,11,.12)", border: "1px solid rgba(245,158,11,.35)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>{weeklyReport}</div>}
+        </div>
+      )}
 
       <div className="panel glass dark-panel">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>

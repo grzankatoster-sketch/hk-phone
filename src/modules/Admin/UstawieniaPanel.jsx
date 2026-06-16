@@ -23,7 +23,7 @@ export default function UstawieniaPanel({
       <div className="panel glass dark-panel">
         <div className="panel-title"><Download size={16}/> Backup i przywracanie danych</div>
         <div className="tiny muted-light" style={{marginBottom:12,marginTop:-6}}>Dane przechowywane w pamięci aplikacji. Backup = plik JSON na pendrive.</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div className="cc-form-grid cc-form-grid-2">
           <div style={{background:"rgba(45,106,79,.1)",border:"1px solid rgba(45,106,79,.25)",borderRadius:"var(--radius-md)",padding:"12px"}}>
             <div style={{fontSize:12.5,fontWeight:700,color:"#5acc94",marginBottom:6}}>&#128230; Eksport backup</div>
             <div style={{fontSize:11.5,color:"#635e57",marginBottom:10,lineHeight:1.5}}>Pobierz plik JSON ze wszystkimi danymi recepcji.</div>

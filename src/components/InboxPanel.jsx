@@ -1,6 +1,7 @@
 import React from "react";
-import { BellRing, Pin, Clock } from "lucide-react";
-import { STORAGE_KEYS, loadJson } from "../lib/storage";
+import { BellRing, Pin, Clock, Plus, Check, Trash2 } from "lucide-react";
+import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
+import { parsePlDateTime } from "../lib/dates";
 
 function EmptyState({icon,title,sub,action}){
   return(
@@ -45,19 +46,48 @@ function expiresLabel(expires_at){
   return `${Math.floor(h/24)} dni`;
 }
 
-export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,onOpenWiki}){
+export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,isManager,onOpenWiki,onMarkedRead}){
   const [tab,setTab]=React.useState("alerts");
   const [tick,setTick]=React.useState(0);
+  const [pending,setPending]=React.useState(()=>loadJson(STORAGE_KEYS.pendingItems,[]));
+  const [pendingInput,setPendingInput]=React.useState("");
+  const [resolvingId,setResolvingId]=React.useState("");   // który wpis odhaczamy
+  const [resolveNote,setResolveNote]=React.useState("");    // krótki opis „co zrobiłem"
 
   React.useEffect(()=>{
     const interval=setInterval(()=>setTick(t=>t+1),60000);
     const onStorage=(e)=>{
       if(e.key===STORAGE_KEYS.managerAlerts||e.key===STORAGE_KEYS.standingReminders)
         setTick(t=>t+1);
+      if(e.key===STORAGE_KEYS.pendingItems)
+        setPending(loadJson(STORAGE_KEYS.pendingItems,[]));
     };
     window.addEventListener("storage",onStorage);
     return ()=>{clearInterval(interval);window.removeEventListener("storage",onStorage);};
   },[]);
+
+  // ── Oczekujące / Do odebrania (tryb C1: pracownik dopisuje, kierownik moderuje) ──
+  const persistPending=(list)=>{setPending(list);saveJson(STORAGE_KEYS.pendingItems,list);onMarkedRead?.();};
+  const addPending=()=>{
+    const t=pendingInput.trim();if(!t)return;
+    const item={id:crypto.randomUUID(),text:t,createdBy:employeeName||"recepcja",createdAt:new Date().toISOString(),resolved:false};
+    persistPending([item,...pending]);setPendingInput("");
+  };
+  const confirmResolve=(id)=>{
+    persistPending(pending.map(p=>p.id===id?{
+      ...p,resolved:true,
+      resolvedBy:employeeName||"recepcja",
+      resolvedShift:selectedShift||"",
+      resolvedAt:new Date().toISOString(),
+      resolveNote:resolveNote.trim(),
+    }:p));
+    setResolvingId("");setResolveNote("");
+  };
+  const deletePending=(id)=>persistPending(pending.filter(p=>p.id!==id));
+  const openPending=pending.filter(p=>!p.resolved);
+  const resolvedPending=pending.filter(p=>p.resolved).slice(0,30);
+  const fmtPL=(iso)=>{try{return new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}catch{return"";}};
+  const shiftShort={poranna:"poranna",popoludniowa:"popołudniowa",nocna:"nocna",dzienna:"dzienna"};
 
   const alerts=loadJson(STORAGE_KEYS.managerAlerts,[])
     .filter(a=>!a.expires_at||new Date(a.expires_at).getTime()>Date.now())
@@ -66,11 +96,13 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
   const reminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false);
   const wikiLastSeenKey=`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`;
   const lastSeenMs=parseInt(localStorage.getItem(wikiLastSeenKey)||"0");
-  const newWiki=(wikiEntries||[]).filter(w=>{
-    const u=w.updatedAt?new Date(w.updatedAt).getTime():0;
-    return u>lastSeenMs;
-  });
+  const newWiki=(wikiEntries||[]).filter(w=>parsePlDateTime(w.updatedAt)>lastSeenMs);
   const markWikiSeen=()=>localStorage.setItem(wikiLastSeenKey,String(Date.now()));
+  const handleMarkWikiSeen=()=>{
+    markWikiSeen();
+    setTick(t=>t+1);
+    onMarkedRead?.();
+  };
 
   const tabBtn=(id,label,count,variant)=>(
     <button
@@ -108,6 +140,7 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
       <div className="cc-inbox-tabs" role="tablist" aria-label="Sekcje informacji">
         {tabBtn("alerts","Pilne",alerts.length,"rose")}
         {tabBtn("standing","Stałe",reminders.length,"gold")}
+        {tabBtn("pending","Oczekujące",openPending.length,"sky")}
         {tabBtn("wiki","Nowe w Wiki",newWiki.length,"brand")}
       </div>
       <div className="cc-inbox-body">
@@ -168,6 +201,84 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
           </div>
         )}
 
+        {tab==="pending"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Dodawanie — dostępne dla każdego pracownika (tryb C1) */}
+            <div className="cc-pending-add">
+              <input
+                className="input"
+                style={{flex:1}}
+                placeholder="Np. Gość z 210 odbierze paczkę — kiedyś w tym tygodniu"
+                value={pendingInput}
+                onChange={e=>setPendingInput(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&addPending()}/>
+              <button type="button" className="btn btn-sky" onClick={addPending} disabled={!pendingInput.trim()}>
+                <Plus size={14}/> Dodaj
+              </button>
+            </div>
+            <div className="tiny muted" style={{marginTop:-4}}>Sprawy bez konkretnego terminu — „ktoś kiedyś coś przyniesie / odbierze". Każdy może odhaczyć, gdy się załatwi.</div>
+
+            {openPending.length===0?(
+              <EmptyState
+                icon={CLIP_PATH}
+                title="Brak oczekujących spraw"
+                sub="Nie ma nic do odebrania ani spraw otwartych bez terminu."
+              />
+            ):openPending.map(p=>(
+              <div key={p.id} className="cc-preshift-item" style={{borderLeftColor:"var(--sky)"}}>
+                <div className="cc-preshift-item-head" style={{gap:6}}>
+                  <div className="cc-preshift-item-title" style={{flex:1}}>{p.text}</div>
+                  {(isManager||p.createdBy===employeeName)&&(
+                    <button type="button" className="icon-btn icon-btn-danger" onClick={()=>deletePending(p.id)} title="Usuń"><Trash2 size={13}/></button>
+                  )}
+                </div>
+                <div className="cc-preshift-item-meta">Dodał(a): {p.createdBy} · {fmtPL(p.createdAt)}</div>
+                {resolvingId===p.id?(
+                  <div className="cc-pending-resolve">
+                    <input
+                      className="input"
+                      style={{flex:1}}
+                      autoFocus
+                      placeholder="Co zrobiłeś? Np. Odebrał gość osobiście / przekazano kurierowi"
+                      value={resolveNote}
+                      onChange={e=>setResolveNote(e.target.value)}
+                      onKeyDown={e=>{if(e.key==="Enter")confirmResolve(p.id);if(e.key==="Escape"){setResolvingId("");setResolveNote("");}}}/>
+                    <button type="button" className="btn btn-sky" onClick={()=>confirmResolve(p.id)}><Check size={14}/> Potwierdź</button>
+                    <button type="button" className="btn btn-outline" onClick={()=>{setResolvingId("");setResolveNote("");}}>Anuluj</button>
+                  </div>
+                ):(
+                  <div style={{marginTop:8}}>
+                    <button type="button" className="btn btn-outline" style={{fontSize:12.5,padding:"5px 12px"}} onClick={()=>{setResolvingId(p.id);setResolveNote("");}}>
+                      <Check size={13}/> Oznacz jako załatwione
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {resolvedPending.length>0&&(
+              <details className="cc-pending-done-wrap">
+                <summary className="cc-pending-done-summary">Załatwione ({resolvedPending.length})</summary>
+                <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8}}>
+                  {resolvedPending.map(p=>(
+                    <div key={p.id} className="cc-pending-done-item">
+                      <Check size={13} style={{color:"var(--emerald)",flexShrink:0,marginTop:2}}/>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:13,textDecoration:"line-through",opacity:.7}}>{p.text}</div>
+                        <div className="tiny muted">
+                          ✓ {p.resolvedBy}{p.resolvedShift?` · ${shiftShort[p.resolvedShift]||p.resolvedShift}`:""} · {fmtPL(p.resolvedAt)}
+                        </div>
+                        {p.resolveNote&&<div className="tiny" style={{marginTop:2,color:"var(--text)"}}>„{p.resolveNote}"</div>}
+                      </div>
+                      {isManager&&<button type="button" className="icon-btn icon-btn-danger" onClick={()=>deletePending(p.id)} title="Usuń"><Trash2 size={12}/></button>}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+
         {tab==="wiki"&&(
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {newWiki.length===0?(
@@ -184,7 +295,7 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
             ):(
               <>
                 <div className="cc-inbox-wiki-actions">
-                  <button type="button" onClick={()=>{markWikiSeen();window.location.reload();}} className="cc-inbox-mark-read">
+              <button type="button" onClick={handleMarkWikiSeen} className="cc-inbox-mark-read">
                     Oznacz wszystkie jako przeczytane
                   </button>
                 </div>

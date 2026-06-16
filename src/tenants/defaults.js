@@ -12,7 +12,7 @@ export const DEFAULTS = {
   employees: ["Weronika", "Agata", "Oliwier", "Natalia", "Rebecca"],
 
   // Pracownicy działu konserwacji / technicznego
-  maintainers: ["Piotr", "Marek"],
+  maintainers: ["Grzegorz", "Kamil"],
 
   // Pomieszczenia parteru (dla modułu Usterki)
   parter: [

@@ -6,6 +6,10 @@
 
 const { HK_ALL, ROOM_TYPE_BY_NO } = require("./rooms.cjs");
 
+// Apartamenty: typ NIE jest stały (np. "DBL", "2xDBL", "D+T+SOFA") — recepcja
+// wybiera go ręcznie per dzień w panelu HK. Nie wolno go nadpisywać twardym "APT".
+const APT_ROOMS = new Set((HK_ALL || []).filter((r) => r.apt).map((r) => r.no));
+
 function buildPmRoomTypes(data) {
   const out = {};
   if (!data || typeof data !== "object") return out;
@@ -20,14 +24,39 @@ function buildPmRoomTypes(data) {
   return out;
 }
 
-function buildRoomTypes() {
+function buildRoomTypes(existing) {
   const rt = {};
   for (const r of HK_ALL || []) rt[r.no] = r.type;
   // Fallback gdy HK_ALL nie jest re-eksportowany
   if (!Object.keys(rt).length && ROOM_TYPE_BY_NO) {
     for (const [no, t] of Object.entries(ROOM_TYPE_BY_NO)) rt[no] = t;
   }
+  // Zachowaj typ apartamentu wpisany przez recepcję (jeśli istnieje) — automatyzacja
+  // z maila nie zna realnego ukladu apartamentu, wiec nie nadpisuje wpisanej wartosci.
+  if (existing && typeof existing === "object") {
+    for (const no of APT_ROOMS) {
+      if (existing[no]) rt[no] = existing[no];
+    }
+  }
   return rt;
+}
+
+// Pobiera aktualne room_types z hk_plan dla wskazanych dat, by zachowac recznie
+// wpisane typy apartamentow podczas upsertu z automatyzacji.
+async function fetchExistingRoomTypes(url, key, dates) {
+  const out = {};
+  if (!dates.length) return out;
+  try {
+    const q = `${url}/rest/v1/hk_plan?date=in.(${dates.join(",")})&select=date,room_types`;
+    const res = await fetch(q, { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    if (res.ok) {
+      const rows = await res.json();
+      for (const row of Array.isArray(rows) ? rows : []) out[row.date] = row.room_types || {};
+    }
+  } catch {
+    /* brak sieci — zwroc puste, buildRoomTypes uzyje twardych typow */
+  }
+  return out;
 }
 
 async function upsertPlansToSupabase(plansByDate, meta, log) {
@@ -42,13 +71,21 @@ async function upsertPlansToSupabase(plansByDate, meta, log) {
     return { ok: false, reason: "no-fetch", uploaded: 0 };
   }
 
-  const room_types = buildRoomTypes();
   const updated_at = meta?.generatedAt || new Date().toISOString();
+
+  // Najpierw policz daty z planami, potem pobierz istniejace room_types, by
+  // zachowac recznie wpisane typy apartamentow zamiast je nadpisac twardym "APT".
+  const candidateDates = Object.entries(plansByDate || {})
+    .filter(([, data]) => data && typeof data === "object" && Object.keys(buildPmRoomTypes(data)).length)
+    .map(([date]) => date);
+  const existingByDate = await fetchExistingRoomTypes(url, key, candidateDates);
+
   const rows = [];
   for (const [date, data] of Object.entries(plansByDate || {})) {
     if (!data || typeof data !== "object") continue;
     const pm_room_types = buildPmRoomTypes(data);
     if (!Object.keys(pm_room_types).length) continue;
+    const room_types = buildRoomTypes(existingByDate[date]);
     rows.push({ date, pm_room_types, room_types, updated_at });
   }
   if (!rows.length) {

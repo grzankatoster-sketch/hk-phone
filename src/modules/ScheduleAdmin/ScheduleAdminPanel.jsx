@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Calendar, ChevronLeft, ChevronRight, Download, Upload, Clock } from "lucide-react";
 import {
-  weekMonday, weekDays, dateKey, exportScheduleXlsx, importScheduleXlsx, SHIFT_CODE, parseHoursToShift,
+  weekMonday, weekDays, dateKey, exportScheduleXlsx, importScheduleXlsx, readScheduleGrid, SHIFT_CODE, parseHoursToShift,
 } from "../../lib/excel";
+import { parseScheduleWithAI, llmReady } from "../../lib/llm";
 import { autoDetectShift, getScheduleDayEntry } from "../../lib/dates";
-import { SHIFT_SHORT_LABELS, SHIFT_OPTIONS } from "../../lib/constants";
+import { SHIFT_SHORT_LABELS, SHIFT_OPTIONS, TENANT_ID } from "../../lib/constants";
+import { supabase } from "../../lib/supabase";
 
 const SHIFT_COLORS = {
   poranna:      { bg: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" },
@@ -175,18 +177,52 @@ export default function ScheduleAdminPanel({ schedule, setSchedule, employees, d
     if (!file) return;
     try {
       const imported = await importScheduleXlsx(file);
+      let result = imported;
+      // Fallback AI: gdy standardowy parser nic nie rozczytał (niestandardowy format),
+      // odczytaj siatkę przez AI. Wynik ZAWSZE do weryfikacji przez kierownika.
+      if (Object.keys(imported).length === 0 && llmReady) {
+        showToast && showToast("Niestandardowy format — czytam grafik przez AI…", "info");
+        try {
+          const grid = await readScheduleGrid(file);
+          const ai = await parseScheduleWithAI(grid);
+          if (ai && Object.keys(ai).length) {
+            result = ai;
+            showToast && showToast("Grafik odczytany przez AI — ZWERYFIKUJ poprawność godzin!", "warning");
+          }
+        } catch { /* zostaje pusty wynik standardowego parsera */ }
+      }
       setSchedule(prev => {
         const merged = { ...prev };
-        for (const [dk, dayData] of Object.entries(imported)) {
+        for (const [dk, dayData] of Object.entries(result)) {
           merged[dk] = { ...(merged[dk] || {}), ...dayData };
         }
         return merged;
       });
-      showToast && showToast("Grafik zaimportowany.", "success");
+      if (Object.keys(result).length) showToast && showToast("Grafik zaimportowany.", "success");
+      else showToast && showToast("Nie udało się rozczytać grafiku.", "error");
     } catch (err) {
       showToast && showToast("Blad importu: " + err.message, "error");
     }
     e.target.value = "";
+  };
+
+  // Pobierz propozycję grafiku przygotowaną w panelu menedżerów (AI) i scal z grafikiem.
+  const importFromPanel = async () => {
+    if (!supabase) { showToast && showToast("Brak połączenia z chmurą.", "error"); return; }
+    try {
+      const { data } = await supabase.from("panel_mirror").select("data")
+        .eq("tenant_id", TENANT_ID).eq("kind", "proposed_schedule").maybeSingle();
+      const prop = data && data.data;
+      if (!prop || !Object.keys(prop).length) { showToast && showToast("Brak propozycji z panelu.", "info"); return; }
+      setSchedule(prev => {
+        const merged = { ...prev };
+        for (const [dk, day] of Object.entries(prop)) merged[dk] = { ...(merged[dk] || {}), ...day };
+        return merged;
+      });
+      showToast && showToast("Wczytano propozycję grafiku z panelu — zweryfikuj i zapisz.", "success");
+    } catch {
+      showToast && showToast("Nie udało się pobrać propozycji.", "error");
+    }
   };
 
   // Today summary — who works each shift today
@@ -258,6 +294,9 @@ export default function ScheduleAdminPanel({ schedule, setSchedule, employees, d
             </button>
             <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={() => fileRef.current?.click()}>
               <Upload size={12} /> Import XLSX
+            </button>
+            <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={importFromPanel} title="Wczytaj propozycję grafiku z panelu menedżerów">
+              <Download size={12} /> Pobierz z panelu
             </button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={handleImport} />
           </div>

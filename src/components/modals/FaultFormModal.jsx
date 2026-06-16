@@ -1,8 +1,9 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, Sparkles } from "lucide-react";
 import { FAULT_CATEGORIES } from "../../lib/constants";
-import { getKonserwatorzy } from "../../lib/konserwatorzy";
+import { getKonserwatorzy, getCategoryToKonserwator } from "../../lib/konserwatorzy";
+import { triageFault, llmReady } from "../../lib/llm";
 
 export default function FaultFormModal({onClose,onSave,employeeName,floors,initialSpace,initialFloor}){
   const [floor,setFloor]=React.useState(initialFloor||"parter");
@@ -13,6 +14,8 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
   const [assignedTo,setAssignedTo]=React.useState("");
   const [dueAt,setDueAt]=React.useState("");
   const [photo,setPhoto]=React.useState(null);
+  const [aiBusy,setAiBusy]=React.useState(false);
+  const [aiNote,setAiNote]=React.useState("");
   const fl=floors.find(f=>f.key===floor);
   const items=fl.key==="parter"?fl.spaces:fl.rooms||[];
   const handlePhoto=(e)=>{
@@ -22,6 +25,23 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
     const reader=new FileReader();
     reader.onload=()=>setPhoto(reader.result);
     reader.readAsDataURL(file);
+  };
+  const runTriage=async()=>{
+    if(!description.trim()||aiBusy)return;
+    setAiBusy(true);setAiNote("");
+    try{
+      const r=await triageFault(description.trim(),{categories:FAULT_CATEGORIES,konserwatorzy:getKonserwatorzy(),specialties:getCategoryToKonserwator()});
+      const cat=r.category&&FAULT_CATEGORIES.includes(r.category)?r.category:"";
+      if(cat)setCategory(cat);
+      if(r.priority==="urgent"||r.priority==="normal")setPriority(r.priority);
+      // Stała reguła: Elektryka→Kamil, Hydraulika→Grzegorz, reszta→obaj (bez przypisania).
+      // Kategorię wykrywa LLM, osobę dobiera reguła — można nadpisać ręcznie poniżej.
+      const catMap=getCategoryToKonserwator();
+      setAssignedTo(cat&&catMap[cat]?catMap[cat]:"");
+      setAiNote(Object.keys(r).length?"Pola uzupełnione na podstawie opisu — sprawdź i popraw.":"Brak podpowiedzi — uzupełnij ręcznie.");
+    }catch(err){
+      setAiNote(err?.code==="rate_limited"?"Za dużo zapytań — spróbuj za chwilę.":"Asystent niedostępny — uzupełnij ręcznie.");
+    }finally{setAiBusy(false);}
   };
   const handleSave=()=>{
     if(!spaceId||!description.trim()){alert("Wybierz pomieszczenie i opisz usterkę.");return;}
@@ -71,6 +91,14 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
           <div>
             <label>Opis usterki</label>
             <textarea className="input" rows={4} placeholder="Np. Nie działa klimatyzacja, cieknie bateria w łazience..." value={description} onChange={e=>setDescription(e.target.value)}/>
+            {llmReady&&(
+              <div style={{display:"flex",alignItems:"center",gap:10,marginTop:8,flexWrap:"wrap"}}>
+                <button type="button" className="btn btn-outline" style={{fontSize:12,display:"flex",alignItems:"center",gap:6}} onClick={runTriage} disabled={aiBusy||!description.trim()}>
+                  <Sparkles size={13}/>{aiBusy?"Analizuję…":"Podpowiedz kategorię i priorytet"}
+                </button>
+                {aiNote&&<span style={{fontSize:11.5,color:"var(--text-muted)"}}>{aiNote}</span>}
+              </div>
+            )}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
             <div>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Vouchery</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.30);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:7px 10px;font-size:13px;outline:none;transition:border-color var(--t-fast)}
+
+/* SIDEBAR (shared compact) */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:#fff;box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;background:var(--bg-0);overflow:hidden}
+
+.topbar{padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast)}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0A0A0F;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 28px;background:var(--bg-1);border-bottom:1px solid var(--border-0)}
+.kpi{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);padding:14px 16px;position:relative;overflow:hidden}
+.kpi-label{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+.kpi-val{font:600 26px/1 var(--f-m);color:var(--text-0);letter-spacing:-.02em;display:flex;align-items:baseline;gap:4px}
+.kpi-val .unit{font:500 13px var(--f-b);color:var(--text-2)}
+.kpi-val.ember{color:var(--ember)}
+.kpi-val.teal{color:var(--teal)}
+.kpi-val.rose{color:var(--rose)}
+.kpi-delta{font:500 11.5px var(--f-b);color:var(--text-2);margin-top:6px}
+.kpi-delta.up{color:var(--teal)}
+
+.body{flex:1;display:grid;grid-template-columns:1fr 380px;overflow:hidden;min-height:0}
+.list-pane{overflow-y:auto;padding:16px 28px}
+.list-pane::-webkit-scrollbar{width:8px}
+.list-pane::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:var(--bg-2);transition:all var(--t-fast);display:inline-flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}.tab.on .cnt{opacity:1}
+.sep{flex:1}
+.filter{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:5px 10px;font-size:12px}
+.filter input{border:none;background:none;padding:0;min-width:140px;color:var(--text-0);font:500 12px var(--f-b)}
+.filter input::placeholder{color:var(--text-3)}
+
+/* ── VOUCHER TABLE ── */
+.vt-head,.vt-row{display:grid;grid-template-columns:120px 80px 100px 1fr 130px 110px 80px;gap:14px;align-items:center;padding:10px 16px}
+.vt-head{font:700 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-1);padding-top:6px}
+.vt-row{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);margin-bottom:6px;transition:all var(--t-fast);cursor:pointer}
+.vt-row:hover{border-color:var(--border-2);background:var(--bg-3)}
+
+.v-code{font:600 13px var(--f-m);color:var(--ember);letter-spacing:.04em}
+.v-type{font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:99px;background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1);justify-self:start}
+.v-type.cash{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.v-type.disc{background:var(--violet-bg);color:var(--violet);border-color:rgba(180,154,255,.30)}
+.v-type.free{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.v-amount{font:600 15px var(--f-m);color:var(--text-0)}
+.v-amount .u{font:500 11px var(--f-b);color:var(--text-2)}
+.v-recipient{font-size:13px;color:var(--text-0);font-weight:500}
+.v-recipient-sub{font:500 11px var(--f-m);color:var(--text-3);margin-top:2px}
+.v-date{font:500 11.5px var(--f-m);color:var(--text-2)}
+.v-issuer{font-size:12px;color:var(--text-1)}
+.v-status{font:700 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:99px;justify-self:start;border:1px solid transparent}
+.v-status.issued{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.v-status.used{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.v-status.expired{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border);opacity:.7}
+.v-status.cancelled{background:var(--bg-3);color:var(--text-3);border-color:var(--border-1)}
+
+/* ── DETAIL: VOUCHER PREVIEW CARD ── */
+.detail{background:var(--bg-1);border-left:1px solid var(--border-0);overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:18px}
+.detail::-webkit-scrollbar{width:6px}
+.detail::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+
+.preview-title{font:700 11px var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);display:flex;align-items:center;gap:8px}
+.preview-title .dot{width:6px;height:6px;border-radius:50%;background:var(--ember);box-shadow:var(--ember-glow)}
+
+/* Voucher Card */
+.vcard{background:linear-gradient(135deg,#1F1626 0%,#110D17 100%);border:1px solid var(--ember-border);border-radius:var(--r-lg);padding:22px;position:relative;overflow:hidden}
+.vcard::before{content:'';position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,var(--ember-bg),transparent 70%);pointer-events:none}
+.vc-brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;position:relative}
+.vc-logo{display:flex;align-items:center;gap:9px}
+.vc-mark{width:32px;height:32px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:#fff;box-shadow:var(--ember-glow)}
+.vc-brand-name{font:700 13px/1.1 var(--f-d);color:var(--text-0)}
+.vc-brand-sub{font-size:10px;color:var(--text-3)}
+.vc-type{font:700 10px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);padding:4px 9px;border-radius:99px;background:var(--ember-bg);border:1px solid var(--ember-border)}
+
+.vc-amount{font:700 56px/1 var(--f-d);color:var(--text-0);letter-spacing:-.02em;margin-bottom:4px}
+.vc-amount .u{font:600 22px var(--f-d);color:var(--ember);margin-left:4px}
+.vc-tag{font:500 12px var(--f-m);color:var(--text-2);margin-bottom:18px}
+
+.vc-divider{height:1px;background:linear-gradient(to right,transparent,var(--border-2),transparent);margin:14px 0;position:relative}
+.vc-divider::before,.vc-divider::after{content:'';position:absolute;top:-6px;width:12px;height:12px;border-radius:50%;background:var(--bg-0)}
+.vc-divider::before{left:-22px;border:1px solid var(--border-1)}
+.vc-divider::after{right:-22px;border:1px solid var(--border-1)}
+
+.vc-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.vc-field-lbl{font:600 9px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:3px}
+.vc-field-val{font:500 12px var(--f-m);color:var(--text-1)}
+.vc-field-val.big{font:600 14px var(--f-m);color:var(--text-0)}
+
+.vc-code{margin-top:18px;padding:12px 16px;background:var(--bg-2);border:1px dashed var(--border-2);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.vc-code-val{font:700 18px/1 var(--f-m);color:var(--text-0);letter-spacing:.12em}
+.vc-code-copy{font:600 10px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--ember);padding:6px 10px;border-radius:var(--r-xs);border:1px solid var(--ember-border);background:transparent}
+
+.vc-footer{margin-top:14px;font-size:10px;color:var(--text-3);text-align:center;line-height:1.5}
+
+.detail-actions{display:flex;flex-direction:column;gap:8px}
+.detail-actions .btn{width:100%;justify-content:center;padding:10px}
+
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div>
+        <div class="sb-brand-name">Conrad Comfort</div>
+        <div class="sb-brand-sub">Vouchery · v2</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>HK Live</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12M22 7H2v5h20zM12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Obsługa</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Vouchery</span></div>
+      <h1 class="page-title">Vouchery</h1>
+      <div class="page-meta">
+        <span>Wystawione (mc): <b>14</b></span>
+        <span>Wartość łączna: <b>2 380 PLN</b></span>
+        <span>Wykorzystane: <b style="color:var(--teal)">9</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Eksport CSV
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Nowy voucher
+      </button>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-label">Wystawione (30 dni)</div>
+      <div class="kpi-val ember">14</div>
+      <div class="kpi-delta up">+3 vs poprz. mc</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Wartość łączna</div>
+      <div class="kpi-val">2 380<span class="unit">PLN</span></div>
+      <div class="kpi-delta">śr. 170 PLN / voucher</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Wykorzystane</div>
+      <div class="kpi-val teal">9</div>
+      <div class="kpi-delta">64% redemption</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Wygasłe</div>
+      <div class="kpi-val rose">2</div>
+      <div class="kpi-delta">Strata 240 PLN</div>
+    </div>
+  </div>
+
+  <div class="body">
+
+    <div class="list-pane">
+
+      <div class="toolbar">
+        <button class="tab on">Wszystkie <span class="cnt">28</span></button>
+        <button class="tab">Aktywne <span class="cnt">12</span></button>
+        <button class="tab">Wykorzystane <span class="cnt">9</span></button>
+        <button class="tab">Wygasłe <span class="cnt">5</span></button>
+        <span class="sep"></span>
+        <div class="filter">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Kod, gość, kwota..."/>
+        </div>
+      </div>
+
+      <div class="vt-head">
+        <div>Kod</div>
+        <div>Typ</div>
+        <div>Kwota</div>
+        <div>Odbiorca</div>
+        <div>Wystawione</div>
+        <div>Wystawił</div>
+        <div>Status</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0148</div>
+        <div class="v-type cash">Cash</div>
+        <div class="v-amount">50<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Gość pok. 218</div>
+          <div class="v-recipient-sub">Rekompensata · hałas</div>
+        </div>
+        <div class="v-date">12 maj · 10:54</div>
+        <div class="v-issuer">Natalia Sz.</div>
+        <div class="v-status issued">Aktywny</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0147</div>
+        <div class="v-type disc">10%</div>
+        <div class="v-amount">~120<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Rezerwacja KW#9882</div>
+          <div class="v-recipient-sub">Powracający gość</div>
+        </div>
+        <div class="v-date">11 maj · 16:22</div>
+        <div class="v-issuer">Marek W.</div>
+        <div class="v-status issued">Aktywny</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0146</div>
+        <div class="v-type free">Free</div>
+        <div class="v-amount">2x śn.<span class="u"></span></div>
+        <div>
+          <div class="v-recipient">Pok. 401 — rodzina</div>
+          <div class="v-recipient-sub">Bonus za 5-noclegowy pobyt</div>
+        </div>
+        <div class="v-date">11 maj · 14:10</div>
+        <div class="v-issuer">Anna L.</div>
+        <div class="v-status used">Wykorzystany</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0145</div>
+        <div class="v-type cash">Cash</div>
+        <div class="v-amount">100<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Gość pok. 304</div>
+          <div class="v-recipient-sub">Późny check-out · extra</div>
+        </div>
+        <div class="v-date">10 maj · 13:33</div>
+        <div class="v-issuer">Natalia Sz.</div>
+        <div class="v-status used">Wykorzystany</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0144</div>
+        <div class="v-type cash">Cash</div>
+        <div class="v-amount">200<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Anna Wójcik (gość)</div>
+          <div class="v-recipient-sub">Bon urodzinowy</div>
+        </div>
+        <div class="v-date">10 maj · 11:08</div>
+        <div class="v-issuer">Manager</div>
+        <div class="v-status issued">Aktywny</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0143</div>
+        <div class="v-type disc">15%</div>
+        <div class="v-amount">~180<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Walk-in 09 maj</div>
+          <div class="v-recipient-sub">Promocja last-minute</div>
+        </div>
+        <div class="v-date">09 maj · 17:55</div>
+        <div class="v-issuer">Marek W.</div>
+        <div class="v-status used">Wykorzystany</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0142</div>
+        <div class="v-type free">Free</div>
+        <div class="v-amount">1 noc<span class="u"></span></div>
+        <div>
+          <div class="v-recipient">Pracownik · Tetiana</div>
+          <div class="v-recipient-sub">Bonus pracowniczy</div>
+        </div>
+        <div class="v-date">08 maj</div>
+        <div class="v-issuer">Manager</div>
+        <div class="v-status issued">Aktywny</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0141</div>
+        <div class="v-type cash">Cash</div>
+        <div class="v-amount">120<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Gość pok. 412</div>
+          <div class="v-recipient-sub">Brak ciepłej wody (1h)</div>
+        </div>
+        <div class="v-date">06 maj</div>
+        <div class="v-issuer">Anna L.</div>
+        <div class="v-status expired">Wygasł</div>
+      </div>
+
+      <div class="vt-row">
+        <div class="v-code">V-2026-0140</div>
+        <div class="v-type disc">5%</div>
+        <div class="v-amount">~75<span class="u"> PLN</span></div>
+        <div>
+          <div class="v-recipient">Stała gościni · K. Nowak</div>
+          <div class="v-recipient-sub">Loyalty</div>
+        </div>
+        <div class="v-date">05 maj</div>
+        <div class="v-issuer">Natalia Sz.</div>
+        <div class="v-status cancelled">Anulowany</div>
+      </div>
+
+    </div>
+
+    <!-- DETAIL: PREVIEW + PDF ACTIONS -->
+    <aside class="detail">
+
+      <div class="preview-title">
+        <span class="dot"></span>
+        Podgląd vouchera
+        <span style="margin-left:auto;font:500 11px var(--f-m);color:var(--text-3)">#V-2026-0148</span>
+      </div>
+
+      <div class="vcard">
+        <div class="vc-brand">
+          <div class="vc-logo">
+            <div class="vc-mark">CC</div>
+            <div>
+              <div class="vc-brand-name">Conrad Comfort</div>
+              <div class="vc-brand-sub">Hotel · Recepcja</div>
+            </div>
+          </div>
+          <div class="vc-type">Cash voucher</div>
+        </div>
+
+        <div class="vc-amount">50<span class="u">,00 PLN</span></div>
+        <div class="vc-tag">Bon do realizacji w restauracji lub przy zameldowaniu</div>
+
+        <div class="vc-divider"></div>
+
+        <div class="vc-fields">
+          <div>
+            <div class="vc-field-lbl">Odbiorca</div>
+            <div class="vc-field-val big">Gość pok. 218</div>
+          </div>
+          <div>
+            <div class="vc-field-lbl">Powód</div>
+            <div class="vc-field-val">Rekompensata · hałas</div>
+          </div>
+          <div>
+            <div class="vc-field-lbl">Wystawione</div>
+            <div class="vc-field-val">12 maj 2026 · 10:54</div>
+          </div>
+          <div>
+            <div class="vc-field-lbl">Ważny do</div>
+            <div class="vc-field-val">31 sie 2026</div>
+          </div>
+          <div>
+            <div class="vc-field-lbl">Wystawił</div>
+            <div class="vc-field-val">Natalia Sz.</div>
+          </div>
+          <div>
+            <div class="vc-field-lbl">Status</div>
+            <div class="vc-field-val" style="color:var(--sky)">Aktywny</div>
+          </div>
+        </div>
+
+        <div class="vc-code">
+          <div>
+            <div style="font:600 9px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px">Kod realizacji</div>
+            <div class="vc-code-val">CC-50-0148</div>
+          </div>
+          <button class="vc-code-copy">Kopiuj</button>
+        </div>
+
+        <div class="vc-footer">
+          Voucher imienny · ważny tylko z dokumentem tożsamości<br/>
+          Nie podlega wymianie na gotówkę
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <button class="btn btn-primary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Drukuj PDF (A6)
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
+          Wyślij e-mail
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Oznacz jako wykorzystany
+        </button>
+        <button class="btn btn-ghost" style="color:var(--rose);border-color:var(--rose-border)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          Anuluj voucher
+        </button>
+      </div>
+
+    </aside>
+
+  </div>
+</main>
+
+</body>
+</html>

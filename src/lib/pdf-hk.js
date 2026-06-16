@@ -9,6 +9,33 @@ export { downloadHKMain, downloadHKRoomList, downloadHKStatus, downloadHKCleanin
 const APT_DESC_DEFAULTS={106:"D+T",206:"D+T+SOFA 1",218:"D+D",306:"D+T",318:"D+T"};
 const aptDesc=(room,rd)=>rd.apartmentNote||rd.roomType||APT_DESC_DEFAULTS[room.no]||room.type;
 
+const HK_STATUS_RGB={W:[24,95,165],WP:[24,95,165],P:[24,95,165],PG:[15,110,70],PGZ:[130,79,10]};
+const BR_RGB=[185,28,28];   // brak ręczników — czerwony
+const ZS_RGB=[126,34,206];  // zmiana pościeli — fioletowy
+// Status (W/WP/P/PG/PGZ) + flagi BR/ZS jako osobne, kolorowane człony — wszystkie widoczne równocześnie.
+function statusParts(rd,{includeZS=true}={}){
+  const parts=[];
+  if(rd.status)parts.push({t:rd.status,c:HK_STATUS_RGB[rd.status]||[0,0,0]});
+  if(rd.br)parts.push({t:"BR",c:BR_RGB});
+  if(includeZS&&rd.zs)parts.push({t:"ZS",c:ZS_RGB});
+  return parts;
+}
+// Rysuje człony statusu jako jedną wycentrowaną grupę (każdy człon w swoim kolorze).
+function drawStatusParts(doc,parts,cx,baseY,fontSize){
+  if(!parts.length)return;
+  doc.setFont("helvetica","bold");doc.setFontSize(fontSize);
+  const sepW=doc.getTextWidth(" ");
+  const widths=parts.map(p=>doc.getTextWidth(p.t));
+  const totalW=widths.reduce((a,b)=>a+b,0)+sepW*(parts.length-1);
+  let tx=cx-totalW/2;
+  parts.forEach((p,i)=>{
+    const c=p.c||[0,0,0];
+    doc.setTextColor(c[0],c[1],c[2]);
+    doc.text(p.t,tx,baseY);
+    tx+=widths[i]+sepW;
+  });
+}
+
 function downloadHKMain(date,staff,data,afternoonPersonName){
   // afternoonPersonName passed separately — don't rely on _isAfternoon flag
   const doc=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
@@ -67,14 +94,9 @@ function downloadHKMain(date,staff,data,afternoonPersonName){
         const nm=pl(rd.person).substring(0,9);
         doc.text(nm,ox+cw*0.54,ry+rh-1.2,{align:"center"});
       }
-      // Status (W/PG/PGZ) lub BR/ZS
-      const stLabel=rd.status||(rd.br&&rd.zs?"BR+ZS":rd.br?"BR":rd.zs?"ZS":"");
-      if(stLabel){
-        doc.setFont("helvetica","bold");doc.setFontSize(7.5);
-        const sc={W:[24,95,165],WP:[24,95,165],PG:[15,110,70],PGZ:[130,79,10]}[rd.status];
-        doc.setTextColor(sc?sc[0]:0,sc?sc[1]:0,sc?sc[2]:0);
-        doc.text(stLabel,ox+cw*0.88,ry+rh-1.2,{align:"center"});
-      }
+      // Status (W/PG/PGZ) + BR/ZS — wszystkie widoczne równocześnie
+      const stParts=statusParts(rd);
+      drawStatusParts(doc,stParts,ox+cw*0.88,ry+rh-1.2,stParts.length>1?6.5:7.5);
     });
   }
 
@@ -265,7 +287,7 @@ function downloadHKStatus(date,staff,data,notes){
   if(!allStaff.length)return;
   const hkNotes=notes||{};
 
-  const LINEN=["POSZWA","POSZEWKI","PRZES. SR.","PRZES. DUZE","RECZ. DUZY","RECZ. SREDNI","DYWANIK","NARZUTA","KOLDR","PODUSZKA","PODK"];
+  const LINEN=["POSZWA","POSZEWKI","PRZES. SR.","PRZES. DUZE","RECZ. DUZY","RECZ. SREDNI","DYWANIK","NARZUTA","KOLDR","PODUSZKA"];
   const stColors={W:[24,95,165],WP:[24,95,165],PG:[15,110,70],PGZ:[130,79,10]};
 
   allStaff.forEach((person)=>{
@@ -344,14 +366,10 @@ function downloadHKStatus(date,staff,data,notes){
           doc.setFont("helvetica",room.apt?"bold":"normal");doc.setFontSize(room.apt&&typStr.length>8?6.8:7.5);doc.setTextColor(0,0,0);
           doc.text(typStr,ox+colW*(cP[0]+cP[1]/2),ry+rh-1.3,{align:"center"});
         }
-        // Status: W/PG/PGZ lub BR (w kolumnie Status)
-        const indivStLabel=rd.status||(rd.br?"BR":rd.zs?"ZS":"");
-        if(indivStLabel){
-          const sc=stColors[rd.status];
-          doc.setFont("helvetica","bold");doc.setFontSize(8.5);
-          doc.setTextColor(sc?sc[0]:0,sc?sc[1]:0,sc?sc[2]:0);
-          doc.text(indivStLabel,ox+colW*(cP[0]+cP[1]+cP[2]/2),ry+rh-1.3,{align:"center"});
-        }
+        // Status: W/PG/PGZ + BR — BR widoczne nawet z przyjazdem (ZS pokazywany w kol. Typ)
+        const indivParts=statusParts(rd,{includeZS:false});
+        if(!indivParts.length&&rd.zs)indivParts.push({t:"ZS",c:ZS_RGB}); // ZS bez statusu i bez Typ
+        drawStatusParts(doc,indivParts,ox+colW*(cP[0]+cP[1]+cP[2]/2),ry+rh-1.3,indivParts.length>1?7.2:8.5);
       });
     }
 

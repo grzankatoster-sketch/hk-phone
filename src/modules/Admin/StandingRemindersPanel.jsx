@@ -114,7 +114,7 @@ export default function StandingRemindersPanel({ currentManager, showToast, addA
 
       {showForm && (
         <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div className="cc-form-grid cc-form-grid-2" style={{ marginBottom: 10 }}>
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".05em", color: "var(--text-muted)", display: "block", marginBottom: 4 }}>Tytul *</label>
               <input className="input" value={form.title} onChange={e => setF("title", e.target.value)}

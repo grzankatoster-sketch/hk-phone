@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C;
+  --ember:#B065A0; --ember-deep:#6E2B5C; --ember-deeper:#4A1942;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --sky:#5BA8E8; --violet:#B49AFF; --rose:#FF5471; --amber:#F4C055;
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+}
+body{min-height:100vh;background:radial-gradient(circle at 50% 0%,#2A1F30 0%,var(--bg-0) 60%);color:var(--text-0);font-family:var(--f-b);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+.hero{padding:80px 32px 40px;max-width:1080px;margin:0 auto;text-align:center}
+.brand{display:inline-flex;align-items:center;gap:11px;padding:8px 16px;border-radius:99px;background:var(--bg-2);border:1px solid var(--border-1);margin-bottom:28px}
+.brand-mark{width:24px;height:24px;border-radius:5px;background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 9px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.brand-txt{font:700 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-1)}
+.brand-txt b{color:var(--ember)}
+
+h1{font:700 56px/1.05 var(--f-d);color:var(--text-0);letter-spacing:-.02em;margin-bottom:14px}
+h1 .em{background:linear-gradient(135deg,var(--ember) 0%,var(--gold) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:16px;color:var(--text-1);max-width:640px;margin:0 auto;line-height:1.6}
+
+.meta{display:flex;justify-content:center;gap:22px;margin-top:28px;font:500 12px var(--f-m);color:var(--text-3);flex-wrap:wrap}
+.meta b{color:var(--text-1);font-weight:600}
+.meta span{display:inline-flex;align-items:center;gap:6px}
+.meta .dot{width:6px;height:6px;border-radius:50%}
+.meta .dot.t{background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.meta .dot.e{background:var(--ember);box-shadow:var(--ember-glow)}
+
+.flow-strip{max-width:1280px;margin:30px auto 0;padding:0 32px;display:flex;align-items:center;gap:12px;justify-content:center;flex-wrap:wrap}
+.flow-arrow{color:var(--text-3);font-family:var(--f-m)}
+.flow-step{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;background:var(--bg-2);border:1px solid var(--border-1);font:600 11px var(--f-d);color:var(--text-1);letter-spacing:.04em}
+.flow-step b{color:var(--ember);font-weight:700}
+.flow-step.start{background:var(--ember-bg);border-color:var(--ember-border);color:var(--ember)}
+
+.grid{max-width:1280px;margin:0 auto;padding:30px 32px 60px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media (max-width:1024px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.grid{grid-template-columns:1fr}.hero{padding:50px 24px 30px}h1{font-size:38px}}
+
+.card{display:flex;flex-direction:column;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden;text-decoration:none;color:inherit;transition:all .2s cubic-bezier(.4,0,.2,1);position:relative}
+.card:hover{border-color:var(--ember-border);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.4),var(--ember-glow)}
+.card.feat{grid-column:span 2;display:grid;grid-template-columns:1.1fr 1fr}
+@media (max-width:1024px){.card.feat{grid-column:span 2;grid-template-columns:1fr}}
+@media (max-width:640px){.card.feat{grid-column:span 1}}
+.card-thumb{aspect-ratio:16/10;background:var(--bg-1);position:relative;overflow:hidden;border-bottom:1px solid var(--border-1)}
+.card.feat .card-thumb{aspect-ratio:auto;border-bottom:none;border-right:1px solid var(--border-1)}
+.card-thumb svg{position:absolute;inset:0;width:100%;height:100%}
+.card-body{padding:18px 20px;flex:1;display:flex;flex-direction:column}
+.card.feat .card-body{padding:24px 26px}
+.card-num{font:700 10px/1 var(--f-d);letter-spacing:.14em;color:var(--ember);margin-bottom:6px}
+.card-title{font:700 18px/1.2 var(--f-d);color:var(--text-0);margin-bottom:8px}
+.card.feat .card-title{font-size:22px}
+.card-desc{font-size:13px;color:var(--text-2);line-height:1.55;flex:1}
+.card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border-1)}
+.card-file{font:500 11px var(--f-m);color:var(--text-3)}
+.card-cta{display:inline-flex;align-items:center;gap:6px;font:700 11px var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--ember)}
+.card-cta svg{width:11px;height:11px;transition:transform .15s}
+.card:hover .card-cta svg{transform:translateX(3px)}
+
+.legend{max-width:1280px;margin:0 auto;padding:0 32px 80px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media (max-width:1024px){.legend{grid-template-columns:repeat(2,1fr)}}
+.lg-row{padding:14px 16px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);display:flex;align-items:center;gap:11px}
+.lg-swatch{width:32px;height:32px;border-radius:6px;flex-shrink:0;border:1px solid var(--border-1)}
+.lg-info{flex:1;min-width:0}
+.lg-name{font:700 12px var(--f-d);color:var(--text-0)}
+.lg-hex{font:500 11px var(--f-m);color:var(--text-3);margin-top:2px}
+
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand">
+    <div class="brand-mark">CC</div>
+    <span class="brand-txt">Conrad Comfort · <b>v2 design preview</b></span>
+  </div>
+  <h1>Brand <span class="em">aubergine</span><br/>+ pełen przepływ</h1>
+  <p class="lead">Osiem ekranów w palecie logo Conrad Comfort: <b>aubergine + cream + gold</b>. Od logowania, przez planowanie HK, monitoring live, kasę dnia, aż po opinie i vouchery. Spójna lista zadań we wszystkich ekranach recepcji.</p>
+  <div class="meta">
+    <span><span class="dot e"></span>8 ekranów</span>
+    <span><span class="dot t"></span>Lista zadań sync z Recepcją</span>
+    <span>Akcent: <b>#B065A0 aubergine</b></span>
+    <span>Cream: <b>#F5EDE0</b></span>
+    <span>Gold: <b>#C8A269</b></span>
+  </div>
+
+  <!-- USER FLOW STRIP -->
+  <div class="flow-strip">
+    <span class="flow-step start"><b>09</b> Start zmiany</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step"><b>00</b> Przegląd</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step"><b>06</b> Plan HK</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step"><b>01</b> HK Live</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step"><b>02</b> Recepcja dzienna</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-step">Koniec zmiany</span>
+  </div>
+</header>
+
+<main class="grid">
+
+  <!-- 09 LOGIN — featured first -->
+  <a class="card feat" href="09-login.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 480 300" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="login-bg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#4A1942"/>
+            <stop offset="100%" stop-color="#1A0A1A"/>
+          </linearGradient>
+          <radialGradient id="login-glow" cx="0.7" cy="0.2" r="0.7">
+            <stop offset="0%" stop-color="#B065A0" stop-opacity=".4"/>
+            <stop offset="100%" stop-color="#B065A0" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <rect width="480" height="300" fill="#0B0810"/>
+        <!-- left brand panel -->
+        <rect x="0" y="0" width="240" height="300" fill="url(#login-bg)"/>
+        <rect x="0" y="0" width="240" height="300" fill="url(#login-glow)"/>
+        <g transform="translate(120,120)" text-anchor="middle">
+          <g transform="translate(-26,-50)"><rect width="4" height="4" fill="#F5EDE0"/><rect x="9" width="4" height="4" fill="#F5EDE0"/><rect x="18" width="4" height="4" fill="#F5EDE0"/><rect x="27" width="4" height="4" fill="#F5EDE0"/><rect x="36" width="4" height="4" fill="#F5EDE0"/><rect x="45" width="4" height="4" fill="#F5EDE0"/></g>
+          <text y="-20" fill="#F5EDE0" font-family="Syne" font-size="36" font-weight="700" letter-spacing="2">CONRAD</text>
+          <text y="6" fill="#F5EDE0" font-family="Syne" font-size="11" font-weight="600" letter-spacing="6" opacity=".9">COMFORT</text>
+        </g>
+        <!-- 3 bottom tiles -->
+        <rect x="20" y="240" width="60" height="40" rx="5" fill="rgba(245,237,224,.05)" stroke="rgba(245,237,224,.1)"/>
+        <rect x="90" y="240" width="60" height="40" rx="5" fill="rgba(245,237,224,.05)" stroke="rgba(245,237,224,.1)"/>
+        <rect x="160" y="240" width="60" height="40" rx="5" fill="rgba(245,237,224,.05)" stroke="rgba(245,237,224,.1)"/>
+        <!-- right form -->
+        <rect x="240" y="0" width="240" height="300" fill="#0B0810"/>
+        <rect x="260" y="40" width="40" height="3" rx="1" fill="#B065A0"/>
+        <text x="260" y="68" fill="#F0E8DC" font-family="Syne" font-size="18" font-weight="700">Witaj z powrotem.</text>
+        <rect x="260" y="100" width="180" height="40" rx="6" fill="#17131F" stroke="#B065A0" stroke-width="1.5"/>
+        <rect x="276" y="115" width="80" height="10" rx="2" fill="#F0E8DC"/>
+        <text x="260" y="158" fill="#4A3F52" font-family="Syne" font-size="8" font-weight="700" letter-spacing="1.5">ROLA</text>
+        <rect x="260" y="164" width="55" height="38" rx="5" fill="rgba(176,101,160,.10)" stroke="#B065A0" stroke-width="1.5"/>
+        <circle cx="305" cy="170" r="3.5" fill="#B065A0"/>
+        <rect x="320" y="164" width="55" height="38" rx="5" fill="#17131F" stroke="#221C2C"/>
+        <rect x="380" y="164" width="55" height="38" rx="5" fill="#17131F" stroke="#221C2C"/>
+        <text x="260" y="222" fill="#4A3F52" font-family="Syne" font-size="8" font-weight="700" letter-spacing="1.5">ZMIANA</text>
+        <rect x="260" y="228" width="55" height="42" rx="5" fill="rgba(176,101,160,.10)" stroke="#B065A0" stroke-width="1.5"/>
+        <rect x="320" y="228" width="55" height="42" rx="5" fill="#17131F" stroke="#221C2C"/>
+        <rect x="380" y="228" width="55" height="42" rx="5" fill="#17131F" stroke="#221C2C"/>
+        <rect x="280" y="240" width="20" height="6" rx="2" fill="#C8A269"/>
+        <text x="290" y="262" text-anchor="middle" fill="#B065A0" font-family="JetBrains Mono" font-size="8" font-weight="600">07–15</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">09 · Start zmiany</div>
+      <div class="card-title">Logowanie — wpisz imię, rolę, zmianę</div>
+      <div class="card-desc">Wejście do panelu. Lewa strona: marka Conrad Comfort z logiem cream-on-aubergine. Prawa: pole na imię z ostatnimi użytkownikami, wybór roli (Recepcja / Pokojówka / Manager), wybór zmiany (Dzienna 07-15 / Wieczorna 15-23 / Nocna 23-07). Inteligentnie sugeruje zmianę po godzinie. Sesja podpisuje wszystkie akcje.</div>
+      <div class="card-foot">
+        <span class="card-file">09-login.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 00 SHELL -->
+  <a class="card" href="00-app-shell.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <rect x="6" y="12" width="56" height="36" rx="4" fill="#221C2C"/>
+        <rect x="10" y="58" width="50" height="6" rx="2" fill="#2BD4A0" opacity=".4"/>
+        <rect x="10" y="72" width="44" height="5" rx="2" fill="#2A2334"/>
+        <rect x="10" y="84" width="40" height="5" rx="2" fill="#2A2334"/>
+        <rect x="10" y="96" width="48" height="5" rx="2" fill="#B065A0" opacity=".6"/>
+        <rect x="10" y="108" width="42" height="5" rx="2" fill="#2A2334"/>
+        <rect x="80" y="14" width="120" height="9" rx="2" fill="#F0E8DC" opacity=".85"/>
+        <rect x="80" y="28" width="80" height="5" rx="2" fill="#766A7E"/>
+        <rect x="80" y="44" width="44" height="34" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="130" y="44" width="44" height="34" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="180" y="44" width="44" height="34" rx="4" fill="#1F1626" stroke="rgba(176,101,160,.3)"/>
+        <rect x="230" y="44" width="44" height="34" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="280" y="44" width="34" height="34" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="86" width="158" height="44" rx="5" fill="#17131F" stroke="#2A2334"/>
+        <rect x="90" y="100" width="100" height="6" rx="2" fill="#B065A0"/>
+        <rect x="90" y="114" width="60" height="4" rx="2" fill="#766A7E"/>
+        <rect x="248" y="86" width="66" height="44" rx="5" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="138" width="158" height="50" rx="5" fill="#17131F" stroke="#2A2334"/>
+        <rect x="88" y="146" width="8" height="8" rx="2" fill="#2BD4A0"/>
+        <rect x="100" y="148" width="80" height="4" rx="2" fill="#A89DAE"/>
+        <rect x="88" y="160" width="8" height="8" rx="2" stroke="#2A2334" fill="none"/>
+        <rect x="100" y="162" width="90" height="4" rx="2" fill="#A89DAE"/>
+        <rect x="88" y="174" width="8" height="8" rx="2" stroke="#2A2334" fill="none"/>
+        <rect x="100" y="176" width="75" height="4" rx="2" fill="#A89DAE"/>
+        <rect x="248" y="138" width="66" height="50" rx="5" fill="#17131F" stroke="#2A2334"/>
+        <circle cx="256" cy="148" r="2" fill="#2BD4A0"/>
+        <circle cx="256" cy="160" r="2" fill="#F4C055"/>
+        <circle cx="256" cy="172" r="2" fill="#FF5471"/>
+        <circle cx="256" cy="184" r="2" fill="#5BA8E8"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">00 · Dashboard</div>
+      <div class="card-title">Przegląd zmiany</div>
+      <div class="card-desc">5 KPI + chart przyjazdów + lista 6 zadań + live feed. Te same zadania są w Recepcji dziennej.</div>
+      <div class="card-foot">
+        <span class="card-file">00-app-shell.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 06 HK PANEL (PLANNING) -->
+  <a class="card" href="06-hk-panel.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <!-- date strip -->
+        <rect x="80" y="14" width="240" height="22" fill="#17131F"/>
+        <rect x="86" y="18" width="32" height="14" rx="3" fill="#221C2C"/>
+        <rect x="122" y="18" width="32" height="14" rx="3" fill="rgba(176,101,160,.15)" stroke="#B065A0"/>
+        <rect x="158" y="18" width="32" height="14" rx="3" fill="#221C2C"/>
+        <rect x="194" y="18" width="32" height="14" rx="3" fill="#221C2C"/>
+        <!-- kpi -->
+        <rect x="80" y="40" width="48" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="132" y="40" width="48" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="184" y="40" width="48" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="236" y="40" width="48" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <!-- workers col -->
+        <rect x="80" y="68" width="78" height="124" fill="#17131F" stroke="#221C2C" stroke-width="0.5"/>
+        <rect x="86" y="76" width="66" height="34" rx="4" fill="rgba(176,101,160,.1)" stroke="#B065A0"/>
+        <circle cx="96" cy="90" r="6" fill="#B065A0"/>
+        <rect x="106" y="86" width="36" height="3" rx="1" fill="#F0E8DC" opacity=".8"/>
+        <rect x="106" y="93" width="28" height="2" rx="1" fill="#766A7E"/>
+        <rect x="86" y="116" width="66" height="34" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <circle cx="96" cy="130" r="6" fill="#5BA8E8"/>
+        <rect x="106" y="126" width="32" height="3" rx="1" fill="#F0E8DC" opacity=".8"/>
+        <rect x="86" y="156" width="66" height="34" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <circle cx="96" cy="170" r="6" fill="#B49AFF"/>
+        <rect x="106" y="166" width="30" height="3" rx="1" fill="#F0E8DC" opacity=".8"/>
+        <!-- table -->
+        <rect x="162" y="68" width="100" height="124" fill="#0B0810"/>
+        <rect x="166" y="76" width="92" height="11" rx="2" fill="#17131F"/>
+        <rect x="166" y="92" width="92" height="14" rx="2" fill="#17131F" stroke="#2A2334"/>
+        <text x="170" y="102" fill="#F0E8DC" font-family="Syne" font-size="9" font-weight="700">401</text>
+        <rect x="190" y="98" width="14" height="6" rx="3" fill="rgba(91,168,232,.15)" stroke="rgba(91,168,232,.4)"/>
+        <circle cx="250" cy="99" r="3" fill="#B065A0"/>
+        <rect x="166" y="110" width="92" height="14" rx="2" fill="#17131F" stroke="#2A2334"/>
+        <text x="170" y="120" fill="#F0E8DC" font-family="Syne" font-size="9" font-weight="700">402</text>
+        <rect x="190" y="116" width="14" height="6" rx="3" fill="rgba(91,168,232,.15)" stroke="rgba(91,168,232,.4)"/>
+        <rect x="166" y="128" width="92" height="14" rx="2" fill="#17131F" stroke="#2A2334"/>
+        <text x="170" y="138" fill="#F0E8DC" font-family="Syne" font-size="9" font-weight="700">403</text>
+        <rect x="190" y="134" width="14" height="6" rx="3" fill="rgba(244,192,85,.15)" stroke="rgba(244,192,85,.4)"/>
+        <rect x="166" y="146" width="92" height="14" rx="2" fill="#17131F" stroke="#2A2334"/>
+        <text x="170" y="156" fill="#F0E8DC" font-family="Syne" font-size="9" font-weight="700">109</text>
+        <rect x="190" y="152" width="14" height="6" rx="3" fill="rgba(91,168,232,.15)" stroke="rgba(91,168,232,.4)"/>
+        <rect x="240" y="151" width="18" height="8" rx="2" fill="none" stroke="#FF5471" stroke-dasharray="2 1"/>
+        <!-- KW source side -->
+        <rect x="266" y="68" width="54" height="124" fill="#17131F" stroke="#221C2C" stroke-width="0.5"/>
+        <rect x="270" y="76" width="34" height="3" rx="1" fill="#B49AFF"/>
+        <rect x="270" y="90" width="48" height="2" rx="1" fill="#F0E8DC" opacity=".7"/>
+        <rect x="270" y="96" width="32" height="2" rx="1" fill="#766A7E"/>
+        <line x1="270" y1="106" x2="320" y2="106" stroke="#221C2C"/>
+        <rect x="270" y="112" width="40" height="2" rx="1" fill="#F0E8DC" opacity=".7"/>
+        <rect x="270" y="120" width="28" height="2" rx="1" fill="#766A7E"/>
+        <rect x="270" y="130" width="40" height="2" rx="1" fill="#F0E8DC" opacity=".7"/>
+        <rect x="270" y="138" width="34" height="2" rx="1" fill="#766A7E"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">06 · Planning</div>
+      <div class="card-title">Housekeeping (plan)</div>
+      <div class="card-desc">Statyczny plan dnia — przypisywanie pokoi do pokojówek (PG/BR/ZS), kalendarz 7 dni, źródło z KWHotel, walka z nieprzypisaniami. To NIE jest live — to widok planowania.</div>
+      <div class="card-foot">
+        <span class="card-file">06-hk-panel.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 01 HK LIVE -->
+  <a class="card" href="01-hk-live.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <rect x="80" y="48" width="160" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <g>
+        <rect x="80" y="78" width="32" height="22" rx="3" fill="#221C2C" stroke="rgba(43,212,160,.4)"/>
+        <rect x="80" y="78" width="2" height="22" fill="#2BD4A0"/>
+        <rect x="114" y="78" width="32" height="22" rx="3" fill="#221C2C" stroke="rgba(43,212,160,.4)"/>
+        <rect x="114" y="78" width="2" height="22" fill="#2BD4A0"/>
+        <rect x="148" y="78" width="32" height="22" rx="3" fill="#0F1A26" stroke="rgba(91,168,232,.4)"/>
+        <rect x="148" y="78" width="2" height="22" fill="#5BA8E8"/>
+        <rect x="182" y="78" width="32" height="22" rx="3" fill="#221C2C" stroke="#2A2334"/>
+        <rect x="216" y="78" width="32" height="22" rx="3" fill="#1A1600" stroke="rgba(244,192,85,.5)"/>
+        <rect x="216" y="78" width="2" height="22" fill="#F4C055"/>
+        <rect x="80" y="106" width="32" height="22" rx="3" fill="#221C2C" stroke="rgba(43,212,160,.4)"/>
+        <rect x="80" y="106" width="2" height="22" fill="#2BD4A0"/>
+        <rect x="114" y="106" width="32" height="22" rx="3" fill="#221C2C" stroke="#2A2334"/>
+        <rect x="148" y="106" width="32" height="22" rx="3" fill="#221C2C" stroke="rgba(43,212,160,.4)"/>
+        <rect x="148" y="106" width="2" height="22" fill="#2BD4A0"/>
+        <rect x="182" y="106" width="32" height="22" rx="3" fill="#221C2C" stroke="#2A2334" opacity=".4"/>
+        <rect x="216" y="106" width="32" height="22" rx="3" fill="#221C2C" stroke="rgba(43,212,160,.4)"/>
+        <rect x="216" y="106" width="2" height="22" fill="#2BD4A0"/>
+        </g>
+        <rect x="254" y="48" width="66" height="152" fill="#110D17" stroke="#2A2334" stroke-width="0.5"/>
+        <circle cx="266" cy="60" r="8" fill="#B065A0"/>
+        <rect x="278" y="55" width="36" height="4" rx="2" fill="#F0E8DC" opacity=".85"/>
+        <rect x="278" y="63" width="24" height="3" rx="1" fill="#766A7E"/>
+        <circle cx="266" cy="82" r="8" fill="#5BA8E8"/>
+        <rect x="278" y="77" width="34" height="4" rx="2" fill="#F0E8DC" opacity=".85"/>
+        <rect x="278" y="85" width="20" height="3" rx="1" fill="#766A7E"/>
+        <circle cx="266" cy="104" r="8" fill="#B49AFF"/>
+        <rect x="278" y="99" width="30" height="4" rx="2" fill="#F0E8DC" opacity=".85"/>
+        <rect x="278" y="107" width="22" height="3" rx="1" fill="#766A7E"/>
+        <rect x="260" y="124" width="58" height="32" rx="3" fill="#1A1600" stroke="rgba(244,192,85,.5)"/>
+        <rect x="266" y="132" width="40" height="3" rx="1" fill="#F4C055"/>
+        <rect x="266" y="140" width="46" height="3" rx="1" fill="#766A7E"/>
+        <rect x="266" y="148" width="22" height="5" rx="2" fill="#2BD4A0"/>
+        <rect x="292" y="148" width="22" height="5" rx="2" fill="none" stroke="#FF5471" stroke-width="0.5"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">01 · Realtime</div>
+      <div class="card-title">HK Live</div>
+      <div class="card-desc">Real-time grid pokojów (SSE :3737), wymiany, log. Wykonanie planu z ekranu 06.</div>
+      <div class="card-foot">
+        <span class="card-file">01-hk-live.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 02 RECEPCJA -->
+  <a class="card" href="02-recepcja-dzienna.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <rect x="80" y="32" width="160" height="14" rx="7" fill="#17131F" stroke="#2A2334"/>
+        <circle cx="96" cy="39" r="4" fill="#2BD4A0"/>
+        <circle cx="128" cy="39" r="4" fill="#2BD4A0"/>
+        <circle cx="160" cy="39" r="4" fill="#B065A0"/>
+        <circle cx="192" cy="39" r="4" fill="#2A2334"/>
+        <circle cx="224" cy="39" r="4" fill="#2A2334"/>
+        <!-- Tasks card -->
+        <rect x="80" y="52" width="160" height="50" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="88" y="58" width="40" height="3" rx="1" fill="#B065A0"/>
+        <rect x="88" y="68" width="8" height="8" rx="2" fill="#2BD4A0"/>
+        <rect x="100" y="70" width="78" height="3" rx="1" fill="#766A7E"/>
+        <rect x="88" y="80" width="8" height="8" rx="2" fill="#2BD4A0"/>
+        <rect x="100" y="82" width="68" height="3" rx="1" fill="#766A7E"/>
+        <rect x="88" y="92" width="8" height="8" rx="2" stroke="#2A2334" fill="none"/>
+        <rect x="100" y="94" width="74" height="3" rx="1" fill="#F0E8DC" opacity=".8"/>
+        <rect x="200" y="92" width="22" height="6" rx="3" fill="rgba(255,84,113,.15)" stroke="rgba(255,84,113,.4)"/>
+        <!-- cash card -->
+        <rect x="80" y="108" width="160" height="48" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="88" y="114" width="40" height="3" rx="1" fill="#B065A0"/>
+        <rect x="88" y="122" width="64" height="10" rx="2" fill="#221C2C"/>
+        <rect x="160" y="122" width="64" height="10" rx="2" fill="#221C2C"/>
+        <rect x="88" y="138" width="144" height="14" rx="3" fill="#1F1626" stroke="rgba(176,101,160,.3)"/>
+        <rect x="94" y="144" width="60" height="3" rx="1" fill="#B065A0"/>
+        <rect x="200" y="142" width="26" height="6" rx="2" fill="#B065A0"/>
+        <!-- incidents -->
+        <rect x="80" y="162" width="160" height="36" rx="4" fill="#17131F" stroke="#2A2334"/>
+        <rect x="88" y="170" width="50" height="3" rx="1" fill="#F0E8DC" opacity=".7"/>
+        <rect x="88" y="180" width="20" height="6" rx="2" fill="#1F1626" stroke="rgba(176,101,160,.4)"/>
+        <rect x="114" y="180" width="118" height="6" rx="2" fill="#221C2C"/>
+        <rect x="88" y="188" width="20" height="6" rx="2" fill="#0F1A26" stroke="rgba(91,168,232,.4)"/>
+        <rect x="114" y="188" width="118" height="6" rx="2" fill="#221C2C"/>
+        <!-- summary -->
+        <rect x="248" y="32" width="68" height="166" rx="4" fill="#110D17" stroke="#2A2334"/>
+        <rect x="256" y="44" width="50" height="4" rx="2" fill="#B065A0"/>
+        <line x1="256" y1="58" x2="306" y2="58" stroke="#221C2C"/>
+        <line x1="256" y1="72" x2="306" y2="72" stroke="#221C2C"/>
+        <line x1="256" y1="86" x2="306" y2="86" stroke="#221C2C"/>
+        <line x1="256" y1="100" x2="306" y2="100" stroke="#221C2C"/>
+        <line x1="256" y1="114" x2="306" y2="114" stroke="#221C2C"/>
+        <rect x="256" y="126" width="50" height="14" rx="2" fill="rgba(176,101,160,.2)" stroke="rgba(176,101,160,.4)"/>
+        <rect x="262" y="132" width="38" height="3" rx="1" fill="#B065A0"/>
+        <rect x="256" y="160" width="50" height="10" rx="2" fill="#2BD4A0"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">02 · End-of-shift</div>
+      <div class="card-title">Recepcja dzienna</div>
+      <div class="card-desc">Stepper, ta sama lista zadań co w 00 (sync), kasa z formułą, incydenty, przekazanie, sticky summary.</div>
+      <div class="card-foot">
+        <span class="card-file">02-recepcja-dzienna.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 03 FAULTS -->
+  <a class="card" href="03-faults.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <rect x="80" y="48" width="40" height="32" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="124" y="48" width="40" height="32" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="168" y="48" width="40" height="32" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="212" y="48" width="40" height="32" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="86" width="172" height="24" rx="3" fill="#1F1626" stroke="rgba(176,101,160,.4)"/>
+        <rect x="80" y="86" width="3" height="24" fill="#B065A0"/>
+        <rect x="92" y="92" width="14" height="14" rx="3" fill="#2D1820"/>
+        <rect x="112" y="94" width="14" height="10" rx="2" fill="#FF5471" opacity=".2"/>
+        <rect x="132" y="94" width="60" height="4" rx="2" fill="#F0E8DC" opacity=".8"/>
+        <rect x="132" y="102" width="80" height="3" rx="1" fill="#766A7E"/>
+        <rect x="218" y="92" width="30" height="12" rx="6" fill="rgba(255,84,113,.15)" stroke="rgba(255,84,113,.4)"/>
+        <rect x="80" y="116" width="172" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="144" width="172" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="172" width="172" height="22" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="258" y="48" width="60" height="146" rx="4" fill="#110D17" stroke="#2A2334"/>
+        <rect x="266" y="58" width="40" height="3" rx="1" fill="#FF5471"/>
+        <rect x="266" y="68" width="44" height="4" rx="2" fill="#F0E8DC" opacity=".8"/>
+        <rect x="266" y="82" width="20" height="20" rx="2" fill="#2A1F1A"/>
+        <rect x="290" y="82" width="20" height="20" rx="2" fill="#2A1F1A"/>
+        <line x1="270" y1="112" x2="270" y2="170" stroke="#2A2334"/>
+        <circle cx="270" cy="116" r="2" fill="#B065A0"/>
+        <circle cx="270" cy="132" r="2" fill="#2BD4A0"/>
+        <circle cx="270" cy="148" r="2" fill="#2BD4A0"/>
+        <circle cx="270" cy="164" r="2" fill="#2BD4A0"/>
+        <rect x="266" y="178" width="44" height="9" rx="2" fill="#B065A0"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">03 · Tickets</div>
+      <div class="card-title">Usterki</div>
+      <div class="card-desc">Lista z priorytetem P1/P2/P3, SLA, konserwator. Panel z polami, galerią zdjęć, timeline historii.</div>
+      <div class="card-foot">
+        <span class="card-file">03-faults.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 04 VOUCHERS -->
+  <a class="card" href="04-vouchers.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <rect x="80" y="48" width="158" height="14" fill="#110D17"/>
+        <rect x="84" y="52" width="20" height="3" rx="1" fill="#766A7E"/>
+        <rect x="80" y="68" width="158" height="20" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="84" y="74" width="32" height="3" rx="1" fill="#B065A0"/>
+        <rect x="120" y="74" width="22" height="6" rx="3" fill="rgba(176,101,160,.15)" stroke="rgba(176,101,160,.4)"/>
+        <rect x="148" y="74" width="20" height="3" rx="1" fill="#F0E8DC" opacity=".8"/>
+        <rect x="216" y="73" width="20" height="6" rx="3" fill="rgba(91,168,232,.15)" stroke="rgba(91,168,232,.4)"/>
+        <rect x="80" y="92" width="158" height="20" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="84" y="98" width="32" height="3" rx="1" fill="#B065A0"/>
+        <rect x="120" y="98" width="22" height="6" rx="3" fill="rgba(180,154,255,.15)" stroke="rgba(180,154,255,.4)"/>
+        <rect x="80" y="116" width="158" height="20" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="140" width="158" height="20" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="80" y="164" width="158" height="20" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <defs><linearGradient id="g-v1" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#1F1626"/><stop offset="100%" stop-color="#110D17"/></linearGradient><linearGradient id="g-v2" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#B065A0"/><stop offset="100%" stop-color="#6E2B5C"/></linearGradient></defs>
+        <rect x="244" y="48" width="74" height="146" rx="6" fill="url(#g-v1)" stroke="rgba(176,101,160,.4)"/>
+        <rect x="252" y="58" width="20" height="20" rx="3" fill="url(#g-v2)"/>
+        <rect x="284" y="86" width="26" height="14" rx="2" fill="#F0E8DC"/>
+        <rect x="252" y="106" width="56" height="3" rx="1" fill="#766A7E"/>
+        <line x1="252" y1="118" x2="310" y2="118" stroke="#2A2334" stroke-dasharray="3 2"/>
+        <rect x="252" y="126" width="24" height="3" rx="1" fill="#A89DAE"/>
+        <rect x="284" y="126" width="24" height="3" rx="1" fill="#A89DAE"/>
+        <rect x="252" y="138" width="56" height="3" rx="1" fill="#A89DAE"/>
+        <rect x="252" y="156" width="56" height="20" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <rect x="262" y="163" width="36" height="6" rx="1" fill="#F0E8DC"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">04 · Issuance</div>
+      <div class="card-title">Vouchery</div>
+      <div class="card-desc">Cash / Discount / Free. Karta vouchera w stylu wycinanego biletu z kodem realizacji.</div>
+      <div class="card-foot">
+        <span class="card-file">04-vouchers.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+  <!-- 05 REVIEWS -->
+  <a class="card" href="05-reviews.html">
+    <div class="card-thumb">
+      <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
+        <rect width="320" height="200" fill="#110D17"/>
+        <rect x="0" y="0" width="68" height="200" fill="#17131F"/>
+        <defs><linearGradient id="g-r1" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#17131F"/><stop offset="100%" stop-color="#1F1626"/></linearGradient></defs>
+        <rect x="80" y="48" width="62" height="56" rx="5" fill="url(#g-r1)" stroke="rgba(176,101,160,.4)"/>
+        <text x="90" y="80" fill="#F0E8DC" font-size="22" font-family="Syne" font-weight="700">9.2</text>
+        <text x="120" y="80" fill="#B065A0" font-size="10" font-family="Syne">/10</text>
+        <g transform="translate(88,88)">
+          <polygon points="0,3 3,0 6,3 3,6" fill="#F4C055"/>
+          <polygon points="10,3 13,0 16,3 13,6" fill="#F4C055"/>
+          <polygon points="20,3 23,0 26,3 23,6" fill="#F4C055"/>
+          <polygon points="30,3 33,0 36,3 33,6" fill="#F4C055"/>
+        </g>
+        <rect x="148" y="48" width="170" height="56" rx="5" fill="#17131F" stroke="#2A2334"/>
+        <polyline points="156,86 180,82 204,76 228,70 252,62 276,58 300,52" fill="none" stroke="#B065A0" stroke-width="1.5"/>
+        <circle cx="300" cy="52" r="2" fill="#B065A0"/>
+        <rect x="80" y="110" width="160" height="38" rx="3" fill="#1F1626" stroke="rgba(176,101,160,.4)"/>
+        <rect x="80" y="110" width="3" height="38" fill="#B065A0"/>
+        <circle cx="92" cy="120" r="5" fill="#FF5471" opacity=".8"/>
+        <rect x="102" y="116" width="40" height="3" rx="1" fill="#F0E8DC" opacity=".85"/>
+        <rect x="102" y="123" width="60" height="3" rx="1" fill="#766A7E"/>
+        <rect x="208" y="116" width="24" height="9" rx="4" fill="rgba(255,84,113,.15)" stroke="rgba(255,84,113,.4)"/>
+        <rect x="92" y="134" width="138" height="2" rx="1" fill="#A89DAE"/>
+        <rect x="92" y="140" width="120" height="2" rx="1" fill="#A89DAE"/>
+        <rect x="80" y="152" width="160" height="38" rx="3" fill="#17131F" stroke="#2A2334"/>
+        <circle cx="92" cy="162" r="5" fill="#2BD4A0"/>
+        <rect x="102" y="158" width="40" height="3" rx="1" fill="#F0E8DC" opacity=".85"/>
+        <rect x="208" y="158" width="24" height="9" rx="4" fill="rgba(43,212,160,.15)" stroke="rgba(43,212,160,.4)"/>
+        <rect x="246" y="110" width="72" height="80" rx="4" fill="#110D17" stroke="#2A2334"/>
+        <rect x="254" y="118" width="34" height="3" rx="1" fill="#B065A0"/>
+        <rect x="254" y="128" width="56" height="40" rx="3" fill="#221C2C" stroke="#2A2334"/>
+        <rect x="258" y="134" width="48" height="2" rx="1" fill="#A89DAE"/>
+        <rect x="258" y="140" width="46" height="2" rx="1" fill="#A89DAE"/>
+        <rect x="258" y="146" width="48" height="2" rx="1" fill="#A89DAE"/>
+        <rect x="254" y="176" width="56" height="8" rx="2" fill="#B065A0"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <div class="card-num">05 · Reputation</div>
+      <div class="card-title">Opinie</div>
+      <div class="card-desc">Hero 9.2/10, trend 6mc, lista Booking.com, AI composer z 3 wariantami tonu odpowiedzi.</div>
+      <div class="card-foot">
+        <span class="card-file">05-reviews.html</span>
+        <span class="card-cta">Otwórz <svg fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+      </div>
+    </div>
+  </a>
+
+</main>
+
+<!-- LEGEND -->
+<section style="max-width:1280px;margin:0 auto;padding:0 32px 24px">
+  <div style="font:700 11px var(--f-d);letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);margin-bottom:14px">Paleta Conrad Comfort</div>
+</section>
+<section class="legend">
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:linear-gradient(135deg,#B065A0,#6E2B5C)"></div>
+    <div class="lg-info"><div class="lg-name">Aubergine (brand)</div><div class="lg-hex">#B065A0 → #6E2B5C</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#4A1942"></div>
+    <div class="lg-info"><div class="lg-name">Wine deep (logo bg)</div><div class="lg-hex">#4A1942</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#F5EDE0"></div>
+    <div class="lg-info"><div class="lg-name">Cream (logo text)</div><div class="lg-hex">#F5EDE0</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#C8A269"></div>
+    <div class="lg-info"><div class="lg-name">Gold (premium)</div><div class="lg-hex">#C8A269</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#2BD4A0"></div>
+    <div class="lg-info"><div class="lg-name">Teal (success)</div><div class="lg-hex">#2BD4A0</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#FF5471"></div>
+    <div class="lg-info"><div class="lg-name">Rose (urgent)</div><div class="lg-hex">#FF5471</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#F4C055"></div>
+    <div class="lg-info"><div class="lg-name">Amber (vacated)</div><div class="lg-hex">#F4C055</div></div>
+  </div>
+  <div class="lg-row">
+    <div class="lg-swatch" style="background:#5BA8E8"></div>
+    <div class="lg-info"><div class="lg-name">Sky (in-progress)</div><div class="lg-hex">#5BA8E8</div></div>
+  </div>
+</section>
+
+</body>
+</html>

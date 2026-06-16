@@ -6,7 +6,36 @@
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<script>
+/* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
+   dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
+   jej zamykać ani usuwać i dodawać ponownie. */
+(function(){
+  var url = location.pathname + (location.search || "");
+  var baseline = null, busy = false, INTERVAL = 5 * 60 * 1000;
+  function fp(s){ var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ":" + h; }
+  async function check(){
+    if (busy || navigator.onLine === false) return;
+    busy = true;
+    try {
+      var res = await fetch(url, { cache: "no-store" });
+      if (res.ok){
+        var cur = fp(await res.text());
+        if (baseline === null) baseline = cur;
+        else if (cur !== baseline){ location.reload(); return; }
+      }
+    } catch (e) { /* offline / chwilowy błąd — sprawdzimy później */ }
+    busy = false;
+  }
+  if ("serviceWorker" in navigator)
+    navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){});
+  check();
+  setInterval(function(){ if (!document.hidden) check(); }, INTERVAL);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+})();
+</script>
 <title>Wyjazdy • HK</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -32,7 +61,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .sync{font-size:10px;color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums}
 .legend{padding:12px 16px 4px;color:var(--muted);font-size:11px;line-height:1.6}
 .days{padding:10px 12px;display:flex;flex-direction:column;gap:9px;padding-bottom:40px}
-.day{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;align-items:center;gap:14px;box-shadow:0 1px 2px rgba(90,29,74,.04)}
+.day{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:13px 15px;display:flex;flex-direction:column;gap:0;box-shadow:0 1px 2px rgba(90,29,74,.04)}
+.drow{display:flex;align-items:center;gap:14px}
+.obsada-btn{margin-top:11px;width:100%;background:rgba(90,29,74,.06);border:1px solid var(--line);border-radius:10px;padding:9px;color:var(--plum);font-weight:800;font-size:12px;cursor:pointer;font-family:inherit}
+.planner{margin-top:10px;border-top:1px dashed var(--line-strong);padding-top:11px;display:flex;flex-direction:column;gap:7px}
+.rost-head{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.rost-row{display:flex;align-items:center;gap:8px}
+.rost-name{flex:1;font-weight:700;font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rost-role{font-size:12px;padding:5px 6px;border-radius:7px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-family:inherit}
+.rost-load{min-width:44px;text-align:center;font-weight:900;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rost-target{width:50px;padding:6px 3px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:14px;text-align:center;font-family:inherit;-moz-appearance:textfield}
+.rost-target::-webkit-outer-spin-button,.rost-target::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.rost-target::placeholder{color:var(--muted);font-weight:600;font-size:11px}
+.rost-target.set{border-color:var(--plum);background:rgba(90,29,74,.1);box-shadow:0 0 0 1px rgba(90,29,74,.25)}
+.rost-x{background:none;border:none;color:#c2708a;font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.rost-empty{font-size:12px;color:var(--muted);padding:4px 0}
+.rost-add{display:flex;gap:7px;margin-top:3px}
+.rost-inp{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
+.rost-addbtn{padding:8px 14px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+.rost-send{margin-top:8px;width:100%;padding:11px;border-radius:9px;border:none;background:#0f7a4a;color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+.rost-restore{margin-top:6px;align-self:flex-start;background:none;border:none;color:var(--muted);font-size:11px;font-weight:700;text-decoration:underline;cursor:pointer;font-family:inherit;padding:2px 0}
 .day.today{border-color:var(--plum);background:linear-gradient(180deg,rgba(90,29,74,.06) 0%,var(--paper) 100%)}
 .day.tomorrow{border-color:var(--line-strong)}
 .day.empty{opacity:.55}
@@ -53,7 +101,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .pill.zero{opacity:.4}
 .foot{text-align:center;color:var(--muted);font-size:11px;padding:10px}
 @media (max-width:420px){
-  .day{align-items:stretch;flex-direction:column;gap:10px}
+  .drow{align-items:stretch;flex-direction:column;gap:10px}
   .dright{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
   .pill{min-width:0;padding:8px 3px}
   .pill .pl{font-size:8px}
@@ -85,6 +133,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 <script>
 const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
 const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+const TENANT_ID = "00000000-0000-0000-0000-000000000001"; // = VITE_TENANT_ID recepcji
 const DAYS = 3;
 const APT_ROOMS = ["106","206","218","306","318"];
 const DOW = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
@@ -102,16 +152,6 @@ function buildRange() {
   return out;
 }
 
-function flattenAssignments(assignments) {
-  const rooms = [];
-  if (assignments && typeof assignments === "object") {
-    Object.values(assignments).forEach(list => {
-      if (Array.isArray(list)) list.forEach(no => rooms.push(String(no)));
-    });
-  }
-  return [...new Set(rooms)].sort((a,b) => a.localeCompare(b, "pl", { numeric: true }));
-}
-
 function splitRooms(rooms) {
   const apt = rooms.filter(no => APT_ROOMS.includes(no)).length;
   return { total: rooms.length, reg: rooms.length - apt, apt };
@@ -120,7 +160,9 @@ function splitRooms(rooms) {
 function countTypes(plan) {
   const data = plan || {};
   const pmRoomTypes = data.pmRoomTypes || {};
-  const assignedWRooms = flattenAssignments(data.assignments);
+  // Wyjazdy = pokoje o statusie W/WP w pm_room_types (lustro statusu z recepcji,
+  // ta sama liczba co panel HK). NIE sumujemy z assignments — recepcja rozpisuje
+  // tam także pobyty PG/PGZ na sprzątaczki, co zawyżało licznik (14+3 zamiast 12).
   const typedWRooms = [];
   let pg=0, pgz=0;
   if (pmRoomTypes && typeof pmRoomTypes === "object") {
@@ -130,7 +172,7 @@ function countTypes(plan) {
       else if (v==="PGZ") pgz++;
     });
   }
-  const allWRooms = [...new Set([...typedWRooms, ...assignedWRooms])]
+  const allWRooms = [...new Set(typedWRooms)]
     .sort((a,b) => a.localeCompare(b, "pl", { numeric: true }));
   const w = splitRooms(allWRooms);
   return { w, pg, pgz };
@@ -160,7 +202,196 @@ async function fetchPlans() {
   return m;
 }
 
+function toast(msg, color="#0f7a4a"){
+  const e=document.createElement("div");
+  e.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid var(--line-strong);border-radius:10px;padding:12px 20px;font-size:14px;font-weight:800;z-index:999;box-shadow:0 8px 30px rgba(90,29,74,.25);transition:opacity .3s";
+  e.style.color=color; e.textContent=msg; document.body.appendChild(e);
+  setTimeout(()=>{ e.style.opacity="0"; setTimeout(()=>e.remove(),300); },2400);
+}
+
+// ── Obsada + podział na żywo (jak Auto-przypisz: apartament = waga 3 pokoi) ──
+let expandedDay = null;
+let lastByDate = {};
+const escapeHtml = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const rosterKey = d => "hk-roster-"+d;
+const getRoster = d => { try { return JSON.parse(localStorage.getItem(rosterKey(d))||"[]"); } catch { return []; } };
+const setRoster = (d,arr) => localStorage.setItem(rosterKey(d), JSON.stringify(arr));
+// Lokalnie ukryte osoby "w programie" (zapis per dzień). Telefon nie kasuje
+// przypisania w recepcji — tylko chowa imię z widoku obsady, by kierownik
+// mógł wyczyścić listę. Klucz = znormalizowane imię.
+const hiddenKey = d => "hk-roster-hidden-"+d;
+const getHidden = d => { try { return JSON.parse(localStorage.getItem(hiddenKey(d))||"[]"); } catch { return []; } };
+const setHidden = (d,arr) => localStorage.setItem(hiddenKey(d), JSON.stringify(arr));
+const capitalize = s => s ? s.charAt(0).toUpperCase()+s.slice(1) : s;
+
+// Podział pokoi per osoba = JEDNO źródło prawdy: realne przypisania z programu
+// (hk_plan.assignments: { "Imię": ["101","106",...] } — to, co rozpisała recepcja).
+// Dzięki temu liczby na telefonie są identyczne z programem, bez własnej heurystyki.
+function normName(s){ return String(s||"").trim().toLowerCase(); }
+function loadsFromAssignments(assignments){
+  const map = {};
+  if (assignments && typeof assignments === "object") {
+    Object.entries(assignments).forEach(([person, list]) => {
+      if (!Array.isArray(list)) return;
+      const apt = list.filter(no => APT_ROOMS.includes(String(no))).length;
+      map[normName(person)] = { reg: list.length - apt, apt, name: person };
+    });
+  }
+  return map;
+}
+const fmtLoad = L => L.apt ? L.reg+"+"+L.apt : ""+L.reg;
+
+// Szacunkowy podział pokoi na osobę, gdy recepcja jeszcze nie rozpisała —
+// kierownik od razu widzi obciążenie i może dobrać obsadę. Liczy tą samą wagą
+// co program (apartament=3, dyżur=0.85 udziału). Po realnym rozpisaniu w
+// recepcji telefon zastępuje szacunek danymi z hk_plan.assignments (1:1).
+function estimateSplit(roster, counts){
+  const out = {};
+  const reg = counts.w.reg|0, apt = counts.w.apt|0;
+  // Popołudnie nie sprząta wyjazdowych — liczymy tylko poranne/dyżur.
+  const morning = roster.map((w,i)=>({w,i})).filter(x=>x.w.role!=="popoludnie");
+  const n = morning.length;
+  if (!n || (!reg && !apt)) return out;
+  const dutyLocal = morning.findIndex(x=>x.w.role==="dyzur");
+  const DUTY_RATIO = 0.85;
+  const totalWeight = reg + apt*3;
+  const rawRatios = morning.map((_,i)=> (i===dutyLocal && dutyLocal>=0) ? DUTY_RATIO : 1.0);
+  const ratioSum = rawRatios.reduce((s,v)=>s+v,0) || 1;
+  const weightTargets = rawRatios.map(v=>Math.floor(v/ratioSum*totalWeight));
+  // Apartamenty (waga 3) rozdajemy najpierw — kolejka preferuje osoby poza dyżurem.
+  const aptWeights = new Array(n).fill(0);
+  const aptCount = new Array(n).fill(0);
+  const nonDuty = morning.map((_,i)=>i).filter(i=>i!==dutyLocal);
+  const dutyArr = dutyLocal>=0 ? [dutyLocal] : [];
+  const aptQueue = [...nonDuty,...nonDuty,...dutyArr,...nonDuty,...dutyArr];
+  const queue = aptQueue.length ? aptQueue : morning.map((_,i)=>i);
+  for (let r=0;r<apt;r++){ const pi = queue[r%queue.length] ?? 0; aptCount[pi]++; aptWeights[pi]+=3; }
+  // Pokoje zwykłe wypełniają pozostałe cele wagowe.
+  const regTargets = morning.map((_,i)=>Math.max(0, weightTargets[i]-aptWeights[i]));
+  const regSum = regTargets.reduce((s,v)=>s+v,0);
+  const scale = regSum>0 ? reg/regSum : 1;
+  const adj = regTargets.map(v=>Math.round(v*scale));
+  let diff = reg - adj.reduce((s,v)=>s+v,0);
+  const diffOrder = [...nonDuty, dutyLocal>=0?dutyLocal:-1].filter(i=>i>=0);
+  for (let j=0; diff>0 && diffOrder.length; j++){ adj[diffOrder[j%diffOrder.length]]++; diff--; }
+  while (diff<0 && diffOrder.length){
+    const mx = Math.max(...diffOrder.map(i=>adj[i]));
+    const idx = diffOrder.find(i=>adj[i]===mx && adj[i]>0);
+    if (idx===undefined) break;
+    adj[idx]--; diff++;
+  }
+  morning.forEach((x,li)=>{ out[x.i] = { reg: adj[li], apt: aptCount[li] }; });
+  return out;
+}
+
+// Globalne handlery — inline onclick przetrwa rebuild innerHTML
+window.toggleDay = (iso)=>{ expandedDay = expandedDay===iso ? null : iso; render(lastByDate); };
+window.addRosterWorker = (iso)=>{
+  const inp = document.getElementById("rost-input-"+iso);
+  const name = (inp && inp.value || "").trim();
+  if (!name) return;
+  // Pierwsza wpisana osoba domyślnie na dyżurze (0.7 udziału), reszta poranna.
+  const arr = getRoster(iso); arr.push({ name: capitalize(name), role: arr.length===0 ? "dyzur" : "poranna" });
+  setRoster(iso, arr); render(lastByDate);
+  const ni = document.getElementById("rost-input-"+iso); if (ni) ni.focus();
+};
+window.removeRosterWorker = (iso, idx)=>{ const arr=getRoster(iso); arr.splice(idx,1); setRoster(iso,arr); render(lastByDate); };
+window.dismissProgramWorker = (iso, enc)=>{
+  const n = normName(decodeURIComponent(enc));
+  const h = getHidden(iso); if (!h.includes(n)) h.push(n);
+  setHidden(iso, h); render(lastByDate);
+};
+window.restoreHidden = (iso)=>{ setHidden(iso, []); render(lastByDate); };
+window.setRosterRole = (iso, idx, role)=>{ const arr=getRoster(iso); if(arr[idx]){ arr[idx].role=role; setRoster(iso,arr); render(lastByDate); } };
+// Ile pokoi kierownik chce rozpisać tej osobie (np. "Natalia 7 pokoi" z wiadomości).
+// Cel ręczny zapisuje się w obsadzie i jedzie do recepcji razem z rolą.
+window.setRosterRooms = (iso, idx, val)=>{
+  const arr=getRoster(iso); if(!arr[idx]) return;
+  const n = parseInt(val,10);
+  if (val==="" || isNaN(n) || n<0) delete arr[idx].rooms; else arr[idx].rooms = n;
+  setRoster(iso,arr); render(lastByDate);
+};
+window.sendRoster = async (iso)=>{
+  const roster = getRoster(iso);
+  if (!roster.length){ toast("Dodaj najpierw pracowników.", "#f59ea6"); return; }
+  if (!sb){ toast("Brak biblioteki Supabase — odśwież stronę.", "#f59ea6"); return; }
+  try{
+    const { error } = await sb.from("hk_roster").upsert(
+      { tenant_id:TENANT_ID, date:iso, roster, updated_at:new Date().toISOString() },
+      { onConflict:"tenant_id,date" }
+    );
+    if (!error) toast("Obsada wysłana do recepcji ✓");
+    else toast("Błąd: "+error.message, "#f59ea6");
+  }catch(e){ toast("Błąd: "+(e&&e.message||e), "#f59ea6"); }
+};
+
+function plannerHtml(iso, counts) {
+  const roster = getRoster(iso);
+  const plan = lastByDate[iso] || {};
+  const loads = loadsFromAssignments(plan.assignments);
+  const anyAssigned = Object.keys(loads).length > 0;
+  // Brak realnego rozpisania → policz szacunek, by kierownik widział obciążenie.
+  const est = anyAssigned ? {} : estimateSplit(roster, counts);
+  const rows = roster.map((w, idx)=>{
+    let load;
+    if (w.role==="popoludnie") load = "popoł.";
+    else if (anyAssigned) { const L = loads[normName(w.name)]; load = L ? fmtLoad(L) : "—"; }
+    else { const E = est[idx]; load = E ? fmtLoad(E) : "—"; }
+    const hasTarget = w.rooms!=null && w.rooms!=="";
+    return `<div class="rost-row">
+      <span class="rost-name">${escapeHtml(w.name)}</span>
+      <select class="rost-role" onchange="setRosterRole('${iso}',${idx},this.value)">
+        <option value="poranna"${w.role==="poranna"?" selected":""}>Poranna</option>
+        <option value="dyzur"${w.role==="dyzur"?" selected":""}>Dyżur</option>
+        <option value="popoludnie"${w.role==="popoludnie"?" selected":""}>Popołudnie</option>
+      </select>
+      <input class="rost-target${hasTarget?" set":""}" type="number" inputmode="numeric" min="0" max="40"
+        placeholder="pok." value="${hasTarget?w.rooms:""}"
+        onchange="setRosterRooms('${iso}',${idx},this.value)"
+        aria-label="Ile pokoi rozpisać dla ${escapeHtml(w.name)}" title="Ile pokoi rozpisać"/>
+      <span class="rost-load">${load}</span>
+      <button class="rost-x" onclick="removeRosterWorker('${iso}',${idx})" aria-label="Usuń">×</button>
+    </div>`;
+  }).join("");
+  // Osoby rozpisane w programie, których nie ma w lokalnej obsadzie — pokaż jako
+  // podgląd (read-only), by telefon zawsze odzwierciedlał realny podział recepcji 1:1.
+  const rosterNames = new Set(roster.map(w=>normName(w.name)));
+  const hidden = new Set(getHidden(iso));
+  const extraRows = Object.values(loads)
+    .filter(L => !rosterNames.has(normName(L.name)) && !hidden.has(normName(L.name)))
+    .sort((a,b)=>a.name.localeCompare(b.name,"pl"))
+    .map(L => `<div class="rost-row">
+      <span class="rost-name">${escapeHtml(L.name)}</span>
+      <span class="rost-role" style="opacity:.6;border-style:dashed">w programie</span>
+      <span class="rost-load">${fmtLoad(L)}</span>
+      <button class="rost-x" onclick="dismissProgramWorker('${iso}','${encodeURIComponent(L.name).replace(/'/g,"%27")}')" aria-label="Ukryj">×</button>
+    </div>`).join("");
+  let body = rows + extraRows;
+  if (!body) body = roster.length
+    ? '<div class="rost-empty">Czeka na rozpisanie w recepcji…</div>'
+    : '<div class="rost-empty">Dodaj pracowników, by zobaczyć podział.</div>';
+  const hiddenCount = hidden.size;
+  // Suma ręcznie rozpisanych pokoi (cel kierownika) vs. ile wyjazdów jest do podziału.
+  const targetSum = roster.reduce((s,w)=> s + (w.rooms!=null && w.rooms!=="" ? (parseInt(w.rooms,10)||0) : 0), 0);
+  const avail = counts.w.total;
+  const tgtTxt = targetSum>0
+    ? ` · <span style="color:${targetSum>avail?"#c2708a":"var(--plum)"}">rozpisano ${targetSum}/${avail}</span>`
+    : "";
+  return `<div class="planner">
+    <div class="rost-head">Obsada · ${counts.w.reg}${counts.w.apt?"+"+counts.w.apt+" APT":""} do podziału${tgtTxt}</div>
+    ${body}
+    <div class="rost-add">
+      <input id="rost-input-${iso}" class="rost-inp" placeholder="Imię pracownika" autocomplete="off"
+        onkeydown="if(event.key==='Enter')addRosterWorker('${iso}')"/>
+      <button class="rost-addbtn" onclick="addRosterWorker('${iso}')">Dodaj</button>
+    </div>
+    ${hiddenCount ? `<button class="rost-restore" onclick="restoreHidden('${iso}')">Pokaż ukryte (${hiddenCount})</button>` : ""}
+    ${roster.length ? `<button class="rost-send" onclick="sendRoster('${iso}')">📤 Wyślij obsadę do recepcji</button>` : ""}
+  </div>`;
+}
+
 function render(byDate) {
+  lastByDate = byDate;
   const range = buildRange();
   const todayIso = range[0], tomorrowIso = range[1];
   const c = document.getElementById("days");
@@ -174,13 +405,18 @@ function render(byDate) {
     const wZero = counts.w.total===0 ? " zero" : "";
     const pgZero = counts.pg===0 ? " zero" : "";
     const pgzZero = counts.pgz===0 ? " zero" : "";
+    const rosterCount = getRoster(iso).length;
     const div = document.createElement("div");
     div.className = "day "+cls+empty;
     div.innerHTML =
-      `<div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>`+
-      `<div class="dright"><div class="pill w${wZero}"><div class="pl">Wyjazd</div><div class="pv">${fmtWP(counts.w.reg, counts.w.apt)}</div></div>`+
-      `<div class="pill pg${pgZero}"><div class="pl">PG</div><div class="pv">${counts.pg}</div></div>`+
-      `<div class="pill pgz${pgzZero}"><div class="pl">PGZ</div><div class="pv">${counts.pgz}</div></div></div>`;
+      `<div class="drow">`+
+        `<div class="dleft"><div class="ddow">${d.dow}</div><div class="ddate">${d.txt}</div>${lbl?`<div class="dlbl">${lbl}</div>`:""}</div>`+
+        `<div class="dright"><div class="pill w${wZero}"><div class="pl">Wyjazd</div><div class="pv">${fmtWP(counts.w.reg, counts.w.apt)}</div></div>`+
+        `<div class="pill pg${pgZero}"><div class="pl">PG</div><div class="pv">${counts.pg}</div></div>`+
+        `<div class="pill pgz${pgzZero}"><div class="pl">PGZ</div><div class="pv">${counts.pgz}</div></div></div>`+
+      `</div>`+
+      `<button class="obsada-btn" onclick="toggleDay('${iso}')">${expandedDay===iso?"▲ Ukryj obsadę":"▼ Obsada"+(rosterCount?` (${rosterCount})`:"")}</button>`+
+      (expandedDay===iso ? plannerHtml(iso, counts) : "");
     c.appendChild(div);
   });
   document.getElementById("lastUpd").textContent = "Aktualizacja: "+new Date().toLocaleTimeString("pl-PL");
@@ -190,9 +426,14 @@ async function tick() {
   const dot = document.getElementById("dot");
   try {
     const m = await fetchPlans();
+    lastByDate = m;
     dot.className = "dot";
     document.getElementById("sync").textContent = new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-    render(m);
+    // Nie przerysowuj, gdy menadżer planuje obsadę (otwarty planer / wpisuje) — inaczej
+    // zniknąłby wpisywany tekst i rozwinięty dzień. Liczby odświeżą się po zamknięciu.
+    const ae = document.activeElement;
+    const typing = ae && /^(INPUT|SELECT)$/.test(ae.tagName);
+    if (!expandedDay && !typing) render(m);
   } catch (e) {
     dot.className = "dot off";
   }

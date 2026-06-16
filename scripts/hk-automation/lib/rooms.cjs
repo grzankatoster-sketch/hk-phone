@@ -1,0 +1,37 @@
+const HK_FLOOR1 = [
+  { no: "101", type: "DBL" }, { no: "102", type: "SGL" }, { no: "103", type: "DBL" },
+  { no: "104", type: "SGL" }, { no: "105", type: "TRPL" }, { no: "106", type: "APT", apt: true },
+  { no: "107", type: "TRPL" }, { no: "108", type: "TWIN" }, { no: "109", type: "TWIN" },
+  { no: "110", type: "SGL" }, { no: "111", type: "TWIN" }, { no: "112", type: "TWIN" },
+  { no: "114", type: "DBL" }, { no: "115", type: "DBL" }, { no: "116", type: "DBL" },
+  { no: "117", type: "TRPL" }, { no: "118A", type: "SGL" }, { no: "118B", type: "SGL" },
+  { no: "119", type: "TRPL" }, { no: "120", type: "TWIN" }, { no: "121", type: "TWIN" },
+  { no: "122", type: "DBL" }, { no: "123", type: "DBL" },
+];
+
+const HK_FLOOR2 = [
+  { no: "201", type: "TWIN" }, { no: "202", type: "TWIN" }, { no: "203", type: "TWIN" },
+  { no: "204", type: "SGL" }, { no: "205", type: "SGL" }, { no: "206", type: "APT", apt: true },
+  { no: "207", type: "SGL" }, { no: "208", type: "TWIN" }, { no: "209", type: "TWIN" },
+  { no: "210", type: "TWIN" }, { no: "211", type: "TWIN" }, { no: "212", type: "DBL" },
+  { no: "214", type: "TWIN" }, { no: "215", type: "TWIN" }, { no: "216", type: "TWIN" },
+  { no: "217", type: "SGL" }, { no: "218", type: "APT", apt: true }, { no: "219", type: "DBL" },
+  { no: "220", type: "TWIN" }, { no: "221", type: "TWIN" }, { no: "222", type: "DBL" }, { no: "223", type: "TWIN" },
+];
+
+const HK_FLOOR3 = [
+  { no: "301", type: "DBL" }, { no: "302", type: "DBL" }, { no: "303", type: "DBL" },
+  { no: "304", type: "TWIN" }, { no: "305", type: "DBL" }, { no: "306", type: "APT", apt: true },
+  { no: "307", type: "DBL" }, { no: "308", type: "TWIN" }, { no: "309", type: "SGL" },
+  { no: "310", type: "SGL" }, { no: "311", type: "TWIN" }, { no: "312", type: "SGL" },
+  { no: "314", type: "SGL" }, { no: "315", type: "SGL" }, { no: "316", type: "SGL" },
+  { no: "317", type: "DBL" }, { no: "318", type: "APT", apt: true }, { no: "319", type: "DBL" },
+  { no: "320", type: "DBL" }, { no: "321", type: "DBL" }, { no: "322", type: "SGL" }, { no: "323", type: "DBL" },
+];
+
+const HK_ALL = [...HK_FLOOR1, ...HK_FLOOR2, ...HK_FLOOR3];
+const ROOM_NUMBERS = HK_ALL.map((room) => room.no);
+const ROOM_SET = new Set(ROOM_NUMBERS);
+const ROOM_TYPE_BY_NO = Object.fromEntries(HK_ALL.map((room) => [room.no, room.type]));
+
+module.exports = { HK_ALL, ROOM_NUMBERS, ROOM_SET, ROOM_TYPE_BY_NO };

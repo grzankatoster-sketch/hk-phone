@@ -1,19 +1,21 @@
 // Copyright © 2026 Conrad Comfort. All rights reserved. UNLICENSED.
 // ─── electron/main.cjs ───────────────────────────────────────────────────────
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Menu, Notification } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const path    = require("path");
 const fs      = require("fs");
 const QRCode  = require("qrcode");
 const cp      = require("child_process");
 
-// ─── .env (wbudowany w asar przy buildzie) ────────────────────────────────────
-// W trybie dev czytamy z katalogu projektu; w packaged — z resourcesPath/.env
-// (electron-builder kopiuje .env tam przez extraResources w package.json).
+// ─── .env (NIGDY nie pakowany do instalatora) ─────────────────────────────────
+// Sekrety (np. haslo IMAP automatyzacji HK) NIE sa dolaczane do publicznego
+// instalatora. W dev czytamy z katalogu projektu. Na maszynie ktora faktycznie
+// uruchamia automatyzacje, administrator recznie kladzie plik .env obok exe
+// (folder instalacji) — wtedy zostaje wczytany lokalnie, bez wycieku do builda.
 try {
   const envCandidates = [
     path.join(__dirname, "..", ".env"),
-    process.resourcesPath ? path.join(process.resourcesPath, ".env") : null,
+    process.execPath ? path.join(path.dirname(process.execPath), ".env") : null,
   ].filter(Boolean);
   for (const envPath of envCandidates) {
     if (fs.existsSync(envPath)) {
@@ -300,8 +302,51 @@ ipcMain.handle("hk-get-konserwator-qr", async (_, name, faults) => {
   }
 });
 
+// ─── Powiadomienia natywne Windows (agent AI / prośby HK) ─────────────────────
+// AppUserModelId jest wymagany, by Windows pokazywał natywne toasty z poprawną
+// nazwą/ikoną (zwłaszcza w buildzie). Ustawiamy stałe ID producenta.
+const APP_USER_MODEL_ID = "com.conradcomfort.panelrecepcji";
+
+ipcMain.handle("notify", (_e, payload = {}) => {
+  try {
+    if (!Notification.isSupported()) return false;
+    const n = new Notification({
+      title: String(payload.title || "Panel Recepcji"),
+      body:  String(payload.body || ""),
+      silent: false,
+    });
+    n.on("click", () => {
+      if (!mainWindow) return;
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+      try { mainWindow.flashFrame(false); } catch (_) {}
+      mainWindow.webContents.send("agent-navigate", payload.nav || "hk-monitor");
+    });
+    n.show();
+    // Miganie paska zadań, gdy okno nie jest aktywne.
+    if (mainWindow && !mainWindow.isFocused()) {
+      try { mainWindow.flashFrame(true); } catch (_) {}
+    }
+    return true;
+  } catch (err) {
+    autoUpdater.logger?.warn?.("[notify]", err.message);
+    return false;
+  }
+});
+
+ipcMain.handle("focus-window", () => {
+  if (!mainWindow) return false;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+  try { mainWindow.flashFrame(false); } catch (_) {}
+  return true;
+});
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
+  try { app.setAppUserModelId(APP_USER_MODEL_ID); } catch (_) {}
   if (app.isPackaged) {
     autoUpdater.logger.info(`[START] ${app.getName()} v${app.getVersion()} | ${APP_COPYRIGHT}`);
   }

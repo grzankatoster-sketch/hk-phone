@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Opinie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+textarea{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;outline:none;resize:vertical;width:100%;line-height:1.5}
+textarea:focus{border-color:var(--ember-border)}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:#fff;box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px}
+.sb-badge.muted{background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)}
+
+/* Main */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;background:var(--bg-0);overflow:hidden}
+
+.topbar{padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast)}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0A0A0F;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+
+/* ── HERO SCORE ── */
+.hero{display:grid;grid-template-columns:280px 1fr;gap:18px;padding:18px 28px;background:var(--bg-1);border-bottom:1px solid var(--border-0)}
+.score-card{background:linear-gradient(135deg,var(--bg-2),#1A1410 100%);border:1px solid var(--ember-border);border-radius:var(--r-lg);padding:18px 22px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.score-card::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,var(--ember-bg),transparent 70%);pointer-events:none}
+.score-card-top{display:flex;align-items:center;gap:8px;font:700 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--ember)}
+.score-card-top svg{width:14px;height:14px}
+.score-val{font:700 56px/1 var(--f-d);color:var(--text-0);letter-spacing:-.04em;display:flex;align-items:baseline;gap:6px;margin-top:8px}
+.score-val .max{font:600 20px var(--f-d);color:var(--ember)}
+.score-stars{display:flex;gap:3px;margin-top:8px}
+.score-stars svg{width:16px;height:16px;color:var(--amber)}
+.score-stars svg.empty{color:var(--bg-3)}
+.score-card-sub{font-size:11.5px;color:var(--text-2);margin-top:10px}
+.score-card-sub b{color:var(--teal);font-weight:600}
+
+/* Hist chart */
+.hist-card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.hist-head{display:flex;align-items:baseline;justify-content:space-between}
+.hist-title{font:700 13px var(--f-d);color:var(--text-0)}
+.hist-sub{font-size:11px;color:var(--text-2)}
+.hist-svg{width:100%;height:80px}
+.hist-cats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.cat{padding:8px 10px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm)}
+.cat-lbl{font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);margin-bottom:6px}
+.cat-val{display:flex;align-items:baseline;gap:5px}
+.cat-num{font:600 18px var(--f-m);color:var(--text-0)}
+.cat-num.amber{color:var(--amber)}
+.cat-num.rose{color:var(--rose)}
+.cat-bar{height:3px;background:var(--bg-2);border-radius:99px;margin-top:6px;overflow:hidden}
+.cat-bar-fill{height:100%;background:var(--teal);border-radius:99px}
+.cat-bar-fill.amber{background:var(--amber)}
+.cat-bar-fill.rose{background:var(--rose)}
+
+/* Body */
+.body{flex:1;display:grid;grid-template-columns:1fr 420px;overflow:hidden;min-height:0}
+.list-pane{overflow-y:auto;padding:16px 28px}
+.list-pane::-webkit-scrollbar{width:8px}
+.list-pane::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:var(--bg-2);transition:all var(--t-fast);display:inline-flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}.tab.on .cnt{opacity:1}
+
+/* Review card */
+.rev{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);padding:16px 18px;margin-bottom:10px;transition:all var(--t-fast);cursor:pointer;position:relative}
+.rev:hover{border-color:var(--border-2)}
+.rev.selected{border-color:var(--ember-border);background:linear-gradient(135deg,var(--ember-bg) 0%,var(--bg-2) 50%)}
+.rev.selected::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--r-md) 0 0 var(--r-md);background:var(--ember);box-shadow:var(--ember-glow)}
+
+.rev-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.rev-avatar{width:36px;height:36px;border-radius:50%;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font:700 14px var(--f-d);color:var(--text-0);flex-shrink:0}
+.rev-info{flex:1;min-width:0}
+.rev-name{font:700 14px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:7px}
+.rev-flag{display:inline-flex;align-items:center;gap:4px;font:500 10.5px var(--f-m);color:var(--text-3);padding:2px 6px;border-radius:var(--r-xs);background:var(--bg-3);border:1px solid var(--border-1)}
+.rev-meta{font:500 11px var(--f-m);color:var(--text-3);margin-top:3px;display:flex;gap:10px}
+.rev-score-pill{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:var(--r-sm);font:600 13px var(--f-m)}
+.rev-score-pill.high{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.rev-score-pill.mid{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.rev-score-pill.low{background:var(--rose-bg);color:var(--rose);border:1px solid var(--rose-border)}
+
+.rev-platform{font:600 9px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;border-radius:var(--r-xs);background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-border)}
+
+.rev-title{font:700 14px var(--f-d);color:var(--text-0);margin-bottom:5px;font-style:italic}
+.rev-body{font-size:13px;color:var(--text-1);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+
+.rev-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-0)}
+.rev-tags{display:flex;gap:5px;flex-wrap:wrap}
+.rev-tag{font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)}
+.rev-tag.pos{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.rev-tag.neg{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.rev-status{font:600 10.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3);display:flex;align-items:center;gap:5px}
+.rev-status .dot{width:6px;height:6px;border-radius:50%;background:var(--text-3)}
+.rev-status.replied{color:var(--teal)}.rev-status.replied .dot{background:var(--teal)}
+.rev-status.draft{color:var(--amber)}.rev-status.draft .dot{background:var(--amber)}
+.rev-status.pending{color:var(--rose)}.rev-status.pending .dot{background:var(--rose);box-shadow:0 0 8px var(--rose)}
+
+/* DETAIL: reply composer */
+.detail{background:var(--bg-1);border-left:1px solid var(--border-0);overflow-y:auto;display:flex;flex-direction:column}
+.detail::-webkit-scrollbar{width:6px}
+.detail::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+
+.det-head{padding:18px 22px;border-bottom:1px solid var(--border-0)}
+.det-eyebrow{font:700 10px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--ember);margin-bottom:8px}
+.det-title{font:700 16px/1.2 var(--f-d);color:var(--text-0);font-style:italic}
+.det-quote{margin-top:12px;padding:12px 14px;background:var(--bg-2);border-left:3px solid var(--ember);border-radius:var(--r-sm);font-size:13px;color:var(--text-1);line-height:1.55}
+.det-quote .author{font:700 11px var(--f-d);color:var(--ember);margin-bottom:5px;letter-spacing:.04em}
+
+.det-sec{padding:16px 22px;border-bottom:1px solid var(--border-0)}
+.det-sec-title{font:700 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+
+.ai-row{display:flex;gap:8px;align-items:center;padding:11px 13px;background:linear-gradient(135deg,var(--violet-bg),transparent);border:1px solid rgba(180,154,255,.28);border-radius:var(--r-sm);margin-bottom:10px}
+.ai-row svg{color:var(--violet);flex-shrink:0}
+.ai-text{flex:1;font-size:12px;color:var(--text-1)}
+.ai-text b{color:var(--violet);font-weight:700}
+.ai-btn{font:600 10.5px var(--f-d);letter-spacing:.06em;text-transform:uppercase;color:var(--violet);padding:5px 10px;border-radius:var(--r-xs);border:1px solid rgba(180,154,255,.4);background:transparent}
+
+.tone-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tone{font:600 10.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:99px;background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1);cursor:pointer;transition:all var(--t-fast)}
+.tone:hover{color:var(--text-0);border-color:var(--border-2)}
+.tone.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+
+.composer{display:flex;flex-direction:column;gap:10px}
+.composer textarea{min-height:170px;font-family:var(--f-b);font-size:13.5px;line-height:1.55}
+.composer-meta{display:flex;align-items:center;justify-content:space-between;font:500 11px var(--f-m);color:var(--text-3)}
+
+.det-actions{padding:16px 22px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border-0)}
+.det-actions .btn{width:100%;justify-content:center;padding:11px}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div>
+        <div class="sb-brand-name">Conrad Comfort</div>
+        <div class="sb-brand-sub">Opinie · v2</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>HK Live</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item active">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Opinie<span class="sb-badge muted">3</span>
+    </button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Obsługa</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Opinie</span></div>
+      <h1 class="page-title">Opinie gości</h1>
+      <div class="page-meta">
+        <span>Booking.com sync: <b>5 min temu</b></span>
+        <span>Nieprzeczytane: <b style="color:var(--rose)">3</b></span>
+        <span>Czas odpowiedzi: <b style="color:var(--teal)">śr. 2.3h</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15A9 9 0 1 1 5.64 5.64L23 22"/></svg>
+        Synchronizuj Booking
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Dodaj ręcznie
+      </button>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+
+    <div class="score-card">
+      <div>
+        <div class="score-card-top">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Średnia Booking.com
+        </div>
+        <div class="score-val">9.2<span class="max">/10</span></div>
+        <div class="score-stars">
+          <svg fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg fill="currentColor" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          <svg fill="currentColor" viewBox="0 0 24 24" class="empty"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+      </div>
+      <div class="score-card-sub">Na podstawie <b>234 opinii</b> (ost. 6 mc) · <b style="color:var(--teal)">+0.3 vs poprz. mc</b></div>
+    </div>
+
+    <div class="hist-card">
+      <div class="hist-head">
+        <div>
+          <div class="hist-title">Trend 6 miesięcy</div>
+          <div class="hist-sub">Wzrost stabilny — najlepszy wynik od 2 lat</div>
+        </div>
+        <div style="font:600 11px var(--f-m);color:var(--teal)">+8.1% vs Q1</div>
+      </div>
+
+      <svg class="hist-svg" viewBox="0 0 600 80" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="g-rev" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#B065A0" stop-opacity=".35"/>
+            <stop offset="100%" stop-color="#B065A0" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <line x1="0" y1="20" x2="600" y2="20" stroke="rgba(255,255,255,.04)"/>
+        <line x1="0" y1="40" x2="600" y2="40" stroke="rgba(255,255,255,.04)"/>
+        <line x1="0" y1="60" x2="600" y2="60" stroke="rgba(255,255,255,.04)"/>
+        <path d="M0,55 L100,50 L200,45 L300,38 L400,28 L500,22 L600,18 L600,80 L0,80 Z" fill="url(#g-rev)"/>
+        <polyline points="0,55 100,50 200,45 300,38 400,28 500,22 600,18" fill="none" stroke="#B065A0" stroke-width="2"/>
+        <circle cx="600" cy="18" r="4" fill="#B065A0" stroke="#110D17" stroke-width="2"/>
+        <text x="60"  y="74" fill="#424657" font-size="9" font-family="JetBrains Mono">Gru</text>
+        <text x="160" y="74" fill="#424657" font-size="9" font-family="JetBrains Mono">Sty</text>
+        <text x="260" y="74" fill="#424657" font-size="9" font-family="JetBrains Mono">Lut</text>
+        <text x="360" y="74" fill="#424657" font-size="9" font-family="JetBrains Mono">Mar</text>
+        <text x="460" y="74" fill="#424657" font-size="9" font-family="JetBrains Mono">Kwi</text>
+        <text x="556" y="74" fill="#B065A0" font-size="9" font-family="JetBrains Mono" font-weight="600">Maj</text>
+      </svg>
+
+      <div class="hist-cats">
+        <div class="cat">
+          <div class="cat-lbl">Czystość</div>
+          <div class="cat-val"><span class="cat-num">9.6</span></div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:96%"></div></div>
+        </div>
+        <div class="cat">
+          <div class="cat-lbl">Personel</div>
+          <div class="cat-val"><span class="cat-num">9.4</span></div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:94%"></div></div>
+        </div>
+        <div class="cat">
+          <div class="cat-lbl">Lokalizacja</div>
+          <div class="cat-val"><span class="cat-num">9.8</span></div>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:98%"></div></div>
+        </div>
+        <div class="cat">
+          <div class="cat-lbl">Komfort</div>
+          <div class="cat-val"><span class="cat-num amber">8.8</span></div>
+          <div class="cat-bar"><div class="cat-bar-fill amber" style="width:88%"></div></div>
+        </div>
+        <div class="cat">
+          <div class="cat-lbl">Wifi</div>
+          <div class="cat-val"><span class="cat-num rose">7.5</span></div>
+          <div class="cat-bar"><div class="cat-bar-fill rose" style="width:75%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <div class="list-pane">
+
+      <div class="toolbar">
+        <button class="tab on">Wszystkie <span class="cnt">234</span></button>
+        <button class="tab">Bez odpowiedzi <span class="cnt">3</span></button>
+        <button class="tab">9-10 <span class="cnt">198</span></button>
+        <button class="tab">7-8 <span class="cnt">29</span></button>
+        <button class="tab">&lt;7 <span class="cnt">7</span></button>
+      </div>
+
+      <!-- REVIEW 1 SELECTED -->
+      <article class="rev selected">
+        <div class="rev-head">
+          <div class="rev-avatar" style="background:linear-gradient(135deg,#FF5471,#9D2A40)">A</div>
+          <div class="rev-info">
+            <div class="rev-name">Andreas M. <span class="rev-flag">🇩🇪 DE</span> <span class="rev-platform">Booking</span></div>
+            <div class="rev-meta"><span>Pobyt: kwiecień 2026</span><span>Wysłana: 11 maj · 2 dni temu</span></div>
+          </div>
+          <div class="rev-score-pill low">5.8 <span style="font-size:10px;opacity:.7">/10</span></div>
+        </div>
+        <div class="rev-title">"Niestety hałas z ulicy zepsuł całość"</div>
+        <div class="rev-body">Lokalizacja świetna, personel bardzo pomocny. Ale pokój 218 wychodzi na ruchliwą ulicę, słychać samochody nawet w nocy. Klimatyzacja głośna. Łazienka czysta, ale stara. Generalnie dobry hotel ale ten pokój nie nadaje się dla osoby która chce się wyspać...</div>
+        <div class="rev-foot">
+          <div class="rev-tags">
+            <span class="rev-tag neg">hałas</span>
+            <span class="rev-tag neg">klimatyzacja</span>
+            <span class="rev-tag pos">personel</span>
+            <span class="rev-tag pos">lokalizacja</span>
+          </div>
+          <div class="rev-status pending"><span class="dot"></span>Wymaga odpowiedzi</div>
+        </div>
+      </article>
+
+      <!-- REVIEW 2 -->
+      <article class="rev">
+        <div class="rev-head">
+          <div class="rev-avatar" style="background:linear-gradient(135deg,#5BA8E8,#2D6BAB)">K</div>
+          <div class="rev-info">
+            <div class="rev-name">Katarzyna W. <span class="rev-flag">🇵🇱 PL</span> <span class="rev-platform">Booking</span></div>
+            <div class="rev-meta"><span>Pobyt: maj 2026</span><span>5 maj · 7 dni temu</span></div>
+          </div>
+          <div class="rev-score-pill high">10.0</div>
+        </div>
+        <div class="rev-title">"Bezbłędnie. Polecam każdemu!"</div>
+        <div class="rev-body">Wracam już trzeci raz i za każdym razem jest perfekcyjnie. Pokój 308 czysty jak nowy, łóżko wygodne, śniadania świetne. Pani z recepcji (chyba Natalia?) bardzo serdeczna, dała nam dodatkowe ręczniki bez pytania. Dziękuję!</div>
+        <div class="rev-foot">
+          <div class="rev-tags">
+            <span class="rev-tag pos">czystość</span>
+            <span class="rev-tag pos">personel</span>
+            <span class="rev-tag pos">śniadanie</span>
+            <span class="rev-tag pos">powracający gość</span>
+          </div>
+          <div class="rev-status replied"><span class="dot"></span>Odpowiedziane</div>
+        </div>
+      </article>
+
+      <!-- REVIEW 3 -->
+      <article class="rev">
+        <div class="rev-head">
+          <div class="rev-avatar" style="background:linear-gradient(135deg,#2BD4A0,#149973)">M</div>
+          <div class="rev-info">
+            <div class="rev-name">Marie L. <span class="rev-flag">🇫🇷 FR</span> <span class="rev-platform">Booking</span></div>
+            <div class="rev-meta"><span>Pobyt: kwiecień 2026</span><span>3 maj · 9 dni temu</span></div>
+          </div>
+          <div class="rev-score-pill high">9.0</div>
+        </div>
+        <div class="rev-title">"Excellent! Just the WiFi..."</div>
+        <div class="rev-body">Beautiful boutique hotel in the city center. The room was spotless, staff very friendly and helpful with restaurant recommendations. Only complaint: the WiFi was extremely slow, almost unusable for video calls. Otherwise — perfect!</div>
+        <div class="rev-foot">
+          <div class="rev-tags">
+            <span class="rev-tag pos">czystość</span>
+            <span class="rev-tag pos">personel</span>
+            <span class="rev-tag neg">wifi</span>
+          </div>
+          <div class="rev-status pending"><span class="dot"></span>Wymaga odpowiedzi</div>
+        </div>
+      </article>
+
+      <!-- REVIEW 4 -->
+      <article class="rev">
+        <div class="rev-head">
+          <div class="rev-avatar" style="background:linear-gradient(135deg,#F4C055,#B58626)">P</div>
+          <div class="rev-info">
+            <div class="rev-name">Piotr K. <span class="rev-flag">🇵🇱 PL</span> <span class="rev-platform">Booking</span></div>
+            <div class="rev-meta"><span>Pobyt: kwiecień 2026</span><span>1 maj · 11 dni temu</span></div>
+          </div>
+          <div class="rev-score-pill mid">7.5</div>
+        </div>
+        <div class="rev-title">"Dobrze, ale śniadanie mogłoby być lepsze"</div>
+        <div class="rev-body">Hotel ok, pokój czysty, personel uprzejmy. Niestety śniadanie zbyt skromne — mało wędlin, brakowało jajek na ciepło o 8:30 (skończyły się?). Za tę cenę oczekiwałem trochę więcej. Lokalizacja jednak top-tier.</div>
+        <div class="rev-foot">
+          <div class="rev-tags">
+            <span class="rev-tag neg">śniadanie</span>
+            <span class="rev-tag pos">lokalizacja</span>
+            <span class="rev-tag pos">czystość</span>
+          </div>
+          <div class="rev-status replied"><span class="dot"></span>Odpowiedziane</div>
+        </div>
+      </article>
+
+      <!-- REVIEW 5 -->
+      <article class="rev">
+        <div class="rev-head">
+          <div class="rev-avatar" style="background:linear-gradient(135deg,#B49AFF,#7A5CD8)">J</div>
+          <div class="rev-info">
+            <div class="rev-name">Johan B. <span class="rev-flag">🇳🇱 NL</span> <span class="rev-platform">Booking</span></div>
+            <div class="rev-meta"><span>Pobyt: kwiecień 2026</span><span>28 kwi · 14 dni temu</span></div>
+          </div>
+          <div class="rev-score-pill high">9.5</div>
+        </div>
+        <div class="rev-title">"Highly recommended"</div>
+        <div class="rev-body">Stayed three nights in a double room on the 4th floor. The room was modern, very clean and quiet. Reception staff (Marek) helped us with directions and even called a taxi for us. Will definitely come back next year.</div>
+        <div class="rev-foot">
+          <div class="rev-tags">
+            <span class="rev-tag pos">czystość</span>
+            <span class="rev-tag pos">cisza</span>
+            <span class="rev-tag pos">personel</span>
+          </div>
+          <div class="rev-status pending"><span class="dot"></span>Wymaga odpowiedzi</div>
+        </div>
+      </article>
+
+    </div>
+
+    <!-- DETAIL: REPLY COMPOSER -->
+    <aside class="detail">
+
+      <div class="det-head">
+        <div class="det-eyebrow">↳ Odpowiedź na opinię</div>
+        <div class="det-title">"Niestety hałas z ulicy zepsuł całość"</div>
+        <div class="det-quote">
+          <div class="author">Andreas M. · 5.8/10 · 11 maj</div>
+          Lokalizacja świetna, personel bardzo pomocny. Ale pokój 218 wychodzi na ruchliwą ulicę, słychać samochody nawet w nocy. Klimatyzacja głośna. Łazienka czysta, ale stara...
+        </div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">
+          <span>AI Asystent</span>
+          <span style="font:500 10.5px var(--f-m);color:var(--text-3)">GPT-4 · 234 znaki</span>
+        </div>
+
+        <div class="ai-row">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <div class="ai-text">Wygenerowano <b>3 warianty</b> odpowiedzi. Wybierz ton.</div>
+        </div>
+
+        <div class="tone-row">
+          <button class="tone on">Empatia + przeprosiny</button>
+          <button class="tone">Profesjonalny</button>
+          <button class="tone">Zwięzły</button>
+        </div>
+
+        <div class="composer">
+          <textarea>Szanowny Panie Andreas,
+
+Bardzo dziękujemy za szczegółową opinię i przepraszamy, że hałas z ulicy zepsuł Pana doświadczenie. To dla nas cenna informacja — pokój 218 rzeczywiście znajduje się od strony ulicznej, a my podpowiadamy gościom przy rezerwacji że pokoje od strony wewnętrznej (np. 4. piętro) są znacznie cichsze.
+
+Co do klimatyzacji — to znany problem, w tym tygodniu wymieniamy jednostki w pokojach od 215-220. Łazienki w tej części obiektu są w planie remontowym na Q4 2026.
+
+Zapraszamy Pana ponownie — jeśli zechce, zarezerwujemy pokój od strony wewnętrznej z 15% zniżką jako rekompensatę. Proszę o kontakt na recepcja@conrad-comfort.pl.
+
+Z wyrazami szacunku,
+Conrad Comfort Reception Team</textarea>
+          <div class="composer-meta">
+            <span>728 / 1500 znaków · PL</span>
+            <span style="color:var(--teal);display:flex;align-items:center;gap:5px">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              Spell-check ok
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="det-actions">
+        <button class="btn btn-primary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Opublikuj odpowiedź na Booking
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/></svg>
+          Zapisz jako szkic
+        </button>
+        <button class="btn btn-ghost" style="color:var(--violet);border-color:rgba(180,154,255,.35)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          Wygeneruj nowy wariant AI
+        </button>
+      </div>
+
+    </aside>
+
+  </div>
+
+</main>
+
+</body>
+</html>

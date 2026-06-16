@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort — Skrzynka Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#08090D;--bg-1:#0E1016;--bg-2:#13161E;--bg-3:#1A1E2A;--bg-hover:#202433;
+  --ember:#E8943A;--ember-dark:#C4761F;--ember-dim:rgba(232,148,58,.14);--ember-glow:0 0 24px rgba(232,148,58,.18);
+  --teal:#2BD4A0;--teal-dim:rgba(43,212,160,.12);
+  --rose:#FF5471;--rose-dim:rgba(255,84,113,.12);
+  --amber:#F4C055;--amber-dim:rgba(244,192,85,.12);
+  --sky:#5BA8E8;--sky-dim:rgba(91,168,232,.12);
+  --violet:#A78BFA;--violet-dim:rgba(167,139,250,.12);
+  --text-0:#ECEEF5;--text-1:#8B94AD;--text-2:#4E566A;
+  --border:rgba(255,255,255,.06);--border-md:rgba(255,255,255,.1);--border-ember:rgba(232,148,58,.28);
+  --r-sm:5px;--r-md:9px;--r-lg:14px;--r-xl:18px;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --sidebar-w:252px;--transition:.16s cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--font-b);font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sb-logo{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border);margin:16px;cursor:default}
+.sb-logo-mark{width:34px;height:34px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,var(--ember),var(--ember-dark));display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:800;font-size:13px;color:#fff;box-shadow:0 0 16px rgba(232,148,58,.3)}
+.sb-logo-name{font-family:var(--font-d);font-size:13.5px;font-weight:700;color:var(--text-0)}
+.sb-logo-sub{font-size:10.5px;color:var(--text-2);margin-top:1px}
+.sb-nav{padding:0 8px;flex:1;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--r-sm);color:var(--text-1);font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--transition);border:1px solid transparent;position:relative;background:transparent;width:100%;text-align:left}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-dim);color:var(--ember);font-weight:600;border-color:var(--border-ember)}
+.sb-item.active::before{content:'';position:absolute;left:-1px;top:20%;bottom:20%;width:3px;border-radius:0 2px 2px 0;background:var(--ember)}
+.sb-item-icon{width:17px;height:17px;flex-shrink:0;opacity:.7}
+.sb-item.active .sb-item-icon{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font-family:var(--font-d);font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-section-label{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);font-family:var(--font-d);padding:0 24px;margin:10px 0 4px}
+.sb-divider{height:1px;background:var(--border);margin:6px 16px}
+.sb-bottom{padding:14px 16px;border-top:1px solid var(--border)}
+.sb-clock{font-family:var(--font-m);font-size:17px;font-weight:600;color:var(--text-0)}
+.sb-clock-sub{font-size:10px;color:var(--text-2);margin-top:1px}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+.page-header{padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.page-eyebrow{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--rose);font-family:var(--font-d);margin-bottom:5px}
+.page-title{font-family:var(--font-d);font-size:24px;font-weight:700;color:var(--text-0);letter-spacing:-.01em}
+.page-sub{font-size:12.5px;color:var(--text-2);margin-top:3px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r-sm);font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all var(--transition)}
+.btn-primary{background:var(--ember);color:#fff}
+.btn-primary:hover{background:var(--ember-dark);box-shadow:var(--ember-glow)}
+.btn-ghost{background:transparent;color:var(--text-1);border-color:var(--border-md)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0)}
+
+/* TABS */
+.inbox-tabs{padding:16px 28px;display:flex;gap:3px;background:transparent;flex-shrink:0}
+.inbox-tab{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 18px;border-radius:var(--r-md);
+  font-size:13px;font-weight:600;font-family:var(--font-d);
+  cursor:pointer;transition:all var(--transition);
+  border:1px solid var(--border);color:var(--text-1);
+  background:transparent;
+}
+.inbox-tab:hover{background:var(--bg-3);color:var(--text-0)}
+.inbox-tab.active{background:var(--bg-2);color:var(--text-0);border-color:var(--border-md)}
+.inbox-tab.active.urgent{background:rgba(255,84,113,.1);color:var(--rose);border-color:rgba(255,84,113,.3)}
+.tab-count{
+  font-family:var(--font-m);font-size:11px;font-weight:600;
+  padding:2px 7px;border-radius:99px;
+}
+.tc-rose{background:var(--rose-dim);color:var(--rose)}
+.tc-amber{background:var(--amber-dim);color:var(--amber)}
+.tc-sky{background:var(--sky-dim);color:var(--sky)}
+.tc-teal{background:var(--teal-dim);color:var(--teal)}
+
+/* CONTENT SPLIT */
+.inbox-body{flex:1;display:flex;gap:0;overflow:hidden}
+
+/* ALERT FEED */
+.feed-col{
+  flex:1;overflow-y:auto;
+  padding:0 28px 28px;
+  display:flex;flex-direction:column;gap:10px;
+}
+.feed-col::-webkit-scrollbar{width:5px}
+.feed-col::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:3px}
+
+/* PINNED PANEL */
+.pinned-col{
+  width:300px;flex-shrink:0;
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.pinned-header{
+  padding:18px 20px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.pinned-title{font-family:var(--font-d);font-size:13px;font-weight:700;color:var(--text-1);text-transform:uppercase;letter-spacing:.08em}
+.pinned-scroll{flex:1;overflow-y:auto;padding:12px}
+.pinned-scroll::-webkit-scrollbar{width:0}
+
+/* ALERT CARDS */
+.alert-card{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--r-lg);overflow:hidden;
+  transition:all .18s ease;cursor:pointer;
+  display:flex;
+}
+.alert-card:hover{border-color:var(--border-md);background:var(--bg-3)}
+
+.alert-card.urgent{border-color:rgba(255,84,113,.22);background:rgba(255,84,113,.04)}
+.alert-card.urgent:hover{border-color:rgba(255,84,113,.38);background:rgba(255,84,113,.08)}
+.alert-card.info{border-color:rgba(91,168,232,.15)}
+.alert-card.success{border-color:rgba(43,212,160,.15)}
+.alert-card.reminder{border-color:rgba(244,192,85,.15)}
+
+.alert-bar{width:4px;flex-shrink:0}
+.alert-bar.urgent{background:var(--rose)}
+.alert-bar.info{background:var(--sky)}
+.alert-bar.success{background:var(--teal)}
+.alert-bar.reminder{background:var(--amber)}
+.alert-bar.system{background:var(--violet)}
+
+.alert-content{padding:16px 18px;flex:1}
+.alert-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.alert-icon-wrap{
+  width:32px;height:32px;border-radius:var(--r-sm);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.alert-meta{flex:1}
+.alert-title{font-size:14px;font-weight:700;color:var(--text-0);font-family:var(--font-d)}
+.alert-card.urgent .alert-title{color:var(--rose)}
+.alert-sub{font-size:13px;color:var(--text-1);line-height:1.5;margin-bottom:8px}
+.alert-footer{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.alert-time{font-family:var(--font-m);font-size:10.5px;color:var(--text-2)}
+.alert-chip{
+  font-size:10px;font-weight:700;font-family:var(--font-d);letter-spacing:.06em;
+  padding:3px 8px;border-radius:4px;
+}
+.a-chip-urgent{background:var(--rose-dim);color:var(--rose);border:1px solid rgba(255,84,113,.25)}
+.a-chip-info{background:var(--sky-dim);color:var(--sky);border:1px solid rgba(91,168,232,.25)}
+.a-chip-success{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(43,212,160,.25)}
+.a-chip-reminder{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(244,192,85,.25)}
+.a-chip-system{background:var(--violet-dim);color:var(--violet);border:1px solid rgba(167,139,250,.25)}
+.alert-dismiss{
+  margin-left:auto;
+  padding:4px 10px;border-radius:4px;
+  font-size:11.5px;font-weight:600;font-family:var(--font-d);
+  background:transparent;color:var(--text-2);border:1px solid var(--border);cursor:pointer;transition:all var(--transition);
+}
+.alert-dismiss:hover{background:var(--bg-3);color:var(--text-1);border-color:var(--border-md)}
+
+/* PINNED ITEMS */
+.pinned-item{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:12px 14px;
+  margin-bottom:8px;cursor:pointer;transition:all var(--transition);
+}
+.pinned-item:hover{border-color:var(--border-md);background:var(--bg-3)}
+.pinned-item-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pi-icon{
+  width:24px;height:24px;border-radius:5px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.pi-title{font-size:12.5px;font-weight:700;color:var(--text-0);font-family:var(--font-d)}
+.pi-body{font-size:12px;color:var(--text-1);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.pi-footer{margin-top:8px;font-size:10.5px;color:var(--text-2);font-family:var(--font-m);display:flex;align-items:center;gap:6px}
+.pi-expires{
+  font-size:10px;font-weight:700;font-family:var(--font-d);
+  padding:2px 7px;border-radius:4px;
+}
+
+svg{display:block}
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">CC</div>
+    <div>
+      <div class="sb-logo-name">Conrad Comfort</div>
+      <div class="sb-logo-sub">Panel Recepcji</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section-label">Komunikacja</div>
+    <button class="sb-item active">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Skrzynka
+      <span class="sb-badge">3</span>
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Wiki
+    </button>
+    <div class="sb-divider"></div>
+    <div class="sb-section-label">Zmiana</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Przegląd Zmiany
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/></svg>
+      Zadania
+    </button>
+    <div class="sb-divider"></div>
+    <div class="sb-section-label">Pokoje</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Housekeeping
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      Usterki
+      <span class="sb-badge">2</span>
+    </button>
+  </nav>
+  <div class="sb-bottom">
+    <div>
+      <div class="sb-clock" id="clock">07:42</div>
+      <div class="sb-clock-sub">Niedziela, 4 maja 2026</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Komunikacja · Centrum powiadomień</div>
+      <div class="page-title">Skrzynka</div>
+      <div class="page-sub">3 nowe alerty · 2 przypomnienia cykliczne · Zmiana dzienna</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/></svg>
+        Wyślij wiadomość
+      </button>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="inbox-tabs">
+    <button class="inbox-tab active urgent">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      Alerty
+      <span class="tab-count tc-rose">3</span>
+    </button>
+    <button class="inbox-tab">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+      Przypomnienia
+      <span class="tab-count tc-amber">2</span>
+    </button>
+    <button class="inbox-tab">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Wiadomości
+      <span class="tab-count tc-sky">1</span>
+    </button>
+    <button class="inbox-tab">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Wiki
+    </button>
+  </div>
+
+  <!-- BODY -->
+  <div class="inbox-body">
+    <!-- FEED -->
+    <div class="feed-col">
+
+      <!-- URGENT ALERT -->
+      <div class="alert-card urgent">
+        <div class="alert-bar urgent"></div>
+        <div class="alert-content">
+          <div class="alert-top">
+            <div class="alert-icon-wrap" style="background:var(--rose-dim)">
+              <svg width="16" height="16" fill="none" stroke="var(--rose)" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="alert-meta">
+              <div class="alert-title">Usterka pilna — pokój 214</div>
+            </div>
+          </div>
+          <div class="alert-sub">Uszkodzony zamek do drzwi. Gość był zablokowany przez ok. 3 minuty. Wymagana natychmiastowa interwencja konserwatora. Przypisano: Marek K.</div>
+          <div class="alert-footer">
+            <span class="alert-chip a-chip-urgent">PILNE</span>
+            <span class="alert-time">03.05.2026 · 22:30</span>
+            <span style="font-size:11px;color:var(--text-2)">Zgłosiła: Weronika K.</span>
+            <button class="alert-dismiss">Przejdź do usterki →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HANDOVER NOTE -->
+      <div class="alert-card info">
+        <div class="alert-bar info"></div>
+        <div class="alert-content">
+          <div class="alert-top">
+            <div class="alert-icon-wrap" style="background:var(--sky-dim)">
+              <svg width="16" height="16" fill="none" stroke="var(--sky)" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="alert-meta">
+              <div class="alert-title">Notatka przekazania zmiany</div>
+            </div>
+          </div>
+          <div class="alert-sub">Gość z pokoju 307 prosił o dodatkowy ręcznik i poduszkę. Sprawa niezałatwiona przez nocną zmianę — proszę przekazać HK na poranny obchód. Gość miły, nie nalegał.</div>
+          <div class="alert-footer">
+            <span class="alert-chip a-chip-info">PRZEKAZANIE</span>
+            <span class="alert-time">04.05.2026 · 07:00</span>
+            <span style="font-size:11px;color:var(--text-2)">Od: Weronika K.</span>
+            <button class="alert-dismiss">Oznacz jako przeczytane</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUCCESS NOTIFICATION -->
+      <div class="alert-card success">
+        <div class="alert-bar success"></div>
+        <div class="alert-content">
+          <div class="alert-top">
+            <div class="alert-icon-wrap" style="background:var(--teal-dim)">
+              <svg width="16" height="16" fill="none" stroke="var(--teal)" stroke-width="2" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/></svg>
+            </div>
+            <div class="alert-meta">
+              <div class="alert-title">Voucher zrealizowany</div>
+            </div>
+          </div>
+          <div class="alert-sub">Gość z pokoju 118 (p. Nowak) zrealizował voucher restauracyjny VCH-2026-0038 na kwotę 50 zł. Oznaczono jako oddany przez Weronikę K.</div>
+          <div class="alert-footer">
+            <span class="alert-chip a-chip-success">ZREALIZOWANY</span>
+            <span class="alert-time">Dziś · 07:31</span>
+            <button class="alert-dismiss">Pokaż voucher</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REMINDER -->
+      <div class="alert-card reminder" style="opacity:.75">
+        <div class="alert-bar reminder"></div>
+        <div class="alert-content">
+          <div class="alert-top">
+            <div class="alert-icon-wrap" style="background:var(--amber-dim)">
+              <svg width="16" height="16" fill="none" stroke="var(--amber)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="alert-meta">
+              <div class="alert-title">Przypomnienie cykliczne — Poniedziałek</div>
+            </div>
+          </div>
+          <div class="alert-sub">Sprawdź listę abonamentów parkingowych — weryfikacja wygaśnięć i płatności. Dotyczy szczególnie klientów z abonamentami "od 15 do 15".</div>
+          <div class="alert-footer">
+            <span class="alert-chip a-chip-reminder">CYKLICZNE</span>
+            <span class="alert-time">Co poniedziałek · 07:00</span>
+            <button class="alert-dismiss">Przejdź do parkingu →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SYSTEM -->
+      <div class="alert-card" style="border-color:rgba(167,139,250,.12);opacity:.6">
+        <div class="alert-bar system"></div>
+        <div class="alert-content">
+          <div class="alert-top">
+            <div class="alert-icon-wrap" style="background:var(--violet-dim)">
+              <svg width="16" height="16" fill="none" stroke="var(--violet)" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+            </div>
+            <div class="alert-meta">
+              <div class="alert-title">Aktualizacja systemu</div>
+            </div>
+          </div>
+          <div class="alert-sub">Panel Recepcji został zaktualizowany do wersji 2.1.4. Nowe funkcje: ulepszone filtrowanie usterek, eksport HK do Excel. Informacja dla kierownika.</div>
+          <div class="alert-footer">
+            <span class="alert-chip a-chip-system">SYSTEM</span>
+            <span class="alert-time">04.05.2026 · 06:15</span>
+            <button class="alert-dismiss">Zamknij</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PINNED / WIKI -->
+    <div class="pinned-col">
+      <div class="pinned-header">
+        <div class="pinned-title">Przypięte / Wiki</div>
+        <button style="padding:4px 9px;border-radius:4px;background:transparent;border:1px solid var(--border);color:var(--text-2);font-size:11px;cursor:pointer;font-family:var(--font-d)">+ Dodaj</button>
+      </div>
+      <div class="pinned-scroll">
+
+        <div class="pinned-item">
+          <div class="pinned-item-header">
+            <div class="pi-icon" style="background:var(--rose-dim)">
+              <svg width="13" height="13" fill="none" stroke="var(--rose)" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/></svg>
+            </div>
+            <div class="pi-title">Procedura meldowania</div>
+          </div>
+          <div class="pi-body">Przy zameldowaniu zawsze sprawdzić dokument tożsamości i pobrać preautoryzację karty. Opcjonalnie: zapytać o parking, śniadanie. Klucz tylko po podpisaniu karty meldunkowej.</div>
+          <div class="pi-footer">
+            <span style="flex:1">Zmiana dzienna</span>
+            <span class="pi-expires" style="background:var(--teal-dim);color:var(--teal)">Stałe</span>
+          </div>
+        </div>
+
+        <div class="pinned-item">
+          <div class="pinned-item-header">
+            <div class="pi-icon" style="background:var(--amber-dim)">
+              <svg width="13" height="13" fill="none" stroke="var(--amber)" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+            </div>
+            <div class="pi-title">Telefoniczny zamek garażu</div>
+          </div>
+          <div class="pi-body">W razie awarii domofonu do garażu — kod manualny: 4921#. Zawsze informować konserwatora o awarii. Zapis w księdze usterek obowiązkowy.</div>
+          <div class="pi-footer">
+            <span style="flex:1">Operacyjne</span>
+            <span class="pi-expires" style="background:var(--amber-dim);color:var(--amber)">Ważne!</span>
+          </div>
+        </div>
+
+        <div class="pinned-item">
+          <div class="pinned-item-header">
+            <div class="pi-icon" style="background:var(--sky-dim)">
+              <svg width="13" height="13" fill="none" stroke="var(--sky)" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div class="pi-title">Taksówki dla gości</div>
+          </div>
+          <div class="pi-body">Zatwierdzone firmy taksówkowe: Mega Taxi (12 358 5858), Radio Taxi (12 919). Gość Chesney Lanik („Czesiu") często prosi — zawsze ma priorytet.</div>
+          <div class="pi-footer">
+            <span style="flex:1">Obsługa gości</span>
+            <span class="pi-expires" style="background:var(--teal-dim);color:var(--teal)">Stałe</span>
+          </div>
+        </div>
+
+        <div class="pinned-item" style="opacity:.55">
+          <div class="pinned-item-header">
+            <div class="pi-icon" style="background:var(--violet-dim)">
+              <svg width="13" height="13" fill="none" stroke="var(--violet)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            </div>
+            <div class="pi-title">Zebranie personelu — Środa</div>
+          </div>
+          <div class="pi-body">Zebranie całego personelu w środę 7.05.2026 o godz. 09:00 w sali konferencyjnej. Temat: nowe procedury kasowe. Obecność obowiązkowa.</div>
+          <div class="pi-footer">
+            <span style="flex:1">Kierownictwo</span>
+            <span class="pi-expires" style="background:var(--rose-dim);color:var(--rose)">Wygaśnie 07.05</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+tick();setInterval(tick,10000);
+
+document.querySelectorAll('.alert-card').forEach((el,i)=>{
+  el.style.opacity='0';el.style.transform='translateY(8px)';
+  setTimeout(()=>{
+    el.style.transition='opacity .3s ease,transform .3s ease';
+    const base=el.style.opacity==='0'||!el.getAttribute('style').includes('opacity:0')?'1':'0.75';
+    el.style.opacity=el.classList.contains('reminder')?'0.75':el.classList.contains('system')?'0.6':'1';
+    el.style.transform='none';
+  },80+i*70);
+});
+
+document.querySelectorAll('.pinned-item').forEach((el,i)=>{
+  el.style.opacity='0';el.style.transform='translateX(8px)';
+  setTimeout(()=>{el.style.transition='opacity .3s,transform .3s';el.style.opacity=el.style.opacity||'1';el.style.transform='none';},200+i*80);
+});
+
+// Dismiss buttons
+document.querySelectorAll('.alert-dismiss').forEach(btn=>{
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const card=btn.closest('.alert-card');
+    card.style.transition='opacity .3s,transform .3s,max-height .4s';
+    card.style.opacity='0';card.style.transform='translateX(20px)';
+    setTimeout(()=>card.remove(),320);
+  });
+});
+</script>
+</body>
+</html>

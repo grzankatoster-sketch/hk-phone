@@ -146,6 +146,22 @@ export function parseHoursToShift(raw) {
   return null;
 }
 
+// Surowa siatka arkusza (wiersze) — dla AI-odczytu, gdy format jest niestandardowy.
+export function readScheduleGrid(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" }));
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error("Blad odczytu pliku"));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 export function importScheduleXlsx(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

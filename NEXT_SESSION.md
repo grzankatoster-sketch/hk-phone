@@ -75,9 +75,9 @@ Aplikacja Electron+React (Vite) dla recepcji hotelu Conrad Comfort. Stack: React
 - Stała używana tylko jako default seed
 - Można wziąć tylko default i resztę zostawić dynamiczne (już tak jest, ale upewnij się że nigdzie nie ma starego importu)
 
-### A12. Hardcoded RailwayURL fallbacki w electron/hkserver.cjs
-[electron/hkserver.cjs](electron/hkserver.cjs) sekcja `getQR`:
-- Sprawdzić czy są jeszcze fallbacki na old IP / Railway, usunąć
+### A12. Supabase HK Live
+[electron/hkserver.cjs](electron/hkserver.cjs) jest teraz lokalnym trybem HK Live:
+- Zdalny tunel HK usunięty; docelowo zastąpić synchronizacją Supabase.
 
 ### A13. Niepotrzebne klasy CSS
 [src/style.css](src/style.css):
@@ -238,9 +238,6 @@ W całej aplikacji są różne formy: `—`, `-`, `Brak danych`, `Nie wpisano`, 
 - `c:\Users\grzan\Desktop\projekt\electron\main.cjs` — main process (BrowserWindow, IPC, autoUpdater, savePdf IPC)
 - `c:\Users\grzan\Desktop\projekt\electron\preload.cjs` — IPC bridge (contextBridge)
 - `c:\Users\grzan\Desktop\projekt\electron\hkserver.cjs` — lokalny HTTP serwer dla pokojówek (SSE, QR codes)
-- `c:\Users\grzan\Desktop\projekt\electron\remoteserver.cjs` — proxy do Railway (zdalny serwer HK gdy LAN niedostępny)
-- `c:\Users\grzan\Desktop\projekt\electron\kwhotel.cjs` — integracja z KWHotel API
-- `c:\Users\grzan\Desktop\projekt\electron\ngrok.cjs` — ngrok tunnel (deprecated?)
 
 ### Konfiguracja
 - `c:\Users\grzan\Desktop\projekt\package.json` — dependencies
@@ -363,7 +360,7 @@ USER FEEDBACK Z POPRZEDNIEJ SESJI:
 | 13 | Migracja HK na Supabase Realtime | ⬜ |
 | 14 | CRUD admin alerts/reminders | ⬜ |
 | 15 | Voucher + Booking + ChatGPT | ⬜ |
-| 16 | Czat + swap | ⬜ |
+| 16 | Czat + swap | ✅ (TeamChat: kanały + propozycja zamiany przez applyAgentSwap; localStorage + Supabase) |
 | 17 | Push notifications (web + Electron) | ⬜ |
 | 18 | Grafik Excel | ⬜ |
 | 19 | Mailowanie raportów | ⬜ |

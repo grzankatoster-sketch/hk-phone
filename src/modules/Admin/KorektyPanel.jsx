@@ -155,7 +155,7 @@ export default function KorektyPanel({
       {/* Reset danych */}
       <div className="panel glass dark-panel">
         <div className="panel-title"><Trash2 size={16}/> Reset danych</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div className="cc-form-grid cc-form-grid-2">
           {[
             {label:"Wyczyść korekty",sub:"Usuwa całą historię korekt płatności",action:()=>askConfirm("Usunąć całą historię korekt?",()=>{setPaymentCorrections([]);saveJson(STORAGE_KEYS.paymentCorrections,[]);showToast("Korekty wyczyszczone.","info");})},
             {label:"Reset ewidencji (miesiąc)",sub:"Przejdź do Ewidencji aby wybrać miesiąc",action:()=>setAdminTab("ewidencja")},

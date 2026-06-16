@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort — HK Panel Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#08090D;--bg-1:#0E1016;--bg-2:#13161E;--bg-3:#1A1E2A;--bg-hover:#202433;
+  --ember:#E8943A;--ember-dark:#C4761F;--ember-dim:rgba(232,148,58,.14);
+  --ember-glow:0 0 24px rgba(232,148,58,.18);
+  --teal:#2BD4A0;--teal-dim:rgba(43,212,160,.12);
+  --rose:#FF5471;--rose-dim:rgba(255,84,113,.12);
+  --amber:#F4C055;--amber-dim:rgba(244,192,85,.12);
+  --sky:#5BA8E8;--sky-dim:rgba(91,168,232,.12);
+  --violet:#A78BFA;
+  --text-0:#ECEEF5;--text-1:#8B94AD;--text-2:#4E566A;
+  --border:rgba(255,255,255,.06);--border-md:rgba(255,255,255,.1);
+  --border-ember:rgba(232,148,58,.28);
+  --r-sm:5px;--r-md:9px;--r-lg:14px;--r-xl:18px;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --sidebar-w:252px;--transition:.16s cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--font-b);font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sb-logo{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border);margin:16px;cursor:default}
+.sb-logo-mark{width:34px;height:34px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,var(--ember) 0%,var(--ember-dark) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:800;font-size:13px;letter-spacing:.06em;color:#fff;box-shadow:0 0 16px rgba(232,148,58,.3)}
+.sb-logo-name{font-family:var(--font-d);font-size:13.5px;font-weight:700;color:var(--text-0)}
+.sb-logo-sub{font-size:10.5px;color:var(--text-2);margin-top:1px}
+.sb-user{padding:10px 14px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border);margin:0 16px 12px}
+.sb-user-name{font-size:13.5px;font-weight:700;color:var(--text-0);font-family:var(--font-d)}
+.sb-user-meta{font-size:11px;color:var(--text-2);margin-top:2px}
+.sb-section-label{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);font-family:var(--font-d);padding:0 24px;margin:10px 0 4px}
+.sb-nav{padding:0 8px;display:flex;flex-direction:column;gap:1px;flex:1;overflow-y:auto}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--r-sm);color:var(--text-1);font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--transition);border:1px solid transparent;position:relative;user-select:none;background:transparent;width:100%;text-align:left}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-dim);color:var(--ember);font-weight:600;border-color:var(--border-ember)}
+.sb-item.active::before{content:'';position:absolute;left:-1px;top:20%;bottom:20%;width:3px;border-radius:0 2px 2px 0;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-item-icon{width:17px;height:17px;flex-shrink:0;opacity:.7}
+.sb-item.active .sb-item-icon{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font-family:var(--font-d);font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-divider{height:1px;background:var(--border);margin:6px 16px}
+.sb-bottom{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sb-clock{font-family:var(--font-m);font-size:17px;font-weight:600;color:var(--text-0);letter-spacing:.04em}
+.sb-clock-sub{font-size:10px;color:var(--text-2);margin-top:1px}
+.sb-bottom-btn{margin-left:auto;width:30px;height:30px;border-radius:var(--r-sm);background:transparent;border:1px solid var(--border);color:var(--text-2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--transition)}
+.sb-bottom-btn:hover{background:var(--bg-3);color:var(--text-1)}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+.page-header{padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.page-eyebrow{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ember);font-family:var(--font-d);margin-bottom:5px}
+.page-title{font-family:var(--font-d);font-size:24px;font-weight:700;color:var(--text-0);letter-spacing:-.01em}
+.page-sub{font-size:12.5px;color:var(--text-2);margin-top:3px}
+.page-actions{display:flex;gap:8px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r-sm);font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all var(--transition)}
+.btn-primary{background:var(--ember);color:#fff}
+.btn-primary:hover{background:var(--ember-dark);box-shadow:var(--ember-glow)}
+.btn-ghost{background:transparent;color:var(--text-1);border-color:var(--border-md)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0)}
+
+/* TOOLBAR */
+.hk-toolbar{padding:16px 28px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.floor-tabs{display:flex;gap:3px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:3px}
+.floor-tab{padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--text-1);cursor:pointer;transition:all var(--transition);white-space:nowrap;font-family:var(--font-d);border:1px solid transparent}
+.floor-tab:hover{color:var(--text-0);background:var(--bg-3)}
+.floor-tab.active{background:var(--ember);color:#fff;border-color:var(--ember);box-shadow:0 0 12px rgba(232,148,58,.25)}
+.hk-toolbar-spacer{flex:1}
+.staff-chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{
+  padding:5px 10px;border-radius:99px;font-size:11.5px;font-weight:600;
+  cursor:pointer;transition:all var(--transition);border:1.5px solid;
+  font-family:var(--font-d);
+}
+.chip-legend{display:flex;gap:12px;align-items:center}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-2);font-family:var(--font-d)}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* STATS ROW */
+.hk-stats{padding:0 28px;display:flex;gap:10px;flex-shrink:0;margin-bottom:2px}
+.hk-stat{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 18px;display:flex;align-items:center;gap:12px;flex:1}
+.hk-stat-val{font-family:var(--font-m);font-size:22px;font-weight:600}
+.hk-stat-val.teal{color:var(--teal)}
+.hk-stat-val.ember{color:var(--ember)}
+.hk-stat-val.rose{color:var(--rose)}
+.hk-stat-val.amber{color:var(--amber)}
+.hk-stat-val.sky{color:var(--sky)}
+.hk-stat-info{}
+.hk-stat-label{font-size:11.5px;font-weight:600;color:var(--text-1);font-family:var(--font-d)}
+.hk-stat-sub{font-size:10.5px;color:var(--text-2);margin-top:1px}
+.hk-stat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ROOM GRID */
+.room-scroll{flex:1;overflow-y:auto;padding:14px 28px 28px}
+.room-scroll::-webkit-scrollbar{width:5px}
+.room-scroll::-webkit-scrollbar-track{background:transparent}
+.room-scroll::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:3px}
+
+.floor-section{margin-bottom:24px}
+.floor-label{
+  font-family:var(--font-d);font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-2);
+  margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.floor-label-line{flex:1;height:1px;background:var(--border)}
+
+.room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+
+.room-card{
+  border-radius:var(--r-md);border:1.5px solid;
+  padding:11px 10px;cursor:pointer;
+  transition:all .18s cubic-bezier(.4,0,.2,1);
+  position:relative;overflow:hidden;
+}
+.room-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+
+/* Status variants */
+.room-card.clean{background:rgba(43,212,160,.08);border-color:rgba(43,212,160,.25)}
+.room-card.clean:hover{background:rgba(43,212,160,.14);border-color:rgba(43,212,160,.4)}
+.room-card.dirty{background:rgba(255,84,113,.07);border-color:rgba(255,84,113,.22)}
+.room-card.dirty:hover{background:rgba(255,84,113,.13);border-color:rgba(255,84,113,.38)}
+.room-card.inprogress{background:rgba(244,192,85,.08);border-color:rgba(244,192,85,.28)}
+.room-card.inprogress:hover{background:rgba(244,192,85,.14);border-color:rgba(244,192,85,.4)}
+.room-card.checkout{background:rgba(91,168,232,.07);border-color:rgba(91,168,232,.22)}
+.room-card.checkout:hover{background:rgba(91,168,232,.13);border-color:rgba(91,168,232,.38)}
+.room-card.vacant{background:var(--bg-2);border-color:var(--border)}
+.room-card.vacant:hover{background:var(--bg-3);border-color:var(--border-md)}
+.room-card.donotdisturb{background:rgba(167,139,250,.07);border-color:rgba(167,139,250,.22)}
+
+.room-num{
+  font-family:var(--font-m);font-size:18px;font-weight:600;
+  color:var(--text-0);letter-spacing:.01em;line-height:1;margin-bottom:6px;
+}
+.room-status-dot{
+  width:7px;height:7px;border-radius:50%;
+  position:absolute;top:8px;right:8px;
+}
+.room-status-dot.clean{background:var(--teal);box-shadow:0 0 6px rgba(43,212,160,.6)}
+.room-status-dot.dirty{background:var(--rose);box-shadow:0 0 6px rgba(255,84,113,.5)}
+.room-status-dot.inprogress{background:var(--amber);box-shadow:0 0 6px rgba(244,192,85,.5);animation:pulse 1.4s ease infinite}
+.room-status-dot.checkout{background:var(--sky)}
+.room-status-dot.vacant{background:var(--text-2)}
+.room-status-dot.donotdisturb{background:var(--violet)}
+
+.room-worker{
+  font-size:10px;font-weight:600;font-family:var(--font-d);
+  color:var(--text-2);letter-spacing:.04em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.room-worker.assigned{color:var(--ember)}
+.room-type{font-size:9.5px;color:var(--text-2);margin-top:1px}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+svg{display:block}
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">CC</div>
+    <div>
+      <div class="sb-logo-name">Conrad Comfort</div>
+      <div class="sb-logo-sub">Panel Recepcji</div>
+    </div>
+  </div>
+  <div class="sb-user" style="margin:0 16px 12px">
+    <div style="font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);font-family:var(--font-d);margin-bottom:4px">Kierownik HK</div>
+    <div class="sb-user-name">Tetiana T.</div>
+    <div class="sb-user-meta">Zmiana dzienna · 07:00–15:00</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section-label">Pokoje</div>
+    <button class="sb-item active">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Housekeeping
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><path d="M12 5v2m0 10v2M5 12H3m18 0h-2M7.8 7.8l-1.4-1.4m11.2 11.2-1.4-1.4M7.8 16.2l-1.4 1.4m11.2-11.2-1.4 1.4"/></svg>
+      HK Live
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      Usterki
+      <span class="sb-badge">2</span>
+    </button>
+    <div class="sb-divider"></div>
+    <div class="sb-section-label">Zmiana</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Przegląd Zmiany
+    </button>
+  </nav>
+  <div class="sb-bottom">
+    <div>
+      <div class="sb-clock" id="clock">07:42</div>
+      <div class="sb-clock-sub">Niedziela, 4 maja 2026</div>
+    </div>
+    <button class="sb-bottom-btn">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Pokoje · Plan sprzątania</div>
+      <div class="page-title">Housekeeping</div>
+      <div class="page-sub">Niedziela, 4 maja 2026 · Piętro 1–4 · 22 pokoje aktywne</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Pracownicy HK
+      </button>
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Pobierz PDF
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nowy plan
+      </button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="hk-toolbar">
+    <div class="floor-tabs">
+      <div class="floor-tab">Wszystkie</div>
+      <div class="floor-tab active">Piętro 1</div>
+      <div class="floor-tab">Piętro 2</div>
+      <div class="floor-tab">Piętro 3</div>
+      <div class="floor-tab">Piętro 4</div>
+      <div class="floor-tab">Apartamenty</div>
+    </div>
+    <div class="hk-toolbar-spacer"></div>
+    <div class="chip-legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>Czyste</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--rose)"></div>Brudne</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>W trakcie</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--sky)"></div>Wymeldowanie</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--violet)"></div>Nie przeszkadzać</div>
+    </div>
+  </div>
+
+  <!-- STATS ROW -->
+  <div class="hk-stats">
+    <div class="hk-stat">
+      <div class="hk-stat-dot" style="background:var(--teal);box-shadow:0 0 8px rgba(43,212,160,.4)"></div>
+      <div class="hk-stat-val teal">8</div>
+      <div class="hk-stat-info">
+        <div class="hk-stat-label">Czyste</div>
+        <div class="hk-stat-sub">gotowe do zajęcia</div>
+      </div>
+    </div>
+    <div class="hk-stat">
+      <div class="hk-stat-dot" style="background:var(--rose)"></div>
+      <div class="hk-stat-val rose">6</div>
+      <div class="hk-stat-info">
+        <div class="hk-stat-label">Do sprzątania</div>
+        <div class="hk-stat-sub">oczekujące</div>
+      </div>
+    </div>
+    <div class="hk-stat">
+      <div class="hk-stat-dot" style="background:var(--amber)"></div>
+      <div class="hk-stat-val amber">3</div>
+      <div class="hk-stat-info">
+        <div class="hk-stat-label">W trakcie</div>
+        <div class="hk-stat-sub">sprzątane teraz</div>
+      </div>
+    </div>
+    <div class="hk-stat">
+      <div class="hk-stat-dot" style="background:var(--sky)"></div>
+      <div class="hk-stat-val sky">4</div>
+      <div class="hk-stat-info">
+        <div class="hk-stat-label">Wymeldowanie</div>
+        <div class="hk-stat-sub">priorytet</div>
+      </div>
+    </div>
+    <div class="hk-stat">
+      <div class="hk-stat-dot" style="background:var(--text-2)"></div>
+      <div class="hk-stat-val" style="color:var(--text-1)">1</div>
+      <div class="hk-stat-info">
+        <div class="hk-stat-label">Nie przeszkadzać</div>
+        <div class="hk-stat-sub">pominąć</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROOM GRID -->
+  <div class="room-scroll" id="rooms">
+
+    <div class="floor-section">
+      <div class="floor-label">
+        <span>Piętro 1</span>
+        <div class="floor-label-line"></div>
+        <span style="font-variant-numeric:tabular-nums">pokoje 101–116</span>
+      </div>
+      <div class="room-grid" id="grid1"></div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-label">
+        <span>Piętro 2</span>
+        <div class="floor-label-line"></div>
+        <span>pokoje 201–216</span>
+      </div>
+      <div class="room-grid" id="grid2"></div>
+    </div>
+
+    <div class="floor-section">
+      <div class="floor-label">
+        <span>Piętro 3</span>
+        <div class="floor-label-line"></div>
+        <span>pokoje 301–316</span>
+      </div>
+      <div class="room-grid" id="grid3"></div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const STATUSES=[
+  {key:'clean',label:'Czyste'},
+  {key:'dirty',label:'Brudne'},
+  {key:'inprogress',label:'W trakcie'},
+  {key:'checkout',label:'Wymeldowanie'},
+  {key:'vacant',label:'Wolne'},
+  {key:'donotdisturb',label:'DND'},
+];
+const WORKERS=['Tetiana','Ana','Olena','Marta','—'];
+const TYPES=['SGL','DBL','TWIN','APT'];
+
+function randFrom(arr){return arr[Math.floor(Math.random()*arr.length)]}
+function buildRoom(num){
+  const statuses=['clean','clean','clean','dirty','dirty','inprogress','checkout','checkout','vacant','donotdisturb'];
+  const s=randFrom(statuses);
+  const w=s==='inprogress'?randFrom(['Tetiana','Ana','Olena']):(s==='dirty'||s==='checkout'?randFrom(['Tetiana','Ana','Olena','—']):'—');
+  const t=randFrom(TYPES);
+  return{num,status:s,worker:w,type:t};
+}
+
+const floor1=[...Array(14)].map((_,i)=>buildRoom(101+i));
+const floor2=[...Array(16)].map((_,i)=>buildRoom(201+i));
+const floor3=[...Array(14)].map((_,i)=>buildRoom(301+i));
+
+// Override some specific rooms for demo
+floor1[0]={num:101,status:'clean',worker:'—',type:'DBL'};
+floor1[1]={num:102,status:'dirty',worker:'Tetiana',type:'SGL'};
+floor1[2]={num:103,status:'inprogress',worker:'Ana',type:'DBL'};
+floor1[3]={num:104,status:'checkout',worker:'—',type:'TWIN'};
+floor1[4]={num:105,status:'donotdisturb',worker:'—',type:'DBL'};
+floor2[0]={num:201,status:'clean',worker:'—',type:'DBL'};
+floor2[4]={num:205,status:'inprogress',worker:'Olena',type:'DBL'};
+
+function renderCard(r,grid){
+  const div=document.createElement('div');
+  div.className=`room-card ${r.status}`;
+  div.innerHTML=`
+    <div class="room-status-dot ${r.status}"></div>
+    <div class="room-num">${r.num}</div>
+    <div class="room-worker ${r.worker!=='—'?'assigned':''}">${r.worker!=='—'?r.worker:'wolny'}</div>
+    <div class="room-type">${r.type}</div>
+  `;
+  div.addEventListener('click',()=>{
+    div.style.transform='scale(.97)';
+    setTimeout(()=>div.style.transform='',120);
+  });
+  grid.appendChild(div);
+}
+
+[floor1,floor2,floor3].forEach((floor,fi)=>{
+  const grid=document.getElementById('grid'+(fi+1));
+  floor.forEach((r,i)=>{
+    setTimeout(()=>renderCard(r,grid),(fi*14+i)*18);
+  });
+});
+
+function tick(){
+  const d=new Date();
+  document.getElementById('clock').textContent=
+    d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+tick();setInterval(tick,10000);
+
+// Fade in sections
+document.querySelectorAll('.hk-stat,.page-header,.hk-toolbar').forEach((el,i)=>{
+  el.style.opacity='0';
+  setTimeout(()=>{el.style.transition='opacity .35s';el.style.opacity='1';},(i)*80);
+});
+</script>
+</body>
+</html>

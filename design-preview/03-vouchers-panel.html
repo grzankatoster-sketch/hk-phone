@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort — Vouchery Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#08090D;--bg-1:#0E1016;--bg-2:#13161E;--bg-3:#1A1E2A;
+  --ember:#E8943A;--ember-dark:#C4761F;--ember-dim:rgba(232,148,58,.14);--ember-glow:0 0 24px rgba(232,148,58,.18);
+  --teal:#2BD4A0;--teal-dim:rgba(43,212,160,.12);
+  --rose:#FF5471;--rose-dim:rgba(255,84,113,.12);
+  --amber:#F4C055;--amber-dim:rgba(244,192,85,.12);
+  --gold:#D4A23A;--gold-dim:rgba(212,162,58,.12);
+  --sky:#5BA8E8;
+  --text-0:#ECEEF5;--text-1:#8B94AD;--text-2:#4E566A;
+  --border:rgba(255,255,255,.06);--border-md:rgba(255,255,255,.1);--border-ember:rgba(232,148,58,.28);
+  --r-sm:5px;--r-md:9px;--r-lg:14px;--r-xl:20px;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --sidebar-w:252px;--transition:.16s cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--font-b);font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sb-logo{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border);margin:16px;cursor:default}
+.sb-logo-mark{width:34px;height:34px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,var(--ember) 0%,var(--ember-dark) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:800;font-size:13px;color:#fff;box-shadow:0 0 16px rgba(232,148,58,.3)}
+.sb-logo-name{font-family:var(--font-d);font-size:13.5px;font-weight:700;color:var(--text-0)}
+.sb-logo-sub{font-size:10.5px;color:var(--text-2);margin-top:1px}
+.sb-nav{padding:0 8px;flex:1;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--r-sm);color:var(--text-1);font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--transition);border:1px solid transparent;position:relative;background:transparent;width:100%;text-align:left}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-dim);color:var(--ember);font-weight:600;border-color:var(--border-ember)}
+.sb-item.active::before{content:'';position:absolute;left:-1px;top:20%;bottom:20%;width:3px;border-radius:0 2px 2px 0;background:var(--ember)}
+.sb-item-icon{width:17px;height:17px;flex-shrink:0;opacity:.7}
+.sb-item.active .sb-item-icon{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font-family:var(--font-d);font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-section-label{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);font-family:var(--font-d);padding:0 24px;margin:10px 0 4px}
+.sb-divider{height:1px;background:var(--border);margin:6px 16px}
+.sb-bottom{padding:14px 16px;border-top:1px solid var(--border)}
+.sb-clock{font-family:var(--font-m);font-size:17px;font-weight:600;color:var(--text-0)}
+.sb-clock-sub{font-size:10px;color:var(--text-2);margin-top:1px}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.page-header{padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.page-eyebrow{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-family:var(--font-d);margin-bottom:5px}
+.page-title{font-family:var(--font-d);font-size:24px;font-weight:700;color:var(--text-0);letter-spacing:-.01em}
+.page-sub{font-size:12.5px;color:var(--text-2);margin-top:3px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r-sm);font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all var(--transition)}
+.btn-primary{background:var(--gold);color:#0E0C08}
+.btn-primary:hover{background:#c8932d;box-shadow:0 0 20px rgba(212,162,58,.25)}
+.btn-ghost{background:transparent;color:var(--text-1);border-color:var(--border-md)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0)}
+
+/* FILTER + STATS BAR */
+.toolbar{padding:16px 28px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.filter-tabs{display:flex;gap:3px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:3px}
+.filter-tab{padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--text-1);cursor:pointer;transition:all var(--transition);font-family:var(--font-d);border:1px solid transparent}
+.filter-tab:hover{color:var(--text-0);background:var(--bg-3)}
+.filter-tab.active{background:var(--bg-3);color:var(--text-0);border-color:var(--border-md)}
+.spacer{flex:1}
+
+/* STATS */
+.stats-row{padding:0 28px 16px;display:flex;gap:10px;flex-shrink:0}
+.stat-mini{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 20px;flex:1;display:flex;align-items:center;gap:14px}
+.stat-num{font-family:var(--font-m);font-size:24px;font-weight:600;line-height:1}
+.stat-label{font-size:12px;font-weight:600;color:var(--text-1);font-family:var(--font-d)}
+.stat-sub{font-size:11px;color:var(--text-2);margin-top:2px}
+
+/* VOUCHER CARDS GRID */
+.voucher-scroll{flex:1;overflow-y:auto;padding:0 28px 28px}
+.voucher-scroll::-webkit-scrollbar{width:5px}
+.voucher-scroll::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:3px}
+
+.voucher-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+/* VOUCHER CARD — ticket aesthetic */
+.voucher-card{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--r-xl);overflow:hidden;
+  cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);
+  position:relative;
+}
+.voucher-card:hover{border-color:var(--border-md);transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+
+/* Decorative ticket left stripe */
+.voucher-card::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:5px;
+}
+.voucher-card.active::before{background:linear-gradient(180deg,var(--gold),var(--ember))}
+.voucher-card.cashback::before{background:linear-gradient(180deg,var(--teal),var(--sky))}
+.voucher-card.used::before{background:var(--bg-3)}
+.voucher-card.expired::before{background:var(--text-2)}
+
+.v-top{padding:18px 20px 14px 22px;border-bottom:1px dashed var(--border-md);position:relative}
+.v-type-badge{
+  font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  font-family:var(--font-d);padding:4px 9px;border-radius:4px;
+  display:inline-block;margin-bottom:10px;
+}
+.badge-voucher{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(212,162,58,.3)}
+.badge-cashback{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(43,212,160,.3)}
+.badge-used{background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-md)}
+.badge-expired{background:var(--bg-3);color:var(--text-2);border:1px solid var(--border);opacity:.6}
+
+.v-amount{
+  font-family:var(--font-m);font-size:32px;font-weight:600;
+  letter-spacing:-.02em;line-height:1;
+}
+.v-amount.gold{color:var(--gold)}
+.v-amount.teal{color:var(--teal)}
+.v-amount.muted{color:var(--text-2)}
+.v-amount-label{font-size:12px;color:var(--text-2);margin-top:3px}
+
+.v-status-chip{
+  position:absolute;top:16px;right:16px;
+  font-size:10.5px;font-weight:700;font-family:var(--font-d);
+  padding:4px 10px;border-radius:99px;
+}
+.chip-active{background:rgba(212,162,58,.15);color:var(--gold);border:1px solid rgba(212,162,58,.3)}
+.chip-used{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(43,212,160,.3)}
+.chip-expired{background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-md);opacity:.7}
+
+.v-bottom{padding:14px 20px 16px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.v-meta{}
+.v-code{font-family:var(--font-m);font-size:13px;font-weight:600;color:var(--text-0);letter-spacing:.06em;margin-bottom:4px}
+.v-who{font-size:11.5px;color:var(--text-2)}
+.v-dates{font-size:10.5px;color:var(--text-2);margin-top:3px;font-family:var(--font-m)}
+.v-actions{display:flex;gap:6px}
+.v-btn{
+  padding:6px 12px;border-radius:var(--r-sm);font-size:12px;font-weight:600;
+  cursor:pointer;border:1px solid;transition:all var(--transition);font-family:var(--font-d);
+  display:flex;align-items:center;gap:5px;
+}
+
+/* Ticket hole effect */
+.ticket-holes{display:flex;justify-content:space-between;padding:0 14px;position:relative;margin:-8px 0}
+.hole{width:16px;height:16px;border-radius:50%;background:var(--bg-0);border:1px solid var(--border)}
+
+svg{display:block}
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">CC</div>
+    <div>
+      <div class="sb-logo-name">Conrad Comfort</div>
+      <div class="sb-logo-sub">Panel Recepcji</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section-label">Obsługa</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Parking
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      Stali Goście
+    </button>
+    <button class="sb-item active">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+      Vouchery
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Opinie
+    </button>
+    <div class="sb-divider"></div>
+    <div class="sb-section-label">Pokoje</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Housekeeping
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+      Usterki
+      <span class="sb-badge">2</span>
+    </button>
+  </nav>
+  <div class="sb-bottom">
+    <div>
+      <div class="sb-clock">07:42</div>
+      <div class="sb-clock-sub">Niedziela, 4 maja 2026</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Obsługa · Vouchery</div>
+      <div class="page-title">Vouchery & Cashbacki</div>
+      <div class="page-sub">3 aktywne · 12 zrealizowanych w tym miesiącu</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Pobierz listę
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Wystaw voucher
+      </button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <div class="filter-tabs">
+      <div class="filter-tab active">Aktywne (3)</div>
+      <div class="filter-tab">Zrealizowane</div>
+      <div class="filter-tab">Wszystkie</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-left:12px">
+      <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px">Voucher restauracyjny</button>
+      <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px">Cashback</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-mini">
+      <div class="stat-num" style="color:var(--gold)">3</div>
+      <div><div class="stat-label">Aktywne</div><div class="stat-sub">do realizacji</div></div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-num" style="color:var(--teal)">12</div>
+      <div><div class="stat-label">Zrealizowane</div><div class="stat-sub">ten miesiąc</div></div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-num" style="color:var(--ember)">1,450 zł</div>
+      <div><div class="stat-label">Wartość aktywnych</div><div class="stat-sub">łącznie</div></div>
+    </div>
+    <div class="stat-mini">
+      <div class="stat-num" style="color:var(--text-1)">2</div>
+      <div><div class="stat-label">Wygasłe</div><div class="stat-sub">wymagają weryfikacji</div></div>
+    </div>
+  </div>
+
+  <!-- VOUCHERS GRID -->
+  <div class="voucher-scroll">
+    <div class="voucher-grid">
+
+      <!-- Active voucher #1 -->
+      <div class="voucher-card active">
+        <div class="v-top">
+          <div class="v-type-badge badge-voucher">Voucher Restauracyjny</div>
+          <div class="v-status-chip chip-active">Aktywny</div>
+          <div class="v-amount gold">100 zł</div>
+          <div class="v-amount-label">voucher na usługi restauracyjne</div>
+        </div>
+        <div class="ticket-holes"><div class="hole"></div><div class="hole"></div></div>
+        <div class="v-bottom">
+          <div class="v-meta">
+            <div class="v-code">VCH-2026-0041</div>
+            <div class="v-who">Wystawiła: Natalia S. · Gość: p. Kowalski</div>
+            <div class="v-dates">Wystawiono: 03.05.2026 · Ważny do: 31.05.2026</div>
+          </div>
+          <div class="v-actions">
+            <button class="v-btn" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(43,212,160,.3)">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              Oddany
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active voucher #2 — cashback -->
+      <div class="voucher-card cashback">
+        <div class="v-top">
+          <div class="v-type-badge badge-cashback">Cashback</div>
+          <div class="v-status-chip chip-active" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(43,212,160,.3)">Aktywny</div>
+          <div class="v-amount teal">250 zł</div>
+          <div class="v-amount-label">zwrot gotówkowy do rozliczenia</div>
+        </div>
+        <div class="ticket-holes"><div class="hole"></div><div class="hole"></div></div>
+        <div class="v-bottom">
+          <div class="v-meta">
+            <div class="v-code">CBK-2026-0017</div>
+            <div class="v-who">Wystawiła: Weronika K. · Gość: Firma TechCorp</div>
+            <div class="v-dates">Wystawiono: 01.05.2026 · Ważny do: 30.06.2026</div>
+          </div>
+          <div class="v-actions">
+            <button class="v-btn" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(43,212,160,.3)">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              Oddany
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active voucher #3 -->
+      <div class="voucher-card active">
+        <div class="v-top">
+          <div class="v-type-badge badge-voucher">Voucher Restauracyjny</div>
+          <div class="v-status-chip chip-active">Aktywny</div>
+          <div class="v-amount gold">50 zł</div>
+          <div class="v-amount-label">voucher na usługi restauracyjne</div>
+        </div>
+        <div class="ticket-holes"><div class="hole"></div><div class="hole"></div></div>
+        <div class="v-bottom">
+          <div class="v-meta">
+            <div class="v-code">VCH-2026-0039</div>
+            <div class="v-who">Wystawiła: Natalia S. · Gość: p. Nowak</div>
+            <div class="v-dates">Wystawiono: 28.04.2026 · Ważny do: 28.05.2026</div>
+          </div>
+          <div class="v-actions">
+            <button class="v-btn" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(43,212,160,.3)">
+              <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+              Oddany
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── separator ── -->
+      <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:4px 0">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <div style="font-size:11px;color:var(--text-2);font-family:var(--font-d);letter-spacing:.08em;text-transform:uppercase">Zrealizowane</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <!-- USED #1 -->
+      <div class="voucher-card used" style="opacity:.55">
+        <div class="v-top">
+          <div class="v-type-badge badge-used">Voucher Restauracyjny</div>
+          <div class="v-status-chip chip-used">Zrealizowany</div>
+          <div class="v-amount muted">50 zł</div>
+          <div class="v-amount-label">zrealizowany w restauracji</div>
+        </div>
+        <div class="ticket-holes"><div class="hole"></div><div class="hole"></div></div>
+        <div class="v-bottom">
+          <div class="v-meta">
+            <div class="v-code">VCH-2026-0038</div>
+            <div class="v-who">Wystawiła: Weronika K. · Gość: p. Piotrowska</div>
+            <div class="v-dates">Zrealizowano: 03.05.2026 · godz. 19:44</div>
+          </div>
+          <div class="v-actions">
+            <button class="v-btn" style="background:transparent;color:var(--text-2);border-color:var(--border)">Szczegóły</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- USED #2 — cashback -->
+      <div class="voucher-card cashback" style="opacity:.55">
+        <div class="v-top">
+          <div class="v-type-badge badge-cashback" style="opacity:.6">Cashback</div>
+          <div class="v-status-chip chip-used">Zrealizowany</div>
+          <div class="v-amount muted">150 zł</div>
+          <div class="v-amount-label">cashback rozliczony</div>
+        </div>
+        <div class="ticket-holes"><div class="hole"></div><div class="hole"></div></div>
+        <div class="v-bottom">
+          <div class="v-meta">
+            <div class="v-code">CBK-2026-0014</div>
+            <div class="v-who">Wystawiła: Natalia S. · Firma ABC sp. z o.o.</div>
+            <div class="v-dates">Zrealizowano: 02.05.2026</div>
+          </div>
+          <div class="v-actions">
+            <button class="v-btn" style="background:transparent;color:var(--text-2);border-color:var(--border)">Szczegóły</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+document.querySelectorAll('.voucher-card').forEach((el,i)=>{
+  el.style.opacity='0';el.style.transform='translateY(10px) scale(.99)';
+  setTimeout(()=>{el.style.transition='opacity .35s ease,transform .35s ease';el.style.opacity=el.classList.contains('used')?'0.55':'1';el.style.transform='none';},80+i*60);
+});
+</script>
+</body>
+</html>

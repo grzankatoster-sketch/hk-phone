@@ -1,8 +1,14 @@
 const crypto = require("crypto");
 
-const DEFAULT_BOOKING_REVIEWS_URL = "https://www.booking.com/reviews/pl/hotel/conrad-comfort.pl.html";
+// Booking.com serwuje pełną, paginowalną listę opinii pod AJAX-owym endpointem
+// `reviewlist.html` (publiczna strona /reviews/ ładuje tylko ~24 opinie i resztę
+// dociąga JS-em — parametr offset jest tam ignorowany). reviewlist.html zwraca
+// ustrukturyzowany HTML z osobnymi blokami plusów (zielony prefix „Podobało się")
+// i minusów („Nie podobało się"), dzięki czemu nie trzeba zgadywać po ocenie.
+const DEFAULT_PAGENAME = "conrad-comfort";
+const DEFAULT_CC1 = "pl";
 const ROWS_PER_PAGE = 25;
-const MAX_PAGES = 20;
+const MAX_PAGES = 30;
 
 const MONTHS_PL = new Map([
   ["stycznia", 0], ["styczen", 0], ["styczniu", 0],
@@ -19,21 +25,25 @@ const MONTHS_PL = new Map([
   ["grudnia", 11], ["grudzien", 11], ["grudniu", 11],
 ]);
 
-const SCORE_LABELS = new Set([
-  "wyjatkowy", "znakomity", "bardzo dobry", "dobry", "przyjemny",
-  "przecietny", "slaby", "excellent", "wonderful", "very good", "good",
+// Frazy, które goście wpisują w pole minusów/plusów, gdy nie mają nic do dodania.
+// Uwaga: nie filtrujemy każdego „brak ..." — „brak ciepłej wody" to realna skarga.
+const NOOP_TEXT = new Set([
+  "brak", "brak uwag", "brak zastrzezen", "brak uwag.", "bez uwag", "bez zastrzezen",
+  "nic", "nie dotyczy", "n/a", "na", "wszystko ok", "wszystko w porzadku",
+  "wszystko bylo ok", "wszystko swietnie", "-", "--", "---",
 ]);
 
 function stripDiacritics(value) {
   return String(value || "")
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
 }
 
 function htmlDecode(value) {
   return String(value || "")
     .replace(/&nbsp;/g, " ")
+    .replace(/&middot;/g, "·")
     .replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
@@ -43,16 +53,10 @@ function htmlDecode(value) {
     .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)));
 }
 
-function htmlToText(html) {
-  return htmlDecode(String(html || "")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<(br|\/p|\/div|\/li|\/h\d|\/section|\/article)\b[^>]*>/gi, "\n")
-    .replace(/<[^>]+>/g, " "))
-    .replace(/\r/g, "\n")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
+// Wytnij tagi i znormalizuj białe znaki w obrębie jednego fragmentu HTML.
+function stripTags(html) {
+  return htmlDecode(String(html || "").replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -64,13 +68,13 @@ function parsePolishDate(value) {
   return new Date(Number(m[3]), month, Number(m[1]), 12, 0, 0, 0);
 }
 
+// „czerwiec 2026" → pierwszy dzień miesiąca (data pobytu, bez dnia).
 function parseStayMonth(value) {
-  const m = stripDiacritics(value).match(/pobyt:\s*([a-z]+)\s+(\d{4})/);
+  const m = stripDiacritics(value).match(/([a-z]+)\s+(\d{4})/);
   if (!m) return null;
   const month = MONTHS_PL.get(m[1]);
   if (month == null) return null;
-  const d = new Date(Number(m[2]), month, 1, 12, 0, 0, 0);
-  return d.toISOString().slice(0, 10);
+  return new Date(Number(m[2]), month, 1, 12, 0, 0, 0).toISOString().slice(0, 10);
 }
 
 function toIsoNoon(date) {
@@ -84,15 +88,18 @@ function sixMonthsAgo(now = new Date()) {
   return d;
 }
 
-function cleanLine(value) {
-  return String(value || "")
-    .replace(/^["'“”„]+|["'“”„]+$/g, "")
-    .replace(/^[•\-\s]+/, "")
-    .replace(/\s+/g, " ")
-    .trim();
+// Treść plusa/minusa. Puste „grzecznościowe" frazy traktujemy jako brak treści,
+// żeby nie zaśmiecały analizy AI (np. minus = „brak uwag").
+function cleanBody(html) {
+  const text = stripTags(html);
+  if (!text) return null;
+  const norm = stripDiacritics(text).replace(/[.!]+$/, "").trim();
+  if (NOOP_TEXT.has(norm)) return null;
+  return text;
 }
 
-function parseTotalAndScore(text) {
+function parseTotalAndScore(html) {
+  const text = stripTags(html);
   const normalized = stripDiacritics(text).replace(/\s+/g, " ");
   const scoreMatch = normalized.match(/ocena\s+na\s+podstawie[\s\S]{0,120}?(\d+[,.]\d+)/)
     || normalized.match(/scored\s+(\d+[,.]\d+)/);
@@ -104,65 +111,43 @@ function parseTotalAndScore(text) {
   };
 }
 
-function looksLikeMeta(line) {
-  const n = stripDiacritics(line);
-  return !line
-    || n.includes("wyslana przez urzadzenie")
-    || n.includes("wyjazd ")
-    || n.includes("podrozujacy")
-    || n.includes("rodzina")
-    || n.includes("w parze")
-    || n.includes("nocleg")
-    || /^\d+\s+(opini|pomocn)/.test(n)
-    || n === "napisz opinie"
-    || n === "image";
+function firstMatch(block, regex) {
+  const m = block.match(regex);
+  return m ? stripTags(m[1]) : null;
 }
 
-function looksLikeRoom(line) {
-  const n = stripDiacritics(line);
-  return /(pokoj|studio|apartament|room|triple|double|twin|budget|superior)/.test(n);
-}
-
-function parseReviewSection(section, cutoff) {
-  const date = parsePolishDate(section.slice(0, 80));
+// Jeden blok <... itemprop="review" ...> z reviewlist.html.
+function parseReviewBlock(block, cutoff) {
+  const dates = [...block.matchAll(/c-review-block__date">([\s\S]*?)<\/span>/g)].map(m => stripTags(m[1]));
+  const reviewDateText = dates.find(d => /oceniono|ocena dodana/i.test(stripDiacritics(d))) || dates.at(-1);
+  const date = parsePolishDate(reviewDateText || "");
   if (!date || date < cutoff) return null;
 
-  const lines = section.split("\n").map(cleanLine).filter(Boolean);
-  if (lines.length < 4) return null;
+  const stayText = dates.find(d => !/oceniono|ocena dodana/i.test(stripDiacritics(d)));
+  const stayDate = stayText ? parseStayMonth(stayText) : null;
 
-  const scoreIndex = lines.findIndex(line => /^\d{1,2}([,.]\d)?$/.test(line));
-  if (scoreIndex < 2) return null;
+  const guestName = firstMatch(block, /bui-avatar-block__title">([\s\S]*?)<\/span>/) || "Gość";
+  const country = firstMatch(block, /bui-avatar-block__subtitle">([\s\S]*?)<\/span><\/div>/) || null;
+  const scoreRaw = (block.match(/bui-review-score__badge"[^>]*>\s*([\d,]+)/) || [])[1];
+  const score = scoreRaw ? Number(scoreRaw.replace(",", ".")) : null;
 
-  const guestName = lines[1] || "Gosc";
-  const country = lines.slice(2, scoreIndex).find(line => !looksLikeMeta(line)) || null;
-  const score = Number(lines[scoreIndex].replace(",", "."));
-  const label = lines[scoreIndex + 1] || null;
-
-  let title = null;
-  let roomType = null;
-  let stayDate = null;
-  const bodyLines = [];
-
-  for (let i = scoreIndex + 2; i < lines.length; i += 1) {
-    const line = lines[i];
-    const n = stripDiacritics(line);
-    if (!title && /^["'“„]/.test(lines[i]) && !SCORE_LABELS.has(n)) {
-      title = cleanLine(line);
-      continue;
-    }
-    if (!stayDate && n.startsWith("pobyt:")) {
-      stayDate = parseStayMonth(line);
-      break;
-    }
-    if (!roomType && looksLikeRoom(line)) {
-      roomType = line;
-      continue;
-    }
-    if (!looksLikeMeta(line) && !SCORE_LABELS.has(n)) bodyLines.push(line);
+  // Plusy = zielony prefix („Podobało się"), minusy = pozostały prefix („Nie podobało się").
+  let positives = null;
+  let negatives = null;
+  const prefixRe = /c-review__prefix( c-review__prefix--color-green)?"[\s\S]*?sr-only">([\s\S]*?)<\/span>[\s\S]*?c-review__body[^>]*>([\s\S]*?)<\/span>/g;
+  let pm;
+  while ((pm = prefixRe.exec(block)) !== null) {
+    const body = cleanBody(pm[3]);
+    if (!body) continue;
+    if (pm[1]) positives = body;
+    else negatives = body;
   }
 
-  const text = bodyLines.join(" ").trim() || null;
-  const idSeed = `${guestName}|${date.toISOString().slice(0, 10)}|${score}|${text || ""}`;
+  const roomType = firstMatch(block, /c-review-block__room-link[^>]*>([\s\S]*?)<\/a>/) || null;
+  const response = firstMatch(block, /c-review-block__response__body(?:\s+bui-u-hidden)?">([\s\S]*?)<\/(?:span|p|div)>/) || "";
+
+  const text = [positives, negatives].filter(Boolean).join(" ");
+  const idSeed = `${guestName}|${date.toISOString().slice(0, 10)}|${score}|${text}`;
   const id = `bcom-live-${crypto.createHash("sha1").update(idSeed).digest("hex").slice(0, 16)}`;
 
   return {
@@ -174,42 +159,40 @@ function parseReviewSection(section, cutoff) {
     stay_date: stayDate,
     submitted_at: toIsoNoon(date),
     room_type: roomType,
-    title,
-    positives: text,
-    negatives: null,
-    response_text: "",
+    title: null,
+    positives,
+    negatives,
+    response_text: response,
     responded_at: null,
     responded_by: null,
     added_by: "booking-live",
     added_at: new Date().toISOString(),
-    booking_label: label,
+    booking_label: null,
   };
 }
 
 function parseBookingReviews(html, cutoff) {
-  const text = htmlToText(html);
-  const meta = parseTotalAndScore(text);
-  const marker = /Ocena dodana:/g;
-  const starts = [];
-  let match;
-  while ((match = marker.exec(text)) !== null) starts.push(match.index);
-
+  const meta = parseTotalAndScore(html);
+  const blocks = html.split('itemprop="review"').slice(1);
   const reviews = [];
-  for (let i = 0; i < starts.length; i += 1) {
-    const section = text.slice(starts[i], starts[i + 1] || text.length);
-    const review = parseReviewSection(section, cutoff);
+  for (const block of blocks) {
+    const review = parseReviewBlock(block, cutoff);
     if (review) reviews.push(review);
   }
-  return { reviews, meta, text };
+  return { reviews, meta };
 }
 
-function buildReviewsUrl(page) {
-  const base = process.env.BOOKING_REVIEWS_URL || DEFAULT_BOOKING_REVIEWS_URL;
-  const url = new URL(base);
-  url.searchParams.set("r_lang", "all");
+function buildReviewsUrl(offset) {
+  const pagename = process.env.BOOKING_REVIEW_PAGENAME || DEFAULT_PAGENAME;
+  const cc1 = process.env.BOOKING_REVIEW_CC1 || DEFAULT_CC1;
+  const url = new URL("https://www.booking.com/reviewlist.html");
+  url.searchParams.set("cc1", cc1);
+  url.searchParams.set("pagename", pagename);
+  url.searchParams.set("type", "total");
   url.searchParams.set("rows", String(ROWS_PER_PAGE));
-  url.searchParams.set("offset", String((page - 1) * ROWS_PER_PAGE));
-  url.searchParams.set("sort_by", "date_desc");
+  url.searchParams.set("offset", String(offset));
+  url.searchParams.set("sort", "f_recent_desc");
+  url.searchParams.set("r_lang", "all");
   return url.toString();
 }
 
@@ -221,12 +204,13 @@ async function fetchBookingReviews() {
   let pagesRead = 0;
   let blocked = false;
 
-  for (let page = 1; page <= MAX_PAGES; page += 1) {
-    const url = buildReviewsUrl(page);
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const url = buildReviewsUrl(page * ROWS_PER_PAGE);
     const res = await fetch(url, {
       headers: {
         "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "accept-language": "pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7",
+        "x-requested-with": "XMLHttpRequest",
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
       },
     });
@@ -242,13 +226,15 @@ async function fetchBookingReviews() {
     pagesRead += 1;
     if (parsed.meta.score) officialScore = parsed.meta.score;
     if (parsed.meta.total) officialTotal = parsed.meta.total;
+
     const sizeBeforePage = deduped.size;
     parsed.reviews.forEach(review => deduped.set(review.id, review));
 
-    const newestOnPage = parsed.reviews[0] ? new Date(parsed.reviews[0].submitted_at) : null;
+    // Brak (świeżych) opinii na stronie albo same duplikaty = koniec listy / okno 6 mies.
+    if (!parsed.reviews.length) break;
+    if (page > 0 && deduped.size === sizeBeforePage) break;
     const oldestOnPage = parsed.reviews.at(-1) ? new Date(parsed.reviews.at(-1).submitted_at) : null;
-    if (page > 1 && deduped.size === sizeBeforePage) break;
-    if (!parsed.reviews.length || (oldestOnPage && oldestOnPage < cutoff && newestOnPage && newestOnPage < cutoff)) break;
+    if (oldestOnPage && oldestOnPage < cutoff) break;
   }
 
   if (blocked) {

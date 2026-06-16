@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Przekazanie zmiany</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input,select,textarea{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--ember)}
+
+/* Sidebar shared */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px}
+
+.main{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--bg-0)}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.topbar{position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,var(--bg-0) 70%,transparent);padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast);cursor:pointer}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.btn-teal{background:var(--teal);color:#0B0810;font-weight:700;border-color:var(--teal)}
+.btn-teal:hover{box-shadow:0 0 14px rgba(43,212,160,.4)}
+
+.content{padding:18px 28px 28px;display:grid;grid-template-columns:1fr 380px;gap:18px;align-items:start}
+
+/* HANDOVER FLOW */
+.flow-card{background:linear-gradient(135deg,var(--ember-bg),transparent);border:1px solid var(--ember-border);border-radius:var(--r-lg);padding:20px 22px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-bottom:14px}
+.shift-block{display:flex;align-items:center;gap:11px}
+.shift-icon{width:42px;height:42px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;font:800 14px/1 var(--f-d);color:#fff;flex-shrink:0}
+.shift-icon.prev{background:linear-gradient(135deg,#766A7E,#4A3F52)}
+.shift-icon.curr{background:linear-gradient(135deg,var(--ember),var(--ember-deep));box-shadow:var(--ember-glow)}
+.shift-icon.next{background:linear-gradient(135deg,var(--text-3),#221C2C);opacity:.7;border:1px dashed var(--border-2)}
+.shift-info-1{font:700 12px var(--f-d);color:var(--text-0)}
+.shift-info-2{font:500 11px var(--f-m);color:var(--text-2);margin-top:2px}
+.shift-arrow{color:var(--ember);font-size:22px;font-weight:700}
+
+.flow-status{margin-left:auto;display:flex;align-items:center;gap:10px;font:700 11px var(--f-d);letter-spacing:.08em;text-transform:uppercase}
+.flow-status.signed{color:var(--teal)}
+.flow-status.pending{color:var(--amber)}
+
+/* Cards */
+.card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden;margin-bottom:14px}
+.card-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-head-title{font:700 13px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.card-head-title svg{color:var(--ember);width:15px;height:15px}
+.count-pill{display:inline-flex;align-items:center;height:22px;padding:0 10px;border-radius:99px;font:600 11px var(--f-b);background:var(--bg-3);border:1px solid var(--border-1);color:var(--text-1)}
+
+/* Prev shift note */
+.prev-note{padding:18px 22px}
+.prev-note-author{display:flex;align-items:center;gap:11px;padding-bottom:14px;margin-bottom:14px;border-bottom:1px dashed var(--border-1)}
+.prev-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--sky),#1e40af);display:flex;align-items:center;justify-content:center;font:700 14px var(--f-d);color:#fff;flex-shrink:0}
+.prev-author-name{font:700 13.5px var(--f-d);color:var(--text-0)}
+.prev-author-meta{font:500 11px var(--f-m);color:var(--text-3);margin-top:2px}
+.prev-note-text{font-size:13.5px;color:var(--text-0);line-height:1.7;white-space:pre-wrap}
+.prev-note-text b{color:var(--ember)}
+.prev-note-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px dashed var(--border-1)}
+.tag-pill{font:600 10.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:99px;background:var(--bg-3);color:var(--text-1);border:1px solid var(--border-1)}
+
+/* Pending items section */
+.pending-list{display:flex;flex-direction:column}
+.pending-item{padding:12px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;gap:12px}
+.pending-item:last-child{border-bottom:none}
+.pending-check{width:18px;height:18px;border-radius:var(--r-xs);border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.pending-check.done{background:var(--teal);border-color:var(--teal)}
+.pending-check svg{width:11px;height:11px}
+.pending-text{flex:1;font-size:13px;color:var(--text-0)}
+.pending-text.done{color:var(--text-2);text-decoration:line-through}
+.pending-link{font:500 11px var(--f-m);color:var(--ember);text-decoration:none}
+.pending-link:hover{text-decoration:underline}
+
+/* Compose handover */
+.compose{padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+.compose textarea{min-height:160px;line-height:1.7;font-family:var(--f-b);font-size:13.5px}
+.compose-toolbar{display:flex;gap:6px;flex-wrap:wrap}
+.tag-btn{font:600 10.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:99px;background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1);transition:all var(--t-fast)}
+.tag-btn:hover{color:var(--text-0)}
+.tag-btn.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.compose-actions{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.compose-meta{font:500 11px var(--f-m);color:var(--text-3);display:flex;align-items:center;gap:6px}
+.compose-meta .live{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+
+/* SIDEBAR right: timeline */
+.timeline{padding:18px 22px}
+.tl-item{display:flex;gap:11px;padding-bottom:14px;position:relative}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:'';position:absolute;left:10px;top:24px;bottom:-10px;width:1px;background:var(--border-1)}
+.tl-item:last-child::before{display:none}
+.tl-dot{width:21px;height:21px;border-radius:50%;background:var(--bg-3);border:2px solid var(--border-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1}
+.tl-dot.curr{background:var(--ember);border-color:var(--ember);box-shadow:var(--ember-glow)}
+.tl-dot.done{background:var(--teal);border-color:var(--teal)}
+.tl-dot svg{width:11px;height:11px}
+.tl-info{flex:1;min-width:0;padding-top:1px}
+.tl-name{font:700 13px var(--f-d);color:var(--text-0)}
+.tl-meta{font:500 11px var(--f-m);color:var(--text-3);margin-top:2px}
+.tl-excerpt{font-size:11.5px;color:var(--text-1);margin-top:5px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* Audit info */
+.audit-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-0);font-size:12.5px}
+.audit-row:last-child{border-bottom:none}
+.audit-row .l{color:var(--text-1)}
+.audit-row .v{color:var(--text-0);font-weight:600;font-family:var(--f-m)}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div><div class="sb-brand-name">Conrad Comfort</div><div class="sb-brand-sub">Przekazanie · v2</div></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>Przekazanie</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Housekeeping</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Zmiana</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Przekazanie</span></div>
+      <h1 class="page-title">Przekazanie zmiany</h1>
+      <div class="page-meta">
+        <span>Otrzymana od: <b>Anna Lewand. (nocna)</b></span>
+        <span>Przekazujesz do: <b>Marek W. (wieczorna)</b></span>
+        <span style="color:var(--teal)">✓ Sygnowane 07:08</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost">Historia przekazań</button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+        Eksport PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- FLOW CARD -->
+      <div class="flow-card">
+        <div class="shift-block">
+          <div class="shift-icon prev">AL</div>
+          <div>
+            <div class="shift-info-1">Anna Lewand.</div>
+            <div class="shift-info-2">Nocna · 23:00 → 07:00</div>
+          </div>
+        </div>
+        <div class="shift-arrow">→</div>
+        <div class="shift-block">
+          <div class="shift-icon curr">NS</div>
+          <div>
+            <div class="shift-info-1">Natalia Szymańska <span style="color:var(--ember);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em">· ty</span></div>
+            <div class="shift-info-2">Dzienna · 07:00 → 15:00</div>
+          </div>
+        </div>
+        <div class="shift-arrow">→</div>
+        <div class="shift-block">
+          <div class="shift-icon next">MW</div>
+          <div>
+            <div class="shift-info-1">Marek W.</div>
+            <div class="shift-info-2">Wieczorna · 15:00 → 23:00</div>
+          </div>
+        </div>
+
+        <div class="flow-status signed">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          Przyjęte 07:08
+        </div>
+      </div>
+
+      <!-- PREV SHIFT NOTE -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Notatka z nocnej zmiany
+          </div>
+          <div class="count-pill">Anna Lewand. · 07:02</div>
+        </div>
+        <div class="prev-note">
+          <div class="prev-note-author">
+            <div class="prev-avatar">AL</div>
+            <div>
+              <div class="prev-author-name">Anna Lewand.</div>
+              <div class="prev-author-meta">Nocna · 11 maj 23:00 → 12 maj 07:00 · 1 incydent · 0 voucherów</div>
+            </div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font:700 11px var(--f-d);letter-spacing:.08em;text-transform:uppercase;color:var(--teal)">
+              <span style="width:8px;height:8px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)"></span>
+              Sygnowane
+            </div>
+          </div>
+
+          <div class="prev-note-text">- <b>Gość pok. 304</b> (P. Kowalski, VIP) przyjechał o 02:14 — opóźnienie pociągu. Klucz w skrzynce A. Faktura na Norconsult.
+
+- <b>Pok. 412</b>: gość zgłaszał lekkie kapanie z baterii ok. 04:00. Powiedziałam że konserwator naprawi rano. Maria może to potwierdzić — będzie sprzątać.
+
+- <b>Kasa</b>: stała 500 zł, KW total na koniec zmiany: <b>12 384,00 zł</b>. Wszystko zgodne z drukarką fiskalną.
+
+- <b>Walk-in 03:21</b> — pan z Niemiec, pok. 405, 1 noc, 200 zł cash + 50 zł cash parking. Wpisałam do parkingu jako krótki (KAT5821Q). Dokument w teczce.
+
+- Sprawdzić: <b>czy Tymek dostarczy papier toaletowy</b> — magazynek 2 piętro pusty od wczoraj. Mówił że dziś przed południem.</div>
+
+          <div class="prev-note-tags">
+            <span class="tag-pill">#vip</span>
+            <span class="tag-pill">#usterka</span>
+            <span class="tag-pill">#kasa</span>
+            <span class="tag-pill">#walk-in</span>
+            <span class="tag-pill">#dostawa</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- PENDING ITEMS -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Otwarte z poprzedniej zmiany
+          </div>
+          <div class="count-pill">4 do sprawdzenia</div>
+        </div>
+        <div class="pending-list">
+          <div class="pending-item">
+            <div class="pending-check done">
+              <svg fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="pending-text done">Sprawdzić pok. 304 — VIP Kowalski przyjechał z opóźnieniem</div>
+            <a class="pending-link" href="#">Pok. 304 →</a>
+          </div>
+          <div class="pending-item">
+            <div class="pending-check"></div>
+            <div class="pending-text">Usterka 412 — przeciekająca bateria, konserwator obiecał dziś przed południem</div>
+            <a class="pending-link" href="#">Usterka #F-2026-0083 →</a>
+          </div>
+          <div class="pending-item">
+            <div class="pending-check"></div>
+            <div class="pending-text">Tymek miał dostarczyć papier toaletowy — magazynek 2 piętro pusty</div>
+            <a class="pending-link" href="#">Alert #2 →</a>
+          </div>
+          <div class="pending-item">
+            <div class="pending-check"></div>
+            <div class="pending-text">Walk-in KAT5821Q — parking krótki, auto-expire o północy 13 maj</div>
+            <a class="pending-link" href="#">Parking →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- COMPOSE -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Twoja notatka dla wieczornej zmiany
+          </div>
+          <div class="compose-meta">
+            <span class="live"></span>
+            Auto-save · 12s temu
+          </div>
+        </div>
+        <div class="compose">
+          <textarea placeholder="Co warto przekazać zmianie wieczornej?">- Pokój 304: późny check-out do 13:00 (zatwierdzony, gość zostawił 100 PLN za extra hour).
+
+- Usterka 412: konserwator obiecał przyjść po 16:00, jeśli nie przyjdzie — zadzwoń do firmy ABC Service (kontakt w wiki).
+
+- Zamówić ręczniki, magazynek 2 piętro pusty (info do Tymka).
+
+- Klient z pok. 218 (voucher 50 PLN) zapowiedział wczesny check-out — ma 250 PLN do dopłaty.</textarea>
+
+          <div class="compose-toolbar">
+            <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);align-self:center;margin-right:4px">Tagi:</span>
+            <button class="tag-btn on">#klucze</button>
+            <button class="tag-btn">#kasa</button>
+            <button class="tag-btn on">#gość</button>
+            <button class="tag-btn">#dostawa</button>
+            <button class="tag-btn on">#usterka</button>
+            <button class="tag-btn">#vip</button>
+            <button class="tag-btn">+ dodaj tag</button>
+          </div>
+
+          <div class="compose-actions">
+            <div style="font:500 11.5px var(--f-m);color:var(--text-3)">412 znaków · zapisane lokalnie</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-ghost">Podgląd PDF</button>
+              <button class="btn btn-teal">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                Sygnuj i przekaż
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: TIMELINE + AUDIT -->
+    <div>
+
+      <!-- Last 5 handovers -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Historia przekazań
+          </div>
+        </div>
+        <div class="timeline">
+          <div class="tl-item">
+            <div class="tl-dot curr">
+              <svg fill="none" stroke="#fff" stroke-width="2.4" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>
+            </div>
+            <div class="tl-info">
+              <div class="tl-name">Natalia — Marek (twoje)</div>
+              <div class="tl-meta">Dzienna → Wieczorna · w trakcie</div>
+              <div class="tl-excerpt">Pok. 304 późny CO 13:00, usterka 412 konserwator po 16:00, voucher 218 50 PLN...</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot done">
+              <svg fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="tl-info">
+              <div class="tl-name">Anna — Natalia</div>
+              <div class="tl-meta">Nocna → Dzienna · sygn. 07:08</div>
+              <div class="tl-excerpt">VIP Kowalski 02:14, usterka 412, walk-in 405, kasa 12384...</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot done">
+              <svg fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="tl-info">
+              <div class="tl-name">Marek — Anna</div>
+              <div class="tl-meta">Wieczorna → Nocna · 23:14</div>
+              <div class="tl-excerpt">Wszystkie pokoje OK, kasa 8 240, jutro 14 przyjazdów...</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot done">
+              <svg fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="tl-info">
+              <div class="tl-name">Anna — Marek</div>
+              <div class="tl-meta">Dzienna → Wieczorna · 11 maj 15:02</div>
+              <div class="tl-excerpt">Pok. 209 awaria klimy, parking abonament Otfinowska kończy się za 3 dni...</div>
+            </div>
+          </div>
+
+          <div class="tl-item">
+            <div class="tl-dot done">
+              <svg fill="none" stroke="#0B0810" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="tl-info">
+              <div class="tl-name">Marek — Anna</div>
+              <div class="tl-meta">Nocna → Dzienna · 11 maj 07:00</div>
+              <div class="tl-excerpt">Stan kasy 7 100, zgłoszone 2 nowe usterki, ok...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-head-title">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Audyt przekazania
+          </div>
+        </div>
+        <div style="padding:6px 22px 14px">
+          <div class="audit-row"><span class="l">Otrzymane</span><span class="v">07:08</span></div>
+          <div class="audit-row"><span class="l">Podpisane przez</span><span class="v">Natalia Sz.</span></div>
+          <div class="audit-row"><span class="l">Tasks zaakceptowane</span><span class="v">12 / 12</span></div>
+          <div class="audit-row"><span class="l">Otwarte z poprzedniej</span><span class="v" style="color:var(--amber)">3 / 4</span></div>
+          <div class="audit-row"><span class="l">Korekty oczekujące</span><span class="v" style="color:var(--amber)">2</span></div>
+          <div class="audit-row"><span class="l">Twoje wpisy</span><span class="v">5 incydentów</span></div>
+          <div class="audit-row"><span class="l">Czas spędzony</span><span class="v">4h 42m</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+</body>
+</html>

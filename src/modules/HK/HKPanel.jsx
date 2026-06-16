@@ -1,14 +1,14 @@
 // Copyright © 2026 Conrad Comfort. All rights reserved. UNLICENSED.
 import React from "react";
-import { Download, Trash2, Plus, Users, FileDown, MessageSquare, X } from "lucide-react";
+import { Download, Trash2, Plus, Users, MessageSquare, X, RefreshCw } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import {
   HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_ALL, HK_APTS,
-  HK_STATUS_COLORS, HK_STATUS_COLORS_LIGHT, HK_SPECIAL_ROOMS, HK_ROOMS_SGL_TWIN_ONLY,
+  HK_STATUS_COLORS, HK_STATUS_COLORS_LIGHT, HK_SPECIAL_ROOMS, HK_ROOMS_SGL_TWIN_ONLY, TENANT_ID,
 } from "../../lib/constants";
 import {
   downloadHKMain, downloadHKRoomList, downloadHKStatus,
-  downloadHKCleaningList, downloadHKExcel,
+  downloadHKCleaningList,
 } from "../../lib/pdf-hk";
 import HKLivePanel from "./HKLivePanel";
 import { supabase } from "../../lib/supabase";
@@ -30,8 +30,20 @@ const HK_STATUS_LABELS = {
 };
 
 const HK_PLAN_PREFIX = "reception-hk-plan";
+const HK_PRIORITY_PREFIX = "reception-hk-priority";
+const priorityKey = (date) => `${HK_PRIORITY_PREFIX}-${date}`;
 const HK_LEGACY_DATA_PREFIX = "hk-data";
 const HK_PLAN_RETENTION_DAYS = 31;
+// Obsada (lista pracowników) wysyłana z telefonu (wyjazdy.html → hk_roster).
+// Hierarchia: nowszy wysłany roster jest prawidłowy i nadpisuje starszy/lokalny.
+// Retencja: roster starszy niż 2 dni jest traktowany jako nieaktualny (nie nadpisuje automatycznie).
+const ROSTER_APPLIED_PREFIX = "reception-hk-roster-last";
+const ROSTER_MAX_AGE_DAYS = 2;
+const isRosterStale = (updatedAt) => {
+  const t = Date.parse(updatedAt || "");
+  if (Number.isNaN(t)) return false;
+  return Date.now() - t > ROSTER_MAX_AGE_DAYS * 86400000;
+};
 
 const isObj = (v) => v && typeof v === "object" && !Array.isArray(v);
 const emptyPlan = () => ({
@@ -177,6 +189,14 @@ const RoomRow = React.memo(function RoomRow({
     );
   })():null;
 
+  // Plakietki BR/ZS — widoczne obok statusu (np. Przyjazd + BR jednocześnie)
+  const flagBadges=(localBR||localZS)?(
+    <span className="hkd-flag-badges">
+      {localBR&&<span className="hkd-flag-badge br" title="Brak ręczników">BR</span>}
+      {localZS&&<span className="hkd-flag-badge zs" title="Zmiana pościeli">ZS</span>}
+    </span>
+  ):null;
+
   const statusGroup=statusActions.length?(
     <div className="hkd-status-group" style={dark?{background:"rgba(255,255,255,.04)",borderColor:"var(--dark-border)"}:undefined}>
       {statusActions.map(({key,label,handler,active})=>{
@@ -221,6 +241,7 @@ const RoomRow = React.memo(function RoomRow({
     <div className="hkd-room-actions">
       {assignControl}
       {statusBadge}
+      {flagBadges}
       {statusGroup}
     </div>
   );
@@ -330,11 +351,59 @@ const RoomRow = React.memo(function RoomRow({
 
 function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,showToast,isManager,employeeName}){
   const [hkTab,setHkTab]=React.useState("plan");
+  // Agent AI: po kliknięciu powiadomienia/bannera przełącz na Monitor (HK Live).
+  React.useEffect(()=>{
+    const onFocus=()=>setHkTab("live");
+    window.addEventListener("cc-agent-focus",onFocus);
+    return ()=>window.removeEventListener("cc-agent-focus",onFocus);
+  },[]);
   const [hkNotes,setHkNotes]=React.useState(()=>loadJson(STORAGE_KEYS.hkNotes,{}));
   const [noteRoom,setNoteRoom]=React.useState("");
   const [noteText,setNoteText]=React.useState("");
   const [dutyPerson,setDutyPerson]=React.useState("");
   const [afternoonPerson,setAfternoonPerson]=React.useState("");
+  const [staffEdit,setStaffEdit]=React.useState(false);   // tryb edycji obsady („w razie czego")
+  const [rosterFrom,setRosterFrom]=React.useState("");    // źródło obsady: znacznik z telefonu
+
+  // Wczytaj obsadę wysłaną z telefonu (wyjazdy.html → „Wyślij") dla wybranego dnia.
+  // Hierarchia: nowszy roster (po updated_at) jest prawidłowy i nadpisuje lokalną obsadę.
+  // Realtime: gdy menadżer wyśle zmianę przy otwartym panelu — podbija się sama.
+  React.useEffect(()=>{
+    if(!supabase||!hkDate)return;
+    let stop=false;
+    setRosterFrom("");
+    const appliedKey=`${ROSTER_APPLIED_PREFIX}-${hkDate}`;
+    // Zwraca true gdy faktycznie nadpisaliśmy obsadę.
+    const applyRoster=(data,{force=false}={})=>{
+      if(!data||!Array.isArray(data.roster)||!data.roster.length)return false;
+      const updIso=data.updated_at||"";
+      const upd=updIso?new Date(updIso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+      setRosterFrom(upd?`telefon · ${upd}`:"telefon");
+      if(!force){
+        if(isRosterStale(updIso))return false;              // starszy niż 2 dni — nie nadpisuj automatycznie
+        if(updIso&&localStorage.getItem(appliedKey)===updIso)return false; // ten roster już zastosowany
+      }
+      setHkStaff(data.roster.map(r=>({name:r.name})));
+      const duty=data.roster.find(r=>r.role==="dyzur"); setDutyPerson(duty?duty.name:"");
+      const pm=data.roster.find(r=>r.role==="popoludnie"); setAfternoonPerson(pm?pm.name:"");
+      if(updIso)localStorage.setItem(appliedKey,updIso);
+      return true;
+    };
+    const fetchRoster=async({force=false}={})=>{
+      const{data}=await supabase.from("hk_roster").select("roster,updated_at").eq("tenant_id",TENANT_ID).eq("date",hkDate).maybeSingle();
+      if(stop)return false;
+      const applied=applyRoster(data,{force});
+      if(applied)showToast?.(force?"Wczytano najnowszą obsadę z telefonu — sprawdź Auto-przypisz.":"Zaktualizowano obsadę z telefonu — sprawdź Auto-przypisz.","info");
+      else if(force)showToast?.("Brak nowszej obsady z telefonu dla tej daty.","info");
+      return applied;
+    };
+    forceRosterSyncRef.current=()=>fetchRoster({force:true});
+    fetchRoster({force:false});
+    const ch=supabase.channel(`hk-roster-${hkDate}`)
+      .on("postgres_changes",{event:"*",schema:"public",table:"hk_roster",filter:`date=eq.${hkDate}`},()=>fetchRoster({force:false}))
+      .subscribe();
+    return()=>{stop=true;forceRosterSyncRef.current=null;supabase.removeChannel(ch);};
+  },[hkDate]);
   const [brMode,setBrMode]=React.useState(false);
   const [zsMode,setZsMode]=React.useState(false);
   const [wMode,setWMode]=React.useState(false);
@@ -343,10 +412,19 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
   const [assignModal,setAssignModal]=React.useState(null); // roomNo lub null
   const [autoSource,setAutoSource]=React.useState(null);
   const [vacatedRooms,setVacatedRooms]=React.useState({}); // { roomNo: { vacated:true, time:string } }
+  const [priorityRooms,setPriorityRooms]=React.useState(()=>loadJson(priorityKey(hkDate),{})); // { roomNo: { at:number } } — recepcja poprosiła HK o pilne
+  const [priorityMenu,setPriorityMenu]=React.useState(null); // roomNo|null — otwarte menu „!" (Pilne / Zapytaj o status)
+  const [priorityMenuSide,setPriorityMenuSide]=React.useState("right"); // strona otwarcia menu (flip przy krawędzi okna)
+  const [liveStatus,setLiveStatus]=React.useState({});     // { roomNo: "czyszczenie"|"czyste"|"pominięte" } — postęp HK z telefonów
   const didLoadInitialPlan=React.useRef(false);
   const skipFirstPlanSave=React.useRef(true);
   const autoImportInFlight=React.useRef(false);
   const lastAutoError=React.useRef(null);
+  const forceSyncRef=React.useRef(null);
+  const forceRosterSyncRef=React.useRef(null);
+  // Po pobraniu NOWEGO planu z maila ustawiamy ten znacznik, by efekt rozpisał pokoje
+  // automatycznie (zastępuje dawny guzik „Auto‑przypisz").
+  const autoAssignPending=React.useRef(false);
 
   const applyPlan=React.useCallback((plan)=>{
     setHkData(plan.data || {});
@@ -369,12 +447,16 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
   React.useEffect(()=>{
     if(!hkDate)return;
     let active=true;
+    const LIVE=["czyszczenie","czyste","pominięte"];
     const fetchVacated=async()=>{
-      const{data}=await supabase.from("hk_rooms").select("room,vacated,updated_at").eq("date",hkDate);
+      const{data}=await supabase.from("hk_rooms").select("room,vacated,status,updated_at").eq("date",hkDate);
       if(!active||!data)return;
-      const m={};
-      data.filter(r=>r.vacated).forEach(r=>{m[r.room]={vacated:true,updatedAt:r.updated_at};});
-      setVacatedRooms(m);
+      const m={};const ls={};
+      data.forEach(r=>{
+        if(r.vacated)m[r.room]={vacated:true,updatedAt:r.updated_at};
+        if(LIVE.includes(r.status))ls[r.room]=r.status;
+      });
+      setVacatedRooms(m);setLiveStatus(ls);
     };
     fetchVacated();
     const ch=supabase.channel(`hk-plan-vacated-${hkDate}`)
@@ -384,32 +466,79 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           if(row.vacated)return{...prev,[row.room]:{vacated:true,updatedAt:row.updated_at}};
           const next={...prev};delete next[row.room];return next;
         });
+        setLiveStatus(prev=>{
+          if(LIVE.includes(row.status))return{...prev,[row.room]:row.status};
+          const next={...prev};delete next[row.room];return next;
+        });
       }).subscribe();
     return()=>{active=false;supabase.removeChannel(ch);};
   },[hkDate]);
 
-  const markVacatedFromPlan=React.useCallback(async(roomNo)=>{
+  // Recepcja prosi HK o pilne sprzątnięcie pokoju (W/WP) w pierwszej kolejności.
+  // Klik wysyła powiadomienie push na telefon przypisanej osoby (lub wszystkich, gdy brak przypisania)
+  // i loguje zdarzenie do Supabase, by pojawiło się w Monitorze HK. Ponowny klik anuluje priorytet.
+  const requestPriority=React.useCallback((roomNo)=>{
+    const isOn=!!priorityRooms[roomNo];
     const worker=hkData[roomNo]?.person||null;
-    const{error}=await supabase.from("hk_rooms").upsert(
-      {date:hkDate,room:roomNo,vacated:true,status:"W",...(worker?{worker}:{})},
-      {onConflict:"date,room"}
-    );
-    if(error){showToast("Błąd: "+error.message,"error");return;}
-    await supabase.from("hk_logs").insert({
+    if(isOn){
+      setPriorityRooms(prev=>{const n={...prev};delete n[roomNo];saveJson(priorityKey(hkDate),n);return n;});
+      // Log anulowania → telefon zgasi baner „w pierwszej kolejności"
+      supabase.from("hk_logs").insert({
+        date:hkDate,
+        log_time:new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}),
+        worker:worker||"HK",action:"priority_off",room:roomNo,
+        extra:`Recepcja: anulowano priorytet pokoju ${roomNo}`,
+      }).then(()=>{},()=>{});
+      showToast(`Pokój ${roomNo} — anulowano priorytet`,"info");
+      return;
+    }
+    setPriorityRooms(prev=>{const n={...prev,[roomNo]:{at:Date.now()}};saveJson(priorityKey(hkDate),n);return n;});
+    // Pilny push na telefon HK: produkcyjnie przez Supabase Edge Function (telefony z GitHub Pages),
+    // dodatkowo lokalny hkserver dla urządzeń w LAN. Unikalny tag, by nie nadpisał pytania o status.
+    supabase.functions.invoke("push-send",{body:{role:"hk",worker,tag:`priority-${roomNo}`,title:`⚡ Pilne — pokój ${roomNo}`,body:`Recepcja prosi o pokój ${roomNo} w pierwszej kolejności`,url:"./index.html"}}).then(()=>{},()=>{});
+    fetch("http://localhost:3737/push/priority",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({room:roomNo,workers:worker?[worker]:[]}),
+    }).catch(()=>{});
+    supabase.from("hk_logs").insert({
       date:hkDate,
       log_time:new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}),
-      worker:"Recepcja",action:"vacate",room:roomNo,
-    });
-    showToast(`Pokój ${roomNo} — przekazano do HK`,"success");
+      worker:worker||"HK",action:"priority",room:roomNo,
+      extra:`Recepcja: pokój ${roomNo} w pierwszej kolejności`,
+    }).then(()=>{},()=>{});
+    showToast(`Pokój ${roomNo} — wysłano pilne do HK${worker?` (${worker.split(" ")[0]})`:""}`,"success");
+  },[hkDate,hkData,priorityRooms,showToast]);
+
+  // Recepcja pyta przypisaną osobę o status pokoju. Pracownik dostaje powiadomienie
+  // i odpowiada z telefonu (np. „myję podłogę") — odpowiedź wraca jako log info_reply
+  // i pojawia się w historii Monitora HK.
+  const askStatus=React.useCallback((roomNo)=>{
+    const worker=hkData[roomNo]?.person||null;
+    supabase.functions.invoke("push-send",{body:{role:"hk",worker,tag:`info-${roomNo}`,title:`💬 Pytanie o pokój ${roomNo}`,body:`Recepcja pyta o status pokoju ${roomNo} — otwórz i odpowiedz`,url:"./index.html"}}).then(()=>{},()=>{});
+    fetch("http://localhost:3737/push/info",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({room:roomNo,workers:worker?[worker]:[]}),
+    }).catch(()=>{});
+    supabase.from("hk_logs").insert({
+      date:hkDate,
+      log_time:new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}),
+      worker:worker||"HK",action:"info_request",room:roomNo,
+      extra:`Recepcja pyta o status pokoju ${roomNo}`,
+    }).then(()=>{},()=>{});
+    showToast(`Pokój ${roomNo} — wysłano pytanie o status${worker?` (${worker.split(" ")[0]})`:""}`,"info");
   },[hkDate,hkData,showToast]);
 
-  const unmarkVacated=React.useCallback(async(roomNo)=>{
-    const{error}=await supabase.from("hk_rooms").update({vacated:false})
-      .eq("date",hkDate).eq("room",roomNo);
-    if(error){showToast("Błąd: "+error.message,"error");return;}
-    setVacatedRooms(prev=>({...prev,[roomNo]:{...prev[roomNo],vacated:false}}));
-    showToast(`Pokój ${roomNo} — cofnięto wymeldowanie`,"info");
-  },[hkDate,showToast]);
+  // Zamknij menu „!" po kliknięciu poza nim
+  React.useEffect(()=>{
+    if(!priorityMenu)return;
+    const close=()=>setPriorityMenu(null);
+    document.addEventListener("click",close);
+    return()=>document.removeEventListener("click",close);
+  },[priorityMenu]);
+
+  React.useEffect(()=>{ setPriorityRooms(loadJson(priorityKey(hkDate),{})); },[hkDate]);
 
   React.useEffect(()=>{
     if(didLoadInitialPlan.current)return;
@@ -431,7 +560,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     if(!api?.hkAutomationGetPlan)return;
     let stopped=false;
     setAutoSource(null);
-    const sync=async()=>{
+    const sync=async(force=false)=>{
       if(autoImportInFlight.current)return;
       autoImportInFlight.current=true;
       try{
@@ -453,9 +582,15 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         if(!res.plan?.data||res.plan.meta?.dryRun)return;
         const generatedAt=res.plan.meta?.generatedAt||res.plan.savedAt||"";
         const appliedKey=`reception-hk-auto-last-${hkDate}`;
-        if(!generatedAt||localStorage.getItem(appliedKey)===generatedAt)return;
+        // force = ręczne "Pobierz teraz": omiń blokadę, która normalnie zapobiega
+        // wielokrotnemu zastosowaniu tego samego planu (np. po przypadkowym resecie).
+        if(!force&&(!generatedAt||localStorage.getItem(appliedKey)===generatedAt))return;
         const entries=Object.entries(res.plan.data).filter(([,rd])=>rd?.status);
-        if(!entries.length){localStorage.setItem(appliedKey,generatedAt);return;}
+        if(!entries.length){
+          if(generatedAt)localStorage.setItem(appliedKey,generatedAt);
+          if(force)showToast("Pobierz teraz: brak pokoi w aktualnym mailu KWHotel.","info");
+          return;
+        }
         const planRooms=new Set(entries.map(([no])=>no));
         let changedCount=0;
         setHkData(prev=>{
@@ -479,20 +614,27 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           Object.keys(next).forEach(no=>{
             const cur=next[no];
             if(cur&&cur.status&&cur.autoSource==="kwhotel-mail"&&!cur.manualOverride&&!planRooms.has(no)){
-              next[no]={...cur,status:undefined,autoSource:undefined,autoUpdatedAt:undefined};
+              // Czyść też person — przydział do pokoju, który wypadł z planu, jest
+              // bezprzedmiotowy i bez tego pokój zostawał z osobą bez statusu (sierota).
+              next[no]={...cur,status:undefined,person:undefined,autoSource:undefined,autoUpdatedAt:undefined};
               changedCount+=1;
             }
           });
           return changedCount?next:prev;
         });
-        localStorage.setItem(appliedKey,generatedAt);
-        if(changedCount>0)showToast(`Auto HK: zaktualizowano ${changedCount} pokoi z raportu KWHotel.`,"success",7000);
+        if(generatedAt)localStorage.setItem(appliedKey,generatedAt);
+        if(changedCount>0){
+          showToast(`Auto HK: zaktualizowano ${changedCount} pokoi z raportu KWHotel.`,"success",7000);
+          autoAssignPending.current=true; // nowa lista → rozpisz automatycznie
+        }
+        else if(force)showToast("Pobierz teraz: dane HK już zgodne z mailem.","info");
       }catch{}
       finally{autoImportInFlight.current=false;}
     };
+    forceSyncRef.current=()=>sync(true);
     sync();
-    const id=setInterval(sync,60000);
-    return()=>{stopped=true;clearInterval(id);};
+    const id=setInterval(()=>sync(false),60000);
+    return()=>{stopped=true;clearInterval(id);forceSyncRef.current=null;};
   },[hkDate,setHkData,showToast]);
 
   const autoSourceCheck=React.useMemo(()=>{
@@ -537,6 +679,9 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
   const totalPGZ=React.useMemo(()=>HK_ALL.filter(r=>hkData[r.no]?.status==="PGZ").length,[hkData]);
   const totalBR=React.useMemo(()=>HK_ALL.filter(r=>hkData[r.no]?.br).length,[hkData]);
   const totalZS=React.useMemo(()=>HK_ALL.filter(r=>hkData[r.no]?.zs).length,[hkData]);
+  const totalStay=totalPG+totalPGZ;
+  const totalReady=React.useMemo(()=>Object.values(liveStatus).filter(s=>s==="czyste").length,[liveStatus]);
+  const totalCleaning=React.useMemo(()=>Object.values(liveStatus).filter(s=>s==="czyszczenie").length,[liveStatus]);
   const totalAll=totalW+totalP+totalPG+totalPGZ+totalBR+totalZS;
   const totalAssigned=React.useMemo(()=>HK_ALL.filter(r=>hkData[r.no]?.person).length,[hkData]);
 
@@ -544,8 +689,8 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
   const addStaff=(name)=>{if(!name.trim())return;setHkStaff(prev=>[...prev,{name:capitalize(name.trim())}]);};
 
   // ── Auto-przypisanie ────────────────────────────────────────────────────────
-  const autoAssign=()=>{
-    if(!hkStaff.length){showToast("Dodaj najpierw pracowników HK.","error");return;}
+  const autoAssign=({silent=false}={})=>{
+    if(!hkStaff.length){if(!silent)showToast("Dodaj najpierw pracowników HK.","error");return false;}
     setHkData(prev=>{
       const next={...prev};
       Object.keys(next).forEach(k=>{if(next[k]?.person)next[k]={...next[k],person:""};});
@@ -554,10 +699,10 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     const wRooms=HK_ALL.filter(r=>hkData[r.no]?.status==="W"||hkData[r.no]?.status==="WP");
     const pgRooms=HK_ALL.filter(r=>hkData[r.no]?.status==="PG"||hkData[r.no]?.status==="PGZ");
     if(!wRooms.length&&!pgRooms.length&&!HK_ALL.filter(r=>hkData[r.no]?.br||hkData[r.no]?.zs).length){
-      showToast("Brak pokoi do przypisania (Wyjazd/Pobyt/BR/ZS).","error");return;
+      if(!silent)showToast("Brak pokoi do przypisania (Wyjazd/Pobyt/BR/ZS).","error");return false;
     }
     const morningStaff=hkStaff.filter(s=>s.name!==afternoonPerson);
-    if(!morningStaff.length){showToast("Wszyscy pracownicy są przypisani do popołudnia — dodaj kogoś do porannej.","error");return;}
+    if(!morningStaff.length){if(!silent)showToast("Wszyscy pracownicy są przypisani do popołudnia — dodaj kogoś do porannej.","error");return false;}
     const assigned={};
     if(afternoonPerson){
       const PG_LIMIT=20;
@@ -577,14 +722,19 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     if(morningStaff.length&&wRooms.length){
       const n=morningStaff.length;
       const dutyIdx=morningStaff.findIndex(s=>s.name===dutyPerson);
-      const DUTY_RATIO=0.7;
+      const DUTY_OFFSET=2.5; // dyżurna dostaje ~2-3 pokoje MNIEJ niż reszta (obsługuje też front desk + telefon)
       const aptRooms=wRooms.filter(r=>HK_APTS.includes(r.no));
       const regRooms=wRooms.filter(r=>!HK_APTS.includes(r.no));
       // Weight-based targets: apt = 3, reg = 1 — prevents over-assigning reg rooms to apt holders
       const totalWeight=wRooms.reduce((s,r)=>s+(HK_APTS.includes(r.no)?3:1),0);
-      const rawRatios=morningStaff.map((_,i)=>i===dutyIdx&&dutyIdx>=0?DUTY_RATIO:1.0);
-      const ratioSum=rawRatios.reduce((s,v)=>s+v,0);
-      const weightTargets=rawRatios.map(v=>Math.floor(v/ratioSum*totalWeight));
+      // Dyżur dostaje STAŁĄ zniżkę ~2-3 pokoi względem reszty (a nie procentową —
+      // procent (0.85) ginął przy zaokrąglaniu i dyżurna wychodziła cięższa niż poranne).
+      // Z równania d·n = T − OFFSET·(n−1): dyżur = (T−OFFSET·(n−1))/n, reszta = (T+OFFSET)/n,
+      // dzięki czemu różnica dyżur↔reszta wynosi dokładnie ~OFFSET pokoi.
+      const weightTargets=morningStaff.map((_,i)=>
+        dutyIdx<0 ? totalWeight/n
+        : i===dutyIdx ? Math.max(0,(totalWeight-DUTY_OFFSET*(n-1))/n)
+        : (totalWeight+DUTY_OFFSET)/n);
       const aptWeights=new Array(n).fill(0);
       const nonDuty=morningStaff.map((_,i)=>i).filter(i=>i!==dutyIdx);
       const dutyArr=dutyIdx>=0?[dutyIdx]:[];
@@ -642,8 +792,18 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     });
     const brzsCount=HK_ALL.filter(r=>hkData[r.no]?.br||hkData[r.no]?.zs).length;
     const wCount=wRooms.length,pgCount=pgRooms.length;
-    showToast(`Przypisano: ${wCount} wyjazdowych + ${pgCount} pobytowych${brzsCount?` + ${brzsCount} BR/ZS`:""}.`,"success");
+    if(!silent)showToast(`Przypisano: ${wCount} wyjazdowych + ${pgCount} pobytowych${brzsCount?` + ${brzsCount} BR/ZS`:""}.`,"success");
+    return true;
   };
+
+  // Po pobraniu NOWEGO planu z maila rozpisz pokoje automatycznie — jak dawny guzik
+  // „Auto‑przypisz", lecz bez klikania. Ręczna edycja pokoju w recepcji nie wywołuje
+  // pobrania, więc nie uruchamia rozpisania — zmiany recepcji pozostają nietknięte.
+  // Deps obejmują obsadę, by dograć rozpisanie, gdy roster z telefonu dojdzie po planie.
+  React.useEffect(()=>{
+    if(!autoAssignPending.current)return;
+    if(autoAssign({silent:true}))autoAssignPending.current=false;
+  },[hkData,hkStaff,dutyPerson,afternoonPerson]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const genAll=()=>{
     if(!hkStaff.length){showToast("Dodaj najpierw pracowników HK.","error");return;}
@@ -866,13 +1026,25 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     );
   };
 
-  const statusClass=(rd)=>{
+  // Cykl wyjazdu + postęp HK z telefonów (liveStatus):
+  //  togo (szary)    → W/WP, gość jeszcze nie wymeldowany ("do wyjazdu")
+  //  vacated (żółty) → gość wyjechał, pokój czeka na sprzątanie
+  //  cleaning (nieb.)→ HK sprząta (czyszczenie) / przyjazd w przygotowaniu
+  //  ready (zielony) → posprzątane (czyste) → "gotowy"
+  //  stay (teal)     → pobyt gościa PG/PGZ
+  //  dirty (czerw.) BR · donotdisturb (fiolet) ZS
+  const statusClass=(rd,live,vacated)=>{
     if(rd?.zs)return "donotdisturb";
     if(rd?.br)return "dirty";
-    if(rd?.status==="W"||rd?.status==="WP")return "checkout";
-    if(rd?.status==="P")return "inprogress";
-    if(rd?.status==="PG"||rd?.status==="PGZ")return "clean";
-    if(rd?.person)return "inprogress";
+    if(live==="czyste")return "ready";
+    if(live==="czyszczenie")return "cleaning";
+    const isCheckout=rd?.status==="W"||rd?.status==="WP";
+    if(isCheckout)return vacated?"vacated":"togo";
+    if(rd?.status==="P")return "cleaning";
+    if(rd?.status==="PG"||rd?.status==="PGZ")return "stay";
+    // Sama przypisana osoba (person) NIE oznacza, że pokój jest sprzątany —
+    // faktyczne sprzątanie wynika ze statusu P lub live="czyszczenie" (obsłużone wyżej).
+    // Pokój tylko z przydziałem zostaje "vacant"; osoba i tak jest widoczna jako chip.
     return "vacant";
   };
   const toggleRoomFlag=React.useCallback((roomNo,flag)=>{
@@ -884,32 +1056,59 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     const target=e?.target instanceof Element?e.target:null;
     if(target?.closest("button,select,input,textarea"))return;
     if(brMode){toggleRoomFlag(roomNo,"br");return;}
-    if(zsMode){toggleRoomFlag(roomNo,"zs");return;}
-    if(wMode){
-      const cur=hkData?.[roomNo]?.status;
-      const next=cur==="W"?"WP":cur==="WP"?"":"W";
+    if(zsMode){
+      // Zmiana statusu: cyklowanie po wszystkich statusach pokoju
+      const order=["","W","WP","P","PG","PGZ"];
+      const cur=hkData?.[roomNo]?.status||"";
+      const next=order[(order.indexOf(cur)+1)%order.length];
       setRoom(roomNo,"status",next);
       return;
     }
     if(editMode)setAssignModal(roomNo);
-  },[brMode,zsMode,wMode,editMode,hkData,toggleRoomFlag,setRoom]);
+  },[brMode,zsMode,editMode,hkData,toggleRoomFlag,setRoom]);
   const renderRoomCard=React.useCallback((room)=>{
     const rd=hkData?.[room.no]||{};
-    const cls=statusClass(rd);
     const isCheckout=(rd.status==="W"||rd.status==="WP");
     const isVacated=isCheckout&&!!vacatedRooms[room.no]?.vacated;
+    const isPriority=isCheckout&&!!priorityRooms[room.no];
+    const cls=statusClass(rd,liveStatus?.[room.no],isVacated);
     const wIdx=rd.person?hkStaff.findIndex(s=>s.name===rd.person):-1;
     const wColor=wIdx>=0?CHIP_COLORS[wIdx%CHIP_COLORS.length]:"#94a3b8";
+    const menuOpen=isCheckout&&priorityMenu===room.no;
     return(
-      <div key={room.no} className={`room-card ${cls}`} onClick={(e)=>handleRoomCardClick(room.no,e)} style={{position:"relative"}}>
+      <div key={room.no} className={`room-card ${cls}`} onClick={(e)=>handleRoomCardClick(room.no,e)} style={{position:"relative",...(menuOpen?{overflow:"visible",zIndex:30}:null)}}>
         {isCheckout?(
-          <div
-            className={`cc-hk-vacated-dot${isVacated?" cc-hk-vacated-dot--done":""}`}
-            title={isVacated?"✓ Przekazano HK — kliknij aby cofnąć":"Kliknij: poinformuj HK o wymeldowaniu"}
-            onClick={e=>{e.stopPropagation();isVacated?unmarkVacated(room.no):markVacatedFromPlan(room.no);}}
-            role="button"
-            aria-label={isVacated?"Cofnij przekazanie HK":"Poinformuj HK o wymeldowaniu"}
-          />
+          <>
+            <button
+              type="button"
+              className={`cc-hk-priority-btn${isPriority?" cc-hk-priority-btn--on":""}`}
+              title="Pilne / Zapytaj o status"
+              onClick={e=>{
+                e.stopPropagation();
+                if(!menuOpen){
+                  const r=e.currentTarget.getBoundingClientRect();
+                  // Domyślnie rozwijamy w prawo (side "left" = left:2px). Tylko gdy zabrakłoby
+                  // miejsca do prawej krawędzi okna (menu min-width ~196px), otwieramy w lewo.
+                  setPriorityMenuSide(r.left+210<=window.innerWidth?"left":"right");
+                }
+                setPriorityMenu(menuOpen?null:room.no);
+              }}
+              aria-label="Pilne lub pytanie o status"
+              aria-haspopup="menu"
+            >!</button>
+            {menuOpen&&(
+              <div className={`cc-hk-priority-menu cc-hk-priority-menu--${priorityMenuSide}`} role="menu" onClick={e=>e.stopPropagation()}>
+                <button type="button" className="cc-hk-priority-menu-item" role="menuitem"
+                  onClick={()=>{requestPriority(room.no);setPriorityMenu(null);}}>
+                  {isPriority?"⚡ Anuluj priorytet":"⚡ Pilne — w pierwszej kolejności"}
+                </button>
+                <button type="button" className="cc-hk-priority-menu-item" role="menuitem"
+                  onClick={()=>{askStatus(room.no);setPriorityMenu(null);}}>
+                  💬 Zapytaj o status
+                </button>
+              </div>
+            )}
+          </>
         ):(
           <div className={`room-status-dot ${cls}`}/>
         )}
@@ -929,7 +1128,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         </div>
       </div>
     );
-  },[hkData,vacatedRooms,handleRoomCardClick,setRoom,markVacatedFromPlan,unmarkVacated,hkStaff]);
+  },[hkData,vacatedRooms,priorityRooms,priorityMenu,priorityMenuSide,liveStatus,handleRoomCardClick,setRoom,requestPriority,askStatus,hkStaff]);
   const renderFloorCards=React.useCallback((rooms,label,range)=>(
     <div className="floor-section" key={label}>
       <div className="floor-label">
@@ -953,6 +1152,16 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         </select>
       </div>
     );
+  };
+
+  // Rola pracownika wyliczana z dutyPerson/afternoonPerson (zgodność wsteczna,
+  // autoAssign bez zmian). Zmiana roli ustawia odpowiednie pola.
+  const ROLE_LABEL={dyzur:"Dyżur",popoludnie:"Popołudnie",poranna:"Poranna"};
+  const roleOf=(name)=>name===dutyPerson?"dyzur":name===afternoonPerson?"popoludnie":"poranna";
+  const setRole=(name,role)=>{
+    if(role==="dyzur"){setDutyPerson(name);if(afternoonPerson===name)setAfternoonPerson("");}
+    else if(role==="popoludnie"){setAfternoonPerson(name);if(dutyPerson===name)setDutyPerson("");}
+    else{if(dutyPerson===name)setDutyPerson("");if(afternoonPerson===name)setAfternoonPerson("");}
   };
 
   return(
@@ -1095,10 +1304,29 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
                         display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
                 <Trash2 size={12}/> Reset
               </button>
+              <button
+                title="Pobierz najnowsze dane: pokoje z maila KWHotel oraz aktualną obsadę (listę pracowników) wysłaną z telefonu — bez czekania na kolejny cykl."
+                onClick={()=>{
+                  const hasRooms=!!forceSyncRef.current, hasRoster=!!forceRosterSyncRef.current;
+                  if(!hasRooms&&!hasRoster){showToast("Auto‑import niedostępny w tej wersji aplikacji.","error");return;}
+                  showToast("Pobieram dane (pokoje + obsada) i rozpisuję…","info");
+                  // Ręczne „Pobierz dane" ZAWSZE rozpisuje pokoje po dociągnięciu obsady,
+                  // nawet gdy pokoje z maila się nie zmieniły (changedCount=0). Efekt
+                  // auto‑przypisania (deps: hkStaff/hkData) odpali, gdy tylko imiona dojdą,
+                  // a flaga jest zdejmowana dopiero po udanym przypisaniu.
+                  autoAssignPending.current=true;
+                  if(hasRoster)forceRosterSyncRef.current();
+                  if(hasRooms)forceSyncRef.current();
+                }}
+                style={{padding:"5px 9px",borderRadius:"var(--radius-md)",
+                        border:"0.5px solid var(--plum)",background:"transparent",
+                        color:"var(--plum)",cursor:"pointer",fontSize:11,fontWeight:600,
+                        display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                <RefreshCw size={12}/> Pobierz dane
+              </button>
             </div>
           </div>
-          {staffSelect(dutyPerson,setDutyPerson,"Kto ma dyżur")}
-          {staffSelect(afternoonPerson,setAfternoonPerson,"Zmiana popołudniowa")}
+          {/* Role (dyżur/popołudnie) ustawia menadżer na telefonie — patrz sekcja „Pracownicy HK". */}
 
           {/* Statystyki */}
           <div style={{display:"flex",gap:10,alignItems:"flex-end",paddingBottom:2,flexWrap:"wrap",marginLeft:"auto"}}>
@@ -1120,14 +1348,8 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         <div style={{display:"flex",gap:8,marginTop:14,paddingTop:14,
                      borderTop:`1px dashed ${dark?"var(--dark-border)":"var(--border-light)"}`,
                      alignItems:"center",flexWrap:"wrap"}}>
-          <button className="btn btn-sky" onClick={autoAssign}>
-            <Users size={14}/> Auto‑przypisz
-          </button>
           <button className="btn btn-emerald" onClick={genAll}>
             <Download size={14}/> Raporty PDF
-          </button>
-          <button className="btn btn-outline" onClick={()=>downloadHKExcel(hkDate,hkStaff,hkData)}>
-            <FileDown size={14}/> Excel
           </button>
           {autoSource&&(()=>{
             const s=autoSource.summary||{};
@@ -1166,33 +1388,41 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       <div className={`panel${dark?" dark-panel":""}`}>
         {/* Card head */}
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
-                     gap:12,marginBottom:12}}>
+                     gap:12,marginBottom:12,flexWrap:"wrap"}}>
           <div style={{display:"flex",alignItems:"center",gap:8,fontWeight:650,fontSize:14,
                        color:dark?"var(--dark-text)":"var(--text-primary)",letterSpacing:"-0.005em"}}>
             <Users size={15} style={{color:"#5a1d4a",flexShrink:0}}/>
             Pracownicy HK
+            {hkStaff.length>0&&(
+              <span style={{display:"inline-flex",alignItems:"center",height:22,padding:"0 9px",
+                            borderRadius:999,fontSize:11,fontWeight:600,
+                            background:dark?"rgba(255,255,255,.06)":"var(--bg-secondary)",
+                            border:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,
+                            color:dark?"var(--dark-text-muted)":"var(--text-muted)"}}>
+                {hkStaff.length} {hkStaff.length===1?"osoba":"osób"}
+              </span>
+            )}
           </div>
-          {hkStaff.length>0&&(
-            <span style={{display:"inline-flex",alignItems:"center",height:22,padding:"0 9px",
-                          borderRadius:999,fontSize:11,fontWeight:600,
-                          background:dark?"rgba(255,255,255,.06)":"var(--bg-secondary)",
-                          border:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,
-                          color:dark?"var(--dark-text-muted)":"var(--text-muted)"}}>
-              {hkStaff.length} {hkStaff.length===1?"osoba":"osób"}
-            </span>
-          )}
+          <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            {rosterFrom&&<span style={{fontSize:10.5,color:dark?"var(--dark-text-muted)":"var(--text-muted)"}}>📱 Obsada: {rosterFrom}</span>}
+            <button className="btn btn-outline" style={{fontSize:12,padding:"5px 12px"}} onClick={()=>setStaffEdit(v=>!v)}>
+              {staffEdit?"✓ Gotowe":"✏️ Edytuj obsadę"}
+            </button>
+          </div>
         </div>
 
-        {/* Add form */}
-        <div style={{display:"flex",gap:8,marginBottom:12}}>
-          <input className={inp} placeholder="Imię pracownika HK" id="hk-staff-input"
-            onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addStaff(e.target.value);e.target.value="";}}}
-            style={{flex:1}}/>
-          <button className="btn btn-sky"
-            onClick={()=>{const el=document.getElementById("hk-staff-input");if(el?.value?.trim()){addStaff(el.value);el.value="";}}}>
-            <Plus size={14}/> Dodaj
-          </button>
-        </div>
+        {/* Add form — tylko w trybie edycji („w razie czego") */}
+        {staffEdit&&(
+          <div style={{display:"flex",gap:8,marginBottom:12}}>
+            <input className={inp} placeholder="Imię pracownika HK" id="hk-staff-input"
+              onKeyDown={e=>{if(e.key==="Enter"&&e.target.value.trim()){addStaff(e.target.value);e.target.value="";}}}
+              style={{flex:1}}/>
+            <button className="btn btn-sky"
+              onClick={()=>{const el=document.getElementById("hk-staff-input");if(el?.value?.trim()){addStaff(el.value);el.value="";}}}>
+              <Plus size={14}/> Dodaj
+            </button>
+          </div>
+        )}
 
         {/* Staff list */}
         {!hkStaff.length?(
@@ -1202,18 +1432,25 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
                        display:"flex",flexDirection:"column",alignItems:"center",gap:8,
                        color:dark?"var(--dark-text-muted)":"var(--text-muted)",fontSize:13,textAlign:"center"}}>
             <Users size={18} style={{opacity:.4}}/>
-            Dodaj pracowników HK żeby zacząć.
+            {staffEdit?"Dodaj pracowników HK powyżej.":"Brak obsady — kliknij „Edytuj obsadę\", by dodać ręcznie, albo wyślij ją z telefonu menadżera."}
           </div>
         ):(
-          <div className="hkd-staff-grid">
+          <div className={`hkd-staff-grid${staffEdit?" editing":""}`}>
             {hkStaff.map((s,i)=>{
               const myRooms=Object.entries(hkData).filter(([,v])=>v.person===s.name);
-              const cntReg=myRooms.filter(([k])=>!HK_APTS.includes(k)).length;
               const cntApt=myRooms.filter(([k])=>HK_APTS.includes(k)).length;
-              const cnt=cntReg+cntApt*3;
-              // Rozdzielenie: wyjazdy (W/WP = pełne sprzątanie) vs pobyty (PG/PGZ = lekkie)
-              const cntWyj=myRooms.filter(([,v])=>v.status==="W"||v.status==="WP").length;
-              const cntPob=myRooms.filter(([,v])=>v.status==="PG"||v.status==="PGZ").length;
+              // Wyjazdy (W/WP = pełne sprzątanie) i pobyty (PG/PGZ = lekkie) liczone
+              // osobno, w dwóch wierszach, żeby opis nie mylił się z kodami pokoi.
+              // Apartament waży 3 i dolicza się do wagi linii wyjazdów.
+              const wyjReg=myRooms.filter(([k,v])=>(v.status==="W"||v.status==="WP")&&!HK_APTS.includes(k)).length;
+              const cntPob=myRooms.filter(([k,v])=>(v.status==="PG"||v.status==="PGZ")&&!HK_APTS.includes(k)).length;
+              const wyjLoad=wyjReg+cntApt*3; // obciążenie w punktach (apt waży 3)
+              const wyjRooms=wyjReg+cntApt;  // realna liczba pokoi
+              const hasWyj=wyjReg>0||cntApt>0;
+              // Pokazuj realne pokoje i osobno punkty, żeby „7 + 1 apt" nie czytało się jak błędne 7+1.
+              const wyjTxt=cntApt>0
+                ? (wyjReg>0?`wyjazd ${wyjReg} + ${cntApt} apt = ${wyjRooms} pok (${wyjLoad} pkt)`:`${cntApt} apt = ${wyjRooms} pok (${wyjLoad} pkt)`)
+                : `wyjazd ${wyjReg}`;
               const isDuty=s.name===dutyPerson;
               const isAfternoon=s.name===afternoonPerson;
               const chipColor=CHIP_COLORS[i%CHIP_COLORS.length];
@@ -1230,31 +1467,40 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
                       {s.name}
                     </div>
                     <div style={{fontSize:11,color:dark?"var(--dark-text-muted)":"var(--text-muted)",marginTop:1}}>
-                      {(myRooms.length===0)?"0 pok":[
-                        cntWyj>0?`${cntWyj} wyj`:null,
-                        cntPob>0?`${cntPob} pob`:null,
-                        cntApt>0?`${cntApt} apt`:null,
-                      ].filter(Boolean).join(" · ")} · w:{cnt}
+                      <b style={{color:isDuty?"#854F0B":isAfternoon?"#0369a1":"inherit"}}>{ROLE_LABEL[roleOf(s.name)]}</b>
+                      {myRooms.length===0?" · 0 pok":hasWyj?` · ${wyjTxt}`:""}
                     </div>
-                  </div>
-                  <div style={{display:"flex",gap:3,alignItems:"center"}}>
-                    {isDuty&&(
-                      <span style={{fontSize:9,padding:"1px 5px",borderRadius:999,
-                                    background:"#854F0B",color:"#fff",fontWeight:700}}>DYŻ</span>
+                    {cntPob>0&&(
+                      <div style={{fontSize:11,color:dark?"var(--dark-text-muted)":"var(--text-muted)"}}>
+                        pobyt: {cntPob}
+                      </div>
                     )}
-                    {isAfternoon&&(
-                      <span style={{fontSize:9,padding:"1px 5px",borderRadius:999,
-                                    background:"#0369a1",color:"#fff",fontWeight:700}}>POP</span>
-                    )}
-                    <button onClick={()=>setHkStaff(prev=>prev.filter((_,j)=>j!==i))}
-                      style={{background:"none",border:"none",cursor:"pointer",
-                              color:dark?"var(--dark-text-muted)":"var(--text-muted)",
-                              display:"flex",padding:2,borderRadius:4,flexShrink:0}}
-                      onMouseEnter={e=>e.currentTarget.style.color="#B91C1C"}
-                      onMouseLeave={e=>e.currentTarget.style.color=dark?"var(--dark-text-muted)":"var(--text-muted)"}>
-                      <X size={12}/>
-                    </button>
                   </div>
+                  {staffEdit?(
+                    <div className="hkd-staff-edit-ctrls" style={{display:"flex",gap:4,alignItems:"center"}}>
+                      <select value={roleOf(s.name)} onChange={e=>setRole(s.name,e.target.value)}
+                        style={{fontSize:11,padding:"3px 4px",borderRadius:6,
+                                border:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,
+                                background:dark?"#161b22":"#fff",color:dark?"var(--dark-text)":"var(--text-primary)",width:104}}>
+                        <option value="poranna">Poranna</option>
+                        <option value="dyzur">Dyżur</option>
+                        <option value="popoludnie">Popołudnie</option>
+                      </select>
+                      <button onClick={()=>{if(dutyPerson===s.name)setDutyPerson("");if(afternoonPerson===s.name)setAfternoonPerson("");setHkStaff(prev=>prev.filter((_,j)=>j!==i));}}
+                        style={{background:"none",border:"none",cursor:"pointer",
+                                color:dark?"var(--dark-text-muted)":"var(--text-muted)",
+                                display:"flex",padding:2,borderRadius:4,flexShrink:0}}
+                        onMouseEnter={e=>e.currentTarget.style.color="#B91C1C"}
+                        onMouseLeave={e=>e.currentTarget.style.color=dark?"var(--dark-text-muted)":"var(--text-muted)"}>
+                        <X size={12}/>
+                      </button>
+                    </div>
+                  ):(
+                    <div style={{display:"flex",gap:3,alignItems:"center"}}>
+                      {isDuty&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:999,background:"#854F0B",color:"#fff",fontWeight:700}}>DYŻ</span>}
+                      {isAfternoon&&<span style={{fontSize:9,padding:"1px 5px",borderRadius:999,background:"#0369a1",color:"#fff",fontWeight:700}}>POP</span>}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1271,45 +1517,59 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           ))}
         </div>
         <div className="hk-toolbar-spacer"/>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",fontSize:11,color:"var(--text-2)"}}>
-          <span><span style={{background:"var(--teal)",width:8,height:8,borderRadius:"50%",display:"inline-block",marginRight:5}}/>Gotowe</span>
-          <span><span style={{background:"var(--rose)",width:8,height:8,borderRadius:"50%",display:"inline-block",marginRight:5}}/>BR</span>
-          <span><span style={{background:"var(--amber)",width:8,height:8,borderRadius:"50%",display:"inline-block",marginRight:5}}/>Przypisane</span>
-          <span><span style={{background:"var(--sky)",width:8,height:8,borderRadius:"50%",display:"inline-block",marginRight:5}}/>Wyjazd</span>
-          <span><span style={{background:"var(--violet)",width:8,height:8,borderRadius:"50%",display:"inline-block",marginRight:5}}/>ZS</span>
+        <div className="hk-legend">
+          {[
+            ["togo","Do wyjazdu"],
+            ["vacated","Wyjechał"],
+            ["cleaning","Sprząta się"],
+            ["ready","Gotowy"],
+            ["stay","Pobyt (PG/PGZ)"],
+            ["dirty","BR"],
+          ].map(([k,label])=>(
+            <span key={k} className="hk-legend-item">
+              <span className={`hk-legend-dot ${k}`}/>{label}
+            </span>
+          ))}
         </div>
-        <div className="hk-mode-actions">
-          <button className={`hk-mode-btn${wMode?" active sky":""}`} type="button"
-            title="Tryb W: kliknij pokój aby oznaczyć jako Wyjazd (W→WP→brak)"
-            onMouseDown={e=>{e.preventDefault();setWMode(v=>{const next=!v;if(next){setBrMode(false);setZsMode(false);}return next;});}}>
-            {wMode?"W aktywny":"W"}
+      </div>
+
+      {/* ── Pasek trybów edycji ──────────────────────────────────────────── */}
+      <div className="hk-modes">
+        <span className="hk-modes-title">Tryby edycji</span>
+        <div className="hk-modes-btns">
+          <button className={`hk-mode-pill zs${zsMode?" active":""}`} type="button"
+            title="Kliknij pokój aby zmienić status: brak → W → WP → P → PG → PGZ → brak"
+            onMouseDown={e=>{e.preventDefault();setZsMode(v=>{const next=!v;if(next){setBrMode(false);}return next;});}}>
+            <span className="hk-mode-pill-ico" aria-hidden>🔄</span>
+            <span className="hk-mode-pill-txt"><b>Zmiana statusu</b><small>ustaw status pokoju</small></span>
           </button>
-          <button className={`hk-mode-btn${brMode?" active danger":""}`} type="button"
-            onMouseDown={e=>{e.preventDefault();setBrMode(v=>{const next=!v;if(next){setZsMode(false);setWMode(false);}return next;});}}>
-            BR
+          <button className={`hk-mode-pill br${brMode?" active":""}`} type="button"
+            title="Kliknij pokój aby oznaczyć: brak ręczników"
+            onMouseDown={e=>{e.preventDefault();setBrMode(v=>{const next=!v;if(next){setZsMode(false);}return next;});}}>
+            <span className="hk-mode-pill-ico" aria-hidden>🧺</span>
+            <span className="hk-mode-pill-txt"><b>BR</b><small>brak ręczników</small></span>
           </button>
-          <button className={`hk-mode-btn${zsMode?" active violet":""}`} type="button"
-            onMouseDown={e=>{e.preventDefault();setZsMode(v=>{const next=!v;if(next){setBrMode(false);setWMode(false);}return next;});}}>
-            ZS
-          </button>
-          <button className={`hk-mode-btn${editMode?" active":""}`} type="button"
+          <button className={`hk-mode-pill edit${editMode?" active":""}`} type="button"
+            title="Kliknij pokój aby przypisać osobę"
             onMouseDown={e=>{e.preventDefault();setEditMode(v=>!v);}}>
-            {editMode?"Edycja wł.":"Edycja"}
+            <span className="hk-mode-pill-ico" aria-hidden>✏️</span>
+            <span className="hk-mode-pill-txt"><b>Edycja</b><small>przypisz osobę</small></span>
           </button>
         </div>
       </div>
 
-      {wMode&&(
-        <div style={{padding:"7px 14px",borderRadius:8,background:"rgba(14,116,144,.1)",border:"1px solid rgba(14,116,144,.3)",fontSize:12,fontWeight:600,color:"#0e7490",display:"flex",alignItems:"center",gap:8}}>
-          <span>🔵 Tryb W aktywny — kliknij pokój: brak → W → WP → brak</span>
-          <button onMouseDown={e=>{e.preventDefault();setWMode(false);}} style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:5,border:"1px solid rgba(14,116,144,.4)",background:"transparent",color:"#0e7490",cursor:"pointer",fontWeight:700}}>Wyłącz</button>
+      {zsMode&&(
+        <div style={{padding:"7px 14px",borderRadius:8,background:"rgba(124,58,237,.1)",border:"1px solid rgba(124,58,237,.3)",fontSize:12,fontWeight:600,color:"#6d28d9",display:"flex",alignItems:"center",gap:8}}>
+          <span>🔄 Tryb zmiany statusu — kliknij pokój: brak → W → WP → P → PG → PGZ → brak</span>
+          <button onMouseDown={e=>{e.preventDefault();setZsMode(false);}} style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:5,border:"1px solid rgba(124,58,237,.4)",background:"transparent",color:"#6d28d9",cursor:"pointer",fontWeight:700}}>Wyłącz</button>
         </div>
       )}
       <div className="hk-stats">
-        <div className="hk-stat"><div className="hk-stat-dot" style={{background:"var(--emerald)"}}/><div className="hk-stat-val teal">{Object.values(hkData).filter(v=>["PG","PGZ"].includes(v.status)).length}</div><div><div className="hk-stat-label">Gotowe</div><div className="hk-stat-sub">pobyty gości</div></div></div>
-        {totalBR>0&&<div className="hk-stat"><div className="hk-stat-dot" style={{background:"var(--rose)"}}/><div className="hk-stat-val rose">{totalBR}</div><div><div className="hk-stat-label">BR</div><div className="hk-stat-sub">brak ręczników</div></div></div>}
-        {totalZS>0&&<div className="hk-stat"><div className="hk-stat-dot" style={{background:"var(--violet)"}}/><div className="hk-stat-val" style={{color:"var(--violet)"}}>{totalZS}</div><div><div className="hk-stat-label">ZS</div><div className="hk-stat-sub">nie przeszkadzać</div></div></div>}
-        <div className="hk-stat"><div className="hk-stat-dot" style={{background:"var(--sky)"}}/><div className="hk-stat-val sky">{totalW}</div><div><div className="hk-stat-label">Wyjazdy</div><div className="hk-stat-sub">priorytet</div></div></div>
+        <div className="hk-stat"><div className="hk-stat-dot" style={{background:"#f59e0b"}}/><div className="hk-stat-val" style={{color:"#f59e0b"}}>{totalW}</div><div><div className="hk-stat-label">Wyjazdy</div><div className="hk-stat-sub">priorytet</div></div></div>
+        {totalCleaning>0&&<div className="hk-stat"><div className="hk-stat-dot" style={{background:"#3b82f6"}}/><div className="hk-stat-val" style={{color:"#3b82f6"}}>{totalCleaning}</div><div><div className="hk-stat-label">Sprząta się</div><div className="hk-stat-sub">w trakcie</div></div></div>}
+        {totalReady>0&&<div className="hk-stat"><div className="hk-stat-dot" style={{background:"#22c55e"}}/><div className="hk-stat-val" style={{color:"#22c55e"}}>{totalReady}</div><div><div className="hk-stat-label">Gotowe</div><div className="hk-stat-sub">posprzątane</div></div></div>}
+        <div className="hk-stat"><div className="hk-stat-dot" style={{background:"#0d9488"}}/><div className="hk-stat-val" style={{color:"#0d9488"}}>{totalStay}</div><div><div className="hk-stat-label">Pobyty</div><div className="hk-stat-sub">PG / PGZ</div></div></div>
+        {totalBR>0&&<div className="hk-stat"><div className="hk-stat-dot" style={{background:"#ef4444"}}/><div className="hk-stat-val" style={{color:"#ef4444"}}>{totalBR}</div><div><div className="hk-stat-label">BR</div><div className="hk-stat-sub">brak ręczników</div></div></div>}
       </div>
 
       <div className="room-scroll">

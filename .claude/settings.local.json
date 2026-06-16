@@ -17,7 +17,17 @@
       "Bash(curl -s \"http://localhost:8000/scan?bot=scalper&category=meme&top_n=3&min_conf=0.0\")",
       "Bash(curl -s -X POST http://localhost:8000/train -H 'Content-Type: application/json' -d '{\"symbol\":\"AUTO\",\"bot\":\"scalper\",\"timesteps\":10000,\"resume\":false}')",
       "Bash(curl -s http://localhost:8000/status)",
-      "Bash(C:/Users/grzan/Desktop/trading-ai/venv311/Scripts/python.exe -c ':*)"
+      "Bash(C:/Users/grzan/Desktop/trading-ai/venv311/Scripts/python.exe -c ':*)",
+      "Bash(npx vite *)",
+      "PowerShell(git -C \"C:\\\\Users\\\\grzan\\\\Desktop\\\\projekt\" log --oneline -10)",
+      "Bash(Get-Content \"c:\\\\Users\\\\grzan\\\\Desktop\\\\projekt\\\\src\\\\App.jsx\")",
+      "Bash(Measure-Object -Line)",
+      "Bash(Select-Object Lines)",
+      "Bash(node .tmp/fix_render.js)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": false
 }

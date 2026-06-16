@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort · Rozpocznij zmianę</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C; --ember-deeper:#4A1942;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --rose:#FF5471; --amber:#F4C055; --sky:#5BA8E8;
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.15);
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --t-fast:80ms cubic-bezier(.4,0,.2,1); --t-base:160ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input{font-family:inherit;color:var(--text-0);background:transparent;border:none;outline:none}
+svg{display:block;flex-shrink:0}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadein .5s cubic-bezier(.16,1,.3,1) backwards}
+
+/* ── LAYOUT: split ── */
+.split{display:grid;grid-template-columns:1.05fr 1fr;height:100vh}
+
+/* ── LEFT: brand panel ── */
+.brand-side{background:linear-gradient(155deg,#4A1942 0%,#2D0E2A 60%,#1A0A1A 100%);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:48px 56px}
+.brand-side::before{content:'';position:absolute;top:-20%;right:-20%;width:80%;height:80%;border-radius:50%;background:radial-gradient(circle,rgba(176,101,160,.35) 0%,transparent 60%);pointer-events:none}
+.brand-side::after{content:'';position:absolute;bottom:-30%;left:-20%;width:90%;height:90%;border-radius:50%;background:radial-gradient(circle,rgba(200,162,105,.12) 0%,transparent 65%);pointer-events:none}
+
+.bs-top{display:flex;align-items:center;justify-content:space-between;z-index:2;position:relative}
+.bs-version{font:500 11px var(--f-m);color:rgba(245,237,224,.4);letter-spacing:.05em}
+.bs-status{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:99px;background:rgba(43,212,160,.12);border:1px solid rgba(43,212,160,.3);font:600 10px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--teal)}
+.bs-status .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+
+.bs-logo{z-index:2;position:relative;text-align:center;padding:40px 0}
+.bs-dots{display:flex;justify-content:center;gap:10px;margin-bottom:24px}
+.bs-dots span{width:7px;height:7px;background:var(--cream);border-radius:1px;opacity:.95}
+.bs-conrad{font:700 78px/.9 var(--f-d);color:var(--cream);letter-spacing:.04em;margin-bottom:10px}
+.bs-comfort{font:600 22px var(--f-d);letter-spacing:.36em;color:var(--cream);opacity:.92;margin-left:.36em}
+.bs-tagline{margin-top:34px;font-size:13px;color:rgba(245,237,224,.55);letter-spacing:.04em;max-width:340px;margin-left:auto;margin-right:auto;line-height:1.7}
+
+.bs-bottom{z-index:2;position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.bs-card{padding:14px 16px;background:rgba(245,237,224,.04);border:1px solid rgba(245,237,224,.1);border-radius:var(--r-md);backdrop-filter:blur(8px)}
+.bs-card-lbl{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:rgba(245,237,224,.45);margin-bottom:6px}
+.bs-card-val{font:600 18px var(--f-m);color:var(--cream);letter-spacing:-.01em}
+.bs-card-sub{font-size:11px;color:rgba(245,237,224,.5);margin-top:3px}
+
+/* ── RIGHT: login form ── */
+.form-side{display:flex;flex-direction:column;justify-content:center;padding:48px 56px;max-width:560px;width:100%;margin:0 auto;position:relative}
+.fs-eyebrow{display:flex;align-items:center;gap:8px;font:700 10px/1 var(--f-d);letter-spacing:.15em;text-transform:uppercase;color:var(--ember);margin-bottom:18px}
+.fs-eyebrow .line{flex:0 0 24px;height:1px;background:var(--ember-border)}
+.fs-title{font:700 36px/1.15 var(--f-d);color:var(--text-0);letter-spacing:-.01em;margin-bottom:8px}
+.fs-sub{font-size:14px;color:var(--text-1);line-height:1.6;margin-bottom:32px}
+.fs-sub b{color:var(--text-0);font-weight:500}
+
+/* Date pill */
+.date-line{display:flex;align-items:center;gap:14px;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--border-1)}
+.date-day{font:700 28px/1 var(--f-d);color:var(--text-0)}
+.date-rest{font:500 12px var(--f-m);color:var(--text-2);letter-spacing:.04em}
+
+/* Input field */
+.field{margin-bottom:20px}
+.field-lbl{font:700 10px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.field-lbl .opt{color:var(--text-3);font-weight:500;font-family:var(--f-b);text-transform:none;letter-spacing:0;font-size:11px}
+
+.name-input{position:relative;background:var(--bg-2);border:1.5px solid var(--border-1);border-radius:var(--r-md);padding:18px 22px;display:flex;align-items:center;gap:14px;transition:all var(--t-base)}
+.name-input:focus-within{border-color:var(--ember);box-shadow:var(--ember-glow)}
+.name-input svg{color:var(--text-2);width:18px;height:18px}
+.name-input:focus-within svg{color:var(--ember)}
+.name-input input{flex:1;font:600 22px var(--f-d);color:var(--text-0);letter-spacing:-.01em}
+.name-input input::placeholder{color:var(--text-3);font-weight:500}
+.name-input .badge{font:600 10px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:var(--r-sm);background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)}
+
+/* Recent names */
+.recent{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.recent-chip{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--f-b);padding:6px 11px;border-radius:99px;background:var(--bg-2);border:1px solid var(--border-1);color:var(--text-1);transition:all var(--t-fast)}
+.recent-chip:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--ember-border)}
+.recent-chip svg{width:11px;height:11px;color:var(--text-3)}
+
+/* Role + Shift grid */
+.choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.choice{background:var(--bg-2);border:1.5px solid var(--border-1);border-radius:var(--r-md);padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:all var(--t-base);position:relative}
+.choice:hover{border-color:var(--border-2)}
+.choice.on{background:linear-gradient(135deg,var(--ember-bg),transparent);border-color:var(--ember);box-shadow:var(--ember-glow)}
+.choice.on::after{content:'';position:absolute;top:8px;right:8px;width:14px;height:14px;border-radius:50%;background:var(--ember);display:flex;align-items:center;justify-content:center}
+.choice.on::before{content:'';position:absolute;top:11px;right:11px;width:8px;height:8px;border-radius:50%;background:var(--cream);z-index:1}
+.choice-ic{width:32px;height:32px;border-radius:var(--r-sm);background:var(--bg-3);display:flex;align-items:center;justify-content:center;color:var(--text-1);transition:all var(--t-fast)}
+.choice-ic svg{width:17px;height:17px}
+.choice.on .choice-ic{background:var(--ember-bg);color:var(--ember)}
+.choice-name{font:700 13px var(--f-d);color:var(--text-0)}
+.choice-sub{font:500 10.5px var(--f-m);color:var(--text-3);letter-spacing:.02em}
+.choice.on .choice-sub{color:var(--ember)}
+
+/* Shift bigger cards */
+.shift-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px}
+.shift-card{background:var(--bg-2);border:1.5px solid var(--border-1);border-radius:var(--r-md);padding:16px 16px;cursor:pointer;transition:all var(--t-base);position:relative;text-align:left}
+.shift-card:hover{border-color:var(--border-2)}
+.shift-card.on{background:linear-gradient(135deg,var(--ember-bg),transparent);border-color:var(--ember);box-shadow:var(--ember-glow)}
+.shift-card.on::after{content:'';position:absolute;top:14px;right:14px;width:14px;height:14px;border-radius:50%;background:var(--ember)}
+.shift-card.on::before{content:'';position:absolute;top:17px;right:17px;width:8px;height:8px;border-radius:50%;background:var(--cream);z-index:1}
+.shift-card.recommended{position:relative}
+.shift-card.recommended .rec-pill{position:absolute;top:-7px;right:14px;font:700 9px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:99px;background:var(--gold);color:#0B0810}
+
+.shift-name{font:700 14px var(--f-d);color:var(--text-0);margin-bottom:3px}
+.shift-time{font:600 12px var(--f-m);color:var(--text-1)}
+.shift-ago{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:6px;display:flex;align-items:center;gap:5px}
+.shift-card.on .shift-time{color:var(--ember)}
+
+/* CTA */
+.cta-row{display:flex;gap:10px;margin-bottom:18px}
+.cta{flex:1;padding:16px;border-radius:var(--r-md);font:700 14px var(--f-d);letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:8px;transition:all var(--t-base);border:1px solid transparent}
+.cta-primary{background:var(--ember);color:#0B0810;border-color:var(--ember)}
+.cta-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow),0 6px 20px rgba(176,101,160,.4)}
+.cta-secondary{background:transparent;color:var(--text-1);border-color:var(--border-2);flex:0 0 auto;padding:16px 22px}
+.cta-secondary:hover{background:var(--bg-2);color:var(--text-0);border-color:var(--border-2)}
+
+.fs-foot{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--text-3);padding-top:18px;border-top:1px solid var(--border-1)}
+.fs-foot a{color:var(--ember);text-decoration:none}
+.fs-foot a:hover{text-decoration:underline}
+
+.kbd{font:500 10px/1 var(--f-m);color:var(--text-3);background:var(--bg-3);padding:2px 5px;border-radius:3px;border:1px solid var(--border-1)}
+
+</style>
+</head>
+<body>
+
+<div class="split">
+
+  <!-- ─────────── LEFT: BRAND ─────────── -->
+  <div class="brand-side">
+
+    <div class="bs-top">
+      <div class="bs-version">v2.4.1</div>
+      <div class="bs-status"><span class="dot"></span>Wszystkie systemy online</div>
+    </div>
+
+    <div class="bs-logo fade">
+      <div class="bs-dots">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <div class="bs-conrad">CONRAD</div>
+      <div class="bs-comfort">COMFORT</div>
+      <div class="bs-tagline">Panel recepcji nowej generacji — sprzątanie, vouchery, usterki, opinie. Wszystko w jednym miejscu.</div>
+    </div>
+
+    <div class="bs-bottom fade" style="animation-delay:.2s">
+      <div class="bs-card">
+        <div class="bs-card-lbl">Pokoje</div>
+        <div class="bs-card-val">26</div>
+        <div class="bs-card-sub">87% obłożenie</div>
+      </div>
+      <div class="bs-card">
+        <div class="bs-card-lbl">Na zmianie</div>
+        <div class="bs-card-val">3 / 3</div>
+        <div class="bs-card-sub">pokojówki online</div>
+      </div>
+      <div class="bs-card">
+        <div class="bs-card-lbl">Sync</div>
+        <div class="bs-card-val">12s ago</div>
+        <div class="bs-card-sub">Supabase + KW</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─────────── RIGHT: FORM ─────────── -->
+  <div class="form-side fade" style="animation-delay:.1s">
+
+    <div class="fs-eyebrow"><span class="line"></span>Rozpocznij zmianę</div>
+    <h1 class="fs-title">Witaj z powrotem.</h1>
+    <p class="fs-sub">Wpisz swoje imię, wybierz rolę i zmianę. <b>Aplikacja zapisze ten wybór</b> jako twoją sesję — wszystkie akcje będą podpisywane.</p>
+
+    <div class="date-line">
+      <div class="date-day">12.05.2026</div>
+      <div class="date-rest">wtorek · 11:42<br/><span style="color:var(--ember)">Słońce, 18°C · spokojny dzień</span></div>
+    </div>
+
+    <!-- Name -->
+    <div class="field">
+      <div class="field-lbl">
+        <span>Imię operatora</span>
+        <span class="opt">wymagane</span>
+      </div>
+      <div class="name-input">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <input value="Natalia Szymańska" placeholder="np. Anna Kowalska"/>
+        <span class="badge">⏎ Enter</span>
+      </div>
+      <div class="recent">
+        <span style="font:600 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);align-self:center;margin-right:4px">Ostatnio:</span>
+        <button class="recent-chip"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 16 14"/></svg>Natalia Sz.</button>
+        <button class="recent-chip">Marek Wojciech.</button>
+        <button class="recent-chip">Anna Lewand.</button>
+      </div>
+    </div>
+
+    <!-- Role -->
+    <div class="field">
+      <div class="field-lbl"><span>Rola</span></div>
+      <div class="choice-grid">
+        <button class="choice on">
+          <div class="choice-ic"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 12h16M12 4v16"/></svg></div>
+          <div class="choice-name">Recepcja</div>
+          <div class="choice-sub">PEŁEN DOSTĘP</div>
+        </button>
+        <button class="choice">
+          <div class="choice-ic"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></div>
+          <div class="choice-name">Pokojówka</div>
+          <div class="choice-sub">QR + MOBILE</div>
+        </button>
+        <button class="choice">
+          <div class="choice-ic"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33"/></svg></div>
+          <div class="choice-name">Manager</div>
+          <div class="choice-sub">HASŁO WYMAGANE</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Shift -->
+    <div class="field">
+      <div class="field-lbl"><span>Zmiana</span></div>
+      <div class="shift-grid">
+        <button class="shift-card on recommended">
+          <span class="rec-pill">Sugerowana</span>
+          <div class="shift-name">Dzienna</div>
+          <div class="shift-time">07:00 → 15:00</div>
+          <div class="shift-ago" style="color:var(--ember)">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+            Zaczęta 11min temu
+          </div>
+        </button>
+        <button class="shift-card">
+          <div class="shift-name">Wieczorna</div>
+          <div class="shift-time">15:00 → 23:00</div>
+          <div class="shift-ago">za 3h 18m</div>
+        </button>
+        <button class="shift-card">
+          <div class="shift-name">Nocna</div>
+          <div class="shift-time">23:00 → 07:00</div>
+          <div class="shift-ago">za 11h 18m</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-row">
+      <button class="cta cta-primary">
+        Rozpocznij zmianę
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+      <button class="cta cta-secondary">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        QR pokojówki
+      </button>
+    </div>
+
+    <div class="fs-foot">
+      <div>Zapomniałeś hasła managera? <a href="#">Skontaktuj się z właścicielem</a></div>
+      <div><span class="kbd">⌘ ↵</span> aby zacząć</div>
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

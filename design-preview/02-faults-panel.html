@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort — Usterki Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#08090D;--bg-1:#0E1016;--bg-2:#13161E;--bg-3:#1A1E2A;--bg-hover:#202433;
+  --ember:#E8943A;--ember-dark:#C4761F;--ember-dim:rgba(232,148,58,.14);--ember-glow:0 0 24px rgba(232,148,58,.18);
+  --teal:#2BD4A0;--teal-dim:rgba(43,212,160,.12);
+  --rose:#FF5471;--rose-dim:rgba(255,84,113,.12);
+  --amber:#F4C055;--amber-dim:rgba(244,192,85,.12);
+  --sky:#5BA8E8;--violet:#A78BFA;
+  --text-0:#ECEEF5;--text-1:#8B94AD;--text-2:#4E566A;
+  --border:rgba(255,255,255,.06);--border-md:rgba(255,255,255,.1);--border-ember:rgba(232,148,58,.28);
+  --r-sm:5px;--r-md:9px;--r-lg:14px;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'JetBrains Mono',monospace;
+  --sidebar-w:252px;--transition:.16s cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--font-b);font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* SIDEBAR — compact */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sb-logo{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--border);margin:16px;cursor:default}
+.sb-logo-mark{width:34px;height:34px;border-radius:7px;flex-shrink:0;background:linear-gradient(135deg,var(--ember) 0%,var(--ember-dark) 100%);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:800;font-size:13px;color:#fff;box-shadow:0 0 16px rgba(232,148,58,.3)}
+.sb-logo-name{font-family:var(--font-d);font-size:13.5px;font-weight:700;color:var(--text-0)}
+.sb-logo-sub{font-size:10.5px;color:var(--text-2);margin-top:1px}
+.sb-nav{padding:0 8px;flex:1;display:flex;flex-direction:column;gap:1px;overflow-y:auto}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--r-sm);color:var(--text-1);font-size:13.5px;font-weight:500;cursor:pointer;transition:all var(--transition);border:1px solid transparent;position:relative;background:transparent;width:100%;text-align:left}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-dim);color:var(--ember);font-weight:600;border-color:var(--border-ember)}
+.sb-item.active::before{content:'';position:absolute;left:-1px;top:20%;bottom:20%;width:3px;border-radius:0 2px 2px 0;background:var(--ember)}
+.sb-item-icon{width:17px;height:17px;flex-shrink:0;opacity:.7}
+.sb-item.active .sb-item-icon{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font-family:var(--font-d);font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-section-label{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);font-family:var(--font-d);padding:0 24px;margin:10px 0 4px}
+.sb-divider{height:1px;background:var(--border);margin:6px 16px}
+.sb-bottom{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.sb-clock{font-family:var(--font-m);font-size:17px;font-weight:600;color:var(--text-0)}
+.sb-clock-sub{font-size:10px;color:var(--text-2);margin-top:1px}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.page-header{padding:24px 28px 0;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.page-eyebrow{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--rose);font-family:var(--font-d);margin-bottom:5px}
+.page-title{font-family:var(--font-d);font-size:24px;font-weight:700;color:var(--text-0);letter-spacing:-.01em}
+.page-sub{font-size:12.5px;color:var(--text-2);margin-top:3px}
+.page-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r-sm);font-family:var(--font-b);font-size:13px;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all var(--transition)}
+.btn-primary{background:var(--rose);color:#fff}
+.btn-primary:hover{background:#e03d5c;box-shadow:0 0 20px rgba(255,84,113,.25)}
+.btn-ghost{background:transparent;color:var(--text-1);border-color:var(--border-md)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0)}
+
+/* FILTERS */
+.fault-toolbar{padding:16px 28px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.filter-tabs{display:flex;gap:3px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:3px}
+.filter-tab{padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--text-1);cursor:pointer;transition:all var(--transition);font-family:var(--font-d);border:1px solid transparent;white-space:nowrap}
+.filter-tab:hover{color:var(--text-0);background:var(--bg-3)}
+.filter-tab.active{background:var(--bg-3);color:var(--text-0);border-color:var(--border-md)}
+.filter-tab.active.urgent{background:rgba(255,84,113,.15);color:var(--rose);border-color:rgba(255,84,113,.3)}
+.spacer{flex:1}
+.search-wrap{position:relative}
+.search-input{
+  background:var(--bg-2);border:1px solid var(--border-md);border-radius:var(--r-sm);
+  padding:7px 12px 7px 34px;color:var(--text-0);font-family:var(--font-b);font-size:13px;
+  width:200px;transition:all var(--transition);outline:none;
+}
+.search-input:focus{border-color:var(--border-ember);background:var(--bg-3)}
+.search-input::placeholder{color:var(--text-2)}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-2);pointer-events:none}
+
+/* STATS */
+.fault-stats{padding:0 28px 14px;display:flex;gap:10px;flex-shrink:0}
+.fstat{background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 18px;display:flex;align-items:center;gap:14px;flex:1;transition:border-color var(--transition)}
+.fstat:hover{border-color:var(--border-md)}
+.fstat-num{font-family:var(--font-m);font-size:26px;font-weight:600;line-height:1}
+.fstat-label{font-size:12px;font-weight:600;color:var(--text-1);font-family:var(--font-d)}
+.fstat-sub{font-size:10.5px;color:var(--text-2);margin-top:2px}
+
+/* FAULT LIST */
+.fault-scroll{flex:1;overflow-y:auto;padding:0 28px 28px}
+.fault-scroll::-webkit-scrollbar{width:5px}
+.fault-scroll::-webkit-scrollbar-track{background:transparent}
+.fault-scroll::-webkit-scrollbar-thumb{background:var(--border-md);border-radius:3px}
+
+.fault-list{display:flex;flex-direction:column;gap:8px}
+
+.fault-card{
+  background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:0;overflow:hidden;
+  transition:all .18s cubic-bezier(.4,0,.2,1);cursor:pointer;
+  display:flex;
+}
+.fault-card:hover{border-color:var(--border-md);background:var(--bg-3);transform:translateX(2px)}
+.fault-card.urgent{border-color:rgba(255,84,113,.25);background:rgba(255,84,113,.04)}
+.fault-card.urgent:hover{border-color:rgba(255,84,113,.4);background:rgba(255,84,113,.08)}
+.fault-card.done{opacity:.5}
+
+.fault-priority-bar{width:4px;flex-shrink:0;border-radius:var(--r-lg) 0 0 var(--r-lg)}
+.fault-priority-bar.urgent{background:var(--rose)}
+.fault-priority-bar.normal{background:var(--amber)}
+.fault-priority-bar.low{background:var(--text-2)}
+.fault-priority-bar.done{background:var(--teal)}
+
+.fault-body{padding:16px 18px;flex:1;display:flex;gap:16px;align-items:flex-start}
+.fault-main{flex:1}
+.fault-header-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.fault-room{
+  font-family:var(--font-m);font-size:13px;font-weight:600;
+  color:var(--text-0);
+  background:var(--bg-3);border:1px solid var(--border-md);
+  padding:3px 9px;border-radius:4px;
+}
+.fault-title{font-size:14px;font-weight:600;color:var(--text-0)}
+.fault-desc{font-size:12.5px;color:var(--text-1);margin-bottom:8px;line-height:1.5}
+.fault-meta{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.fault-badge{
+  font-size:10.5px;font-weight:600;font-family:var(--font-d);letter-spacing:.06em;
+  padding:3px 8px;border-radius:4px;
+}
+.badge-urgent{background:var(--rose-dim);color:var(--rose);border:1px solid rgba(255,84,113,.25)}
+.badge-normal{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(244,192,85,.25)}
+.badge-done{background:var(--teal-dim);color:var(--teal);border:1px solid rgba(43,212,160,.25)}
+.badge-floor{background:var(--bg-3);color:var(--text-1);border:1px solid var(--border-md)}
+.fault-date{font-family:var(--font-m);font-size:11px;color:var(--text-2)}
+.fault-reported{font-size:12px;color:var(--text-2)}
+
+.fault-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.fault-assignee{
+  font-size:12px;color:var(--text-1);text-align:right;
+  display:flex;align-items:center;gap:6px;
+}
+.assignee-avatar{
+  width:26px;height:26px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-size:10px;font-weight:700;
+  flex-shrink:0;
+}
+.fault-action-btn{
+  padding:5px 12px;border-radius:var(--r-sm);font-size:12px;font-weight:600;
+  cursor:pointer;border:1px solid;transition:all var(--transition);
+  font-family:var(--font-d);
+}
+
+.empty{padding:48px;text-align:center;color:var(--text-2)}
+.empty-icon{font-size:40px;opacity:.3;margin-bottom:12px}
+.empty-label{font-size:14px;font-weight:600;font-family:var(--font-d)}
+
+svg{display:block}
+</style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark">CC</div>
+    <div>
+      <div class="sb-logo-name">Conrad Comfort</div>
+      <div class="sb-logo-sub">Panel Recepcji</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section-label">Pokoje</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Housekeeping
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><path d="M12 5v2m0 10v2M5 12H3m18 0h-2"/></svg>
+      HK Live
+    </button>
+    <button class="sb-item active">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Usterki
+      <span class="sb-badge">2</span>
+    </button>
+    <div class="sb-divider"></div>
+    <div class="sb-section-label">Zmiana</div>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Przegląd Zmiany
+    </button>
+    <button class="sb-item">
+      <svg class="sb-item-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/></svg>
+      Zadania
+    </button>
+  </nav>
+  <div class="sb-bottom">
+    <div>
+      <div class="sb-clock" id="clock">07:42</div>
+      <div class="sb-clock-sub">Niedziela, 4 maja 2026</div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Pokoje · Konserwacja</div>
+      <div class="page-title">Usterki</div>
+      <div class="page-sub">2 aktywne · 1 pilna · 8 rozwiązanych</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        QR Konserwator
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Zgłoś usterkę
+      </button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="fault-toolbar">
+    <div class="filter-tabs">
+      <div class="filter-tab active urgent">Aktywne (2)</div>
+      <div class="filter-tab">Wszystkie</div>
+      <div class="filter-tab">Rozwiązane</div>
+    </div>
+    <div class="spacer"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:12px;color:var(--text-2);font-family:var(--font-d)">Konserwator:</span>
+      <select style="background:var(--bg-2);border:1px solid var(--border-md);border-radius:var(--r-sm);padding:6px 10px;color:var(--text-0);font-family:var(--font-b);font-size:12.5px;outline:none;cursor:pointer">
+        <option>Wszyscy</option>
+        <option>Marek W.</option>
+        <option>Tomasz K.</option>
+      </select>
+    </div>
+    <div class="search-wrap">
+      <svg class="search-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-input" placeholder="Szukaj usterki…" type="text"/>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="fault-stats">
+    <div class="fstat">
+      <div>
+        <div class="fstat-num" style="color:var(--rose)">1</div>
+      </div>
+      <div>
+        <div class="fstat-label">Pilne</div>
+        <div class="fstat-sub">wymaga natychmiastowej akcji</div>
+      </div>
+    </div>
+    <div class="fstat">
+      <div>
+        <div class="fstat-num" style="color:var(--amber)">1</div>
+      </div>
+      <div>
+        <div class="fstat-label">Normalne</div>
+        <div class="fstat-sub">do realizacji w ciągu dnia</div>
+      </div>
+    </div>
+    <div class="fstat">
+      <div>
+        <div class="fstat-num" style="color:var(--teal)">8</div>
+      </div>
+      <div>
+        <div class="fstat-label">Rozwiązane</div>
+        <div class="fstat-sub">w tym miesiącu</div>
+      </div>
+    </div>
+    <div class="fstat">
+      <div>
+        <div class="fstat-num" style="color:var(--text-1)">2.4h</div>
+      </div>
+      <div>
+        <div class="fstat-label">Śr. czas naprawy</div>
+        <div class="fstat-sub">ostatnie 30 dni</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <div class="fault-scroll">
+    <div class="fault-list">
+
+      <!-- URGENT -->
+      <div class="fault-card urgent">
+        <div class="fault-priority-bar urgent"></div>
+        <div class="fault-body">
+          <div class="fault-main">
+            <div class="fault-header-row">
+              <div class="fault-room">214</div>
+              <div class="fault-title">Uszkodzony zamek do drzwi</div>
+            </div>
+            <div class="fault-desc">Gość zgłosił, że zamek zatrzaskuje się i nie można otworzyć od wewnątrz. Awaria potencjalnie niebezpieczna — gość był zablokowany przez ok. 3 min. Wymagana natychmiastowa wymiana wkładki zamka.</div>
+            <div class="fault-meta">
+              <span class="fault-badge badge-urgent">PILNE</span>
+              <span class="fault-badge badge-floor">Piętro 2</span>
+              <span class="fault-date">Zgłoszono: 03.05.2026 22:30</span>
+              <span class="fault-reported" style="color:var(--text-2)">· Zgłosiła: Weronika K.</span>
+            </div>
+          </div>
+          <div class="fault-actions">
+            <div class="fault-assignee">
+              <div class="assignee-avatar" style="background:rgba(232,148,58,.18);color:var(--ember)">MK</div>
+              Marek K.
+            </div>
+            <button class="fault-action-btn" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(43,212,160,.3)">✓ Rozwiąż</button>
+            <button class="fault-action-btn" style="background:transparent;color:var(--text-1);border-color:var(--border-md)">Szczegóły</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- NORMAL -->
+      <div class="fault-card">
+        <div class="fault-priority-bar normal"></div>
+        <div class="fault-body">
+          <div class="fault-main">
+            <div class="fault-header-row">
+              <div class="fault-room">118</div>
+              <div class="fault-title">Cieknący kran w łazience</div>
+            </div>
+            <div class="fault-desc">Kran przy umywalce kapie co kilka sekund. Gość wspomniał przy zameldowaniu. Nie jest pilne, ale do naprawy przed kolejnym meldunkiem.</div>
+            <div class="fault-meta">
+              <span class="fault-badge badge-normal">NORMALNY</span>
+              <span class="fault-badge badge-floor">Piętro 1</span>
+              <span class="fault-date">Zgłoszono: 04.05.2026 07:15</span>
+              <span class="fault-reported" style="color:var(--text-2)">· Zgłosiła: Natalia S.</span>
+            </div>
+          </div>
+          <div class="fault-actions">
+            <div class="fault-assignee">
+              <div class="assignee-avatar" style="background:rgba(91,168,232,.15);color:var(--sky)">TK</div>
+              Tomasz K.
+            </div>
+            <button class="fault-action-btn" style="background:var(--teal-dim);color:var(--teal);border-color:rgba(43,212,160,.3)">✓ Rozwiąż</button>
+            <button class="fault-action-btn" style="background:transparent;color:var(--text-1);border-color:var(--border-md)">Szczegóły</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEPARATOR -->
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <div style="font-size:11px;color:var(--text-2);font-family:var(--font-d);letter-spacing:.08em;text-transform:uppercase">Rozwiązane</div>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <!-- DONE -->
+      <div class="fault-card done">
+        <div class="fault-priority-bar done"></div>
+        <div class="fault-body">
+          <div class="fault-main">
+            <div class="fault-header-row">
+              <div class="fault-room">307</div>
+              <div class="fault-title">Nie działała klimatyzacja</div>
+            </div>
+            <div class="fault-desc">Klimatyzacja nie reagowała na pilota. Konserwator wymienił baterie i zresetował panel. Problem rozwiązany.</div>
+            <div class="fault-meta">
+              <span class="fault-badge badge-done">ROZWIĄZANE</span>
+              <span class="fault-badge badge-floor">Piętro 3</span>
+              <span class="fault-date">Zamknięto: 03.05.2026 14:22</span>
+            </div>
+          </div>
+          <div class="fault-actions">
+            <div class="fault-assignee">
+              <div class="assignee-avatar" style="background:rgba(43,212,160,.12);color:var(--teal)">MK</div>
+              Marek K.
+            </div>
+            <button class="fault-action-btn" style="background:transparent;color:var(--text-2);border-color:var(--border)">Szczegóły</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="fault-card done">
+        <div class="fault-priority-bar done"></div>
+        <div class="fault-body">
+          <div class="fault-main">
+            <div class="fault-header-row">
+              <div class="fault-room">221</div>
+              <div class="fault-title">Przepalona żarówka nad lustrem</div>
+            </div>
+            <div class="fault-desc">Jedna z żarówek LED w oświetleniu nad lustrem przestała działać. Wymieniona przez HK podczas sprzątania.</div>
+            <div class="fault-meta">
+              <span class="fault-badge badge-done">ROZWIĄZANE</span>
+              <span class="fault-badge badge-floor">Piętro 2</span>
+              <span class="fault-date">Zamknięto: 02.05.2026 11:05</span>
+            </div>
+          </div>
+          <div class="fault-actions">
+            <div class="fault-assignee">
+              <div class="assignee-avatar" style="background:var(--bg-3);color:var(--text-1)">HK</div>
+              HK Team
+            </div>
+            <button class="fault-action-btn" style="background:transparent;color:var(--text-2);border-color:var(--border)">Szczegóły</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+tick();setInterval(tick,10000);
+document.querySelectorAll('.fault-card').forEach((el,i)=>{
+  el.style.opacity='0';el.style.transform='translateY(8px)';
+  setTimeout(()=>{el.style.transition='opacity .3s ease,transform .3s ease';el.style.opacity='1';el.style.transform='none';},100+i*70);
+});
+</script>
+</body>
+</html>

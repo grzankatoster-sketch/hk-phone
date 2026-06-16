@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · HK Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.12); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.12); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8;   --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px;
+  --t-fast:80ms cubic-bezier(.4,0,.2,1); --t-base:160ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.85)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+
+/* ═══ SIDEBAR (compact reference) ═══ */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:#fff;box-shadow:var(--ember-glow);flex-shrink:0}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;border-radius:0 2px 2px 0;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+.sb-badge.amber{background:var(--amber);color:#0E1016}
+
+/* ═══ MAIN ═══ */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;background:var(--bg-0)}
+
+/* ═══ TOPBAR ═══ */
+.topbar{padding:18px 28px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0);padding-bottom:16px}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px;color:var(--text-3)}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:10px}
+.live-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;background:var(--teal-bg);border:1px solid var(--teal-border);color:var(--teal);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.live-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+.page-meta{display:flex;gap:18px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast)}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+
+/* ═══ STATUS BAR ═══ */
+.stat-bar{display:flex;padding:14px 28px;gap:0;background:var(--bg-1);border-bottom:1px solid var(--border-0)}
+.stat-cell{flex:1;display:flex;align-items:center;gap:11px;padding:0 18px;border-right:1px solid var(--border-0)}
+.stat-cell:last-child{border-right:none}
+.stat-cell:first-child{padding-left:0}
+.stat-ic-wrap{width:36px;height:36px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid transparent}
+.stat-ic-wrap svg{width:17px;height:17px}
+.stat-ic-wrap.w{background:var(--bg-3);color:var(--text-1);border-color:var(--border-1)}
+.stat-ic-wrap.c{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.stat-ic-wrap.d{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.stat-ic-wrap.v{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.stat-ic-wrap.s{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.stat-info{}
+.stat-info-num{font:600 22px/1 var(--f-m);color:var(--text-0);letter-spacing:-.02em}
+.stat-info-lbl{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-top:4px}
+
+/* ═══ BODY GRID ═══ */
+.body{flex:1;display:grid;grid-template-columns:1fr 320px;overflow:hidden;min-height:0}
+
+/* ═══ ROOMS PANEL ═══ */
+.rooms{overflow-y:auto;padding:18px 28px}
+.rooms::-webkit-scrollbar{width:8px}
+.rooms::-webkit-scrollbar-track{background:transparent}
+.rooms::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:var(--bg-2);transition:all var(--t-fast);display:inline-flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}
+.tab.on .cnt{opacity:1}
+.sep{flex:1}
+.filter{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:5px 10px;font-size:12px;color:var(--text-2)}
+.filter input{flex:1;background:none;border:none;outline:none;color:var(--text-0);font:500 12px var(--f-b);min-width:120px}
+.filter input::placeholder{color:var(--text-3)}
+
+/* ── FLOOR SECTION ── */
+.floor{margin-bottom:22px}
+.floor-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:0 2px}
+.floor-num{font:700 16px var(--f-d);color:var(--text-0)}
+.floor-progress{flex:1;display:flex;align-items:center;gap:10px;max-width:280px}
+.floor-bar{flex:1;height:4px;background:var(--bg-3);border-radius:99px;overflow:hidden}
+.floor-bar-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--ember));border-radius:99px;transition:width .4s}
+.floor-pct{font:600 11px var(--f-m);color:var(--text-2);min-width:36px;text-align:right}
+.floor-meta{font:500 11px var(--f-m);color:var(--text-3)}
+
+/* ── ROOM GRID ── */
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.room{position:relative;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);padding:12px;cursor:pointer;transition:all var(--t-fast);overflow:hidden;display:flex;flex-direction:column;gap:8px;min-height:104px}
+.room:hover{border-color:var(--border-2);transform:translateY(-1px)}
+.room-head{display:flex;align-items:flex-start;justify-content:space-between}
+.room-no{font:700 22px/1 var(--f-d);color:var(--text-0);letter-spacing:-.01em}
+.room-type{font:500 9.5px/1 var(--f-m);color:var(--text-3);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+.room-icon{width:14px;height:14px;color:var(--text-3)}
+.room-foot{display:flex;align-items:center;justify-content:space-between;margin-top:auto}
+.room-worker{font:600 10.5px var(--f-d);letter-spacing:.04em;text-transform:uppercase}
+.room-time{font:500 10px var(--f-m);color:var(--text-3)}
+
+.room.s-w{border-color:rgba(255,255,255,.10)}
+.room.s-w .room-worker{color:var(--text-2)}
+.room.s-c{background:linear-gradient(180deg,var(--sky-bg) 0%,var(--bg-2) 60%);border-color:var(--sky-border)}
+.room.s-c .room-worker{color:var(--sky)}
+.room.s-c::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sky);box-shadow:0 0 12px var(--sky)}
+.room.s-c .room-no{color:var(--sky)}
+.room.s-d{background:linear-gradient(180deg,var(--teal-bg) 0%,var(--bg-2) 60%);border-color:var(--teal-border)}
+.room.s-d .room-worker{color:var(--teal)}
+.room.s-d .room-no{color:var(--teal)}
+.room.s-d::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal)}
+.room.s-v{background:linear-gradient(180deg,var(--amber-bg) 0%,var(--bg-2) 60%);border-color:var(--amber-border);box-shadow:0 0 0 1px var(--amber-border),0 0 22px rgba(244,192,85,.12)}
+.room.s-v .room-worker{color:var(--amber)}
+.room.s-v .room-no{color:var(--amber)}
+.room.s-v::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--amber);box-shadow:0 0 12px var(--amber)}
+.room.s-s{opacity:.55;background:var(--bg-2)}
+.room.s-s .room-no{color:var(--text-3);text-decoration:line-through}
+
+.tag{display:inline-flex;align-items:center;gap:4px;font:600 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:99px;background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1)}
+.tag.live{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.tag.live .dot{width:5px;height:5px;border-radius:50%;background:var(--sky);box-shadow:0 0 6px var(--sky)}
+.tag.done{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.tag.vac{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.tag.vac .dot{width:5px;height:5px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px var(--amber)}
+
+/* ═══ TEAM SIDEPANEL ═══ */
+.team{background:var(--bg-1);border-left:1px solid var(--border-0);overflow-y:auto;display:flex;flex-direction:column}
+.team::-webkit-scrollbar{width:6px}
+.team::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+
+.team-sec{padding:18px 20px;border-bottom:1px solid var(--border-0)}
+.team-sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.team-sec-title{font:700 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-1);display:flex;align-items:center;gap:7px}
+.team-sec-title .dot{width:6px;height:6px;border-radius:50%;background:var(--ember);box-shadow:var(--ember-glow)}
+.team-sec-cnt{font:600 11px var(--f-m);color:var(--text-3)}
+
+/* Workers */
+.worker{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-0)}
+.worker:last-child{border-bottom:none}
+.w-avatar{width:34px;height:34px;border-radius:50%;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font:700 13px var(--f-d);color:var(--text-0);flex-shrink:0;position:relative}
+.w-avatar.online::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:var(--teal);border:2px solid var(--bg-1);box-shadow:0 0 6px rgba(43,212,160,.6)}
+.w-avatar.offline::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:var(--text-3);border:2px solid var(--bg-1)}
+.w-info{flex:1;min-width:0}
+.w-name{font:700 13px var(--f-d);color:var(--text-0)}
+.w-meta{font:500 10.5px var(--f-m);color:var(--text-3);margin-top:2px}
+.w-progress{display:flex;align-items:center;gap:6px;margin-top:5px}
+.w-bar{flex:1;height:3px;background:var(--bg-3);border-radius:99px;overflow:hidden}
+.w-bar-fill{height:100%;border-radius:99px;background:var(--ember);transition:width .4s}
+.w-stats{text-align:right;flex-shrink:0}
+.w-stat-done{font:700 14px var(--f-m);color:var(--teal)}
+.w-stat-tot{font:500 11px var(--f-m);color:var(--text-3)}
+.w-waiting{font:600 9.5px var(--f-d);letter-spacing:.06em;color:var(--amber);text-transform:uppercase;margin-top:2px}
+.w-waiting.zero{color:var(--text-3)}
+
+/* Exchange request */
+.ex{padding:13px;border-radius:var(--r-md);background:var(--amber-bg);border:1px solid var(--amber-border);margin-bottom:8px;position:relative}
+.ex-title{font:700 12px var(--f-d);color:var(--amber);display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.ex-body{font-size:11.5px;color:var(--text-1);line-height:1.5}
+.ex-body b{color:var(--amber);font-weight:700}
+.ex-actions{display:flex;gap:6px;margin-top:10px}
+.ex-btn{flex:1;padding:7px;border-radius:var(--r-xs);font:700 11px var(--f-d);letter-spacing:.05em;text-transform:uppercase;transition:all var(--t-fast)}
+.ex-btn.acc{background:var(--teal);color:#0B0810}
+.ex-btn.acc:hover{box-shadow:0 0 16px rgba(43,212,160,.5)}
+.ex-btn.rej{background:transparent;color:var(--rose);border:1px solid var(--rose-border)}
+.ex-btn.rej:hover{background:var(--rose-bg)}
+
+/* Logs */
+.log{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--border-0)}
+.log:last-child{border-bottom:none}
+.log-ic{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;margin-top:1px}
+.log-ic.ok{background:var(--teal-bg);color:var(--teal)}
+.log-ic.start{background:var(--sky-bg);color:var(--sky)}
+.log-ic.vac{background:var(--amber-bg);color:var(--amber)}
+.log-ic.ex{background:var(--violet-bg);color:var(--violet)}
+.log-body{flex:1;min-width:0}
+.log-text{font-size:11.5px;color:var(--text-1);line-height:1.4}
+.log-text b{color:var(--text-0);font-weight:600}
+.log-time{font:500 10px var(--f-m);color:var(--text-3);margin-top:2px}
+
+</style>
+</head>
+<body>
+
+<!-- ─────────── SIDEBAR ─────────── -->
+<aside class="sidebar" data-od-id="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div>
+        <div class="sb-brand-name">Conrad Comfort</div>
+        <div class="sb-brand-sub">HK Live · v2</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Przegląd
+    </button>
+    <button class="sb-item">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Zadania<span class="sb-badge">3</span>
+    </button>
+    <button class="sb-item">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 12h16M12 4v16"/></svg>Recepcja dzienna
+    </button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Housekeeping
+    </button>
+    <button class="sb-item active">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>HK Live<span class="sb-badge amber">3</span>
+    </button>
+    <button class="sb-item">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span>
+    </button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12M22 7H2v5h20z"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<!-- ─────────── MAIN ─────────── -->
+<main class="main" data-od-id="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Pokoje</b>
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
+        <span>HK Live</span>
+      </div>
+      <h1 class="page-title">
+        Housekeeping na żywo
+        <span class="live-pill"><span class="dot pulse"></span>Live · SSE 3737</span>
+      </h1>
+      <div class="page-meta">
+        <span>Pokojówki online: <b>3 / 3</b></span>
+        <span>Średni czas pokoju: <b>27 min</b></span>
+        <span>Plan z KWHotel: <b>12 maj 06:42</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        QR kody
+      </button>
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Edytuj plan
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Pokój pusty
+      </button>
+    </div>
+  </div>
+
+  <!-- WYBRANY POKÓJ — kontrolki recepcji (status override, apt note, uwaga, vacate) -->
+  <div style="padding:14px 28px;background:linear-gradient(90deg,var(--ember-bg) 0%,transparent 60%);border-bottom:1px solid var(--border-0);display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font:700 10px var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--ember)">Wybrany pokój</span>
+      <span style="font:800 24px/1 var(--f-d);color:var(--text-0)">405</span>
+      <span style="font:600 10px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:99px;background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)">PUSTY · LIVE</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font:600 10px var(--f-d);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-right:4px">Status:</span>
+      <button style="padding:5px 10px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);background:transparent;border:1px solid var(--border-1);cursor:pointer">W</button>
+      <button style="padding:5px 10px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);background:transparent;border:1px solid var(--border-1);cursor:pointer">WP</button>
+      <button style="padding:5px 10px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;color:#FCD34D;background:rgba(217,119,6,.18);border:1px solid rgba(217,119,6,.4);cursor:pointer">P</button>
+      <button style="padding:5px 10px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);background:transparent;border:1px solid var(--border-1);cursor:pointer">PG</button>
+      <button style="padding:5px 10px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);background:transparent;border:1px solid var(--border-1);cursor:pointer">PGZ</button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="font:600 10px var(--f-d);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)">Apt:</span>
+      <input placeholder="D+T" style="width:60px;padding:5px 8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);color:var(--text-0);font:600 12px var(--f-m);text-align:center;outline:none"/>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:200px">
+      <span style="font:600 10px var(--f-d);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)">Uwaga:</span>
+      <input placeholder="Notatka HK do pokoju..." style="flex:1;padding:5px 10px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);color:var(--text-0);font-size:12.5px;outline:none"/>
+    </div>
+
+    <div style="display:flex;gap:6px">
+      <button style="padding:6px 11px;border-radius:var(--r-sm);font:700 11px var(--f-d);letter-spacing:.05em;text-transform:uppercase;background:var(--amber);color:#0B0810;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-12 0v3.2"/></svg>
+        Oznacz jako pusty
+      </button>
+      <button style="padding:6px 11px;border-radius:var(--r-sm);font:600 11px var(--f-d);letter-spacing:.05em;text-transform:uppercase;background:transparent;color:var(--text-1);border:1px solid var(--border-2);cursor:pointer">Zapisz</button>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="stat-bar" data-od-id="status">
+    <div class="stat-cell">
+      <div class="stat-ic-wrap w">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-info-num">8</div>
+        <div class="stat-info-lbl">Czeka</div>
+      </div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-ic-wrap c">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-info-num">3</div>
+        <div class="stat-info-lbl">W trakcie</div>
+      </div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-ic-wrap d">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-info-num">14</div>
+        <div class="stat-info-lbl">Gotowe</div>
+      </div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-ic-wrap v">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6 4v16M6 4l4 4-4 4M6 12h14"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-info-num">3</div>
+        <div class="stat-info-lbl">Puste</div>
+      </div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-ic-wrap s">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-info-num">1</div>
+        <div class="stat-info-lbl">Pominięte</div>
+      </div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-ic-wrap" style="background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-info-num">52%</div>
+        <div class="stat-info-lbl">Postęp dnia</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- ROOMS -->
+    <div class="rooms" data-od-id="rooms">
+      <div class="toolbar">
+        <button class="tab on">Wszystkie <span class="cnt">29</span></button>
+        <button class="tab">Tetiana <span class="cnt">10</span></button>
+        <button class="tab">Kasia <span class="cnt">9</span></button>
+        <button class="tab">Maria <span class="cnt">10</span></button>
+        <span class="sep"></span>
+        <button class="tab">Tylko czekają</button>
+        <div class="filter">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Filtruj numer..."/>
+        </div>
+      </div>
+
+      <!-- FLOOR 4 -->
+      <section class="floor">
+        <div class="floor-head">
+          <div class="floor-num">Piętro 4</div>
+          <div class="floor-progress">
+            <div class="floor-bar"><div class="floor-bar-fill" style="width:60%"></div></div>
+            <div class="floor-pct">60%</div>
+          </div>
+          <div class="floor-meta">6/10 gotowych · 1 usterka</div>
+        </div>
+        <div class="rgrid">
+          <div class="room s-d">
+            <div class="room-head">
+              <div><div class="room-no">401</div><div class="room-type">DBL</div></div>
+              <svg class="room-icon" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <span class="tag done">Gotowe · 24m</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">10:42</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">402</div><div class="room-type">TWN</div></div></div>
+            <span class="tag done">Gotowe · 31m</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">11:18</span></div>
+          </div>
+          <div class="room s-c">
+            <div class="room-head">
+              <div><div class="room-no">403</div><div class="room-type">DBL</div></div>
+              <svg class="room-icon pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>
+            </div>
+            <span class="tag live"><span class="dot pulse"></span>Sprząta · 14m</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">11:28</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">404</div><div class="room-type">SGL</div></div></div>
+            <span class="tag">Czeka</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-v">
+            <div class="room-head">
+              <div><div class="room-no">405</div><div class="room-type">DBL</div></div>
+              <svg class="room-icon pulse" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 1 1-6 0"/></svg>
+            </div>
+            <span class="tag vac"><span class="dot pulse"></span>Pusty!</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">11:31</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">406</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe · 22m</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">10:08</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">407</div><div class="room-type">APT</div></div></div>
+            <span class="tag">Czeka · APT</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">408</div><div class="room-type">TRP</div></div></div>
+            <span class="tag done">Gotowe · 38m</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">09:42</span></div>
+          </div>
+          <div class="room s-s">
+            <div class="room-head"><div><div class="room-no">409</div><div class="room-type">SGL</div></div></div>
+            <span class="tag">Pominięte</span>
+            <div class="room-foot"><span class="room-worker" style="color:var(--text-3)">Tetiana</span><span class="room-time">11:02</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">410</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe · 25m</span>
+            <div class="room-foot"><span class="room-worker">Tetiana</span><span class="room-time">11:35</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FLOOR 3 -->
+      <section class="floor">
+        <div class="floor-head">
+          <div class="floor-num">Piętro 3</div>
+          <div class="floor-progress">
+            <div class="floor-bar"><div class="floor-bar-fill" style="width:45%"></div></div>
+            <div class="floor-pct">45%</div>
+          </div>
+          <div class="floor-meta">4/9 gotowych</div>
+        </div>
+        <div class="rgrid">
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">301</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe · 19m</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">09:55</span></div>
+          </div>
+          <div class="room s-c">
+            <div class="room-head"><div><div class="room-no">302</div><div class="room-type">TWN</div></div></div>
+            <span class="tag live"><span class="dot pulse"></span>Sprząta · 8m</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">11:34</span></div>
+          </div>
+          <div class="room s-v">
+            <div class="room-head">
+              <div><div class="room-no">303</div><div class="room-type">DBL</div></div>
+              <svg class="room-icon pulse" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M15 17h5"/></svg>
+            </div>
+            <span class="tag vac"><span class="dot pulse"></span>Pusty!</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">11:38</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">304</div><div class="room-type">DBL</div></div></div>
+            <span class="tag">Czeka</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">305</div><div class="room-type">SGL</div></div></div>
+            <span class="tag">Czeka</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">306</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe · 26m</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">10:22</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">307</div><div class="room-type">TRP</div></div></div>
+            <span class="tag">Czeka</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">308</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe · 30m</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">11:08</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">309</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe · 23m</span>
+            <div class="room-foot"><span class="room-worker">Kasia</span><span class="room-time">11:30</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FLOOR 2 -->
+      <section class="floor">
+        <div class="floor-head">
+          <div class="floor-num">Piętro 2</div>
+          <div class="floor-progress">
+            <div class="floor-bar"><div class="floor-bar-fill" style="width:50%"></div></div>
+            <div class="floor-pct">50%</div>
+          </div>
+          <div class="floor-meta">4/8 gotowych · PG</div>
+        </div>
+        <div class="rgrid">
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">201</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">09:31</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">202</div><div class="room-type">TWN</div></div></div>
+            <span class="tag done">Gotowe</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">09:58</span></div>
+          </div>
+          <div class="room s-c">
+            <div class="room-head"><div><div class="room-no">203</div><div class="room-type">DBL</div></div></div>
+            <span class="tag live"><span class="dot pulse"></span>Sprząta · 22m</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">11:20</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">204</div><div class="room-type">DBL</div></div></div>
+            <span class="tag">Czeka · PG</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">205</div><div class="room-type">SGL</div></div></div>
+            <span class="tag done">Gotowe</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">10:45</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">206</div><div class="room-type">DBL</div></div></div>
+            <span class="tag">Czeka · PG</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-w">
+            <div class="room-head"><div><div class="room-no">207</div><div class="room-type">DBL</div></div></div>
+            <span class="tag">Czeka</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">—</span></div>
+          </div>
+          <div class="room s-d">
+            <div class="room-head"><div><div class="room-no">208</div><div class="room-type">DBL</div></div></div>
+            <span class="tag done">Gotowe</span>
+            <div class="room-foot"><span class="room-worker">Maria</span><span class="room-time">11:12</span></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- TEAM PANEL -->
+    <aside class="team" data-od-id="team">
+
+      <!-- Workers -->
+      <div class="team-sec">
+        <div class="team-sec-head">
+          <div class="team-sec-title"><span class="dot"></span>Zespół</div>
+          <div class="team-sec-cnt">3 online</div>
+        </div>
+
+        <div class="worker">
+          <div class="w-avatar online" style="background:linear-gradient(135deg,#B065A0,#6E2B5C)">T</div>
+          <div class="w-info">
+            <div class="w-name">Tetiana</div>
+            <div class="w-meta">start 07:42</div>
+            <div class="w-progress">
+              <div class="w-bar"><div class="w-bar-fill" style="width:70%"></div></div>
+            </div>
+          </div>
+          <div class="w-stats">
+            <div class="w-stat-done">7<span class="w-stat-tot">/10</span></div>
+            <div class="w-waiting">2 wolne</div>
+          </div>
+        </div>
+
+        <div class="worker">
+          <div class="w-avatar online" style="background:linear-gradient(135deg,#5BA8E8,#2D6BAB)">K</div>
+          <div class="w-info">
+            <div class="w-name">Kasia</div>
+            <div class="w-meta">start 07:55</div>
+            <div class="w-progress">
+              <div class="w-bar"><div class="w-bar-fill" style="width:55%;background:var(--sky)"></div></div>
+            </div>
+          </div>
+          <div class="w-stats">
+            <div class="w-stat-done">5<span class="w-stat-tot">/9</span></div>
+            <div class="w-waiting">3 wolne</div>
+          </div>
+        </div>
+
+        <div class="worker">
+          <div class="w-avatar online" style="background:linear-gradient(135deg,#B49AFF,#7A5CD8)">M</div>
+          <div class="w-info">
+            <div class="w-name">Maria</div>
+            <div class="w-meta">start 08:01</div>
+            <div class="w-progress">
+              <div class="w-bar"><div class="w-bar-fill" style="width:50%;background:var(--violet)"></div></div>
+            </div>
+          </div>
+          <div class="w-stats">
+            <div class="w-stat-done">5<span class="w-stat-tot">/10</span></div>
+            <div class="w-waiting zero">0 wolnych</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exchange -->
+      <div class="team-sec">
+        <div class="team-sec-head">
+          <div class="team-sec-title"><span class="dot" style="background:var(--amber);box-shadow:0 0 12px var(--amber)"></span>Wymiany</div>
+          <div class="team-sec-cnt">1 oczekuje</div>
+        </div>
+        <div class="ex">
+          <div class="ex-title">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 17l-4-4 4-4M17 7l4 4-4 4M3 13h18M21 11H3"/></svg>
+            Prośba od Kasi
+          </div>
+          <div class="ex-body">
+            <b>Kasia</b> prosi <b>Tetianę</b> o przekazanie <b>2 pokoi</b>: 404, 407
+          </div>
+          <div class="ex-actions">
+            <button class="ex-btn acc">✓ Akceptuj</button>
+            <button class="ex-btn rej">✕ Odrzuć</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs -->
+      <div class="team-sec" style="flex:1">
+        <div class="team-sec-head">
+          <div class="team-sec-title"><span class="dot" style="background:var(--teal)"></span>Aktywność</div>
+          <div class="team-sec-cnt">live</div>
+        </div>
+
+        <div class="log">
+          <div class="log-ic ok">✓</div>
+          <div class="log-body"><div class="log-text"><b>Tetiana</b> skończyła pok. <b>402</b></div><div class="log-time">11:18 · 25min</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic ex">⇄</div>
+          <div class="log-body"><div class="log-text"><b>Kasia</b> prosi Tetianę o pokoje</div><div class="log-time">11:38</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic vac">🔔</div>
+          <div class="log-body"><div class="log-text">Recepcja: pok. <b>405</b> pusty</div><div class="log-time">11:31</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic start">▶</div>
+          <div class="log-body"><div class="log-text"><b>Tetiana</b> zaczyna pok. <b>403</b></div><div class="log-time">11:28</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic ok">✓</div>
+          <div class="log-body"><div class="log-text"><b>Maria</b> skończyła pok. <b>208</b></div><div class="log-time">11:12 · 28min</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic ok">✓</div>
+          <div class="log-body"><div class="log-text"><b>Kasia</b> skończyła pok. <b>308</b></div><div class="log-time">11:08 · 30min</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic start">▶</div>
+          <div class="log-body"><div class="log-text"><b>Maria</b> zaczyna pok. <b>203</b></div><div class="log-time">11:20</div></div>
+        </div>
+        <div class="log">
+          <div class="log-ic vac">🔔</div>
+          <div class="log-body"><div class="log-text">Recepcja: pok. <b>303</b> pusty</div><div class="log-time">11:38</div></div>
+        </div>
+
+      </div>
+
+    </aside>
+  </div>
+</main>
+
+</body>
+</html>

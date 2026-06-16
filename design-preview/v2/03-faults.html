@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Usterki</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10); --violet-border:rgba(180,154,255,.30);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 1.8s ease-in-out infinite}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:#fff;box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;border-radius:0 2px 2px 0;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px;min-width:18px;text-align:center}
+
+/* ═══ MAIN ═══ */
+.main{margin-left:var(--sidebar-w);height:100vh;display:flex;flex-direction:column;background:var(--bg-0)}
+
+.topbar{padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast)}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0A0A0F;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.btn-rose{background:var(--rose);color:#fff;font-weight:700;border-color:var(--rose)}
+
+/* ═══ KPI ROW ═══ */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px 28px;background:var(--bg-1);border-bottom:1px solid var(--border-0)}
+.kpi{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.kpi-ic{width:38px;height:38px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid transparent}
+.kpi-ic svg{width:18px;height:18px}
+.kpi-ic.rose{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.kpi-ic.amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.kpi-ic.sky{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+.kpi-ic.teal{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.kpi-info-lbl{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px}
+.kpi-info-val{font:600 22px/1 var(--f-m);color:var(--text-0)}
+.kpi-info-sub{font-size:11px;color:var(--text-2);margin-top:3px}
+
+/* ═══ BODY ═══ */
+.body{flex:1;display:grid;grid-template-columns:1fr 380px;overflow:hidden;min-height:0}
+
+.list-pane{overflow-y:auto;padding:16px 28px}
+.list-pane::-webkit-scrollbar{width:8px}
+.list-pane::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:var(--bg-2);transition:all var(--t-fast);display:inline-flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}
+.tab.on .cnt{opacity:1}
+.tab .dot{width:6px;height:6px;border-radius:50%}
+.tab .dot.rose{background:var(--rose)}.tab .dot.amber{background:var(--amber)}.tab .dot.teal{background:var(--teal)}
+.sep{flex:1}
+.filter{display:flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:5px 10px;font-size:12px;color:var(--text-2)}
+.filter input{flex:1;background:none;border:none;outline:none;color:var(--text-0);font:500 12px var(--f-b);min-width:160px}
+.filter input::placeholder{color:var(--text-3)}
+
+/* ── FAULT ROW ── */
+.fault{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);margin-bottom:8px;padding:14px 16px;display:grid;grid-template-columns:auto 80px 1fr auto auto;gap:14px;align-items:center;cursor:pointer;transition:all var(--t-fast);position:relative}
+.fault:hover{border-color:var(--border-2)}
+.fault.selected{border-color:var(--ember-border);background:linear-gradient(90deg,var(--ember-bg) 0%,var(--bg-2) 30%)}
+.fault.selected::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:var(--r-md) 0 0 var(--r-md);background:var(--ember);box-shadow:var(--ember-glow)}
+
+.f-pri{width:32px;height:32px;border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid transparent;font:700 11px var(--f-d)}
+.f-pri.urgent{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.f-pri.normal{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.f-pri.low{background:var(--sky-bg);color:var(--sky);border-color:var(--sky-border)}
+
+.f-room{font:700 22px/1 var(--f-d);color:var(--text-0);letter-spacing:-.02em}
+.f-room-sub{font:500 10px var(--f-m);color:var(--text-3);margin-top:3px}
+
+.f-info{min-width:0}
+.f-cat{display:inline-flex;align-items:center;gap:5px;font:600 9.5px/1 var(--f-d);letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:var(--r-xs);background:var(--bg-3);color:var(--text-2);border:1px solid var(--border-1);margin-bottom:6px}
+.f-cat svg{width:10px;height:10px}
+.f-desc{font-size:13.5px;color:var(--text-0);line-height:1.4;font-weight:500}
+.f-meta{display:flex;gap:12px;font-size:11.5px;color:var(--text-3);margin-top:5px;font-family:var(--f-m)}
+.f-meta b{color:var(--text-2);font-weight:500}
+
+.f-status{display:flex;flex-direction:column;align-items:center;gap:5px}
+.f-status .badge{font:700 9.5px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:5px 9px;border-radius:99px;border:1px solid transparent}
+.f-status .badge.open{background:var(--rose-bg);color:var(--rose);border-color:var(--rose-border)}
+.f-status .badge.progress{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-border)}
+.f-status .badge.done{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+.f-status .time{font:500 10px var(--f-m);color:var(--text-3)}
+
+.f-assigned{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-1)}
+.f-avatar{width:24px;height:24px;border-radius:50%;background:var(--bg-3);display:flex;align-items:center;justify-content:center;font:700 11px var(--f-d);color:var(--text-0)}
+.f-avatar.kons{background:linear-gradient(135deg,var(--violet),#7A5CD8);color:#fff}
+
+/* ═══ DETAIL PANEL ═══ */
+.detail{background:var(--bg-1);border-left:1px solid var(--border-0);overflow-y:auto;display:flex;flex-direction:column}
+.detail::-webkit-scrollbar{width:6px}
+.detail::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+
+.det-head{padding:18px 22px;border-bottom:1px solid var(--border-0);background:linear-gradient(180deg,var(--bg-1) 0%,var(--rose-bg) 200%)}
+.det-eyebrow{display:flex;align-items:center;gap:7px;font:700 10px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--rose);margin-bottom:8px}
+.det-id{font:600 11px var(--f-m);color:var(--text-3);margin-left:auto}
+.det-title{font:700 18px/1.2 var(--f-d);color:var(--text-0)}
+.det-sub{font:500 12px var(--f-m);color:var(--text-2);margin-top:5px}
+
+.det-sec{padding:16px 22px;border-bottom:1px solid var(--border-0)}
+.det-sec-title{font:700 11px var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:10px}
+
+.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
+.field-lbl{font-size:11px;color:var(--text-3);margin-bottom:3px;letter-spacing:.04em}
+.field-val{font:500 13px var(--f-b);color:var(--text-0)}
+.field-val.mono{font-family:var(--f-m)}
+
+.photo-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.photo{aspect-ratio:1;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);display:flex;align-items:center;justify-content:center;color:var(--text-3);overflow:hidden;position:relative}
+.photo svg{width:24px;height:24px}
+.photo.has{background:linear-gradient(135deg,#2A1F1A,#1A1410)}
+.photo.has::after{content:'IMG';position:absolute;bottom:4px;right:5px;font:600 8px var(--f-m);color:rgba(255,255,255,.3);letter-spacing:.1em}
+.photo.add{cursor:pointer;border-style:dashed;transition:all var(--t-fast)}
+.photo.add:hover{border-color:var(--ember-border);color:var(--ember)}
+
+.timeline{display:flex;flex-direction:column;position:relative;padding-left:20px}
+.timeline::before{content:'';position:absolute;left:5px;top:8px;bottom:8px;width:1px;background:var(--border-1)}
+.tl-item{position:relative;padding-bottom:14px}
+.tl-item:last-child{padding-bottom:0}
+.tl-item::before{content:'';position:absolute;left:-19px;top:5px;width:11px;height:11px;border-radius:50%;background:var(--bg-1);border:2px solid var(--text-3)}
+.tl-item.ok::before{border-color:var(--teal);background:var(--teal)}
+.tl-item.cur::before{border-color:var(--ember);background:var(--ember);box-shadow:0 0 8px var(--ember)}
+.tl-time{font:500 10.5px var(--f-m);color:var(--text-3);margin-bottom:2px}
+.tl-text{font-size:12.5px;color:var(--text-1);line-height:1.4}
+.tl-text b{color:var(--text-0);font-weight:600}
+
+.det-actions{padding:16px 22px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border-0)}
+.det-actions .btn{width:100%;justify-content:center;padding:10px}
+
+</style>
+</head>
+<body>
+
+<!-- ─────────── SIDEBAR ─────────── -->
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div>
+        <div class="sb-brand-name">Conrad Comfort</div>
+        <div class="sb-brand-sub">Usterki · v2</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>HK Live</button>
+    <button class="sb-item active">
+      <svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+      Usterki<span class="sb-badge">5</span>
+    </button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<!-- ─────────── MAIN ─────────── -->
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Pokoje</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Usterki</span></div>
+      <h1 class="page-title">Usterki techniczne</h1>
+      <div class="page-meta">
+        <span>Otwarte: <b style="color:var(--rose)">5</b></span>
+        <span>Pilne: <b style="color:var(--rose)">2</b></span>
+        <span>Średni czas naprawy: <b>4h 12m</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 11l3 3 8-8"/></svg>
+        QR konserwator
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Zgłoś usterkę
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="kpi-ic rose">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg>
+      </div>
+      <div>
+        <div class="kpi-info-lbl">Pilne</div>
+        <div class="kpi-info-val">2</div>
+        <div class="kpi-info-sub">412 · 109</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-ic amber">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      </div>
+      <div>
+        <div class="kpi-info-lbl">W trakcie</div>
+        <div class="kpi-info-val">3</div>
+        <div class="kpi-info-sub">konserwator on-site</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-ic sky">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>
+      </div>
+      <div>
+        <div class="kpi-info-lbl">Dziś nowych</div>
+        <div class="kpi-info-val">1</div>
+        <div class="kpi-info-sub">od 00:00</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-ic teal">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div>
+        <div class="kpi-info-lbl">Naprawione (7 dni)</div>
+        <div class="kpi-info-val">18</div>
+        <div class="kpi-info-sub" style="color:var(--teal)">+22% / tydz.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body">
+
+    <!-- LIST -->
+    <div class="list-pane">
+
+      <div class="toolbar">
+        <button class="tab on">Wszystkie <span class="cnt">8</span></button>
+        <button class="tab"><span class="dot rose"></span>Pilne <span class="cnt">2</span></button>
+        <button class="tab"><span class="dot amber"></span>W trakcie <span class="cnt">3</span></button>
+        <button class="tab"><span class="dot teal"></span>Naprawione <span class="cnt">14</span></button>
+        <span class="sep"></span>
+        <div class="filter">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Pokój, kategoria, opis..."/>
+        </div>
+      </div>
+
+      <!-- F1 SELECTED -->
+      <div class="fault selected">
+        <div class="f-pri urgent">P1</div>
+        <div>
+          <div class="f-room">412</div>
+          <div class="f-room-sub">Piętro 4</div>
+        </div>
+        <div class="f-info">
+          <div class="f-cat">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 12s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7z"/></svg>
+            Hydraulika
+          </div>
+          <div class="f-desc">Przeciekająca bateria w łazience — kapie do umywalki przez całą noc</div>
+          <div class="f-meta">
+            <span>Zgłoszone: <b>Maria</b> · 11:18</span>
+            <span>SLA: <b style="color:var(--rose)">25 min temu</b></span>
+            <span>Czas otwarcia: <b>24 min</b></span>
+          </div>
+        </div>
+        <div class="f-status">
+          <span class="badge open">Otwarta</span>
+          <span class="time">24m</span>
+        </div>
+        <div class="f-assigned">
+          <span class="f-avatar kons">K</span>
+          <div>Konserw.<br/><b style="font:600 12px var(--f-m);color:var(--text-0)">Marek W.</b></div>
+        </div>
+      </div>
+
+      <!-- F2 -->
+      <div class="fault">
+        <div class="f-pri urgent">P1</div>
+        <div>
+          <div class="f-room">109</div>
+          <div class="f-room-sub">Piętro 1</div>
+        </div>
+        <div class="f-info">
+          <div class="f-cat">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            Elektryka
+          </div>
+          <div class="f-desc">Brak prądu w pokoju — wybiło bezpiecznik po włączeniu czajnika</div>
+          <div class="f-meta">
+            <span>Zgłoszone: <b>Natalia</b> · 09:42</span>
+            <span>SLA: <b style="color:var(--rose)">2h przeterminowane</b></span>
+          </div>
+        </div>
+        <div class="f-status">
+          <span class="badge progress">W trakcie</span>
+          <span class="time">2h 1m</span>
+        </div>
+        <div class="f-assigned">
+          <span class="f-avatar kons">K</span>
+          <div>Konserw.<br/><b style="font:600 12px var(--f-m);color:var(--text-0)">Marek W.</b></div>
+        </div>
+      </div>
+
+      <!-- F3 -->
+      <div class="fault">
+        <div class="f-pri normal">P2</div>
+        <div>
+          <div class="f-room">307</div>
+          <div class="f-room-sub">Piętro 3</div>
+        </div>
+        <div class="f-info">
+          <div class="f-cat">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg>
+            Klimatyzacja
+          </div>
+          <div class="f-desc">Klimatyzacja nie chłodzi, lampka świeci na czerwono</div>
+          <div class="f-meta">
+            <span>Zgłoszone: <b>Tetiana</b> · wczoraj 18:22</span>
+            <span>Otwarte od: <b>17h</b></span>
+          </div>
+        </div>
+        <div class="f-status">
+          <span class="badge progress">W trakcie</span>
+          <span class="time">17h</span>
+        </div>
+        <div class="f-assigned">
+          <span class="f-avatar" style="background:#3a3f48;color:#a0a6bc">—</span>
+          <div>Czeka<br/><b style="font-size:11px;color:var(--text-3)">na firmę</b></div>
+        </div>
+      </div>
+
+      <!-- F4 -->
+      <div class="fault">
+        <div class="f-pri normal">P2</div>
+        <div>
+          <div class="f-room">218</div>
+          <div class="f-room-sub">Piętro 2</div>
+        </div>
+        <div class="f-info">
+          <div class="f-cat">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+            TV / RTV
+          </div>
+          <div class="f-desc">Telewizor nie łączy się z WiFi, gość zgłasza problem od wczoraj</div>
+          <div class="f-meta">
+            <span>Zgłoszone: <b>Marek</b> · 10 maj 14:55</span>
+          </div>
+        </div>
+        <div class="f-status">
+          <span class="badge progress">W trakcie</span>
+          <span class="time">21h</span>
+        </div>
+        <div class="f-assigned">
+          <span class="f-avatar kons">A</span>
+          <div>Konserw.<br/><b style="font:600 12px var(--f-m);color:var(--text-0)">Anna L.</b></div>
+        </div>
+      </div>
+
+      <!-- F5 -->
+      <div class="fault">
+        <div class="f-pri low">P3</div>
+        <div>
+          <div class="f-room">—</div>
+          <div class="f-room-sub">Recepcja</div>
+        </div>
+        <div class="f-info">
+          <div class="f-cat">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>
+            Drobne
+          </div>
+          <div class="f-desc">Skrzypiące drzwi do magazynka recepcji — wymagają oliwy</div>
+          <div class="f-meta">
+            <span>Zgłoszone: <b>Marek</b> · 8 maj</span>
+          </div>
+        </div>
+        <div class="f-status">
+          <span class="badge open">Otwarta</span>
+          <span class="time">4 dni</span>
+        </div>
+        <div class="f-assigned">
+          <span class="f-avatar" style="background:#3a3f48;color:#a0a6bc">—</span>
+          <div style="color:var(--text-3);font-size:11px">Nieprzypisana</div>
+        </div>
+      </div>
+
+      <!-- F6 Done -->
+      <div class="fault" style="opacity:.65">
+        <div class="f-pri low">P3</div>
+        <div>
+          <div class="f-room">204</div>
+          <div class="f-room-sub">Piętro 2</div>
+        </div>
+        <div class="f-info">
+          <div class="f-cat">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></svg>
+            Oświetlenie
+          </div>
+          <div class="f-desc">Wymieniono żarówkę w lampce nocnej — naprawione</div>
+          <div class="f-meta">
+            <span>Naprawione: <b>Anna L.</b> · 09 maj 11:00</span>
+            <span>Czas naprawy: <b style="color:var(--teal)">22min</b></span>
+          </div>
+        </div>
+        <div class="f-status">
+          <span class="badge done">Gotowe</span>
+          <span class="time">3 dni</span>
+        </div>
+        <div class="f-assigned">
+          <span class="f-avatar kons">A</span>
+          <div>Anna L.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- DETAIL -->
+    <aside class="detail">
+
+      <div class="det-head">
+        <div class="det-eyebrow">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+          P1 · PILNA · HYDRAULIKA
+          <span class="det-id">#F-2026-0083</span>
+        </div>
+        <div class="det-title">Przeciekająca bateria · pok. 412</div>
+        <div class="det-sub">Otwarta 24 min temu · SLA przekroczone o 4 min</div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">Szczegóły</div>
+        <div class="field-grid">
+          <div><div class="field-lbl">Pokój</div><div class="field-val mono">412</div></div>
+          <div><div class="field-lbl">Piętro</div><div class="field-val mono">4</div></div>
+          <div><div class="field-lbl">Zgłosiła</div><div class="field-val">Maria Kowal.</div></div>
+          <div><div class="field-lbl">Konserwator</div><div class="field-val">Marek W.</div></div>
+          <div><div class="field-lbl">Zgłoszone</div><div class="field-val mono">11:18</div></div>
+          <div><div class="field-lbl">SLA</div><div class="field-val mono" style="color:var(--rose)">+4 min</div></div>
+          <div style="grid-column:span 2">
+            <div class="field-lbl">Opis</div>
+            <div class="field-val" style="font-weight:400;color:var(--text-1);line-height:1.5">Przeciekająca bateria w łazience — kapie do umywalki przez całą noc. Gość zgłosił że "podłoga była mokra rano". Maria potwierdziła wyciek z dolnego węża pod umywalką.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">Zdjęcia (2)</div>
+        <div class="photo-grid">
+          <div class="photo has">
+            <svg fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="photo has">
+            <svg fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </div>
+          <div class="photo add">
+            <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="det-sec">
+        <div class="det-sec-title">Historia</div>
+        <div class="timeline">
+          <div class="tl-item cur">
+            <div class="tl-time">11:42 — przed chwilą</div>
+            <div class="tl-text">SLA przekroczone (+4 min). Powiadomienie wysłane do <b>Marek W.</b></div>
+          </div>
+          <div class="tl-item ok">
+            <div class="tl-time">11:22</div>
+            <div class="tl-text">Przypisana do konserwatora <b>Marek W.</b> (push)</div>
+          </div>
+          <div class="tl-item ok">
+            <div class="tl-time">11:20</div>
+            <div class="tl-text">Dodano zdjęcia (2) — wyciek pod umywalką</div>
+          </div>
+          <div class="tl-item ok">
+            <div class="tl-time">11:18</div>
+            <div class="tl-text"><b>Maria</b> zgłosiła usterkę z telefonu (HK Mobile)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="det-actions">
+        <button class="btn btn-primary">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Oznacz jako naprawione
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Zmień konserwatora
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          Wyślij push przypomnienie
+        </button>
+      </div>
+
+    </aside>
+  </div>
+</main>
+
+</body>
+</html>

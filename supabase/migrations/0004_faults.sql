@@ -19,6 +19,8 @@ alter table public.faults add column if not exists completion_note text;        
 -- 2) Niezmienność + brak usuwania: zdejmij permisywną politykę FOR ALL z 0002,
 --    zostaw odczyt, dodaj INSERT i UPDATE, NIE dodawaj DELETE => usuwanie zablokowane.
 drop policy if exists "anon_write_faults" on public.faults;
+drop policy if exists "faults_anon_insert" on public.faults;
+drop policy if exists "faults_anon_update" on public.faults;
 create policy "faults_anon_insert" on public.faults for insert to anon with check (true);
 create policy "faults_anon_update" on public.faults for update to anon using (true) with check (true);
 -- (polityka SELECT "anon_read_faults" z 0002 pozostaje)

@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SZABLON FAST REPORT dla KWHotel Desktop (Firebird)
+  Tytuł : PG / PGZ — Wyjazdy jutro
+  Cel   : Lista pokoi PG i PGZ, których goście wyjeżdżają JUTRO.
+          Przydatny do planowania sprzątania z rana następnego dnia.
+
+  INSTALACJA:
+    1. Otwórz KWHotel → Raporty → Menadżer raportów
+    2. Nowy raport → Importuj szablon → wskaż ten plik .frx
+    3. Ustaw połączenie z bazą Firebird (lub dostosuj SQL poniżej)
+
+  SCHEMAT BAZY (dostosuj nazwy kolumn do swojej wersji KWHotel):
+    Tabela REZERWACJE : ID_REZ, NR_POKOJU, DATA_PRZYJAZDU, DATA_WYJAZDU, STAN, ID_KLIENTA
+    Tabela KLIENCI    : ID_KLIENTA, NAZWISKO, IMIE
+    STAN = 'M' oznacza gość zameldowany (checked-in)
+
+  Jeśli nazwy kolumn są inne, zmień w elemencie <SQL> poniżej.
+-->
+<TfrxReport Version="4.15" Author="Conrad Comfort" Name="PG_Wyjazdy_Jutro"
+  Description="Lista pokoi PG/PGZ wyjeżdżających jutro"
+  PrinterSettings="1">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       ZAPYTANIE GŁÓWNE — wyjazdy jutro (PG = 1 noc, PGZ = 2+ noce)
+       Zmień nazwy tabel / kolumn wg swojej bazy KWHotel
+  ════════════════════════════════════════════════════════════════════ -->
+  <TfrxADOQuery
+    Name="qWyjazdy"
+    Enabled="True"
+    SQL="
+      SELECT
+        r.NR_POKOJU                                         AS POKOJ,
+        k.NAZWISKO || &apos; &apos; || k.IMIE              AS GOSCIA,
+        r.DATA_PRZYJAZDU                                    AS PRZYJAZD,
+        r.DATA_WYJAZDU                                      AS WYJAZD,
+        (r.DATA_WYJAZDU - r.DATA_PRZYJAZDU)                 AS DNI_POBYTU,
+        CASE
+          WHEN (r.DATA_WYJAZDU - r.DATA_PRZYJAZDU) >= 3
+            THEN &apos;PGZ&apos;
+          ELSE &apos;PG&apos;
+        END                                                 AS TYP_HK,
+        r2.NAZWISKO || &apos; &apos; || r2.IMIE            AS NASTEPNY_GOSC,
+        rez2.DATA_PRZYJAZDU                                 AS NASTEPNY_PRZYJAZD
+      FROM REZERWACJE rez
+      JOIN KLIENCI k   ON k.ID_KLIENTA = rez.ID_KLIENTA
+      LEFT JOIN REZERWACJE rez2
+             ON rez2.NR_POKOJU      = rez.NR_POKOJU
+            AND rez2.DATA_PRZYJAZDU = rez.DATA_WYJAZDU
+            AND rez2.STAN          &lt;&gt; &apos;A&apos;
+      LEFT JOIN KLIENCI r2 ON r2.ID_KLIENTA = rez2.ID_KLIENTA
+      WHERE
+        rez.DATA_WYJAZDU = CURRENT_DATE + 1
+        AND rez.STAN = &apos;M&apos;
+      ORDER BY
+        TYP_HK DESC,
+        CAST(rez.NR_POKOJU AS INTEGER)
+    "
+  />
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       STRONA RAPORTU  (A4 pionowo, margines 20mm)
+  ════════════════════════════════════════════════════════════════════ -->
+  <TfrxReportPage Name="Page1"
+    PaperWidth="210" PaperHeight="297"
+    LeftMargin="20" RightMargin="15" TopMargin="20" BottomMargin="20"
+    Orientation="0">
+
+    <!-- ── NAGŁÓWEK STRONY ─────────────────────────────────────── -->
+    <TfrxPageHeader Name="PageHeader1" Height="70">
+
+      <!-- Tytuł -->
+      <TfrxMemoView Name="mTitle"
+        Left="0" Top="0" Width="175" Height="20"
+        Text="PG / PGZ — Wyjazdy jutro ([DATE+1])"
+        Font.Name="Arial" Font.Size="14" Font.Style="[fsBold]"
+        HAlign="haLeft" VAlign="vaCenter"
+        Frame.Typ="0"/>
+
+      <!-- Data wydruku -->
+      <TfrxMemoView Name="mDate"
+        Left="0" Top="20" Width="175" Height="12"
+        Text="Wydruk: [DATE] [TIME]   |   Jutro: [DATE+1]"
+        Font.Name="Arial" Font.Size="9" Font.Style=""
+        Color="clGray" HAlign="haLeft" VAlign="vaCenter"
+        Frame.Typ="0"/>
+
+      <!-- Separator -->
+      <TfrxLineView Name="linHeader"
+        Left="0" Top="36" Width="175" Height="0"
+        Frame.Typ="15" Frame.Color="clBlack" Frame.Width="1.5"/>
+
+      <!-- Nagłówki kolumn -->
+      <TfrxMemoView Name="hPokoj"
+        Left="0" Top="42" Width="18" Height="12"
+        Text="Pokój" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haCenter"/>
+      <TfrxMemoView Name="hTyp"
+        Left="20" Top="42" Width="15" Height="12"
+        Text="Typ" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haCenter"/>
+      <TfrxMemoView Name="hGoscia"
+        Left="37" Top="42" Width="55" Height="12"
+        Text="Wyjeżdżający gość" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haLeft"/>
+      <TfrxMemoView Name="hPrzyjazd"
+        Left="94" Top="42" Width="22" Height="12"
+        Text="Przyjazd" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haCenter"/>
+      <TfrxMemoView Name="hDni"
+        Left="118" Top="42" Width="12" Height="12"
+        Text="Dni" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haCenter"/>
+      <TfrxMemoView Name="hNastepny"
+        Left="132" Top="42" Width="43" Height="12"
+        Text="Następny gość" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haLeft"/>
+
+      <!-- Linia pod nagłówkami -->
+      <TfrxLineView Name="linColHeader"
+        Left="0" Top="56" Width="175" Height="0"
+        Frame.Typ="15" Frame.Color="clSilver" Frame.Width="0.5"/>
+    </TfrxPageHeader>
+
+    <!-- ── WIERSZE DANYCH ──────────────────────────────────────── -->
+    <TfrxMasterData Name="MasterData1" DataSet="qWyjazdy"
+      Top="80" Height="14" Band.PrintIfEmpty="False">
+
+      <!-- Numer pokoju (pogrubiony) -->
+      <TfrxMemoView Name="dPokoj"
+        Left="0" Top="1" Width="18" Height="12"
+        Text="[qWyjazdy.POKOJ]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haCenter"/>
+
+      <!-- Typ HK: PG (zielony) / PGZ (pomarańczowy) -->
+      <TfrxMemoView Name="dTyp"
+        Left="20" Top="1" Width="15" Height="12"
+        Text="[qWyjazdy.TYP_HK]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"
+        HAlign="haCenter"
+        Color="[IIF(qWyjazdy.TYP_HK=&apos;PGZ&apos;,clOrange,clGreen)]"
+        TextColor="[IIF(qWyjazdy.TYP_HK=&apos;PGZ&apos;,$005580FF,$00008000)]"/>
+
+      <!-- Wyjeżdżający gość -->
+      <TfrxMemoView Name="dGoscia"
+        Left="37" Top="1" Width="55" Height="12"
+        Text="[qWyjazdy.GOSCIA]"
+        Font.Name="Arial" Font.Size="9"/>
+
+      <!-- Data przyjazdu -->
+      <TfrxMemoView Name="dPrzyjazd"
+        Left="94" Top="1" Width="22" Height="12"
+        Text="[FormatDateTime(&apos;dd.mm.yyyy&apos;,qWyjazdy.PRZYJAZD)]"
+        Font.Name="Arial" Font.Size="9" HAlign="haCenter"/>
+
+      <!-- Liczba nocy -->
+      <TfrxMemoView Name="dDni"
+        Left="118" Top="1" Width="12" Height="12"
+        Text="[qWyjazdy.DNI_POBYTU]"
+        Font.Name="Arial" Font.Size="9" HAlign="haCenter"/>
+
+      <!-- Następny gość (jeśli WP) -->
+      <TfrxMemoView Name="dNastepny"
+        Left="132" Top="1" Width="43" Height="12"
+        Text="[IIF(qWyjazdy.NASTEPNY_GOSC=&apos;&apos;,&apos;—&apos;,qWyjazdy.NASTEPNY_GOSC)]"
+        Font.Name="Arial" Font.Size="9"
+        Color="[IIF(qWyjazdy.NASTEPNY_GOSC&lt;&gt;&apos;&apos;,clYellow,clNone)]"/>
+
+      <!-- Cienka linia separatora -->
+      <TfrxLineView Name="linRow"
+        Left="0" Top="13" Width="175" Height="0"
+        Frame.Typ="15" Frame.Color="clSilver" Frame.Width="0.3"/>
+    </TfrxMasterData>
+
+    <!-- ── PODSUMOWANIE ────────────────────────────────────────── -->
+    <TfrxGroupFooter Name="GroupFooter1" Top="300" Height="20">
+      <TfrxLineView Name="linSum"
+        Left="0" Top="2" Width="175" Height="0"
+        Frame.Typ="15" Frame.Color="clBlack" Frame.Width="1"/>
+      <TfrxMemoView Name="mSumLabel"
+        Left="0" Top="6" Width="90" Height="12"
+        Text="Łącznie pokoi PG/PGZ wyjeżdżających jutro:"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"/>
+      <TfrxMemoView Name="mSumCount"
+        Left="92" Top="6" Width="20" Height="12"
+        Text="[SUM(1,MasterData1)]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haRight"/>
+    </TfrxGroupFooter>
+
+    <!-- ── STOPKA STRONY ────────────────────────────────────────── -->
+    <TfrxPageFooter Name="PageFooter1" Height="14">
+      <TfrxMemoView Name="mPage"
+        Left="0" Top="1" Width="175" Height="10"
+        Text="Conrad Comfort — Panel Recepcji   |   Strona [PAGE#] / [PAGES#]"
+        Font.Name="Arial" Font.Size="8" Color="clGray"
+        HAlign="haCenter"/>
+    </TfrxPageFooter>
+
+  </TfrxReportPage>
+</TfrxReport>

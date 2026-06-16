@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Conrad Comfort v2 · Stali Goście</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-0:#0B0810; --bg-1:#110D17; --bg-2:#17131F; --bg-3:#221C2C; --bg-elev:#1B1624;
+  --ember:#B065A0; --ember-soft:#C988B7; --ember-deep:#6E2B5C;
+  --ember-bg:rgba(176,101,160,.10); --ember-border:rgba(176,101,160,.30); --ember-glow:0 0 22px rgba(176,101,160,.25);
+  --plum-card:#1F1626; --cream:#F5EDE0; --gold:#C8A269;
+  --teal:#2BD4A0; --teal-bg:rgba(43,212,160,.10); --teal-border:rgba(43,212,160,.32);
+  --rose:#FF5471; --rose-bg:rgba(255,84,113,.10); --rose-border:rgba(255,84,113,.32);
+  --amber:#F4C055; --amber-bg:rgba(244,192,85,.10); --amber-border:rgba(244,192,85,.32);
+  --sky:#5BA8E8; --sky-bg:rgba(91,168,232,.10); --sky-border:rgba(91,168,232,.32);
+  --violet:#B49AFF; --violet-bg:rgba(180,154,255,.10); --violet-border:rgba(180,154,255,.30);
+  --text-0:#F0E8DC; --text-1:#A89DAE; --text-2:#766A7E; --text-3:#4A3F52;
+  --border-0:rgba(245,237,224,.04); --border-1:rgba(245,237,224,.07); --border-2:rgba(245,237,224,.12);
+  --r-xs:4px; --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --f-d:'Syne',sans-serif; --f-b:'DM Sans',sans-serif; --f-m:'JetBrains Mono',monospace;
+  --sidebar-w:244px; --t-fast:80ms cubic-bezier(.4,0,.2,1);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--text-0);font-family:var(--f-b);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block;flex-shrink:0}
+input,select,textarea{font-family:inherit;color:var(--text-0);background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:8px 12px;font-size:13px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--ember)}
+textarea{resize:vertical;min-height:60px;line-height:1.5}
+
+/* Sidebar */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);background:var(--bg-1);border-right:1px solid var(--border-0);display:flex;flex-direction:column;z-index:100}
+.sb-head{padding:16px 14px 8px;border-bottom:1px solid var(--border-0)}
+.sb-brand{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-sm);background:var(--bg-2);border:1px solid var(--border-1)}
+.sb-mark{width:30px;height:30px;border-radius:var(--r-xs);background:linear-gradient(135deg,var(--ember),var(--ember-deep));display:flex;align-items:center;justify-content:center;font:800 11px/1 var(--f-d);color:var(--cream);box-shadow:var(--ember-glow)}
+.sb-brand-name{font:700 13px/1.2 var(--f-d);color:var(--text-0)}
+.sb-brand-sub{font-size:10px;color:var(--text-3);margin-top:1px}
+.sb-nav{padding:6px 8px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.sb-nav::-webkit-scrollbar{width:0}
+.sb-label{font:600 9px/1 var(--f-d);letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:10px 10px 4px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:var(--r-xs);color:var(--text-1);font-size:13px;font-weight:500;border:1px solid transparent;transition:all var(--t-fast);text-align:left;position:relative}
+.sb-item:hover{background:var(--bg-3);color:var(--text-0)}
+.sb-item.active{background:var(--ember-bg);color:var(--ember);font-weight:600;border-color:var(--ember-border)}
+.sb-item.active::before{content:'';position:absolute;left:-9px;top:25%;bottom:25%;width:2px;background:var(--ember);box-shadow:var(--ember-glow)}
+.sb-ic{width:15px;height:15px;opacity:.7}.sb-item.active .sb-ic{opacity:1}
+.sb-badge{margin-left:auto;background:var(--rose);color:#fff;font:700 9px/1 var(--f-d);padding:3px 6px;border-radius:99px}
+
+/* Main */
+.main{margin-left:var(--sidebar-w);height:100vh;overflow-y:auto;background:var(--bg-0)}
+.main::-webkit-scrollbar{width:8px}
+.main::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:4px}
+
+.topbar{position:sticky;top:0;z-index:20;background:linear-gradient(to bottom,var(--bg-0) 70%,transparent);padding:18px 28px 14px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:1px solid var(--border-0)}
+.crumb{font-size:11px;color:var(--text-3);font-weight:500;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.crumb b{color:var(--ember);font:700 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase}
+.crumb svg{width:11px;height:11px}
+.page-title{font:700 24px/1.1 var(--f-d);color:var(--text-0)}
+.page-meta{display:flex;gap:14px;font-size:12px;color:var(--text-2);margin-top:6px}
+.page-meta b{color:var(--text-1);font-weight:600;font-family:var(--f-m)}
+.topbar-actions{display:flex;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--r-sm);font:600 13px var(--f-b);border:1px solid transparent;transition:all var(--t-fast);cursor:pointer}
+.btn-ghost{color:var(--text-1);border-color:var(--border-1)}
+.btn-ghost:hover{background:var(--bg-3);color:var(--text-0);border-color:var(--border-2)}
+.btn-primary{background:var(--ember);color:#0B0810;font-weight:700;border-color:var(--ember)}
+.btn-primary:hover{background:var(--ember-soft);box-shadow:var(--ember-glow)}
+.btn-sm{padding:5px 9px;font-size:12px}
+
+.content{padding:18px 28px 28px;display:flex;flex-direction:column;gap:14px}
+
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-md);padding:14px 16px}
+.kpi-label{font:600 10px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:8px}
+.kpi-val{font:700 24px/1 var(--f-m);letter-spacing:-.02em;color:var(--text-0)}
+.kpi-val.violet{color:var(--violet)}.kpi-val.teal{color:var(--teal)}.kpi-val.gold{color:var(--gold)}
+.kpi-sub{font-size:11px;color:var(--text-2);margin-top:4px}
+
+.card{background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-lg);overflow:hidden}
+.card-head{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-head-title{font:700 13px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px}
+.card-head-title svg{color:var(--ember);width:15px;height:15px}
+
+.toolbar{padding:14px 22px;border-bottom:1px solid var(--border-0);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.tab{padding:6px 13px;border-radius:var(--r-sm);font:600 12px var(--f-b);color:var(--text-2);border:1px solid var(--border-1);background:transparent;display:inline-flex;align-items:center;gap:6px;transition:all var(--t-fast)}
+.tab:hover{color:var(--text-0);border-color:var(--border-2)}
+.tab.on{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.tab .cnt{font:500 10.5px var(--f-m);opacity:.6}
+.tab.on .cnt{opacity:1}
+.search{flex:1;min-width:200px;max-width:340px;display:flex;align-items:center;gap:8px;background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-sm);padding:5px 10px}
+.search input{flex:1;background:none;border:none;padding:0;font-size:12.5px;width:auto}
+
+/* Guest section */
+.guest-section{padding:14px 22px;border-bottom:1px solid var(--border-0)}
+.guest-section:last-child{border-bottom:none}
+.gs-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.gs-title{font:700 13px var(--f-d);color:var(--text-1);letter-spacing:.04em;text-transform:uppercase}
+.gs-cnt{font:500 11px var(--f-m);color:var(--text-3)}
+
+.guest-list{display:flex;flex-direction:column;gap:8px}
+
+/* Guest card */
+.guest{background:var(--bg-3);border:1px solid var(--border-1);border-radius:var(--r-md);padding:14px 16px;transition:all var(--t-fast);cursor:pointer}
+.guest:hover{border-color:var(--border-2)}
+.guest.expanded{border-color:var(--ember-border);background:linear-gradient(180deg,var(--ember-bg),var(--bg-3) 40%)}
+
+.guest-head{display:flex;align-items:center;gap:12px}
+.guest-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 14px var(--f-d);color:#fff;flex-shrink:0}
+.guest-info{flex:1;min-width:0}
+.guest-name{font:700 14px var(--f-d);color:var(--text-0);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.guest-company{font:500 12px var(--f-b);color:var(--text-2);margin-top:3px}
+.guest-room{font:500 11.5px var(--f-m);color:var(--text-3);margin-top:3px}
+.guest-room b{color:var(--text-1);font-weight:600}
+
+.flag{font:700 9px/1 var(--f-d);letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:99px;border:1px solid transparent}
+.flag.fv{background:var(--gold);color:#0B0810;border-color:var(--gold)}
+.flag.vip{background:var(--ember-bg);color:var(--ember);border-color:var(--ember-border)}
+.flag.priv{background:var(--violet-bg);color:var(--violet);border-color:var(--violet-border)}
+.flag.comp{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-border)}
+
+.guest-stats{display:flex;gap:14px;font:500 11px var(--f-m);color:var(--text-3);align-items:center}
+.guest-stats b{color:var(--text-1);font-weight:700}
+
+/* Expanded content */
+.guest-expanded{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border-1);display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.guest-field{}
+.guest-field-lbl{font:600 9.5px/1 var(--f-d);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.guest-field-val{font-size:12.5px;color:var(--text-1);line-height:1.5}
+.guest-field.full{grid-column:span 2}
+.guest-notes{font-size:12.5px;color:var(--text-1);line-height:1.55;padding:10px 12px;background:var(--bg-2);border:1px solid var(--border-1);border-radius:var(--r-sm);font-style:italic}
+.guest-actions{display:flex;gap:6px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--border-1);grid-column:span 2}
+
+.season-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:99px;font:600 10px var(--f-d);letter-spacing:.04em;text-transform:uppercase}
+.season-pill.season{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.season-pill.off{background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-border)}
+
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sb-head">
+    <div class="sb-brand">
+      <div class="sb-mark">CC</div>
+      <div><div class="sb-brand-name">Conrad Comfort</div><div class="sb-brand-sub">Stali Goście · v2</div></div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Zmiana</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Przegląd</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/></svg>Recepcja dzienna</button>
+    <div class="sb-label" style="margin-top:8px">Pokoje</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Housekeeping</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Usterki<span class="sb-badge">2</span></button>
+    <div class="sb-label" style="margin-top:8px">Obsługa</div>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/></svg>Parking</button>
+    <button class="sb-item active"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>Stali Goście</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 12V22H4V12"/></svg>Vouchery</button>
+    <button class="sb-item"><svg class="sb-ic" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>Opinie</button>
+  </nav>
+</aside>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="crumb"><b>Obsługa</b><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg><span>Stali Goście</span></div>
+      <h1 class="page-title">Stali Goście</h1>
+      <div class="page-meta">
+        <span>Łącznie: <b>32</b></span>
+        <span>Prywatni: <b>22</b></span>
+        <span>Firmy: <b>10</b></span>
+        <span>Z fakturą: <b>21</b></span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Eksport
+      </button>
+      <button class="btn btn-primary">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Dodaj gościa
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- KPI -->
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="kpi-label">Łącznie gości</div>
+        <div class="kpi-val">32</div>
+        <div class="kpi-sub">+3 w tym roku</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Prywatni</div>
+        <div class="kpi-val violet">22</div>
+        <div class="kpi-sub">~69% bazy</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Firmy</div>
+        <div class="kpi-val teal">10</div>
+        <div class="kpi-sub">B2B kontrakty</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Z fakturą</div>
+        <div class="kpi-val gold">21</div>
+        <div class="kpi-sub">66% generuje FV</div>
+      </div>
+    </div>
+
+    <!-- LIST CARD -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-head-title">
+          <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/></svg>
+          Baza stałych gości
+        </div>
+        <div style="font:500 12px var(--f-m);color:var(--text-3)">Sortowanie: ostatni pobyt</div>
+      </div>
+
+      <div class="toolbar">
+        <button class="tab on">Wszyscy <span class="cnt">32</span></button>
+        <button class="tab">Prywatni <span class="cnt">22</span></button>
+        <button class="tab">Firmy <span class="cnt">10</span></button>
+        <button class="tab">VIP <span class="cnt">3</span></button>
+        <div class="search">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24" style="color:var(--text-3)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input placeholder="Imię, firma, pokój..."/>
+        </div>
+      </div>
+
+      <!-- PRYWATNI -->
+      <div class="guest-section">
+        <div class="gs-head">
+          <div class="gs-title">Prywatni</div>
+          <div class="gs-cnt">22 osób</div>
+        </div>
+        <div class="guest-list">
+
+          <!-- VIP EXPANDED -->
+          <div class="guest expanded">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#B065A0,#6E2B5C)">A</div>
+              <div class="guest-info">
+                <div class="guest-name">
+                  ALEX RĄCZKA <span class="flag vip">VIP · Prezes</span>
+                </div>
+                <div class="guest-company">Conrad Comfort — właściciel</div>
+                <div class="guest-room"><b>Pobyt ze śniadaniem bezpłatny</b></div>
+              </div>
+              <div class="guest-stats">
+                <span>Pobytów: <b>—</b></span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIP CZESIU EXPANDED -->
+          <div class="guest expanded">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#F4C055,#B58626);color:#0B0810">C</div>
+              <div class="guest-info">
+                <div class="guest-name">Chesney Lanik <span style="color:var(--gold);font-weight:500;font-size:13px">("Czesiu")</span> <span class="flag vip">VIP</span></div>
+                <div class="guest-room">Stały gość · pakiety dłuższe niż 1 noc</div>
+              </div>
+              <div class="guest-stats">
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+            <div class="guest-expanded">
+              <div class="guest-field">
+                <div class="guest-field-lbl"><span class="season-pill season">Sezon</span></div>
+                <div class="guest-field-val">200 zł ze śniadaniem w przypadku pobytu &gt; 1 doba</div>
+              </div>
+              <div class="guest-field">
+                <div class="guest-field-lbl"><span class="season-pill off">Poza sezonem</span></div>
+                <div class="guest-field-val">200 zł ze śniadaniem w przypadku pobytu &gt; 1 doba</div>
+              </div>
+              <div class="guest-field">
+                <div class="guest-field-lbl">Posiłki</div>
+                <div class="guest-field-val">✅ TAK — wliczane do rezerwacji, płaci wszystko w recepcji</div>
+              </div>
+              <div class="guest-field">
+                <div class="guest-field-lbl">Faktura</div>
+                <div class="guest-field-val">Nie wymaga</div>
+              </div>
+              <div class="guest-field full">
+                <div class="guest-field-lbl">Uwagi</div>
+                <div class="guest-notes">Koniecznie podwójny materac i więcej poduszek. Często prosi o zamawianie taksówek do miasta.</div>
+              </div>
+              <div class="guest-actions">
+                <button class="btn btn-ghost btn-sm">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Edytuj
+                </button>
+                <button class="btn btn-ghost btn-sm">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Historia pobytów (12)
+                </button>
+                <button class="btn btn-ghost btn-sm" style="color:var(--rose);border-color:var(--rose-border);margin-left:auto">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+                  Usuń
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- REGULAR PRIVATE -->
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#7c3aed,#5b21b6)">G</div>
+              <div class="guest-info">
+                <div class="guest-name">Grzegorz Reszczyński <span class="flag fv">FV</span></div>
+                <div class="guest-company">MAXTO Technology</div>
+                <div class="guest-room">Pokoje: <b>319, 219</b></div>
+              </div>
+              <div class="guest-stats">
+                <span>~230 PLN / doba</span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#2563eb,#1e40af)">A</div>
+              <div class="guest-info">
+                <div class="guest-name">Andrzej Kochanowski</div>
+                <div class="guest-room">Brak preferencji pokoju · zniżka SGL</div>
+              </div>
+              <div class="guest-stats">
+                <span>220-260 PLN</span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#dc2626,#991b1b)">M</div>
+              <div class="guest-info">
+                <div class="guest-name">Michał Ryba <span class="flag fv">FV</span></div>
+                <div class="guest-company">BREMER</div>
+                <div class="guest-room">Pokój: <b>122</b></div>
+              </div>
+              <div class="guest-stats">
+                <span>220 / 250 PLN</span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#0E7490,#0c4a6e)">B</div>
+              <div class="guest-info">
+                <div class="guest-name">Beata Fabianowicz <span class="flag fv">FV</span></div>
+                <div class="guest-company">MEDI POLSKA</div>
+                <div class="guest-room">Pokój: <b>216</b></div>
+              </div>
+              <div class="guest-stats">
+                <span>5% zniżki</span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#15803d,#14532d)">L</div>
+              <div class="guest-info">
+                <div class="guest-name">Luca Agostini</div>
+                <div class="guest-room">Pokój: <b>222</b></div>
+              </div>
+              <div class="guest-stats">
+                <span>220-260 PLN</span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#7c2d12,#451a03)">J</div>
+              <div class="guest-info">
+                <div class="guest-name">Barszczewski Jarosław <span class="flag fv">FV (CALFERT)</span></div>
+                <div class="guest-company">Faktura na CALFERT · NIP 7010308565</div>
+                <div class="guest-room">Bez preferencji · uwaga: narzeka</div>
+              </div>
+              <div class="guest-stats">
+                <span>5% zniżki</span>
+                <span class="flag priv">Prywatny</span>
+              </div>
+            </div>
+          </div>
+
+          <button style="padding:11px;border:1px dashed var(--border-2);border-radius:var(--r-sm);color:var(--text-3);font:600 12px var(--f-b);background:transparent;transition:all var(--t-fast)">
+            + Pokaż wszystkich 22 prywatnych →
+          </button>
+
+        </div>
+      </div>
+
+      <!-- FIRMY -->
+      <div class="guest-section">
+        <div class="gs-head">
+          <div class="gs-title">Firmy / Kontrakty B2B</div>
+          <div class="gs-cnt">10 firm</div>
+        </div>
+        <div class="guest-list">
+
+          <div class="guest expanded">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#2BD4A0,#0E7490);color:#0B0810">S</div>
+              <div class="guest-info">
+                <div class="guest-name">Silvair Sp. z o.o. <span class="flag fv">FV</span></div>
+                <div class="guest-company">ul. Opolska 100, 31-323 Kraków · NIP: 9452164348</div>
+              </div>
+              <div class="guest-stats">
+                <span>230/210 PLN</span>
+                <span class="flag comp">Firma</span>
+              </div>
+            </div>
+            <div class="guest-expanded">
+              <div class="guest-field">
+                <div class="guest-field-lbl"><span class="season-pill season">Sezon</span></div>
+                <div class="guest-field-val">230 zł bez śniadania</div>
+              </div>
+              <div class="guest-field">
+                <div class="guest-field-lbl"><span class="season-pill off">Poza sezonem</span></div>
+                <div class="guest-field-val">210 zł bez śniadania</div>
+              </div>
+              <div class="guest-field">
+                <div class="guest-field-lbl">Posiłki</div>
+                <div class="guest-field-val">❌ NIE</div>
+              </div>
+              <div class="guest-field">
+                <div class="guest-field-lbl">Faktura</div>
+                <div class="guest-field-val">✅ Tak — adres firmy</div>
+              </div>
+              <div class="guest-actions">
+                <button class="btn btn-ghost btn-sm">Edytuj</button>
+                <button class="btn btn-ghost btn-sm">Historia (45 pobytów)</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#5BA8E8,#1e40af)">W</div>
+              <div class="guest-info">
+                <div class="guest-name">Firma Würth Polska</div>
+                <div class="guest-company">Limit konsumpcji 50 PLN/dzień</div>
+              </div>
+              <div class="guest-stats">
+                <span>210-250 PLN</span>
+                <span class="flag comp">Firma</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#A78BFA,#5b21b6)">I</div>
+              <div class="guest-info">
+                <div class="guest-name">Infoconsulting Poland <span class="flag fv">FV</span></div>
+                <div class="guest-company">ul. Grzybowska 2/36, Warszawa · NIP 525 27 50 789</div>
+              </div>
+              <div class="guest-stats">
+                <span>200-250 PLN</span>
+                <span class="flag comp">Firma</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#FCD34D,#B58626);color:#0B0810">E</div>
+              <div class="guest-info">
+                <div class="guest-name">Endego Sp. z o.o. <span class="flag fv">FV</span></div>
+                <div class="guest-company">ul. Kołowa 8, 30-134 Kraków</div>
+              </div>
+              <div class="guest-stats">
+                <span>210-270 PLN</span>
+                <span class="flag comp">Firma</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="guest">
+            <div class="guest-head">
+              <div class="guest-avatar" style="background:linear-gradient(135deg,#10b981,#065f46);color:#fff">C</div>
+              <div class="guest-info">
+                <div class="guest-name">COLUMBUS ENERGY</div>
+                <div class="guest-company">Faktura zbiorcza miesięczna · 21 dni płatność</div>
+              </div>
+              <div class="guest-stats">
+                <span>200/220 PLN</span>
+                <span class="flag comp">Firma</span>
+              </div>
+            </div>
+          </div>
+
+          <button style="padding:11px;border:1px dashed var(--border-2);border-radius:var(--r-sm);color:var(--text-3);font:600 12px var(--f-b);background:transparent">
+            + Pokaż wszystkie 10 firm →
+          </button>
+
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

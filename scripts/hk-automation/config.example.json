@@ -1,0 +1,25 @@
+{
+  "mailbox": {
+    "host": "imap.example.com",
+    "port": 993,
+    "secure": true,
+    "user": "raporty@conradcomfort.pl",
+    "passwordEnv": "HK_AUTOMATION_MAIL_PASSWORD",
+    "folder": "INBOX",
+    "unseenOnly": true,
+    "rememberProcessed": true,
+    "markSeenAfterSuccess": false,
+    "senderAllowList": [],
+    "subjectIncludes": ["raport", "przyjazd", "wyjazd"]
+  },
+  "pollIntervalMinutes": 15,
+  "daysAhead": 5,
+  "dryRun": true,
+  "writeEmptyPlans": false,
+  "outputDir": "C:\\zmiany i raporty\\hk-automation",
+  "statusLogic": {
+    "stayoverMode": "parity",
+    "pgzAfterStayNights": 3,
+    "generateStayovers": true
+  }
+}

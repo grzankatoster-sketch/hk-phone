@@ -6,6 +6,7 @@ import UpdateBanner from "./UpdateBanner";
 import Logo from "./ui/Logo";
 import ScheduleAdminPanel from "./modules/ScheduleAdmin/ScheduleAdminPanel";
 import VouchersPanel from "./modules/Vouchers/VouchersPanel";
+import TeamChat from "./modules/Chat/TeamChat";
 import ReviewsPanel from "./modules/Reviews/ReviewsPanel";
 import AlertsAdminPanel from "./modules/Admin/AlertsAdminPanel";
 import StandingRemindersPanel from "./modules/Admin/StandingRemindersPanel";
@@ -22,6 +23,7 @@ import WikiAdminPanel from "./modules/Admin/WikiAdminPanel";
 import KasaAdminPanel from "./modules/Admin/KasaAdminPanel";
 import WiadomosciPanel from "./modules/Admin/WiadomosciPanel";
 import ParkingPanel from "./modules/Parking/ParkingPanel";
+import HistoriaWorkerPanel from "./modules/Historia/HistoriaPanel";
 import StaliGosciePanel from "./modules/StaliGoscie/StaliGosciePanel";
 import ConfirmModal from "./components/modals/ConfirmModal";
 import GlobalSearchModal from "./components/modals/GlobalSearchModal";
@@ -36,14 +38,18 @@ import SignatureCanvas from "./components/SignatureCanvas";
 import WorkerSidebar from "./components/Rail/WorkerSidebar";
 import AdminSidebarRail from "./components/Rail/AdminSidebarRail";
 import { getFullName } from "./lib/employees";
-import { supabase } from "./lib/supabase";
+import { supabase, supabaseReady } from "./lib/supabase";
+import { pushMirror } from "./lib/cloudSync";
+import { useHKAgent, markRequestHandled } from "./lib/useHKAgent";
+import AgentBot from "./components/HKAgent/AgentBot";
+import { askWiki, triageFault, generateBriefing, polishText, nudgeShiftEnd, llmReady } from "./lib/llm";
 import {
   LogIn, LogOut, Plus, Trash2, ClipboardList, ShieldCheck, BookOpen,
   Search, Settings, History, BellRing, AlertTriangle, X,
   Users, FileText, Download, Cog, Inbox,
   Bell, Calendar, CheckSquare, ArrowLeftRight, Moon, Sun,
   BarChart2, TrendingUp, MessageSquare, RefreshCw, AlertCircle, Send,
-  Eye, EyeOff, Maximize2, Minimize2,
+  Eye, EyeOff, Maximize2, Minimize2, Sparkles, Clock,
 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers, setCustomManagers as persistCustomManagers } from "./lib/storage";
 import { verifyOrCreateAdminPassword, hasAdminPassword, verifyBootstrapPassword, createManagerPassword } from "./lib/adminAuth";
@@ -53,7 +59,7 @@ import {
   defaultEmployees, defaultTasks, getDefaultWikiEntries, emptyCarryOver,
   HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_ALL, TENANT_ID,
 } from "./lib/constants";
-import { fmt, fmtA, todayKey, monthKey, autoDetectShift, shiftFromSchedule, shiftStartMinutes, getScheduleDayEntry } from "./lib/dates";
+import { fmt, fmtA, todayKey, monthKey, parsePlDateTime, autoDetectShift, shiftFromSchedule, shiftStartMinutes, shiftEndDate, getScheduleDayEntry } from "./lib/dates";
 import { normalizeToShift } from "./lib/excel";
 import { pl, plR, normTask, buildShiftFn, buildEmpFn, fmtMoney } from "./lib/format";
 import { mkPDF_header, mkPDF_section, mkPDF_kv, mkPDF_paragraph, mkPDF_item, mkPDF_footer, savePDF } from "./lib/pdf";
@@ -309,6 +315,60 @@ function ToastContainer({toasts,dismiss}){
   );
 }
 
+// Globalny dymek aktualizacji — widoczny dla WSZYSTKICH (pracownik i kierownik),
+// nad każdym panelem. Sterowany stanem auto-updatera z App (update-available / downloaded).
+function GlobalUpdateNotice({state,info,progress,dark,onDownload,onInstall,onDismiss}){
+  if(!window.electronAPI)return null;
+  if(!(state==="available"||state==="downloading"||state==="downloaded"))return null;
+  const d=dark;
+  const muted=d?"var(--dark-text-secondary)":"var(--text-muted)";
+  const border=d?"1px solid var(--dark-border)":"1px solid var(--border-light)";
+  const wrap={position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:9999,
+    width:"min(440px,calc(100vw - 32px))",borderRadius:"var(--radius-md)",
+    boxShadow:"0 10px 40px rgba(0,0,0,.28)",padding:"12px 16px"};
+  return(
+    <AnimatePresence>
+      <motion.div key={state} initial={{opacity:0,y:-16}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-10}} transition={{duration:.22}}>
+        {state==="available"&&(
+          <div style={{...wrap,background:d?"#2a1f00":"#fffbeb",border:d?"1px solid rgba(245,158,11,.4)":"1px solid #fde68a"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontWeight:700,fontSize:13,color:d?"#f5d06a":"#92400e"}}>Dostępna aktualizacja{info?.version?` v${info.version}`:""}</div>
+                <div style={{fontSize:11.5,color:d?"#a08040":"#b45309",marginTop:2}}>Pobierz, aby zainstalować najnowszą wersję.</div>
+              </div>
+              <div style={{display:"flex",gap:8,flexShrink:0}}>
+                <button onClick={onDownload} style={{padding:"6px 14px",borderRadius:6,fontWeight:700,fontSize:12,cursor:"pointer",
+                  background:d?"rgba(245,158,11,.15)":"#fef3c7",border:d?"1px solid rgba(245,158,11,.4)":"1px solid #fde68a",color:d?"#f5d06a":"#92400e"}}>Pobierz</button>
+                <button onClick={onDismiss} style={{padding:"6px 12px",borderRadius:6,fontSize:11,cursor:"pointer",background:"transparent",border,color:muted}}>Później</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {state==="downloading"&&(
+          <div style={{...wrap,background:d?"#0d1e38":"#eff6ff",border:d?"1px solid rgba(88,166,255,.25)":"1px solid #93c5fd"}}>
+            <div style={{fontSize:12,fontWeight:600,color:d?"#B065A0":"#1d4ed8",marginBottom:6}}>Pobieranie aktualizacji… {progress}%</div>
+            <div style={{height:6,background:d?"#1c2a40":"#dbeafe",borderRadius:3}}>
+              <div style={{width:`${progress}%`,height:"100%",background:"#B065A0",borderRadius:3,transition:"width .3s"}}/>
+            </div>
+          </div>
+        )}
+        {state==="downloaded"&&(
+          <div style={{...wrap,background:d?"#0a2a1a":"#f0fdf4",border:d?"1px solid rgba(52,211,153,.4)":"1px solid #6ee7b7"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+              <span style={{fontWeight:700,fontSize:13,color:d?"#34d399":"#047857"}}>✓ Aktualizacja pobrana — gotowa do instalacji</span>
+              <div style={{display:"flex",gap:8,flexShrink:0}}>
+                <button onClick={onInstall} style={{padding:"6px 14px",borderRadius:6,fontWeight:700,fontSize:12,cursor:"pointer",
+                  background:d?"rgba(52,211,153,.15)":"#dcfce7",border:d?"1px solid rgba(52,211,153,.4)":"1px solid #6ee7b7",color:d?"#34d399":"#047857"}}>Zaktualizuj teraz</button>
+                <button onClick={onDismiss} style={{padding:"6px 12px",borderRadius:6,fontSize:11,cursor:"pointer",background:"transparent",border,color:muted}}>Przy zamknięciu</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 function WelcomeOverlayScreen({name,onDone}){
   const [out,setOut]=React.useState(false);
   const onDoneRef=React.useRef(onDone);
@@ -339,6 +399,11 @@ function WelcomeOverlayScreen({name,onDone}){
 }
 
 const IS_DEV_TEST = typeof localStorage !== 'undefined' && localStorage.getItem('dev-test-mode') === '1';
+// Narzędzia testowe (zegar symulowany). Gate WYŁĄCZNIE na import.meta.env.DEV —
+// w `vite build` to stała false, więc cały blok jest usuwany z release (dead-code).
+// Widoczne tylko podczas `npm run dev`. Świadomie BEZ IS_DEV_TEST, by nie trafiło na produkcję.
+const DEV_TOOLS = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+const TEST_CLOCK_KEY = 'reception-test-clock-offset';
 
 // ── Page-title labels for shell topbar (sekcja 2 redesign) ────────────────────
 const WORKER_TAB_LABELS = {
@@ -400,6 +465,13 @@ export default function App(){
   const [isAdmin,setIsAdmin]=useState(false);
   const [showAdminPanel,setShowAdminPanel]=useState(false);
   const [currentManager,setCurrentManager]=useState("");
+  const clearManagerSession=useCallback(()=>{
+    setIsAdmin(false);
+    setShowAdminPanel(false);
+    setCurrentManager("");
+    localStorage.removeItem(STORAGE_KEYS.adminSession);
+    localStorage.removeItem(STORAGE_KEYS.adminUser);
+  },[]);
   // ── Inline login (B4 + B19) ─────────────────────────────────────────────
   const [loginStep,setLoginStep]=useState("name"); // name | admincheck | setup | password | ready
   const [loginPassword,setLoginPassword]=useState("");
@@ -409,9 +481,13 @@ export default function App(){
   const [pendingAutoStart,setPendingAutoStart]=useState(false);
   const [loginShiftSource,setLoginShiftSource]=useState("clock");
   const [schedule,setSchedule]=useState(()=>loadJson(STORAGE_KEYS.schedule,{}));
-  useEffect(()=>{saveJson(STORAGE_KEYS.schedule,schedule);},[schedule]);
+  useEffect(()=>{saveJson(STORAGE_KEYS.schedule,schedule);pushMirror("schedule",schedule);},[schedule]);
+  useEffect(()=>{pushMirror("employees",employees);},[employees]); // rejestr recepcji dla panelu menedżerskiego
+  useEffect(()=>{const r=loadJson(STORAGE_KEYS.empReports,[]);if(r.length)pushMirror("employee_reports",r.slice(0,100));},[]); // notatki służbowe → panel (koordynator/kierownik)
   const [lastView,setLastView]=useState(()=>localStorage.getItem("reception-last-view")||"worker"); // worker | manager
   const [mgrToggleMini,setMgrToggleMini]=useState(()=>localStorage.getItem("reception-mgr-toggle-mini")==="1");
+  const activeManagerName=getCanonicalManagerName(employeeName,customManagers);
+  const canAccessManagerPanel=!!(isAdmin&&activeManagerName&&currentManager===activeManagerName);
   const resolveLoginShift=useCallback((name)=>{
     const emp=name||employeeName; // przekazane imię ma priorytet (stan może być jeszcze niezaktualizowany)
     const currentSchedule=loadJson(STORAGE_KEYS.schedule,schedule);
@@ -532,6 +608,16 @@ export default function App(){
   const [editingEmployeeName,setEditingEmployeeName]=useState("");
   const [wikiEntries,setWikiEntries]=useState(()=>getDefaultWikiEntries());
   const [showWiki,setShowWiki]=useState(false);
+  // Asystent RAG nad Wiki (odpowiada wyłącznie z wpisów Wiki)
+  const [wikiAskQ,setWikiAskQ]=useState("");
+  const [wikiAskAnswer,setWikiAskAnswer]=useState("");
+  const [wikiAskLoading,setWikiAskLoading]=useState(false);
+  const [wikiAskError,setWikiAskError]=useState("");
+  // Briefing przekazania zmiany (streszczenie LLM z danych operacyjnych)
+  const [briefingText,setBriefingText]=useState("");
+  const [briefingLoading,setBriefingLoading]=useState(false);
+  const [briefingError,setBriefingError]=useState("");
+  const [polishingNote,setPolishingNote]=useState(false);
   const [wikiSearch,setWikiSearch]=useState("");
   const [wikiTopic,setWikiTopic]=useState("");
   const [wikiContent,setWikiContent]=useState("");
@@ -542,6 +628,12 @@ export default function App(){
   const [safeConfirmStep,setSafeConfirmStep]=useState(false); // true = pokazuj ekran potwierdzenia sejfu
   const [showEmpReport,setShowEmpReport]=useState(false);
   const [dismissedReminderKeys,setDismissedReminderKeys]=useState([]);
+  // Przypomnienia „do potwierdzenia" (kurier/dostawa) odłożone na później — id→timestamp.
+  // Tylko w pamięci: po godzinie wracają, by „dopytać parę razy" w trakcie zmiany.
+  const [snoozedConfirm,setSnoozedConfirm]=useState({});
+  // Tick co 60 s — żeby odłożone przypomnienia wróciły po wygaśnięciu drzemki.
+  const [nowTick,setNowTick]=useState(0);
+  useEffect(()=>{const t=setInterval(()=>setNowTick(n=>n+1),60000);return()=>clearInterval(t);},[]);
   // Utrwalanie odrzuceń (po deklaracji powyżej — unika TDZ).
   useEffect(()=>{
     if(employeeName&&started)saveJson(dismissStoreKey(employeeName),dismissedReminderKeys);
@@ -553,17 +645,20 @@ export default function App(){
   const [showAuditLog,setShowAuditLog]=useState(false);
   const [shiftStartTime,setShiftStartTime]=useState(null);
   const [datedReminders,setDatedReminders]=useState([]);
-  const [newReminderText,setNewReminderText]=useState("");
   const [newReminderShift,setNewReminderShift]=useState("poranna");
   const [newReminderDate,setNewReminderDate]=useState(todayKey());
   const [reminderMode,setReminderMode]=useState("general");
   const [reminderEntryType,setReminderEntryType]=useState("reminder"); // reminder | task
+  // ── Kompozer „Przekaż zmianę" v2 (Wersja A) — jedno pole, 2 osie wyboru ──
+  const [entryKind,setEntryKind]=useState("task");   // task | note
+  const [entryWhen,setEntryWhen]=useState("next");   // next | dated | pending
   const [toasts,setToasts]=useState([]);
   const [confirmDialog,setConfirmDialog]=useState(null);
   const [liveTime,setLiveTime]=useState("");
   const [shiftElapsed,setShiftElapsed]=useState("");
   const [showSearch,setShowSearch]=useState(false);
   const [paymentCorrections,setPaymentCorrections]=useState(()=>loadJson(STORAGE_KEYS.paymentCorrections,[]));
+  useEffect(()=>{pushMirror("payment_corrections",paymentCorrections);},[paymentCorrections]);
   const [savedReports,setSavedReports]=useState(()=>loadJson(STORAGE_KEYS.reports,[]));
   const [showPaymentForm,setShowPaymentForm]=useState(false);
   const [correctionFilter,setCorrectionFilter]=useState("wszystkie");
@@ -592,6 +687,38 @@ export default function App(){
   const [pcSignature,setPcSignature]=useState(null);
   const [workerDark,setWorkerDark]=useState(()=>localStorage.getItem(STORAGE_KEYS.workerDark)!=="false");
   const [hkDate,setHkDate]=useState(()=>new Date().toISOString().split("T")[0]);
+
+  // ─── Agent AI (poziom aplikacji): wykrywa propozycje zamian / prośby o pokój /
+  // usterki / start-koniec pilnych pokoi. Bot (FAB) stale w HK, dymek w każdym oknie.
+  // Ref hkData → klasyfikacja pilnych pokoi (wyjazdy) bez re-subskrypcji efektu.
+  const hkDataRef = React.useRef({});
+  const {
+    suggestions: agentSuggestions, requests: agentRequests, notices: agentNotices,
+    attention: agentAttention, dismissAttention: dismissAgentAttention,
+    dismissSwap: dismissAgentSwap, dismissNotice: dismissAgentNotice,
+  } = useHKAgent(hkDate, supabaseReady && started, hkDataRef);
+  const [botOpenSignal, setBotOpenSignal] = useState(0);
+  // Dymek bota łączy DWA źródła alarmu: zdarzenia HK (agentAttention z useHKAgent)
+  // oraz przypomnienia o zadaniach recepcji z godziną (niżej). Najnowszy wygrywa —
+  // dzięki temu np. „pora na raport dobowy" wyskoczy dymkiem nawet poza widokiem HK.
+  const [botAttention, setBotAttention] = useState(null);
+  React.useEffect(() => { if (agentAttention) setBotAttention(agentAttention); }, [agentAttention]);
+  const goToAgentMonitor = React.useCallback(() => {
+    setShowAdminPanel(false);
+    setWorkerTab("hk");
+    dismissAgentAttention();
+    setBotAttention(null);
+    setBotOpenSignal(s => s + 1);
+    // pozwól zamontować HKPanel/HKLivePanel zanim wyemitujemy event
+    setTimeout(() => window.dispatchEvent(new CustomEvent("cc-agent-focus")), 60);
+  }, [dismissAgentAttention]);
+  React.useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onAgentNavigate) return;
+    const off = api.onAgentNavigate(() => goToAgentMonitor());
+    return () => { if (typeof off === "function") off(); else api.removeAgentNavigate?.(); };
+  }, [goToAgentMonitor]);
+
   const [hkStaff,setHkStaff]=useState(()=>{
     localStorage.removeItem("hk-staff");
     return [];
@@ -609,12 +736,14 @@ export default function App(){
     });
     return preserved;
   });
+  // Świeży hkData dla agenta (klasyfikacja pilnych pokoi — wyjazdy W/WP).
+  useEffect(()=>{hkDataRef.current=hkData;},[hkData]);
   // Sync hkData → Supabase hk_plan so the web live panel can load assignments
   useEffect(()=>{
     const buildPlanPayload=(date,data)=>{
       if(!data||!date||Object.keys(data).length===0)return null;
       const rt={};
-      HK_ALL.forEach(r=>{rt[r.no]=r.type;});
+      HK_ALL.forEach(r=>{rt[r.no]=data[r.no]?.roomType||r.type;});
       const asgn={};const pmAsgn={};const pmRt={};const plannedRooms=[];
       Object.entries(data).forEach(([no,rd])=>{
         const needsClean=rd.status==="W"||rd.status==="WP"||rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs;
@@ -643,7 +772,22 @@ export default function App(){
       if(!payload)return;
       const {plannedRooms,...planRow}=payload;
       supabase.from("hk_plan").upsert(planRow,{onConflict:"date"});
-      if(plannedRooms&&plannedRooms.length)supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true});
+      if(plannedRooms&&plannedRooms.length){
+        // Nowe pokoje: wstaw bez nadpisywania statusu (ignoreDuplicates).
+        supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true});
+        // Ręczna zmiana przydziału w planie: skoryguj kolumnę worker na ISTNIEJĄCYCH
+        // pokojach (ignoreDuplicates jej nie rusza), zachowując status/vacated. Dzięki
+        // temu ręczne przenoszenie działa tak samo jak agent — telefony i monitor
+        // przypisują pokój właściwej osobie. Tylko aktywny dzień (telefony pokazują
+        // dziś; przyszłe dni dostają poprawny worker już przy wstawianiu).
+        if(planRow.date===hkDate){
+          const byWorker={};
+          plannedRooms.forEach(r=>{if(r.worker){(byWorker[r.worker]=byWorker[r.worker]||[]).push(r.room);}});
+          Object.entries(byWorker).forEach(([worker,rms])=>{
+            supabase.from("hk_rooms").update({worker}).eq("date",planRow.date).in("room",rms);
+          });
+        }
+      }
     };
     syncPayload(buildPlanPayload(hkDate,hkData));
     const api=window.electronAPI;
@@ -684,7 +828,7 @@ export default function App(){
     const buildPayload=(date,data)=>{
       if(!data||!date||Object.keys(data).length===0)return null;
       const rt={};
-      HK_ALL_LOCAL.forEach(r=>{rt[r.no]=r.type;});
+      HK_ALL_LOCAL.forEach(r=>{rt[r.no]=data[r.no]?.roomType||r.type;});
       const asgn={};const pmAsgn={};const pmRt={};const plannedRooms=[];
       Object.entries(data).forEach(([no,rd])=>{
         const needsClean=rd.status==="W"||rd.status==="WP"||rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs;
@@ -745,14 +889,15 @@ export default function App(){
   const [updateState,setUpdateState]=useState("idle"); // idle|available|downloading|downloaded|error
   const [updateProgress,setUpdateProgress]=useState(0);
   const [updateError,setUpdateError]=useState("");
+  const [updateNoticeDismissed,setUpdateNoticeDismissed]=useState(false); // ukrycie globalnego dymka "Później"
 
   useEffect(()=>{
     const api=window.electronAPI;
     if(!api)return;
-    api.onUpdateAvailable(info=>{setUpdateInfo(info);setUpdateState("available");});
+    api.onUpdateAvailable(info=>{setUpdateInfo(info);setUpdateState("available");setUpdateNoticeDismissed(false);});
     api.onUpdateNotAvailable(()=>{setUpdateState("idle");showToast("Masz najnowszą wersję aplikacji.","success",4000);});
     api.onUpdateProgress(p=>{setUpdateState("downloading");setUpdateProgress(p.percent||0);});
-    api.onUpdateDownloaded(()=>{setUpdateState("downloaded");showToast("Aktualizacja pobrana — kliknij 'Zainstaluj' w panelu.","success",8000);});
+    api.onUpdateDownloaded(()=>{setUpdateState("downloaded");setUpdateNoticeDismissed(false);showToast("Aktualizacja pobrana — kliknij 'Zainstaluj'.","success",8000);});
     api.onUpdateError(msg=>{setUpdateState("error");setUpdateError(msg);});
     return()=>api.removeUpdateListeners?.();
   },[]);
@@ -764,6 +909,14 @@ export default function App(){
     if(!IS_DEV_TEST||testDateOffset===0)return base;
     const d=new Date(base);d.setDate(d.getDate()+testDateOffset);return d;
   };
+  // ── Zegar testowy (DEV) — symulowany „teraz" przesunięty o offset w ms ───────
+  // Wpływa TYLKO na logikę końca zmiany (start zmiany, przypomnienie, strażnik).
+  const [testClockOffset,setTestClockOffset]=useState(()=>{
+    if(!DEV_TOOLS)return 0;
+    const v=parseInt(localStorage.getItem(TEST_CLOCK_KEY)||"0",10);return Number.isFinite(v)?v:0;
+  });
+  const getNow=useCallback(()=>new Date(Date.now()+(DEV_TOOLS?testClockOffset:0)),[testClockOffset]);
+  const applyTestClockOffset=(ms)=>{setTestClockOffset(ms);try{localStorage.setItem(TEST_CLOCK_KEY,String(ms));}catch{/* */}};
 
   // ── Stała kasowa ──────────────────────────────────────────────────────────────
   const STALA_KASOWA_KEY="reception-stala-kasowa";
@@ -776,6 +929,18 @@ export default function App(){
   const [safeDepositKW,setSafeDepositKW]=useState("");
   const [safeDepositAmount,setSafeDepositAmount]=useState("");
   const [postDepositKW,setPostDepositKW]=useState(""); // płatności gotówkowe PO wpłacie do sejfu
+  // Domyślnie kwota do sejfu = przyrost KW (nie wpisuje się jej drugi raz). Override gdy true.
+  const [safeDepositManual,setSafeDepositManual]=useState(false);
+  const [showPostDeposit,setShowPostDeposit]=useState(false); // zwijana opcja „płatność po 24:00"
+  // ── Strażnik sejfu + przypomnienie końca zmiany (agent) ─────────────────────
+  // Wpłata do sejfu zarejestrowana w tej sesji (ustawiane w handleSafeDeposit).
+  // Nocna/wieczorowa nie może opuścić zmiany dopóki to nie jest true.
+  const [safeDepositRegistered,setSafeDepositRegistered]=useState(false);
+  const [safeGuardOpen,setSafeGuardOpen]=useState(false);
+  const [shiftEndReminderOpen,setShiftEndReminderOpen]=useState(false);
+  const [shiftEndReminderText,setShiftEndReminderText]=useState("");
+  const [shiftEndFacts,setShiftEndFacts]=useState(null);
+  const shiftEndFiredRef=useRef(false);
   const [stalaDiscrepancyInput,setStalaDiscrepancyInput]=useState("");
   const [showStalaDiscrepancyForm,setShowStalaDiscrepancyForm]=useState(false);
   const [showSuccessAnim,setShowSuccessAnim]=useState(false);
@@ -783,7 +948,7 @@ export default function App(){
   const [managerNewStala,setManagerNewStala]=useState("");
 
   // dark = admin panel OR worker dark mode
-  const dark=(isAdmin&&showAdminPanel)?adminDark:workerDark;
+  const dark=(canAccessManagerPanel&&showAdminPanel)?adminDark:workerDark;
 
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.workerDark,workerDark);},[workerDark]);
   useEffect(()=>{localStorage.setItem("hk-staff",JSON.stringify(hkStaff));},[hkStaff]);
@@ -799,12 +964,12 @@ export default function App(){
   // 2. html.theme-dark / html.theme-light (nowy mechanizm — sekcja 1 tokeny)
   // 3. localStorage["cc.theme"] (persistencja, czytana przy starcie aplikacji)
   useEffect(()=>{
-    const dark=(isAdmin&&showAdminPanel)?adminDark:workerDark;
+    const dark=(canAccessManagerPanel&&showAdminPanel)?adminDark:workerDark;
     document.body.classList.toggle("app-dark",dark);
     document.documentElement.classList.toggle("theme-dark",dark);
     document.documentElement.classList.toggle("theme-light",!dark);
     try{localStorage.setItem("cc.theme",dark?"dark":"light");}catch{}
-  },[isAdmin,showAdminPanel,adminDark,workerDark]);
+  },[canAccessManagerPanel,showAdminPanel,adminDark,workerDark]);
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.soundEnabled,soundEnabled);},[soundEnabled]);
 
   const showToast=useCallback((msg,type="info",duration=4500)=>{
@@ -813,6 +978,48 @@ export default function App(){
   },[]);
   const dismissToast=useCallback((id)=>setToasts(prev=>prev.filter(t=>t.id!==id)),[]);
   const askConfirm=useCallback((message,onConfirm)=>setConfirmDialog({message,onConfirm}),[]);
+
+  // ─── Agent: Zastosuj/Odrzuć z globalnego bota (logika lustrzana do HKLivePanel).
+  // Przydziały poranne wyliczamy z hkData (źródło prawdy desktopu); fallback: hk_plan.
+  const applyAgentSwap=useCallback(async(s)=>{
+    if(!supabase)return;
+    const date=hkDate;
+    let assignments={};
+    Object.entries(hkDataRef.current||{}).forEach(([no,rd])=>{
+      if(!rd?.person)return;
+      if(rd.status==="PG"||rd.status==="PGZ"||rd.br||rd.zs)return;
+      (assignments[rd.person]=assignments[rd.person]||[]).push(no);
+    });
+    if(Object.keys(assignments).length===0){
+      const{data:plan}=await supabase.from("hk_plan").select("assignments").eq("date",date).maybeSingle();
+      assignments={...(plan?.assignments||{})};
+    }
+    const fromRooms=(assignments[s.from]||[]).filter(r=>!s.rooms.includes(r));
+    const toRooms=[...new Set([...(assignments[s.to]||[]),...s.rooms])];
+    const newAssignments={...assignments,[s.from]:fromRooms,[s.to]:toRooms};
+    const{error}=await supabase.from("hk_plan")
+      .update({assignments:newAssignments,updated_at:new Date().toISOString()}).eq("date",date);
+    if(error){showToast("Błąd zamiany: "+error.message,"error");return;}
+    await Promise.all(s.rooms.map(no=>
+      supabase.from("hk_rooms").upsert({date,room:no,worker:s.to,status:"W"},{onConflict:"date,room"})));
+    await supabase.from("hk_logs").insert({
+      date,log_time:new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}),
+      worker:employeeName||"Recepcja",action:"reassign",room:null,extra:`${s.from}→${s.to}: ${s.rooms.join(", ")}`,
+    });
+    setHkData(prev=>{
+      if(!prev||Object.keys(prev).length===0)return prev;
+      const next={...prev};
+      s.rooms.forEach(no=>{if(next[no])next[no]={...next[no],person:s.to};});
+      return next;
+    });
+    dismissAgentSwap(s);
+    showToast(`Przeniesiono ${s.rooms.length} pok.: ${s.from} → ${s.to}`,"success");
+  },[hkDate,employeeName,showToast,dismissAgentSwap]);
+  const applyAgentRequest=useCallback(async({log,suggestion})=>{
+    if(suggestion)await applyAgentSwap(suggestion);
+    markRequestHandled(hkDate,log.id);
+  },[applyAgentSwap,hkDate]);
+  const dismissAgentRequest=useCallback(({log})=>{markRequestHandled(hkDate,log.id);},[hkDate]);
 
   // Keyboard shortcuts + lock timer
   // Plain digits 1-9 mapują na sidebar items (workerSidebar nav), zgodnie z kbd labels.
@@ -878,7 +1085,11 @@ export default function App(){
     setWikiEntries(loadedWiki);setSelectedWikiId(loadedWiki[0]?.id||null);
     setAdminActivityLog(loadJson(STORAGE_KEYS.adminLog,[]));
     setEmployeeActivityLog(loadJson(STORAGE_KEYS.employeeLog,[]));
-    setDatedReminders(loadJson(STORAGE_KEYS.datedReminders,[]));
+    // Backfill brakujących/duplikujących się id — stare wpisy bez id powodowały,
+    // że usunięcie jednego (id=undefined) kasowało WSZYSTKIE bez id naraz.
+    (()=>{const raw=loadJson(STORAGE_KEYS.datedReminders,[]);const seen=new Set();let changed=false;
+      const fixed=raw.map(r=>{if(!r.id||seen.has(r.id)){changed=true;const id=crypto.randomUUID();seen.add(id);return{...r,id};}seen.add(r.id);return r;});
+      setDatedReminders(fixed);if(changed)saveJson(STORAGE_KEYS.datedReminders,fixed);})();
     // Admin session intentionally NOT restored on restart — must log in each time
     localStorage.removeItem(STORAGE_KEYS.adminSession);
     localStorage.removeItem(STORAGE_KEYS.adminUser);
@@ -971,6 +1182,56 @@ export default function App(){
   // Kwota w sejfie dla następnej zmiany (zapisywana do localStorage)
   const SAFE_KEY="reception-safe-amount";
 
+  // ── Agent: przypomnienie 20 min przed końcem zmiany ─────────────────────────
+  // Liczby/decyzje deterministyczne (tu), LLM tylko redaguje zdanie i degraduje
+  // się do tekstu sztywnego. Nocna/wieczorowa = wymagana wpłata do sejfu.
+  const requiresSafeDeposit=selectedShift==="nocna"||selectedShift==="wieczorowa";
+  const buildShiftEndFacts=useCallback((minutesLeft)=>({
+    shiftLabel:SHIFT_LABELS_PL[selectedShift]||selectedShift,
+    minutesLeft,
+    cashChecked:!!cashClosingDocumentsAmount.trim(),
+    safeRequired:requiresSafeDeposit,
+    safeDone:safeDepositRegistered,
+    tasksDone:currentTasks.filter((_,i)=>completed[i]).length,
+    tasksTotal:currentTasks.length,
+    missing:missingBaseTasks.map(m=>m.task.text),
+  }),[selectedShift,cashClosingDocumentsAmount,requiresSafeDeposit,safeDepositRegistered,currentTasks,completed,missingBaseTasks]);
+  const fallbackShiftEndText=(f)=>{
+    const parts=[`Za ~${f.minutesLeft} min koniec zmiany.`];
+    parts.push(f.cashChecked?"Stan kasy sprawdzony.":"Sprawdź stan kasy (wpisz KW końcową).");
+    if(f.safeRequired&&!f.safeDone)parts.push("Pamiętaj o zarejestrowaniu wpłaty do sejfu PRZED zakończeniem zmiany.");
+    parts.push(`Zaznaczone zadania: ${f.tasksDone}/${f.tasksTotal}.`);
+    return parts.join(" ");
+  };
+  const fireShiftEndReminder=useCallback((minutesLeft)=>{
+    const facts=buildShiftEndFacts(minutesLeft);
+    setShiftEndFacts(facts);
+    setShiftEndReminderText(fallbackShiftEndText(facts));
+    setShiftEndReminderOpen(true);
+    if(llmReady){
+      nudgeShiftEnd(facts).then(t=>{if(t&&t.trim())setShiftEndReminderText(t.trim());}).catch(()=>{});
+    }
+  },[buildShiftEndFacts]);
+  // Reset flagi „pokazano" przy zmianie sesji/zmiany.
+  useEffect(()=>{shiftEndFiredRef.current=false;},[selectedShift,shiftStartTime]);
+  useEffect(()=>{
+    if(!started||!shiftStartTime||!selectedShift)return;
+    const check=()=>{
+      if(shiftEndFiredRef.current)return;
+      const end=shiftEndDate(selectedShift,shiftStartTime);
+      if(!end)return;
+      const msLeft=end.getTime()-getNow().getTime();
+      // Okno: od 20 min przed końcem do 5 min po (gdyby panel był uśpiony).
+      if(msLeft<=15*60*1000&&msLeft>-5*60*1000){
+        shiftEndFiredRef.current=true;
+        fireShiftEndReminder(Math.max(0,Math.round(msLeft/60000)));
+      }
+    };
+    check();
+    const iv=setInterval(check,30000);
+    return()=>clearInterval(iv);
+  },[started,shiftStartTime,selectedShift,fireShiftEndReminder,getNow]);
+
   const overdueTasks=useMemo(()=>{
     if(!started||!shiftStartTime)return[];
     const now=new Date();const tk=todayKey(now);
@@ -983,10 +1244,59 @@ export default function App(){
     });
   },[started,shiftStartTime,currentTasks,completed,dismissedReminderKeys,selectedShift]);
 
+  // Te same zaległe zadania z godziną podajemy też agentowi-botowi (prawy róg) jako
+  // notices — by przypomnienie było widoczne w popoverze bota i dało się je odhaczyć
+  // („OK" w bocie = ten sam klucz dismissedReminderKeys co „Zamknij" na karcie).
+  // id koduje pełny klucz odrzucenia (po „task:"), żeby uniknąć parsowania „HH:MM".
+  const taskReminderNotices=useMemo(()=>{
+    const tk=todayKey();
+    return overdueTasks.map(t=>{
+      const dk=`${tk}-${selectedShift}-${t.id}-${t.scheduledTime}`;
+      const[h,m]=String(t.scheduledTime).split(":").map(Number);
+      const sd=new Date();sd.setHours(h||0,m||0,0,0);
+      return{id:`task:${dk}`,kind:"task",ts:sd.toISOString(),
+        text:`⏰ Pora na zadanie: ${t.text}${t.scheduledTime?` — zaplanowane na ${t.scheduledTime}`:""}`};
+    });
+  },[overdueTasks,selectedShift]);
+
+  // Gdy nadejdzie pora NOWEGO zadania → dymek bota + powiadomienie Windows (gdy okno
+  // nieaktywne). Seed na pierwszym przebiegu NIE alarmuje (zadania już zaległe przy
+  // wejściu pokazuje sama karta), potem każdy świeży klucz odpala raz.
+  const seenTaskRemRef=React.useRef(null);
+  useEffect(()=>{
+    if(!started){seenTaskRemRef.current=null;return;}
+    const keys=new Set(taskReminderNotices.map(n=>n.id));
+    if(seenTaskRemRef.current===null){seenTaskRemRef.current=keys;return;}
+    const fresh=taskReminderNotices.find(n=>!seenTaskRemRef.current.has(n.id));
+    seenTaskRemRef.current=new Set([...seenTaskRemRef.current,...keys]);
+    if(fresh){
+      setBotAttention({kind:"task",text:fresh.text});
+      if((document.visibilityState!=="visible"||!document.hasFocus())&&window.electronAPI?.notify)
+        window.electronAPI.notify({title:"⏰ Przypomnienie o zadaniu",body:fresh.text,nav:"hk-monitor"});
+    }
+  },[taskReminderNotices,started]);
+
+  // Przypomnienia „zdarzeniowe" (kurier, dostawa, serwis…) — wymagają potwierdzenia
+  // „czy było?”, a nie zwykłego zamknięcia. Wykrywane po treści.
+  const CONFIRMABLE_RE=/kurier|przesy[łl]k|paczk|dostaw|odbi[oó]r|awizo|serwis|technik|monter|wizyt|dow[oó]z|listonosz|poczt/i;
+  const isConfirmableReminder=useCallback((r)=>r?.entryType!=="task"&&CONFIRMABLE_RE.test(r?.text||""),[]);
+
   const todayDatedReminders=useMemo(()=>{
     if(!started||!selectedShift||!currentSessionDate)return[];
-    return datedReminders.filter(r=>r.targetDate===currentSessionDate&&(!r.targetShift||r.targetShift===selectedShift)&&!dismissedReminderKeys.includes(`dated-${r.id}`));
-  },[started,selectedShift,currentSessionDate,datedReminders,dismissedReminderKeys]);
+    return datedReminders.filter(r=>!r.confirmedAt&&!isConfirmableReminder(r)&&r.targetDate===currentSessionDate&&(!r.targetShift||r.targetShift===selectedShift)&&!dismissedReminderKeys.includes(`dated-${r.id}`));
+  },[started,selectedShift,currentSessionDate,datedReminders,dismissedReminderKeys,isConfirmableReminder]);
+
+  // Sprawy do potwierdzenia: na dziś LUB zaległe (przeszły termin bez odhaczenia),
+  // niepotwierdzone, dla tej zmiany, pomijając te odłożone w ostatniej godzinie.
+  const dueConfirmReminders=useMemo(()=>{
+    if(!started||!selectedShift||!currentSessionDate)return[];
+    void nowTick; // zależność czasu — wymusza ponowne sprawdzenie drzemek
+    const now=Date.now();
+    const floorKey=todayKey(new Date(Date.now()-14*24*60*60*1000)); // zaległe max 14 dni wstecz
+    return datedReminders
+      .filter(r=>isConfirmableReminder(r)&&!r.confirmedAt&&r.targetDate>=floorKey&&r.targetDate<=currentSessionDate&&(!r.targetShift||r.targetShift===selectedShift)&&!(snoozedConfirm[r.id]&&now-snoozedConfirm[r.id]<60*60*1000))
+      .sort((a,b)=>(a.targetDate||"").localeCompare(b.targetDate||""));
+  },[started,selectedShift,currentSessionDate,datedReminders,snoozedConfirm,nowTick,isConfirmableReminder]);
 
   // Licznik usterek (aktywne)
   const [faultsVersion,setFaultsVersion]=useState(0); // trigger re-count po zmianie
@@ -1002,6 +1312,27 @@ export default function App(){
     return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);};
   },[]);
 
+  const [inboxVersion,setInboxVersion]=useState(0);
+
+  // Licznik nieprzeczytanych wiadomosci czatu zespolowego (B5)
+  const [chatTick,setChatTick]=useState(0);
+  const chatUnread=useMemo(()=>{
+    const msgs=loadJson("reception-team-messages",[]);
+    const seen=loadJson("reception-team-lastseen",{});
+    const me=employeeName||currentManager||"Recepcja";
+    return msgs.filter(m=>{
+      const ch=m.channel||"team";
+      const since=seen[ch]?new Date(seen[ch]).getTime():0;
+      return m.sender!==me && new Date(m.created_at).getTime()>since;
+    }).length;
+  },[chatTick,employeeName,currentManager,workerTab,adminTab]);
+  useEffect(()=>{
+    const onStorage=(e)=>{if(e.key==="reception-team-messages"||e.key==="reception-team-lastseen")setChatTick(t=>t+1);};
+    window.addEventListener("storage",onStorage);
+    const poll=setInterval(()=>setChatTick(t=>t+1),15000);
+    return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);};
+  },[]);
+
   // Licznik Informacji (Inbox) — aktywne alerty + stale + nowe wiki
   const inboxCount=useMemo(()=>{
     const nowMs=Date.now();
@@ -1012,12 +1343,10 @@ export default function App(){
     }).length;
     const reminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false).length;
     const wikiLastSeen=parseInt(localStorage.getItem(`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`)||"0");
-    const newWiki=wikiEntries.filter(w=>{
-      const u=w.updatedAt?new Date(w.updatedAt).getTime():0;
-      return u>wikiLastSeen;
-    }).length;
-    return alerts+reminders+newWiki;
-  },[wikiEntries,employeeName,selectedShift,started]);
+    const newWiki=wikiEntries.filter(w=>parsePlDateTime(w.updatedAt)>wikiLastSeen).length;
+    const pending=loadJson(STORAGE_KEYS.pendingItems,[]).filter(p=>!p.resolved).length;
+    return alerts+reminders+newWiki+pending;
+  },[wikiEntries,employeeName,selectedShift,started,inboxVersion]);
 
   const futureDatedReminders=useMemo(()=>{
     const today=todayKey();
@@ -1115,7 +1444,7 @@ export default function App(){
     const alertsHash=contentHash(relevantAlerts);
     const hasReminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false).length>0;
     const wikiLastSeen=parseInt(localStorage.getItem(`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`)||"0");
-    const hasNewWiki=wikiEntries.filter(w=>(w.updatedAt?new Date(w.updatedAt).getTime():0)>wikiLastSeen).length>0;
+    const hasNewWiki=wikiEntries.filter(w=>parsePlDateTime(w.updatedAt)>wikiLastSeen).length>0;
     if(!hasAlerts)localStorage.setItem(`${ackBase}-alerts`,"1");
     if(!hasReminders)localStorage.setItem(`${ackBase}-standing`,"1");
     if(!hasNewWiki)localStorage.setItem(`${ackBase}-wiki`,"1");
@@ -1142,7 +1471,7 @@ export default function App(){
     const updated=[{id:crypto.randomUUID(),employee:employeeName,shift:shiftKey,loginAt:fmtA(),logoutAt:""},...employeeActivityLog];
     setEmployeeActivityLog(updated);saveJson(STORAGE_KEYS.employeeLog,updated);setCurrentSessionDate(todayKey());setDismissedReminderKeys(loadJson(dismissStoreKey(employeeName),[]));
     const cleanedCarry={...carryOverTasks,[shiftKey]:(carryOverTasks[shiftKey]||[]).filter(t=>!t.done)};
-    setCarryOverTasks(cleanedCarry);saveJson(STORAGE_KEYS.carry,cleanedCarry);setShiftStartTime(new Date());setStarted(true);setWorkerTab("zadania");
+    setCarryOverTasks(cleanedCarry);saveJson(STORAGE_KEYS.carry,cleanedCarry);setShiftStartTime(getNow());setStarted(true);setWorkerTab("zadania");
     setCashOpeningAmount(String(stalaKasowa));
     setStalaPotwierdzono(false);setStalaNiezgodnosc(false);
     // Sprawdź płatności po wpłacie nocnej
@@ -1162,7 +1491,7 @@ export default function App(){
   };
   const logManagerLogin=(manager)=>{const updated=[{id:crypto.randomUUID(),manager,loginAt:fmtA(),logoutAt:""},...adminActivityLog];setAdminActivityLog(updated);saveJson(STORAGE_KEYS.adminLog,updated);addAudit(manager,"Logowanie do panelu kierownika");const unresolved=loadJson(STORAGE_KEYS.incidentLog,[]).filter(i=>!i.resolved);if(unresolved.length>0){setTimeout(()=>showToast(`⚠ ${unresolved.length} niezakończon${unresolved.length===1?"a":"ych"} zmian${unresolved.length===1?"a":""} bez raportu — sprawdź zakładkę Historia.`,"warning",10000),600);}const pendingC=loadJson(STORAGE_KEYS.paymentCorrections,[]).filter(c=>!c.done);if(pendingC.length>0){setTimeout(()=>showToast(`${pendingC.length} korekta(-e) płatności oczekuje — zakładka Korekty.`,"warning",8000),1800);}};
 
-  const handleAdminLogout=()=>{addAudit(currentManager,"Wylogowanie z panelu kierownika");const updated=adminActivityLog.map((item,i)=>i===0&&!item.logoutAt?{...item,logoutAt:fmtA()}:item);setAdminActivityLog(updated);saveJson(STORAGE_KEYS.adminLog,updated);setIsAdmin(false);setShowAdminPanel(false);setCurrentManager("");setShowWiki(false);setEditingWikiId(null);setWikiTopic("");setWikiContent("");localStorage.removeItem(STORAGE_KEYS.adminSession);localStorage.removeItem(STORAGE_KEYS.adminUser);};
+  const handleAdminLogout=()=>{addAudit(currentManager,"Wylogowanie z panelu kierownika");const updated=adminActivityLog.map((item,i)=>i===0&&!item.logoutAt?{...item,logoutAt:fmtA()}:item);setAdminActivityLog(updated);saveJson(STORAGE_KEYS.adminLog,updated);clearManagerSession();setShowWiki(false);setEditingWikiId(null);setWikiTopic("");setWikiContent("");};
   const handleCheckUpdate=async()=>{
     if(!window.electronAPI?.checkForUpdates){showToast("Aktualizacje działają tylko w zainstalowanej wersji.","info");return;}
     setUpdateState("idle");setUpdateError("");
@@ -1221,27 +1550,54 @@ export default function App(){
   const removeTask=(shift,index)=>{const txt=tasks[shift]?.[index]?.text||"";const updated={...tasks,[shift]:(tasks[shift]||[]).filter((_,i)=>i!==index)};setTasks(updated);saveJson(STORAGE_KEYS.tasks,updated);if(currentManager)addAudit(currentManager,`Usuniecie zadania ze zmiany "${shift}": "${txt}"`);};
   const toggleTask=(index,checked)=>setCompleted(prev=>({...prev,[index]:!!checked}));
   const addAdditionalTask=()=>{if(!additionalTaskInput.trim()||!employeeName||!selectedShift)return;const updated=[{id:crypto.randomUUID(),text:additionalTaskInput.trim(),shift:selectedShift,employee:employeeName,sessionDate:currentSessionDate,createdAt:fmt()},...extraTasksLog];setExtraTasksLog(updated);saveJson(STORAGE_KEYS.extra,updated);setAdditionalTaskInput("");showToast("Zadanie dodatkowe zapisane.","success");};
-  const addCarryOverTask=()=>{if(!shiftNoteInput.trim()||!carryOverTarget||!employeeName||!selectedShift)return;const ne={id:crypto.randomUUID(),text:shiftNoteInput.trim(),fromShift:selectedShift,createdBy:employeeName,createdAt:fmt(),done:false,doneBy:""};const updated={...carryOverTasks,[carryOverTarget]:[...(carryOverTasks[carryOverTarget]||[]),ne]};setCarryOverTasks(updated);saveJson(STORAGE_KEYS.carry,updated);
-    const logEntry={id:crypto.randomUUID(),type:"task",from:employeeName,fromShift:selectedShift,toShift:carryOverTarget,text:shiftNoteInput.trim(),createdAt:fmtA()};
-    const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
-    setShiftNoteInput("");showToast(`Zadanie przekazane do zmiany ${SHIFT_SHORT_LABELS[carryOverTarget]}.`,"success");};
   const markCarryOverDone=(index)=>{if(!selectedShift)return;const updated={...carryOverTasks,[selectedShift]:(carryOverTasks[selectedShift]||[]).map((t,i)=>i===index?{...t,done:!t.done,doneBy:!t.done?employeeName:""}:t)};setCarryOverTasks(updated);saveJson(STORAGE_KEYS.carry,updated);};
-  const addGeneralReminder=(entryType="reminder")=>{
-    if(!newReminderText.trim())return;
-    const n={id:crypto.randomUUID(),text:newReminderText.trim(),createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),targetShift:null,entryType};
-    const updated=[n,...globalNotifications];
-    setGlobalNotifications(updated);saveJson(STORAGE_KEYS.globalNotifications,updated);
-    const logEntry={id:crypto.randomUUID(),type:entryType,from:employeeName||currentManager||"recepcja",fromShift:selectedShift||"—",toShift:"wszystkie",text:newReminderText.trim(),createdAt:fmtA()};
+  const deleteDatedReminder=(target)=>{const updated=datedReminders.filter(r=>typeof target==="object"?r!==target:r.id!==target);setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);showToast("Przypomnienie usunięte.","info");};
+  // ── Oczekujące / Do odebrania (bez terminu) — rejestr w zakładce Informacje ──
+  const addPendingItem=(text)=>{
+    const t=(text||"").trim();if(!t)return;
+    const item={id:crypto.randomUUID(),text:t,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),resolved:false};
+    const list=[item,...loadJson(STORAGE_KEYS.pendingItems,[])];saveJson(STORAGE_KEYS.pendingItems,list);
+    const logEntry={id:crypto.randomUUID(),type:"pending",from:item.createdBy,fromShift:selectedShift||"—",toShift:"oczekujące",text:t,createdAt:fmtA()};
     const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
-    setNewReminderText("");showToast(entryType==="task"?"Ogólne zadanie dodane.":"Ogólne powiadomienie dodane — widoczne na ekranie startowym.","success");
+    showToast("Dodano do Oczekujących (Informacje → Oczekujące).","success");
   };
-
-  const addDatedReminder=(entryType="reminder")=>{if(!newReminderText.trim()||!newReminderDate){showToast("Wypełnij treść i datę.","error");return;}const isAdminCreated=!!(isAdmin&&showAdminPanel);const ne={id:crypto.randomUUID(),text:newReminderText.trim(),targetShift:newReminderShift||null,targetDate:newReminderDate,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),entryType,source:isAdminCreated?"admin":"worker"};const updated=[ne,...datedReminders];setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);
-    const logEntry={id:crypto.randomUUID(),type:entryType,from:employeeName||currentManager||"recepcja",fromShift:selectedShift||"—",toShift:newReminderShift,text:newReminderText.trim(),targetDate:newReminderDate,createdAt:fmtA()};
-    const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
-    setNewReminderText("");showToast(entryType==="task"?`Zadanie ustawione na ${newReminderDate}.`:`Przypomnienie ustawione na ${newReminderDate} (${newReminderShift?SHIFT_SHORT_LABELS[newReminderShift]:"wszystkie zmiany"}).`,"success");};
-  const deleteDatedReminder=(id)=>{const updated=datedReminders.filter(r=>r.id!==id);setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);showToast("Przypomnienie usunięte.","info");};
+  // ── Kompozer v2: jedno pole + dwie osie (Rodzaj × Kiedy) → właściwy magazyn ──
+  const addUnifiedEntry=()=>{
+    const text=shiftNoteInput.trim();if(!text)return;
+    // Bez terminu → rejestr „Oczekujące"
+    if(entryWhen==="pending"){addPendingItem(text);setShiftNoteInput("");return;}
+    // Konkretny dzień → datedReminders (z wybranym rodzajem)
+    if(entryWhen==="dated"){
+      if(!newReminderDate){showToast("Wybierz datę.","error");return;}
+      const isAdminCreated=!!(canAccessManagerPanel&&showAdminPanel);
+      const ne={id:crypto.randomUUID(),text,targetShift:newReminderShift||null,targetDate:newReminderDate,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),entryType:entryKind==="task"?"task":"reminder",source:isAdminCreated?"admin":"worker"};
+      const updated=[ne,...datedReminders];setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);
+      const logEntry={id:crypto.randomUUID(),type:ne.entryType,from:ne.createdBy,fromShift:selectedShift||"—",toShift:newReminderShift,text,targetDate:newReminderDate,createdAt:fmtA()};
+      const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+      setShiftNoteInput("");showToast(`Ustawione na ${newReminderDate} (${newReminderShift?SHIFT_SHORT_LABELS[newReminderShift]:"wszystkie zmiany"}).`,"success");return;
+    }
+    // Następna zmiana → zadanie (checkbox) albo powiadomienie (do wiadomości)
+    if(entryKind==="task"){
+      if(!carryOverTarget||!employeeName||!selectedShift)return;
+      const ne={id:crypto.randomUUID(),text,fromShift:selectedShift,createdBy:employeeName,createdAt:fmt(),done:false,doneBy:""};
+      const updated={...carryOverTasks,[carryOverTarget]:[...(carryOverTasks[carryOverTarget]||[]),ne]};
+      setCarryOverTasks(updated);saveJson(STORAGE_KEYS.carry,updated);
+      const logEntry={id:crypto.randomUUID(),type:"task",from:employeeName,fromShift:selectedShift,toShift:carryOverTarget,text,createdAt:fmtA()};
+      const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+      setShiftNoteInput("");showToast(`Zadanie przekazane do zmiany ${SHIFT_SHORT_LABELS[carryOverTarget]}.`,"success");
+    }else{
+      const n={id:crypto.randomUUID(),text,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),targetShift:null,entryType:"reminder"};
+      const updated=[n,...globalNotifications];setGlobalNotifications(updated);saveJson(STORAGE_KEYS.globalNotifications,updated);
+      const logEntry={id:crypto.randomUUID(),type:"reminder",from:n.createdBy,fromShift:selectedShift||"—",toShift:"wszystkie",text,createdAt:fmtA()};
+      const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+      setShiftNoteInput("");showToast("Powiadomienie dodane — widoczne na ekranie startowym.","success");
+    }
+  };
   const dismissDatedReminder=(id)=>setDismissedReminderKeys(prev=>[...prev,`dated-${id}`]);
+  // Odhaczenie sprawy do potwierdzenia (np. „kurier był") — trwałe, znika z listy.
+  const confirmDatedReminder=(id)=>{const updated=datedReminders.map(r=>r.id===id?{...r,confirmedAt:fmtA(),confirmedBy:employeeName||currentManager||"recepcja"}:r);setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);showToast("Odhaczone — dziękuję.","success");};
+  // „Jeszcze nie” — odłóż na godzinę; potem program dopyta ponownie.
+  const snoozeConfirmReminder=(id)=>{setSnoozedConfirm(prev=>({...prev,[id]:Date.now()}));showToast("Przypomnę za godzinę.","info");};
   const closeEmpEntry=()=>{const updated=employeeActivityLog.map(item=>item.employee===employeeName&&item.shift===selectedShift&&!item.logoutAt?{...item,logoutAt:fmtA()}:item);setEmployeeActivityLog(updated);saveJson(STORAGE_KEYS.employeeLog,updated);};
   const resetView=(reportSaved=false)=>{
     // Detect abandoned shift — only when NOT finishing normally with a report
@@ -1256,7 +1612,15 @@ export default function App(){
         const startMs=shiftStartTime.getTime();
         const cleanedFull=allFull.filter(r=>!(r.employeeName===employeeName&&(r.shiftKey||r.selectedShift)===selectedShift&&Math.abs(new Date(r.savedAt||0).getTime()-startMs)<15*60*1000));
         saveJson(STORAGE_KEYS.reportsFull,cleanedFull);
-        setStarted(false);setCurrentSessionDate("");setDismissedReminderKeys([]);setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");setCashOpeningAmount("");setCashClosingDocumentsAmount("");setCashCurrentAmount("");setCompleted({});setAdditionalTaskInput("");setShiftNoteInput("");setHandoverNote("");setCarryOverTarget("nocna");setFinishDialogOpen(false);setWorkerTab("zmiana");setShiftStartTime(null);localStorage.removeItem(AUTOSAVE_KEY);setAutosaveNote(null);setStalaPotwierdzono(false);setStalaNiezgodnosc(false);setShowSafeDepositModal(false);setSafeDepositKW("");setSafeDepositAmount("");setPostDepositKW("");
+        // Porzucona zmiana — usuń też ewentualny wpis z Supabase (zapisany przy szybkim zakończeniu)
+        if(supabase){
+          supabase.from("shift_reports").delete()
+            .eq("tenant_id",TENANT_ID).eq("employee",employeeName).eq("shift_key",selectedShift)
+            .gte("saved_at",new Date(startMs-15*60*1000).toISOString())
+            .then(()=>{},()=>{});
+        }
+        clearManagerSession();setStarted(false);setCurrentSessionDate("");setDismissedReminderKeys([]);setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");setCashOpeningAmount("");setCashClosingDocumentsAmount("");setCashCurrentAmount("");setCompleted({});setAdditionalTaskInput("");setShiftNoteInput("");setHandoverNote("");setCarryOverTarget("nocna");setFinishDialogOpen(false);setWorkerTab("zmiana");setShiftStartTime(null);localStorage.removeItem(AUTOSAVE_KEY);setAutosaveNote(null);setStalaPotwierdzono(false);setStalaNiezgodnosc(false);setShowSafeDepositModal(false);setSafeDepositKW("");setSafeDepositAmount("");setPostDepositKW("");setSafeDepositRegistered(false);setSafeGuardOpen(false);setShiftEndReminderOpen(false);setShiftEndReminderText("");setShiftEndFacts(null);setSafeDepositManual(false);setShowPostDeposit(false);
+        setLoginStep("name");setLoginPassword("");setLoginPassword2("");setLoginAdminInput("");
         return;
       }
       const anyDone=Object.values(completed).some(v=>v);
@@ -1266,9 +1630,24 @@ export default function App(){
         setIncidentLog(updInc);saveJson(STORAGE_KEYS.incidentLog,updInc);
       }
     }
-    if(employeeName&&selectedShift)closeEmpEntry();setStarted(false);setCurrentSessionDate("");setDismissedReminderKeys([]);setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");setCashOpeningAmount("");setCashClosingDocumentsAmount("");setCashCurrentAmount("");setCompleted({});setAdditionalTaskInput("");setShiftNoteInput("");setHandoverNote("");setCarryOverTarget("nocna");setFinishDialogOpen(false);setWorkerTab("zmiana");setShiftStartTime(null);localStorage.removeItem(AUTOSAVE_KEY);setAutosaveNote(null);setStalaPotwierdzono(false);setStalaNiezgodnosc(false);setShowSafeDepositModal(false);setSafeDepositKW("");setSafeDepositAmount("");setPostDepositKW("");
+    if(employeeName&&selectedShift)closeEmpEntry();clearManagerSession();setStarted(false);setCurrentSessionDate("");setDismissedReminderKeys([]);setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");setCashOpeningAmount("");setCashClosingDocumentsAmount("");setCashCurrentAmount("");setCompleted({});setAdditionalTaskInput("");setShiftNoteInput("");setHandoverNote("");setCarryOverTarget("nocna");setFinishDialogOpen(false);setWorkerTab("zmiana");setShiftStartTime(null);localStorage.removeItem(AUTOSAVE_KEY);setAutosaveNote(null);setStalaPotwierdzono(false);setStalaNiezgodnosc(false);setShowSafeDepositModal(false);setSafeDepositKW("");setSafeDepositAmount("");setPostDepositKW("");setSafeDepositRegistered(false);setSafeGuardOpen(false);setShiftEndReminderOpen(false);setShiftEndReminderText("");setShiftEndFacts(null);setSafeDepositManual(false);setShowPostDeposit(false);
     setLoginStep("name");setLoginPassword("");setLoginPassword2("");setLoginAdminInput("");
   };
+  // ── Przycisk "Wstecz" przeglądarki (wersja webowa, nie Electron) ──
+  // Gdy zalogowany, cofnięcie wyrzuca do ekranu logowania zamiast pokazywać
+  // starą, zbuforowaną stronę z poprzedniej wersji logowania (bfcache/historia).
+  const resetViewRef=useRef(resetView);
+  resetViewRef.current=resetView;
+  const isLoggedIn=loginStep==="ready"||started;
+  useEffect(()=>{
+    if(!isLoggedIn)return;
+    // Wstaw wpis-pułapkę w historii, żeby "Wstecz" miało co skonsumować
+    // i nie opuściło aplikacji do starej strony.
+    window.history.pushState({ccLogged:true},"");
+    const onPop=()=>{ resetViewRef.current?.(); };
+    window.addEventListener("popstate",onPop);
+    return ()=>window.removeEventListener("popstate",onPop);
+  },[isLoggedIn]);
   const finishShift=()=>{
     if(!cashClosingDocumentsAmount.trim())return;
     try{
@@ -1310,7 +1689,31 @@ export default function App(){
       const fullReportEntry={...reportData,savedAt:savedAt.toISOString(),
         shiftKey:selectedShift,dayKey:logicalDayKey};
       const allFullReports=loadJson(STORAGE_KEYS.reportsFull,[]);
-      saveJson(STORAGE_KEYS.reportsFull,[fullReportEntry,...allFullReports].slice(0,60));
+      const nextFull=[fullReportEntry,...allFullReports].slice(0,60);
+      saveJson(STORAGE_KEYS.reportsFull,nextFull);
+      pushMirror("reports_full",nextFull);
+
+      // Trwały zapis do Supabase — by Historia była widoczna na innych urządzeniach
+      // i dla pracowników. localStorage zostaje buforem (działa też offline).
+      if(supabase){
+        const num=(v)=>{const n=parseFloat(v);return isNaN(n)?null:n;};
+        supabase.from("shift_reports").insert({
+          tenant_id:TENANT_ID,
+          day_key:logicalDayKey,
+          shift_key:selectedShift,
+          employee:employeeName,
+          saved_at:savedAt.toISOString(),
+          cash_opening:num(cashOpeningAmount),
+          cash_closing:num(cashClosingDocumentsAmount),
+          kw_prev:num(kwTotal),
+          safe_total:typeof safeTotal==="number"?safeTotal:num(safeTotal),
+          cash_current:num(cashCurrentAmount),
+          handover:handoverNote.trim()||null,
+          tasks_done:doneCount,
+          tasks_total:currentTasks.length,
+          report:fullReportEntry,
+        }).then(({error})=>{ if(error) console.warn("[shift_reports]",error.message); });
+      }
 
       downloadShiftPDF(reportData);
 
@@ -1444,6 +1847,17 @@ export default function App(){
       closeEmpEntry();setShowSuccessAnim(true);setTimeout(()=>{setShowSuccessAnim(false);resetView(true);},2000);showToast("Zmiana zakończona — raport PDF zapisany.","success");
     }catch(err){console.error(err);showToast("Błąd podczas kończenia zmiany: "+err.message,"error");}
   };
+  // Strażnik wyjścia ze zmiany: nocna/wieczorowa nie może porzucić zmiany bez
+  // zarejestrowania wpłaty do sejfu (inaczej robi to dopiero poranna). Pomyłkowe
+  // logowanie (<10 min) przepuszczamy — czyszczenie w resetView to obsługuje.
+  const attemptLeaveShift=()=>{
+    const minElapsed=shiftStartTime?(getNow().getTime()-shiftStartTime.getTime())/60000:0;
+    if(started&&requiresSafeDeposit&&!safeDepositRegistered&&minElapsed>=10){
+      setSafeGuardOpen(true);
+      return;
+    }
+    resetView();
+  };
   const saveEmployees=(next)=>{setEmployees(next);saveJson("reception-final-employees",next);};
   const addEmployee=()=>{const name=newEmployeeName.trim();if(!name)return;if(employees.some(e=>e.toLowerCase()===name.toLowerCase())){showToast("Pracownik o tym imieniu już istnieje.","warning");return;}saveEmployees([...employees,name]);addAudit(currentManager,`Dodanie pracownika: "${name}"`);setNewEmployeeName("");showToast(`Dodano: ${name}`,"success");};
   const startEditEmployee=(i)=>{setEditingEmployeeIndex(i);setEditingEmployeeName(employees[i]||"");};
@@ -1463,7 +1877,9 @@ export default function App(){
     const kwNew=parseFloat(safeDepositKW)||0;
     const kwPrev=kwTotal;
     const kwIncrement=Math.max(0,kwNew-kwPrev);
-    const deposit=parseFloat(safeDepositAmount)||0;
+    // Domyślnie do sejfu trafia dokładnie przyrost KW (kasa wraca do stałej) — bez
+    // drugiego wpisywania tej samej kwoty. Override tylko gdy zaznaczono „inna kwota".
+    const deposit=safeDepositManual?(parseFloat(safeDepositAmount)||0):kwIncrement;
     const totalBeforeDeposit=stalaKasowa+kwIncrement;
     const newStala=totalBeforeDeposit-deposit;
     localStorage.setItem(STALA_KASOWA_KEY,String(newStala));
@@ -1484,6 +1900,8 @@ export default function App(){
     const kasaLog=loadJson("reception-kasa-log",[]);
     saveJson("reception-kasa-log",[{id:crypto.randomUUID(),type:"wplata",from:employeeName,shift:selectedShift,text:`Wpłata do sejfu: ${fmtMoney(deposit)} zł. Przed wpłatą: ${fmtMoney(totalBeforeDeposit)} zł. Nowa stała: ${fmtMoney(newStala)} zł.`,createdAt:fmtA()},...kasaLog].slice(0,100));
     setShowSafeDepositModal(false);
+    setSafeDepositRegistered(true);
+    setSafeGuardOpen(false);
     showToast(`Wpłata do sejfu: ${fmtMoney(deposit)} zł. Nowa stała kasowa: ${fmtMoney(newStala)} zł.`,"success",6000);
     finishShift();
   };
@@ -1606,6 +2024,84 @@ export default function App(){
   };
 
   // ── Wiki Drawer ───────────────────────────────────────────────────────────────
+  const runWikiAsk=async()=>{
+    const q=wikiAskQ.trim();
+    if(!q||wikiAskLoading)return;
+    setWikiAskLoading(true);setWikiAskError("");setWikiAskAnswer("");
+    try{
+      const ans=await askWiki(q,wikiEntries);
+      setWikiAskAnswer(ans||"Brak odpowiedzi.");
+    }catch(err){
+      setWikiAskError(err?.code==="rate_limited"?"Asystent chwilowo przeciążony — spróbuj za chwilę.":"Asystent niedostępny. Skorzystaj z wyszukiwarki poniżej.");
+    }finally{setWikiAskLoading(false);}
+  };
+  const polishHandover=async()=>{
+    if(!handoverNote.trim()||polishingNote)return;
+    setPolishingNote(true);
+    try{ const out=await polishText(handoverNote.trim()); if(out)setHandoverNote(out); showToast("Notatka zredagowana.","success"); }
+    catch(err){ showToast(err?.code==="rate_limited"?"Limit — spróbuj za chwilę.":"AI niedostępne.","error"); }
+    finally{setPolishingNote(false);}
+  };
+  const runBriefing=async()=>{
+    if(briefingLoading)return;
+    setBriefingLoading(true);setBriefingError("");setBriefingText("");
+    try{
+      let openFaults=[];
+      if(supabase){
+        try{
+          const {data}=await supabase.from("faults").select("room,space_id,description,priority,status").eq("tenant_id",TENANT_ID).neq("status","done").limit(20);
+          openFaults=(data||[]).map(f=>({pokoj:f.room||f.space_id,opis:f.description,priorytet:f.priority,status:f.status}));
+        }catch{/* briefing działa też bez usterek */}
+      }
+      const alerts=loadJson(STORAGE_KEYS.managerAlerts,[])
+        .filter(a=>!a.expires_at||new Date(a.expires_at).getTime()>Date.now())
+        .map(a=>({tytul:a.title,tresc:a.body}));
+      // Wysyłamy do modelu TYLKO niepuste sekcje (po polsku) — inaczej model pisał
+      // np. "Nie ma usterek, bo lista openFaults jest pusta".
+      // Parser daty fmtA ("DD.MM.YYYY, HH:mm") — wspólny dla sekcji ograniczanych
+      // do ostatnich 7 dni. Brak/niepoprawna data => nie odrzucamy (zachowawczo).
+      const parseNoteDate=(s)=>{
+        try{
+          const parts=(s||"").split(", ");
+          if(parts.length<2)return null;
+          const dp=parts[0].split("."),tp=parts[1].split(":");
+          return new Date(+dp[2],+dp[1]-1,+dp[0],+tp[0],+tp[1]||0);
+        }catch{return null;}
+      };
+      const weekAgo=Date.now()-7*24*60*60*1000;
+      const within7d=(createdAt)=>{const d=parseNoteDate(createdAt);return !d||d.getTime()>=weekAgo;};
+      // Zadania przeniesione: niezrobione I dodane w ostatnich 7 dniach (stare odpadają).
+      const carry=(carryOverTasks[selectedShift]||[]).filter(t=>!t.done&&within7d(t.createdAt)).map(t=>t.text);
+      // Przypomnienia z ostatnich 7 dni (datą docelową) do dziś — nie tylko na dziś.
+      const weekAgoKey=todayKey(new Date(Date.now()-7*24*60*60*1000));
+      const todayDateKey=currentSessionDate||todayKey();
+      const reminders=datedReminders
+        .filter(r=>!r.confirmedAt&&r.targetDate>=weekAgoKey&&r.targetDate<=todayDateKey&&(!r.targetShift||r.targetShift===selectedShift)&&!dismissedReminderKeys.includes(`dated-${r.id}`))
+        .sort((a,b)=>(a.targetDate||"").localeCompare(b.targetDate||""))
+        .map(r=>r.targetDate&&r.targetDate!==todayDateKey?`${r.targetDate}: ${r.text}`:r.text);
+      // Powiadomienia kierownika trwają do odrzucenia — ograniczamy do 7 dni, by stare nie wracały.
+      const notifications=visibleGlobalNotes.filter(n=>within7d(n.createdAt)).map(n=>n.text);
+      // Notatki przekazania zmiany z ostatnich 7 dni (nie tylko ostatnia zmiana).
+      const recentNotes=loadJson(STORAGE_KEYS.handoverNotes,[])
+        .filter(n=>{const d=parseNoteDate(n.createdAt);return d&&d.getTime()>=weekAgo;})
+        .map(n=>({kiedy:n.createdAt,zmiana:n.shift?(SHIFT_LABELS_PL[n.shift]||n.shift):undefined,tresc:n.text}));
+      // Dzisiejsza data (+ dzień tygodnia) — kontekst, by model przeliczał słowa
+      // względne z notatek ("jutro przyjdzie kurier") na konkretne daty.
+      const DNI_PL=["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
+      const dowToday=DNI_PL[new Date(`${todayDateKey}T12:00`).getDay()]||"";
+      const ctx={ zmiana:SHIFT_LABELS_PL[selectedShift]||selectedShift, dataDzisiaj:`${todayDateKey} (${dowToday})`, redactNames:[] };
+      if(recentNotes.length)    ctx.notatkiZmianOstatnie7Dni=recentNotes;
+      if(carry.length)          ctx.zadaniaPrzeniesione=carry;
+      if(openFaults.length)     ctx.otwarteUsterki=openFaults;
+      if(reminders.length)      ctx.przypomnieniaOstatnie7Dni=reminders;
+      if(notifications.length)  ctx.powiadomienia=notifications;
+      if(alerts.length)         ctx.alertyKierownika=alerts;
+      const text=await generateBriefing(ctx);
+      setBriefingText(text||"Brak danych do briefingu.");
+    }catch(err){
+      setBriefingError(err?.code==="rate_limited"?"Limit zapytań — spróbuj za chwilę.":"Briefing niedostępny. Dane masz w panelach poniżej.");
+    }finally{setBriefingLoading(false);}
+  };
   const wikiDrawer=(
     <>
       <motion.div key="wov" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="wiki-drawer-overlay" onClick={()=>{setShowWiki(false);setWikiSearch("");setWikiExpandedId(null);}}/>
@@ -1621,6 +2117,29 @@ export default function App(){
           {/* Search + list — hidden when topic expanded */}
           {!wikiExpandedId?(
             <div style={{padding:"18px 20px",overflowY:"auto",flex:1}}>
+              {llmReady&&(
+                <div style={{border:`1px solid ${dark?"rgba(176,101,160,.35)":"#e9d5e3"}`,background:dark?"rgba(176,101,160,.08)":"#fdf6fb",borderRadius:"var(--radius-md)",padding:"12px 14px",marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:8}}>
+                    <Sparkles size={14} style={{color:"var(--gold)"}}/>
+                    <span style={{fontSize:12.5,fontWeight:700,color:dark?"var(--dark-text)":"var(--text-primary)"}}>Zapytaj o procedurę</span>
+                    <span style={{fontSize:10.5,color:dark?"var(--dark-text-muted)":"var(--text-muted)"}}>· odpowiada z Wiki</span>
+                  </div>
+                  <div style={{display:"flex",gap:7}}>
+                    <input className="input" style={{flex:1,fontSize:13.5}} placeholder="Np. Jak zrobić wczesny check-out?"
+                      value={wikiAskQ} onChange={e=>setWikiAskQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&runWikiAsk()}/>
+                    <button className="btn btn-gold" style={{fontSize:12.5}} onClick={runWikiAsk} disabled={wikiAskLoading||!wikiAskQ.trim()}>
+                      {wikiAskLoading?"Szukam…":"Zapytaj"}
+                    </button>
+                  </div>
+                  {wikiAskError&&<div style={{fontSize:12,color:"var(--rose)",marginTop:8}}>{wikiAskError}</div>}
+                  {wikiAskAnswer&&(
+                    <div style={{marginTop:10,fontSize:13.5,lineHeight:1.6,whiteSpace:"pre-wrap",color:dark?"var(--dark-text)":"var(--text-primary)",borderTop:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,paddingTop:10}}>
+                      {wikiAskAnswer}
+                      <div style={{fontSize:10.5,color:dark?"var(--dark-text-muted)":"var(--text-muted)",marginTop:8,fontStyle:"italic"}}>Zweryfikuj w pełnym temacie poniżej. Asystent nie zastępuje kierownika.</div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div style={{display:"grid",gridTemplateColumns:"16px 1fr",alignItems:"center",gap:8,background:dark?"rgba(255,255,255,.05)":"var(--bg-secondary)",border:"1px solid",borderColor:dark?"var(--dark-border)":"var(--border-light)",borderRadius:"var(--radius-md)",padding:"9px 12px",marginBottom:14}}>
                 <Search size={14} style={{color:"var(--text-faint)"}}/>
                 <input style={{background:"transparent",border:"none",outline:"none",fontSize:13.5,color:dark?"var(--dark-text)":"var(--text-primary)"}} placeholder="Szukaj tematów…" value={wikiSearch} onChange={e=>setWikiSearch(e.target.value)}/>
@@ -1649,7 +2168,7 @@ export default function App(){
                     style={{display:"flex",alignItems:"center",gap:6,background:"none",border:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,borderRadius:"var(--radius-md)",padding:"6px 12px",cursor:"pointer",color:dark?"var(--dark-text-secondary)":"var(--text-secondary)",fontSize:13,fontWeight:600}}>
                     ← Wszystkie tematy
                   </button>
-                  {isAdmin&&(
+                  {canAccessManagerPanel&&(
                     <div style={{display:"flex",gap:7}}>
                       <button className={dark?"btn btn-outline-dark":"btn btn-outline"} style={{fontSize:12.5}} onClick={()=>startEditWiki(e)}>Edytuj</button>
                       <button className="btn btn-danger-outline" style={{fontSize:12.5}} onClick={()=>deleteWikiEntry(e.id)}>Usuń</button>
@@ -1673,7 +2192,7 @@ export default function App(){
             );
           })()}
         </div>
-        {isAdmin&&(
+        {canAccessManagerPanel&&(
           <div style={{borderTop:`1px solid ${dark?"var(--dark-border)":"var(--border-light)"}`,padding:"16px 20px",background:dark?"var(--dark-bg2)":"var(--bg-secondary)"}}>
             <div style={{fontSize:13,fontWeight:700,marginBottom:10,color:dark?"var(--dark-text)":"var(--text-primary)"}}>{editingWikiId?"Edycja tematu":"Dodaj nowy temat"}</div>
             <div className="stack">
@@ -1938,6 +2457,11 @@ export default function App(){
             <ReviewsPanel dark={adminDark} employeeName={currentManager||employeeName} isManager={true} showToast={showToast}/>
           </motion.div>
         )}
+        {adminTab==="czat"&&(
+          <motion.div key="czat-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+            <TeamChat employeeName={currentManager||employeeName} isManager={true} showToast={showToast} hkStaff={hkStaff} onApplySwap={applyAgentSwap} onSeen={()=>setChatTick(t=>t+1)}/>
+          </motion.div>
+        )}
       </AnimatePresence>
       </div>{/* end admin-content-full */}
     </div>
@@ -1949,6 +2473,16 @@ export default function App(){
       <AnimatePresence>
         {workerTab==="zmiana"&&(
           <motion.div key="zm" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+            {llmReady&&started&&(
+              <div className="panel" style={{borderLeft:"3px solid var(--gold)",marginBottom:12,padding:"10px 14px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,fontWeight:700,fontSize:13}}><Sparkles size={14} style={{color:"var(--gold)"}}/> Briefing zmiany</div>
+                  <button className="btn btn-gold" style={{fontSize:11.5,padding:"4px 10px"}} onClick={runBriefing} disabled={briefingLoading}>{briefingLoading?"…":briefingText?"Odśwież":"Wygeneruj"}</button>
+                </div>
+                {briefingError&&<div style={{fontSize:11.5,color:"var(--rose)",marginTop:6}}>{briefingError}</div>}
+                {briefingText&&<div style={{marginTop:8,fontSize:12.5,lineHeight:1.55,whiteSpace:"pre-wrap",color:"var(--text-primary)"}}>{briefingText}</div>}
+              </div>
+            )}
             {!started?(
               <div className="stack">
                 {IS_DEV_TEST&&(
@@ -1980,13 +2514,13 @@ export default function App(){
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div style={{width:36,height:36,borderRadius:"50%",background:"var(--plum)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14}}>{employeeName.charAt(0).toUpperCase()}</div>
                             <div>
-                              <div style={{fontSize:14,fontWeight:700,color:"var(--text-primary)"}}>{employeeName}{isAdmin&&<span style={{marginLeft:8,fontSize:10,padding:"2px 7px",borderRadius:999,background:"var(--plum)",color:"#fff",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase"}}>Kierownik</span>}</div>
+                              <div style={{fontSize:14,fontWeight:700,color:"var(--text-primary)"}}>{employeeName}{canAccessManagerPanel&&<span style={{marginLeft:8,fontSize:10,padding:"2px 7px",borderRadius:999,background:"var(--plum)",color:"#fff",fontWeight:700,letterSpacing:".05em",textTransform:"uppercase"}}>Kierownik</span>}</div>
                               <div style={{fontSize:11,color:"var(--text-muted)"}}>{loginShiftSource==="schedule"?"Zmiana pobrana z grafiku kierownika":"System wykrył Twoją zmianę z godziny komputera"}</div>
                             </div>
                           </div>
                           <button className="btn btn-outline" style={{fontSize:11.5}} onClick={()=>{
                             setLoginStep("name");setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");
-                            if(isAdmin){setIsAdmin(false);setCurrentManager("");localStorage.removeItem(STORAGE_KEYS.adminSession);localStorage.removeItem(STORAGE_KEYS.adminUser);}
+                            if(canAccessManagerPanel)clearManagerSession();
                           }}>Zmień osobę</button>
                         </div>
                         {/* Auto-wykryta zmiana — duza karta z mozliwoscia zmiany */}
@@ -2029,7 +2563,7 @@ export default function App(){
                         <div className="between responsive-gap" style={{marginTop:14}}>
                           <div className="muted">Po rozpoczęciu zmiany zobaczysz dashboard i listę zadań.</div>
                           <div style={{display:"flex",gap:8}}>
-                            {isAdmin&&(
+                            {canAccessManagerPanel&&(
                               <button className="btn btn-outline" onClick={()=>{
                                 localStorage.setItem("reception-last-view","manager");
                                 setLastView("manager");
@@ -2328,7 +2862,7 @@ export default function App(){
                       <button
                         type="button"
                         className="cc-cash-card-action cc-cash-card-action--ghost"
-                        onClick={resetView}>
+                        onClick={attemptLeaveShift}>
                         Wróć do wyboru
                       </button>
                       <button
@@ -2365,6 +2899,25 @@ export default function App(){
                     <div key={r.id} className="dated-reminder-item">
                       <div><div style={{fontWeight:600,fontSize:14.5}}>{r.text}</div><div className="tiny sky-text" style={{marginTop:3}}>Dodane przez {r.createdBy} · {r.createdAt}</div></div>
                       <button className="btn btn-outline" style={{fontSize:12.5}} onClick={()=>dismissDatedReminder(r.id)}>Zamknij</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {dueConfirmReminders.length>0&&(
+              <div className="panel dated-reminder-panel">
+                <div className="panel-title amber-text"><BellRing size={16}/> Do potwierdzenia — czy się wydarzyło?</div>
+                <div className="stack">
+                  {dueConfirmReminders.map(r=>(
+                    <div key={r.id} className="dated-reminder-item">
+                      <div>
+                        <div style={{fontWeight:600,fontSize:14.5}}>{r.text}</div>
+                        <div className="tiny amber-text" style={{marginTop:3}}>{r.targetDate<currentSessionDate?`Zaległe od ${r.targetDate} — `:"Termin na dziś — "}potwierdź, gdy będzie załatwione</div>
+                      </div>
+                      <div style={{display:"flex",gap:6,flexShrink:0}}>
+                        <button className="btn btn-emerald" style={{fontSize:12.5}} onClick={()=>confirmDatedReminder(r.id)}>✅ Tak, odhacz</button>
+                        <button className="btn btn-outline" style={{fontSize:12.5}} onClick={()=>snoozeConfirmReminder(r.id)}>Jeszcze nie</button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2478,7 +3031,7 @@ export default function App(){
                     <input type="checkbox" checked={!!task.done} onChange={()=>markCarryOverDone(index)}/>
                     <div className="flex-1">
                       <div className={task.done?"line-through muted":"strong-ish"}>{task.text}</div>
-                      <div className="tiny muted">Dodane przez: {task.createdBy} · ze zmiany: {SHIFT_LABELS_PL[task.fromShift]||task.fromShift} · {task.createdAt}</div>
+                      <div className="tiny muted">Dodane przez: {task.createdBy} · ze zmiany: {SHIFT_NAME_PL[task.fromShift]||task.fromShift} · {task.createdAt}</div>
                       {task.done&&(
                         <div style={{marginTop:6}}>
                           <input className="input" style={{fontSize:12.5,padding:"6px 10px"}} placeholder="Co zrobiłeś w tej sprawie? (opcjonalnie, trafi do raportu)" value={task.doneNote||""} onChange={e=>updateCarryOverDoneNote(index,e.target.value)}/>
@@ -2509,7 +3062,7 @@ export default function App(){
                     {employeeName}
                     <span className="cc-flow-name-tag">· ty</span>
                   </div>
-                  <div className="cc-flow-meta">{shiftFullLabel(selectedShift)}</div>
+                  <div className="cc-flow-meta">{SHIFT_NAME_PL[selectedShift]||selectedShift}</div>
                 </div>
               </div>
               <div className="cc-flow-arrow" aria-hidden="true">→</div>
@@ -2517,7 +3070,7 @@ export default function App(){
                 <div className="cc-flow-avatar cc-flow-avatar--next" aria-hidden="true">?</div>
                 <div className="cc-flow-info">
                   <div className="cc-flow-name">Następna zmiana</div>
-                  <div className="cc-flow-meta">{SHIFT_LABELS_PL[carryOverTarget]||"—"}</div>
+                  <div className="cc-flow-meta">{SHIFT_NAME_PL[carryOverTarget]||"—"}</div>
                   <details className="cc-flow-pick">
                     <summary className="cc-flow-pick-summary">Zmień ▾</summary>
                     <div className="cc-flow-pick-menu" role="menu">
@@ -2528,7 +3081,7 @@ export default function App(){
                           role="menuitem"
                           className={`cc-flow-pick-item${carryOverTarget===s?" is-active":""}`}
                           onClick={()=>setCarryOverTarget(s)}>
-                          {SHIFT_LABELS_PL[s]}
+                          {SHIFT_NAME_PL[s]}
                         </button>
                       ))}
                     </div>
@@ -2587,57 +3140,65 @@ export default function App(){
                       localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(snap));
                     },20000);
                   }}/>
-                <div className="cc-compose-card-foot">
+                <div className="cc-compose-card-foot" style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                   <span className="cc-compose-card-counter">{handoverNote.length} znaków · zapisane lokalnie</span>
+                  {llmReady&&<button className="btn btn-outline" style={{fontSize:11.5,padding:"4px 10px",display:"inline-flex",alignItems:"center",gap:5}} onClick={polishHandover} disabled={polishingNote||!handoverNote.trim()}><Sparkles size={12}/>{polishingNote?"Redaguję…":"Zredaguj AI"}</button>}
                 </div>
               </div>
             </section>
 
-            {/* CHECKLISTA DO ZROBIENIA */}
+            {/* ═══ KOMPOZER v2 — jedno pole, dwie osie wyboru (Rodzaj × Kiedy) ═══ */}
             <div className="panel" style={{borderLeft:"4px solid var(--gold)"}}>
-              <div className="panel-title"><CheckSquare size={16}/> 📋 Do zrobienia na następnej zmianie</div>
-              <div className="tiny muted" style={{marginBottom:12,marginTop:-10}}>Konkretne zadania checkbox — pojawią się jako obowiązkowe.</div>
-              <div style={{display:"flex",gap:8,marginBottom:8}}>
-                <input className="input" style={{flex:1,fontSize:14}} placeholder="Np. Zadzwonić do PWiK" value={shiftNoteInput} onChange={e=>setShiftNoteInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCarryOverTask()}/>
-                <button className="btn btn-gold" onClick={addCarryOverTask} disabled={!shiftNoteInput.trim()}><Plus size={14}/> Dodaj</button>
-              </div>
-            </div>
-            <div className="panel">
-              <div className="panel-title sky-text"><Bell size={16}/> Powiadomienie dla zmiany</div>
+              <div className="panel-title"><Plus size={16}/> Dodaj wpis dla innej zmiany</div>
+              <div className="tiny muted" style={{marginBottom:12,marginTop:-8}}>Wpisz treść, a potem wybierz rodzaj i komu/kiedy ma trafić — bez zgadywania, które okno.</div>
 
-              {/* Zakres: ogólne vs na konkretny dzień */}
-              <div style={{display:"flex",gap:6,marginBottom:14}}>
-                {[["general","Ogólne","dla wszystkich zmian"],["dated","Na konkretny dzień","data + zmiana"]].map(([mode,label,sub])=>(
-                  <button key={mode} onClick={()=>setReminderMode(mode)}
-                    style={{flex:1,padding:"8px",borderRadius:"var(--radius-md)",cursor:"pointer",
-                            border:`1.5px solid ${reminderMode===mode?"var(--amber)":"var(--border-light)"}`,
-                            background:reminderMode===mode?"var(--gold-bg)":"var(--bg-card)",
-                            fontSize:12,fontWeight:600,textAlign:"left",
-                            color:reminderMode===mode?"var(--amber)":"var(--text-secondary)"}}>
-                    {label}
-                    <div style={{fontSize:10.5,fontWeight:400,marginTop:1,color:reminderMode===mode?"var(--amber)":"var(--text-muted)"}}>{sub}</div>
-                  </button>
-                ))}
+              <input className="input" style={{marginBottom:14,fontSize:14}}
+                placeholder={entryWhen==="pending"?"Np. Gość z 210 odbierze paczkę — kiedyś w tym tygodniu":entryKind==="task"?"Np. Zadzwonić do PWiK":"Np. Przyjazd VIP — pokój 306"}
+                value={shiftNoteInput} onChange={e=>setShiftNoteInput(e.target.value)}
+                onKeyDown={e=>e.key==="Enter"&&addUnifiedEntry()}/>
+
+              {/* Oś 1 — Rodzaj */}
+              <div className="cc-seg-label">Rodzaj</div>
+              <div className="cc-seg" role="group" aria-label="Rodzaj wpisu">
+                <button type="button" className={`cc-seg-btn${entryKind==="task"?" is-active":""}`} onClick={()=>setEntryKind("task")}><CheckSquare size={13}/> Zadanie</button>
+                <button type="button" className={`cc-seg-btn${entryKind==="note"?" is-active":""}`} onClick={()=>setEntryKind("note")}><Bell size={13}/> Powiadomienie</button>
               </div>
-              <input className="input" style={{marginBottom:10}}
-                placeholder={reminderEntryType==="task"?"Np. Sprawdź reklamację z pokoju 214":"Np. Przyjazd VIP — pokój 306"}
-                value={newReminderText} onChange={e=>setNewReminderText(e.target.value)}
-                onKeyDown={e=>e.key==="Enter"&&(reminderMode==="general"?addGeneralReminder():addDatedReminder())}/>
-              {reminderMode==="dated"&&(
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                  <div><label>Docelowa zmiana</label><select className="input" value={newReminderShift} onChange={e=>setNewReminderShift(e.target.value)}><option value="">Wszystkie zmiany</option>{SHIFT_OPTIONS.map(s=><option key={s} value={s}>{SHIFT_LABELS_PL[s]}</option>)}</select></div>
+              <div className="tiny muted" style={{margin:"5px 0 14px"}}>{entryKind==="task"?"Do odhaczenia — pojawi się jako obowiązkowe zadanie.":"Do wiadomości — informacja bez checkboxa."}</div>
+
+              {/* Oś 2 — Kiedy / dla kogo */}
+              <div className="cc-seg-label">Kiedy / dla kogo</div>
+              <div className="cc-seg" role="group" aria-label="Termin wpisu">
+                <button type="button" className={`cc-seg-btn${entryWhen==="next"?" is-active":""}`} onClick={()=>setEntryWhen("next")}>Następna zmiana</button>
+                <button type="button" className={`cc-seg-btn${entryWhen==="dated"?" is-active":""}`} onClick={()=>setEntryWhen("dated")}>Konkretny dzień</button>
+                <button type="button" className={`cc-seg-btn${entryWhen==="pending"?" is-active":""}`} onClick={()=>setEntryWhen("pending")}>Bez terminu</button>
+              </div>
+
+              {entryWhen==="dated"&&(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,margin:"12px 0 0"}}>
+                  <div><label>Docelowa zmiana</label><select className="input" value={newReminderShift} onChange={e=>setNewReminderShift(e.target.value)}><option value="">Wszystkie zmiany</option>{SHIFT_OPTIONS.map(s=><option key={s} value={s}>{SHIFT_NAME_PL[s]}</option>)}</select></div>
                   <div><label>Data</label><input className="input" type="date" value={newReminderDate} onChange={e=>setNewReminderDate(e.target.value)}/></div>
                 </div>
               )}
-              <button className="btn btn-sky full"
-                onClick={reminderMode==="general"?()=>addGeneralReminder("reminder"):()=>addDatedReminder("reminder")}
-                disabled={!newReminderText.trim()||(reminderMode==="dated"&&!newReminderDate)}>
-                <Bell size={14}/>
-                {reminderMode==="general"?"Dodaj ogólne powiadomienie":"Ustaw przypomnienie na wybrany dzień"}
+              {entryWhen==="next"&&(
+                <div className="tiny muted" style={{margin:"10px 0 0"}}>Trafi do zmiany: <b>{SHIFT_NAME_PL[carryOverTarget]||"—"}</b>{entryKind==="note"?" — powiadomienie widać na ekranie startowym wszystkich zmian":""}. Zmianę docelową zmieniasz w kafelku „Następna zmiana" u góry.</div>
+              )}
+              {entryWhen==="pending"&&(
+                <div className="cc-pending-hint" style={{margin:"12px 0 0"}}>
+                  <Clock size={14}/>
+                  <span>Trafi do <b>Informacje → Oczekujące</b>. Widoczne dla wszystkich, bez terminu — np. „ktoś kiedyś coś przyniesie / odbierze". Każdy odhaczy, gdy sprawa się załatwi.</span>
+                </div>
+              )}
+
+              <button className="btn btn-gold full" style={{marginTop:16}} onClick={addUnifiedEntry} disabled={!shiftNoteInput.trim()||(entryWhen==="dated"&&!newReminderDate)}>
+                <Plus size={14}/> {entryWhen==="pending"?"Dodaj do Oczekujących":entryWhen==="dated"?"Ustaw na wybrany dzień":entryKind==="task"?"Przekaż zadanie":"Dodaj powiadomienie"}
               </button>
-              {futureDatedReminders.length>0&&reminderMode==="dated"&&(
-                <div className="stack top-space">
-                  <div className="tiny muted uppercase" style={{letterSpacing:".05em"}}>Zaplanowane na konkretny dzień</div>
+            </div>
+
+            {/* LISTA — zaplanowane na konkretny dzień */}
+            {futureDatedReminders.length>0&&(
+              <div className="panel">
+                <div className="panel-title" style={{color:"var(--plum)"}}><Calendar size={16}/> Zaplanowane na konkretny dzień</div>
+                <div className="stack" style={{maxHeight:300,overflowY:"auto",paddingRight:2,marginTop:6}}>
                   {futureDatedReminders.map(r=>(
                     <div key={r.id} className="dated-future-row">
                       <div style={{display:"flex",alignItems:"center",gap:10,flex:1}}>
@@ -2645,13 +3206,12 @@ export default function App(){
                         <div className="dated-future-date">{r.targetDate}</div>
                         <div><div style={{fontWeight:600,fontSize:13.5}}>{r.text}</div><div className="tiny muted">{r.targetShift?SHIFT_LABELS_PL[r.targetShift]:"Wszystkie zmiany"} · {r.createdBy}</div></div>
                       </div>
-                      {(!r.source||r.source!=="admin"||isAdmin)&&<button className="icon-btn icon-btn-danger" onClick={()=>deleteDatedReminder(r.id)} title="Usuń"><Trash2 size={13}/></button>}
+                      {(!r.source||r.source!=="admin"||canAccessManagerPanel)&&<button className="icon-btn icon-btn-danger" onClick={()=>deleteDatedReminder(r)} title="Usuń"><Trash2 size={13}/></button>}
                     </div>
                   ))}
                 </div>
-              )}
-              {futureDatedReminders.length===0&&reminderMode==="dated"&&<div className="empty-box" style={{marginTop:14}}>Brak zaplanowanych wpisów.</div>}
-            </div>
+              </div>
+            )}
 
           </motion.div>
         )}
@@ -2660,40 +3220,141 @@ export default function App(){
             <RestoredHKPanel dark={workerDark} hkDate={hkDate} setHkDate={setHkDate}
                      hkStaff={hkStaff} setHkStaff={setHkStaff}
                      hkData={hkData} setHkData={setHkData}
-                     showToast={showToast} isManager={!!currentManager} employeeName={employeeName||currentManager}/>
+                     showToast={showToast} isManager={canAccessManagerPanel} employeeName={employeeName}/>
           </motion.div>
         )}
         {workerTab==="informacje"&&(
           <motion.div key="informacje" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <InboxPanel dark={workerDark} employeeName={employeeName} selectedShift={selectedShift} wikiEntries={wikiEntries} onOpenWiki={()=>setShowWiki(true)}/>
+            <InboxPanel dark={workerDark} employeeName={employeeName} selectedShift={selectedShift} wikiEntries={wikiEntries} isManager={canAccessManagerPanel} onOpenWiki={()=>setShowWiki(true)} onMarkedRead={()=>setInboxVersion(v=>v+1)}/>
           </motion.div>
         )}
         {workerTab==="usterki"&&(
           <motion.div key="usterki" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <FaultsPanel dark={workerDark} employeeName={employeeName||currentManager} showToast={showToast} floors1={HK_FLOOR1} floors2={HK_FLOOR2} floors3={HK_FLOOR3} isManager={!!currentManager}/>
+            <FaultsPanel dark={workerDark} employeeName={employeeName} showToast={showToast} floors1={HK_FLOOR1} floors2={HK_FLOOR2} floors3={HK_FLOOR3} isManager={canAccessManagerPanel}/>
           </motion.div>
         )}
         {workerTab==="parking"&&(
           <motion.div key="parking" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <ParkingPanel dark={workerDark} isAdmin={isAdmin} showToast={showToast} employees={employees} employeeName={employeeName}/>
+            <ParkingPanel dark={workerDark} isAdmin={canAccessManagerPanel} showToast={showToast} employees={employees} employeeName={employeeName}/>
           </motion.div>
         )}
         {workerTab==="goscie"&&(
           <motion.div key="goscie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <StaliGosciePanel dark={workerDark} isAdmin={isAdmin} currentManager={currentManager} addAudit={addAudit}/>
+            <StaliGosciePanel dark={workerDark} isAdmin={canAccessManagerPanel} currentManager={canAccessManagerPanel?currentManager:""} addAudit={addAudit}/>
           </motion.div>
         )}
         {workerTab==="vouchery"&&(
           <motion.div key="vouchery" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <VouchersPanel employeeName={employeeName||currentManager} isManager={isAdmin} showToast={showToast}/>
+            <VouchersPanel employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
           </motion.div>
         )}
         {workerTab==="opinie"&&(
           <motion.div key="opinie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <ReviewsPanel dark={workerDark} employeeName={employeeName||currentManager} isManager={isAdmin} showToast={showToast}/>
+            <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
+          </motion.div>
+        )}
+        {workerTab==="czat"&&(
+          <motion.div key="czat" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+            <TeamChat employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast} hkStaff={hkStaff} onApplySwap={applyAgentSwap} onSeen={()=>setChatTick(t=>t+1)}/>
+          </motion.div>
+        )}
+        {workerTab==="historia"&&(
+          <motion.div key="historia" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+            <HistoriaWorkerPanel dark={workerDark} canSeeCash={canAccessManagerPanel}/>
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+
+  // ── Zegar testowy (DEV) — widoczny też przed logowaniem ─────────────────────
+  // Pozwala ustawić symulowany czas i skakać nim, by od razu zobaczyć
+  // przypomnienie 20 min przed końcem i strażnika sejfu (≥10 min stażu). Znika
+  // z release (gate DEV_TOOLS / import.meta.env.DEV).
+  const toLocalInput=(d)=>{const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;};
+  const testClockWidget=DEV_TOOLS&&(
+    <div style={{position:"fixed",left:12,bottom:12,zIndex:99999,background:"#1a0a2e",border:"2px dashed #7c3aed",borderRadius:10,padding:"10px 12px",width:252,boxShadow:"0 6px 24px rgba(0,0,0,.45)"}}>
+      <div style={{fontSize:10.5,fontWeight:800,color:"#c4b5fd",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6}}>🕒 Zegar testowy (tes)</div>
+      <div style={{fontSize:13,color:"#e9d5ff",fontWeight:700,marginBottom:6}}>{getNow().toLocaleString("pl-PL")}{testClockOffset!==0&&<span style={{color:"#a78bfa",fontWeight:500}}> ({testClockOffset>0?"+":""}{Math.round(testClockOffset/60000)} min)</span>}</div>
+      <input type="datetime-local" value={toLocalInput(getNow())} onChange={e=>{const v=e.target.value;if(!v)return;const t=new Date(v).getTime();if(Number.isFinite(t))applyTestClockOffset(t-Date.now());}} style={{width:"100%",fontSize:11.5,marginBottom:6,padding:"3px 6px",borderRadius:6,border:"1px solid #4c1d95",background:"#2a1245",color:"#e9d5ff"}}/>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:7}}>
+        {[["−10m",-10],["+5m",5],["+10m",10],["+20m",20],["+1h",60]].map(([lbl,m])=>(
+          <button key={lbl} onClick={()=>applyTestClockOffset(testClockOffset+m*60000)} style={{padding:"3px 7px",borderRadius:5,fontSize:11,fontWeight:700,cursor:"pointer",border:"1px solid #4c1d95",background:"transparent",color:"#c4b5fd"}}>{lbl}</button>
+        ))}
+        <button onClick={()=>applyTestClockOffset(0)} style={{padding:"3px 7px",borderRadius:5,fontSize:11,fontWeight:700,cursor:"pointer",border:"1px solid #7c3aed",background:"#5b21b6",color:"#fff"}}>Reset</button>
+      </div>
+      <div style={{fontSize:9.5,color:"#8b6fc4",marginBottom:4}}>Ustaw „za 18 min koniec zmiany":</div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+        {[["Nocna/Wiecz.",6,42],["Poranna",16,42],["Popoł.",22,42],["Dzienna",18,42]].map(([lbl,h,mm])=>(
+          <button key={lbl} onClick={()=>{const d=new Date();d.setHours(h,mm,0,0);applyTestClockOffset(d.getTime()-Date.now());}} style={{padding:"3px 7px",borderRadius:5,fontSize:10.5,fontWeight:700,cursor:"pointer",border:"1px solid #4c1d95",background:"transparent",color:"#a78bfa"}}>{lbl}</button>
+        ))}
+      </div>
+      <div style={{fontSize:9.5,color:"#6E2B5C",marginTop:7,lineHeight:1.4}}>Ustaw czas PRZED logowaniem, zaloguj zmianę, potem „+10m" by przekroczyć 10 min stażu i wywołać strażnika.</div>
+    </div>
+  );
+
+  // Przypomnienie agenta 20 min przed końcem zmiany (na panelu PC).
+  const shiftEndReminderModal=shiftEndReminderOpen&&(
+    <div className="modal-backdrop" onClick={()=>setShiftEndReminderOpen(false)}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:460}}>
+        <div className="modal-header"><h2>Za chwilę koniec zmiany</h2></div>
+        <div className="stack">
+          <div style={{background:"var(--plum-soft)",border:"1px solid var(--plum-border)",borderLeft:"4px solid var(--plum)",borderRadius:"var(--radius-md)",padding:"14px 18px",fontSize:14,lineHeight:1.55,color:"var(--text-primary)"}}>
+            {shiftEndReminderText}
+          </div>
+          {shiftEndFacts&&(
+            <div style={{display:"grid",gap:8,fontSize:13}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:shiftEndFacts.cashChecked?"var(--emerald)":"#c0392b",fontWeight:800}}>{shiftEndFacts.cashChecked?"✓":"✗"}</span>
+                <span style={{color:"var(--text-secondary)"}}>Stan kasy sprawdzony (KW końcowa wpisana)</span>
+              </div>
+              {shiftEndFacts.safeRequired&&(
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{color:shiftEndFacts.safeDone?"var(--emerald)":"#c0392b",fontWeight:800}}>{shiftEndFacts.safeDone?"✓":"✗"}</span>
+                  <span style={{color:"var(--text-secondary)"}}>Wpłata do sejfu zarejestrowana</span>
+                </div>
+              )}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:shiftEndFacts.tasksDone>=shiftEndFacts.tasksTotal?"var(--emerald)":"#c8a050",fontWeight:800}}>{shiftEndFacts.tasksDone>=shiftEndFacts.tasksTotal?"✓":"•"}</span>
+                <span style={{color:"var(--text-secondary)"}}>Zadania zaznaczone: {shiftEndFacts.tasksDone}/{shiftEndFacts.tasksTotal}</span>
+              </div>
+              {shiftEndFacts.missing&&shiftEndFacts.missing.length>0&&(
+                <ul className="list" style={{margin:"2px 0 0 22px",fontSize:12,color:"var(--text-muted)"}}>
+                  {shiftEndFacts.missing.slice(0,5).map((t,i)=><li key={i}>{t}</li>)}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="modal-footer" style={{gap:8}}>
+          <button className="btn btn-outline" onClick={()=>setShiftEndReminderOpen(false)}>OK, rozumiem</button>
+          {shiftEndFacts&&shiftEndFacts.safeRequired&&!shiftEndFacts.safeDone&&(
+            <button className="btn btn-emerald" style={{flex:1}} onClick={()=>{setShiftEndReminderOpen(false);setFinishDialogOpen(true);}}>
+              Przejdź do wpłaty do sejfu
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Strażnik: blokuje opuszczenie zmiany nocnej/wieczorowej bez wpłaty do sejfu.
+  const safeGuardModal=safeGuardOpen&&(
+    <div className="modal-backdrop" onClick={e=>e.stopPropagation()}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:440}}>
+        <div className="modal-header"><h2>Najpierw wpłata do sejfu</h2></div>
+        <div className="stack">
+          <div style={{background:"#fdecea",border:"1px solid #f5b7b1",borderLeft:"4px solid #c0392b",borderRadius:"var(--radius-md)",padding:"14px 18px",fontSize:14,lineHeight:1.55,color:"#7b241c"}}>
+            Nie możesz opuścić zmiany bez zarejestrowania wpłaty do sejfu. Zrób to teraz — inaczej zrobi to dopiero zmiana poranna, co rozjeżdża stan kasy i przypisanie operacji.
+          </div>
+        </div>
+        <div className="modal-footer" style={{gap:8}}>
+          <button className="btn btn-outline" onClick={()=>setSafeGuardOpen(false)}>Wróć do zmiany</button>
+          <button className="btn btn-emerald" style={{flex:1}} onClick={()=>{setSafeGuardOpen(false);setFinishDialogOpen(true);}}>
+            Przejdź do wpłaty do sejfu
+          </button>
+        </div>
+      </div>
     </div>
   );
 
@@ -2764,28 +3425,49 @@ export default function App(){
           <>
               <div className="modal-header"><h2>Wpłata do sejfu</h2></div>
               <div className="stack">
-                {(()=>{const kw=parseFloat(safeDepositKW)||0;const deposit=parseFloat(safeDepositAmount)||0;const postKW=parseFloat(postDepositKW)||0;const kwPrev=kwTotal;const kwInc=Math.max(0,kw-kwPrev);const totalBefore=stalaKasowa+kwInc;const newS=totalBefore-deposit;return(<>
+                {(()=>{const kw=parseFloat(safeDepositKW)||0;const postKW=parseFloat(postDepositKW)||0;const kwPrev=kwTotal;const kwInc=Math.max(0,kw-kwPrev);const deposit=safeDepositManual?(parseFloat(safeDepositAmount)||0):kwInc;const totalBefore=stalaKasowa+kwInc;const newS=totalBefore-deposit;return(<>
                   <div style={{background:"var(--plum-soft)",border:"1px solid var(--plum-border)",borderLeft:"4px solid var(--plum)",borderRadius:"var(--radius-md)",padding:"14px 18px"}}>
                     <div style={{fontSize:11,color:"var(--plum)",fontWeight:800,marginBottom:6,textTransform:"uppercase",letterSpacing:".07em"}}>W kasie przed wpłatą</div>
                     <div style={{fontSize:32,fontWeight:400,color:"var(--plum)",fontFamily:"'DM Serif Display',serif",letterSpacing:"-.02em",lineHeight:1}}>{fmtMoney(totalBefore)}</div>
                     <div style={{fontSize:12,color:"var(--text-secondary)",marginTop:6}}>Stała: {fmtMoney(stalaKasowa)} + KW: {fmtMoney(kw)}</div>
                   </div>
                   <div>
-                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Stan KW — ile masz KW dokumentów (zł)</div>
-                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositKW} onChange={e=>setSafeDepositKW(e.target.value)} style={{fontSize:13}}/>
+                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Stan KW — ile gotówki z dokumentów masz w kasie (zł)</div>
+                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositKW} onChange={e=>setSafeDepositKW(e.target.value)} style={{fontSize:13}} autoFocus/>
                   </div>
-                  <div>
-                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Kwota wpłaty do sejfu (zł)</div>
-                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositAmount} onChange={e=>setSafeDepositAmount(e.target.value)} style={{fontSize:13}}/>
+                  {/* Kwota do sejfu liczy się sama = przyrost KW tej zmiany. Bez podwójnego wpisywania. */}
+                  <div style={{background:"var(--emerald-light)",border:"1px solid var(--emerald-border)",borderLeft:"3px solid var(--emerald)",borderRadius:"var(--radius-md)",padding:"12px 16px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                      <span style={{fontSize:11,fontWeight:800,color:"var(--emerald)",textTransform:"uppercase",letterSpacing:".06em"}}>Do sejfu (przyrost KW)</span>
+                      <span style={{fontSize:22,fontWeight:400,color:"var(--emerald)",fontFamily:"'DM Serif Display',serif",letterSpacing:"-.02em"}}>{fmtMoney(safeDepositManual?(parseFloat(safeDepositAmount)||0):kwInc)}</span>
+                    </div>
+                    {!safeDepositManual&&<div style={{fontSize:11.5,color:"var(--text-secondary)",marginTop:5,lineHeight:1.5}}>Tyle wkładasz do sejfu — kasa wraca do stałej {fmtMoney(stalaKasowa)} zł. Nie wpisujesz tej kwoty drugi raz.</div>}
+                    <label style={{display:"flex",alignItems:"center",gap:7,marginTop:8,fontSize:12,color:"var(--text-secondary)",cursor:"pointer"}}>
+                      <input type="checkbox" checked={safeDepositManual} onChange={e=>setSafeDepositManual(e.target.checked)}/>
+                      Wpłacam inną kwotę niż przyrost KW
+                    </label>
+                    {safeDepositManual&&(
+                      <div style={{marginTop:8}}>
+                        <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Kwota wpłaty do sejfu (zł)</div>
+                        <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositAmount} onChange={e=>setSafeDepositAmount(e.target.value)} style={{fontSize:13}}/>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Płatność gotówkowa PO wpłacie do sejfu (zł) <span style={{color:"#c8a050"}}>— opcjonalne</span></div>
-                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4,lineHeight:1.5}}>Jeśli ktoś zapłacił gotówką już po wpłacie do sejfu, wpisz kwotę — zostanie wliczona jako KW zmiany porannej.</div>
-                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={postDepositKW} onChange={e=>setPostDepositKW(e.target.value)} style={{fontSize:13}}/>
-                  </div>
-                  {(safeDepositAmount||safeDepositKW)&&(
-                    <div style={{background:"var(--emerald-light)",border:"1px solid var(--emerald-border)",borderLeft:"3px solid var(--emerald)",borderRadius:"var(--radius-md)",padding:"14px 18px"}}>
-                      <div style={{fontSize:11,fontWeight:800,color:"var(--emerald)",marginBottom:8,textTransform:"uppercase",letterSpacing:".07em"}}>Podgląd po wpłacie</div>
+                  {/* Płatność po wpłacie do sejfu (po 24:00) — zwinięta, by nie mylić z wpłatą. */}
+                  {!showPostDeposit?(
+                    <button type="button" onClick={()=>setShowPostDeposit(true)} style={{background:"none",border:"none",padding:0,textAlign:"left",cursor:"pointer",fontSize:12.5,color:"var(--plum)",fontWeight:700}}>
+                      + Płatność gotówką po wpłacie do sejfu (po 24:00)
+                    </button>
+                  ):(
+                    <div>
+                      <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Płatność gotówkowa PO wpłacie do sejfu (zł) <span style={{color:"#c8a050"}}>— opcjonalne</span></div>
+                      <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4,lineHeight:1.5}}>Gotówka, która wpłynęła już po wpłacie do sejfu (np. po 24:00) — zostanie wliczona jako KW zmiany porannej, NIE trafia do tego sejfu.</div>
+                      <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={postDepositKW} onChange={e=>setPostDepositKW(e.target.value)} style={{fontSize:13}} autoFocus/>
+                    </div>
+                  )}
+                  {safeDepositKW&&(
+                    <div style={{background:"var(--bg-card)",border:"1px solid var(--border-light)",borderRadius:"var(--radius-md)",padding:"14px 18px"}}>
+                      <div style={{fontSize:11,fontWeight:800,color:"var(--plum)",marginBottom:8,textTransform:"uppercase",letterSpacing:".07em"}}>Podgląd po wpłacie</div>
                       <div style={{fontSize:13,color:"var(--text-secondary)",marginBottom:3}}>W kasie po wpłacie: <strong style={{color:"var(--emerald)"}}>{fmtMoney(newS)}</strong></div>
                       <div style={{fontSize:13,color:"var(--text-secondary)",marginBottom:3}}>KW dla zmiany porannej: <strong style={{color:"var(--text-primary)"}}>{fmtMoney(postKW)}</strong></div>
                       <div style={{fontSize:13,color:"var(--text-secondary)"}}>Nowa stała kasowa: <strong style={{color:"var(--plum)"}}>{fmtMoney(newS)}</strong></div>
@@ -2807,7 +3489,7 @@ export default function App(){
   );
 
   const appShellClass="app-shell";
-  const isWideWorkerPanel=!showAdminPanel&&workerTab==="hk";
+  const isWideWorkerPanel=!(canAccessManagerPanel&&showAdminPanel)&&workerTab==="hk";
 
   if(lockedScreen){
     const unlock=(e)=>{
@@ -2891,6 +3573,7 @@ export default function App(){
                 placeholder="Wpisz swoje imię…"
                 value={employeeName}
                 autoFocus
+                autoComplete="off"
                 list="cc-emp-list-main"
                 onChange={e=>setEmployeeName(canonicalizeNameInput(e.target.value))}
                 onKeyDown={e=>{
@@ -2898,7 +3581,7 @@ export default function App(){
                     const trimmed=canonicalizePersonName(employeeName);
                     setEmployeeName(trimmed);
                     if(isManagerName(trimmed,customManagers)) setLoginStep(hasAdminPassword()?"password":"admincheck");
-                    else attemptWorkerLogin(trimmed);
+                    else {clearManagerSession();attemptWorkerLogin(trimmed);}
                   }
                 }}
               />
@@ -2919,7 +3602,7 @@ export default function App(){
                   const trimmed=canonicalizePersonName(employeeName);
                   setEmployeeName(trimmed);
                   if(isManagerName(trimmed,customManagers)) setLoginStep(hasAdminPassword()?"password":"admincheck");
-                  else attemptWorkerLogin(trimmed);
+                  else {clearManagerSession();attemptWorkerLogin(trimmed);}
                 }}>
                 Dalej →
               </button>
@@ -3118,7 +3801,7 @@ export default function App(){
               </div>
               <button
                 className="cc-login-skip"
-                onClick={()=>{setLoginPassword("");completeLogin();showToast("Tryb pracownika — bez panelu kierownika.","info");}}>
+                onClick={()=>{setLoginPassword("");clearManagerSession();completeLogin();showToast("Tryb pracownika — bez panelu kierownika.","info");}}>
                 Pomiń (kontynuuj jako pracownik)
               </button>
             </div>
@@ -3132,24 +3815,46 @@ export default function App(){
 
   return(
     <div className={appShellClass}>
+      {/* ═══ Globalny bot agenta AI — stały FAB w HK, dymek w każdym oknie ════ */}
+      <AgentBot
+        inHK={workerTab==="hk" && !showAdminPanel}
+        dateKey={hkDate}
+        suggestions={agentSuggestions}
+        requests={agentRequests}
+        notices={[...taskReminderNotices,...agentNotices]}
+        attention={botAttention}
+        dark={canAccessManagerPanel&&showAdminPanel?adminDark:workerDark}
+        openSignal={botOpenSignal}
+        onApplySwap={applyAgentSwap}
+        onDismissSwap={dismissAgentSwap}
+        onApplyRequest={applyAgentRequest}
+        onDismissRequest={dismissAgentRequest}
+        onDismissNotice={(id)=>{
+          // „OK" na przypomnieniu o zadaniu = ten sam trwały klucz co „Zamknij" na karcie.
+          if(typeof id==="string"&&id.startsWith("task:"))
+            setDismissedReminderKeys(prev=>prev.includes(id.slice(5))?prev:[...prev,id.slice(5)]);
+          else dismissAgentNotice(id);
+        }}
+        onGoToHK={goToAgentMonitor}
+      />
       {/* ═══ Shell Top Bar (sekcja 2 redesign) ═══════════════════════════════ */}
-      <header className={`cc-shell-topbar${mgrToggleMini?" cc-shell-topbar--mini":""}${isAdmin&&showAdminPanel?" cc-shell-topbar--admin":""}`}>
+      <header className={`cc-shell-topbar${mgrToggleMini?" cc-shell-topbar--mini":""}${canAccessManagerPanel&&showAdminPanel?" cc-shell-topbar--admin":""}`}>
         <div className="cc-shell-topbar-left">
-          {isAdmin&&(
+          {canAccessManagerPanel&&(
             <div className="cc-shell-topbar-brand" aria-hidden="true">
               <Logo variant="dotsOnly" tone="white" width={28} height={6}/>
             </div>
           )}
           <div className="cc-shell-topbar-titlewrap">
             <div className="cc-shell-topbar-crumb">
-              <b>{isAdmin&&showAdminPanel?"Admin":"Recepcja"}</b>
+              <b>{canAccessManagerPanel&&showAdminPanel?"Admin":"Recepcja"}</b>
               <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-              <span>{(isAdmin&&showAdminPanel)?(ADMIN_TAB_LABELS[adminTab]||adminTab):(WORKER_TAB_LABELS[workerTab]||workerTab)}</span>
+              <span>{(canAccessManagerPanel&&showAdminPanel)?(ADMIN_TAB_LABELS[adminTab]||adminTab):(WORKER_TAB_LABELS[workerTab]||workerTab)}</span>
             </div>
             <h1 className="cc-shell-topbar-title">
-              {(isAdmin&&showAdminPanel)?(ADMIN_TAB_LABELS[adminTab]||"Panel kierownictwa"):(WORKER_TAB_LABELS[workerTab]||"Panel recepcji")}
+              {(canAccessManagerPanel&&showAdminPanel)?(ADMIN_TAB_LABELS[adminTab]||"Panel kierownictwa"):(WORKER_TAB_LABELS[workerTab]||"Panel recepcji")}
             </h1>
-            {isAdmin&&showAdminPanel&&(
+            {canAccessManagerPanel&&showAdminPanel&&(
               <div className="cc-shell-topbar-meta">
                 <span>Zalogowany(a) jako kierownik: <strong>{currentManager}</strong></span>
               </div>
@@ -3174,7 +3879,7 @@ export default function App(){
               </div>
             </div>
           )}
-          {isAdmin&&(
+          {canAccessManagerPanel&&(
             <div className="cc-shell-topbar-roletoggle" role="tablist" aria-label="Wybór panelu kierownika">
               <button
                 className={`cc-shell-topbar-roletab${!showAdminPanel?" is-active":""}`}
@@ -3195,7 +3900,7 @@ export default function App(){
         </div>
       </header>
       <div className="app-layout worker-layout">
-        {(isAdmin&&showAdminPanel)?(
+        {(canAccessManagerPanel&&showAdminPanel)?(
           <AdminSidebarRail
             activeTab={adminTab} setActiveTab={setAdminTab}
             setShowWiki={setShowWiki} setShowAuditLog={setShowAuditLog}
@@ -3209,27 +3914,39 @@ export default function App(){
             pendingCorrections={pendingCorrections.length}
             faultsCount={faultsCount}
             voucherCount={voucherCount}
+            chatCount={chatUnread}
             showToast={showToast}
           />
         ):(
-          <WorkerSidebar activeTab={workerTab} setActiveTab={setWorkerTab} started={started} overdueCount={overdueTasks.length} datedCount={todayDatedReminders.length} setShowWiki={setShowWiki} setShowEmpReport={setShowEmpReport} isAdmin={isAdmin} currentManager={currentManager} setShowAdminPanel={setShowAdminPanel} setShowSearch={setShowSearch} workerDark={workerDark} setWorkerDark={setWorkerDark} setShowPaymentForm={setShowPaymentForm} employeeName={employeeName} selectedShift={selectedShift} onShowMsg={()=>setShowMsgModal(true)} liveTime={liveTime} shiftElapsed={shiftElapsed} progress={progress} totalDone={totalDone} totalMandatory={totalMandatory} onOpenFinish={()=>setFinishDialogOpen(true)} inboxCount={inboxCount} faultsCount={faultsCount} showToast={showToast}/>
+          <WorkerSidebar activeTab={workerTab} setActiveTab={setWorkerTab} started={started} overdueCount={overdueTasks.length} datedCount={todayDatedReminders.length} setShowWiki={setShowWiki} setShowEmpReport={setShowEmpReport} isAdmin={canAccessManagerPanel} currentManager={canAccessManagerPanel?currentManager:""} setShowAdminPanel={setShowAdminPanel} setShowSearch={setShowSearch} workerDark={workerDark} setWorkerDark={setWorkerDark} setShowPaymentForm={setShowPaymentForm} employeeName={employeeName} selectedShift={selectedShift} shiftLabel={shiftShortLabel(selectedShift)} onShowMsg={()=>setShowMsgModal(true)} liveTime={liveTime} shiftElapsed={shiftElapsed} progress={progress} totalDone={totalDone} totalMandatory={totalMandatory} onOpenFinish={()=>setFinishDialogOpen(true)} inboxCount={inboxCount} faultsCount={faultsCount} chatCount={chatUnread} showToast={showToast}/>
         )}
-        <main className={`worker-content${(isAdmin&&showAdminPanel&&!adminDark)?" admin-light":""}`}>
+        <main className={`worker-content${(canAccessManagerPanel&&showAdminPanel&&!adminDark)?" admin-light":""}`}>
           <div className={`container${isWideWorkerPanel?" container-wide":""}`}>
-            {(isAdmin&&showAdminPanel)?adminPanel:workerView}
+            {(canAccessManagerPanel&&showAdminPanel)?adminPanel:workerView}
           </div>
         </main>
       </div>
       <AnimatePresence>{showWiki&&wikiDrawer}</AnimatePresence>
       <AnimatePresence>{showMsgModal&&<MessageModal key="msgm" onClose={()=>setShowMsgModal(false)} employeeName={employeeName} employees={employees} messages={messages} setMessages={setMessages} dark={dark}/>}</AnimatePresence>
-      <AnimatePresence>{showSearch&&<GlobalSearchModal key="gs" onClose={()=>setShowSearch(false)} dark={dark}/>}</AnimatePresence>
+      <AnimatePresence>{showSearch&&<GlobalSearchModal key="gs" onClose={()=>setShowSearch(false)} dark={dark} wikiEntries={wikiEntries} onOpenWiki={(id)=>{setShowSearch(false);if(id){setSelectedWikiId(id);setWikiExpandedId(id);}setShowWiki(true);}}/>}</AnimatePresence>
       {finishModal}
-      <AnimatePresence>{showPreShiftModal&&<PreShiftModal key="preshift" employeeName={employeeName} selectedShift={selectedShift} shiftLabel={shiftFullLabel(selectedShift)} onCancel={()=>setShowPreShiftModal(false)} onConfirm={actualStartShift}/>}</AnimatePresence>
+      {shiftEndReminderModal}
+      {safeGuardModal}
+      {testClockWidget}
+      <AnimatePresence>{showPreShiftModal&&<PreShiftModal key="preshift" employeeName={employeeName} selectedShift={selectedShift} shiftLabel={shiftFullLabel(selectedShift)} onCancel={()=>{setShowPreShiftModal(false);setLoginStep("name");setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");if(canAccessManagerPanel)clearManagerSession();}} onConfirm={actualStartShift}/>}</AnimatePresence>
       {identityConfirm&&<IdentityConfirmModal {...identityConfirm} onConfirm={()=>{const n=identityConfirm.employeeName;setIdentityConfirm(null);completeLogin(n);}} onCancel={()=>setIdentityConfirm(null)}/>}
       <AnimatePresence>{showAuditLog&&<AuditLogModal key="audit" onClose={()=>setShowAuditLog(false)}/>}</AnimatePresence>
       <AnimatePresence>{showEmpReport&&<EmployeeReportModal key="er" employees={employees} dark={dark} onClose={()=>setShowEmpReport(false)} currentEmployeeName={employeeName} onDownload={downloadEmployeeReportPDF}/>}</AnimatePresence>
       {confirmDialog&&<ConfirmModal message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onClose={()=>setConfirmDialog(null)}/>}
       <ToastContainer toasts={toasts} dismiss={dismissToast}/>
+      {!updateNoticeDismissed&&(
+        <GlobalUpdateNotice
+          state={updateState} info={updateInfo} progress={updateProgress} dark={dark}
+          onDownload={()=>window.electronAPI?.downloadUpdate()}
+          onInstall={()=>window.electronAPI?.installUpdate()}
+          onDismiss={()=>setUpdateNoticeDismissed(true)}
+        />
+      )}
       {/* Correction approval modal */}
       <AnimatePresence>{correctionApprovalModal&&(
         <CorrectionApprovalModal
@@ -3297,7 +4014,7 @@ export default function App(){
                 </div>
               </div>
               <div><label>Nr dokumentu / rezerwacji</label><input className="input" placeholder="Np. paragon 00234 · RES-2026-1234 · FV/2026/031" value={pcReservation} onChange={e=>setPcReservation(e.target.value)}/></div>
-              <div><label>Wyjaśnienie — co się stało i jak powinno być</label><textarea className="input" style={{minHeight:130,resize:"vertical",lineHeight:1.7}} placeholder={"Opisz sytuację i podaj prawidłowe dane:\n\nNp. Na paragonie 00234 wpisano kwotę 250 zł zamiast 350 zł.\nGość: Jan Kowalski, pokój 302, data: 20.03.2026.\nNależy wystawić korektę na +100 zł."} value={pcExplanation} onChange={e=>setPcExplanation(e.target.value)}/></div>
+              <div><label>Wyjaśnienie — co się stało i jak powinno być</label><textarea className="input" style={{minHeight:130,resize:"vertical",lineHeight:1.7}} placeholder={"Opisz sytuację i podaj prawidłowe dane:\n\nNp. Na paragonie 00234 wpisano kwotę 250 zł zamiast 350 zł.\nGość: Jan Kowalski, pokój 302, data: 20.03.2026.\nNależy wystawić korektę na +100 zł."} value={pcExplanation} onChange={e=>setPcExplanation(e.target.value)}/>{llmReady&&<button type="button" className="btn btn-outline" style={{fontSize:11.5,marginTop:6,display:"inline-flex",alignItems:"center",gap:5}} disabled={polishingNote||!pcExplanation.trim()} onClick={async()=>{setPolishingNote(true);try{const o=await polishText(pcExplanation.trim());if(o)setPcExplanation(o);showToast("Tekst zredagowany.","success");}catch(err){showToast(err?.code==="rate_limited"?"Limit — spróbuj za chwilę.":"AI niedostępne.","error");}finally{setPolishingNote(false);}}}><Sparkles size={12}/>{polishingNote?"Redaguję…":"Zredaguj AI"}</button>}</div>
               <div>
                 <label style={{display:"block",marginBottom:6,fontWeight:600,fontSize:13}}>Twój podpis elektroniczny</label>
                 <div style={{fontSize:11.5,color:"var(--text-muted)",marginBottom:8}}>Podpisz myszką — pojawi się na dokumencie dla księgowości</div>
