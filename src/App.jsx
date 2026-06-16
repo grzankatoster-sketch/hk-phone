@@ -659,6 +659,41 @@ export default function App(){
   const [showSearch,setShowSearch]=useState(false);
   const [paymentCorrections,setPaymentCorrections]=useState(()=>loadJson(STORAGE_KEYS.paymentCorrections,[]));
   useEffect(()=>{pushMirror("payment_corrections",paymentCorrections);},[paymentCorrections]);
+  // Synchronizacja decyzji kierownika z panelu menedżerskiego (payment_correction_approvals):
+  // panel zatwierdza/odrzuca korekty zdalnie, tu nanosimy te decyzje na lokalne korekty,
+  // żeby widok recepcji był spójny z panelem. Idempotentne (po polu panelSync = decided_at).
+  useEffect(()=>{
+    if(!supabase)return;
+    let cancelled=false;
+    const syncApprovals=async()=>{
+      try{
+        const {data,error}=await supabase
+          .from("payment_correction_approvals")
+          .select("correction_id,decision,manager,note,decided_at")
+          .eq("tenant_id",TENANT_ID);
+        if(error||!Array.isArray(data)||cancelled)return;
+        const byId={};data.forEach(a=>{if(a&&a.correction_id)byId[a.correction_id]=a;});
+        setPaymentCorrections(prev=>{
+          let changed=false;
+          const next=prev.map(c=>{
+            const a=byId[c.id];
+            if(!a||c.panelSync===a.decided_at)return c; // brak decyzji albo już naniesiona
+            changed=true;
+            const mgr=a.manager||"Panel";
+            const at=a.decided_at?new Date(a.decided_at).toLocaleString("pl-PL",{year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}):"";
+            const rejected=a.decision==="rejected";
+            return {...c,done:true,decision:rejected?"rejected":"approved",panelSync:a.decided_at,
+              approvals:{...(c.approvals||{}),[mgr]:{at,note:a.note||(rejected?"Odrzucone w panelu menedżerskim":"Zatwierdzone w panelu menedżerskim"),signature:null,source:"panel",rejected}}};
+          });
+          if(changed)saveJson(STORAGE_KEYS.paymentCorrections,next);
+          return changed?next:prev;
+        });
+      }catch{/* offline / brak tabeli — ignoruj */}
+    };
+    syncApprovals();
+    const iv=setInterval(syncApprovals,60000); // dociągaj decyzje co minutę
+    return ()=>{cancelled=true;clearInterval(iv);};
+  },[]);
   const [savedReports,setSavedReports]=useState(()=>loadJson(STORAGE_KEYS.reports,[]));
   const [showPaymentForm,setShowPaymentForm]=useState(false);
   const [correctionFilter,setCorrectionFilter]=useState("wszystkie");

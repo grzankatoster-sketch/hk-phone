@@ -92,13 +92,15 @@ export default function KorektyPanel({
           <div style={{display:"grid",gap:8}}>
             {filtered.map(c=>{
               const approvals = c.approvals||{};
+              const isRejected = c.decision==="rejected"; // decyzja "odrzuć" z panelu menedżerskiego
               const isExpanded = expandedCorrection===c.id;
               return isExpanded ? (
                 <div key={c.id} style={{borderRadius:"var(--radius-md)",overflow:"hidden",border:"1px solid var(--border-light)",borderLeft:`4px solid ${c.done?"var(--emerald)":"var(--gold)"}`,background:"var(--bg-card)",boxShadow:"var(--shadow-md)"}}>
                   <div style={{background:c.done?"var(--emerald-light)":"var(--gold-soft, var(--gold-bg))",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,borderBottom:"1px solid var(--border-light)"}}>
                     <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:10.5,padding:"2px 10px",borderRadius:999,background:c.done?"var(--emerald)":"var(--gold)",color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:".06em"}}>{c.docType||"dokument"}</span>
+                      <span style={{fontSize:10.5,padding:"2px 10px",borderRadius:999,background:isRejected?"#c2415a":c.done?"var(--emerald)":"var(--gold)",color:"#fff",fontWeight:800,textTransform:"uppercase",letterSpacing:".06em"}}>{c.docType||"dokument"}</span>
                       <span style={{fontSize:14.5,fontWeight:700,color:"var(--text-primary)",fontFamily:"var(--cc-font-display)"}}>{c.reservation}</span>
+                      {isRejected&&<span style={{fontSize:10.5,padding:"2px 9px",borderRadius:999,background:"rgba(194,65,90,.15)",color:"#c2415a",fontWeight:800,border:"1px solid rgba(194,65,90,.35)"}}>&#10007; Odrzucona w panelu</span>}
                       {c.done&&Object.entries(c.approvals||{}).filter(([,v])=>v?.at).map(([mgr])=>(
                         <span key={mgr} style={{fontSize:10.5,padding:"2px 9px",borderRadius:999,background:"var(--emerald-light)",color:"var(--emerald)",fontWeight:700,border:"1px solid var(--emerald-border)"}}>&#10003; {mgr}</span>
                       ))}
@@ -143,7 +145,7 @@ export default function KorektyPanel({
                     <div className="cc-vrow-title">{c.reservation||"—"} <span style={{fontWeight:400,color:"var(--cc-text-muted)",fontSize:12}}>· {getFullName(c.submittedBy)}</span></div>
                     <div className="cc-vrow-sub">{(c.submittedAt||"").split(",")[0]}</div>
                   </div>
-                  <span className="cc-vrow-badge" style={{background:c.done?"color-mix(in srgb,var(--cc-success) 18%,transparent)":"color-mix(in srgb,var(--cc-warning) 18%,transparent)",color:c.done?"var(--cc-success)":"var(--cc-warning)"}}>{c.done?"✓ Załatwione":"⚠ Czeka"}</span>
+                  <span className="cc-vrow-badge" style={{background:isRejected?"color-mix(in srgb,#c2415a 18%,transparent)":c.done?"color-mix(in srgb,var(--cc-success) 18%,transparent)":"color-mix(in srgb,var(--cc-warning) 18%,transparent)",color:isRejected?"#c2415a":c.done?"var(--cc-success)":"var(--cc-warning)"}}>{isRejected?"✕ Odrzucona":c.done?"✓ Załatwione":"⚠ Czeka"}</span>
                   <span style={{fontSize:11,color:"var(--cc-brand)",fontWeight:700,flexShrink:0}}>&#9658;</span>
                 </div>
               );
