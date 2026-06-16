@@ -189,7 +189,7 @@ body{font-family:var(--ui);background:
 .kpi{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:11px 13px;box-shadow:var(--shadow)}
 .kpi .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .kpi .v{font-size:25px;color:var(--plum);margin-top:2px;line-height:1}
-.kpi .v.ok{color:var(--ok)} .kpi .v.gold{color:var(--gold)}
+.kpi .v.ok{color:var(--ok)} .kpi .v.gold{color:var(--gold)} .kpi .v.bad{color:var(--bad)}
 
 /* ── Komponenty: szlif ── */
 .wcard,.statrow,.day{box-shadow:var(--shadow);border-radius:14px}
@@ -787,7 +787,10 @@ function tabsFor(role){
   // Gastro: osobny, węższy zestaw (bez modułów HK).
   if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
-  const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]];
+  const t = [];
+  // Pulpit dnia (jeden ekran-przegląd) — landing dla ról recepcyjnych/koordynatora.
+  if (A || RECEPCJA_ROLES.has(role)) t.push(["pulpit","Pulpit"]);
+  t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
@@ -800,6 +803,7 @@ function tabsFor(role){
 
 const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const NAV_ICON = {
+  pulpit:  _ic('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>'),
   live:    _ic('<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/>'),
   wyjazdy: _ic('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
   staty:   _ic('<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/>'),
@@ -862,6 +866,7 @@ window.setHkTab = (t) => {
 
 async function loadHkTab() {
   stopLive();
+  if (hkTab === "pulpit")  return loadPulpit();
   if (hkTab === "praca")   return loadPraca();
   if (hkTab === "live")    return loadLive();
   if (hkTab === "wyjazdy") return loadWyjazdy();
@@ -1744,6 +1749,88 @@ window.decideCorrection = async (correctionId, decision) => {
     loadKasa();
   } catch (e) { alert("Nie udało się zapisać decyzji" + (e&&e.message?`: ${e.message}`:".")); }
 };
+
+// ── Pulpit dnia: jeden ekran-przegląd dla koordynatora/recepcji. Agreguje dane z innych
+//    zakładek (obsada, wyjazdy, kasa, zadania, ogłoszenia); kafelki skaczą do sekcji. ──
+async function loadPulpit() {
+  const today = isoDate(new Date()); const d = fmtDate(today);
+  body('<div class="spin">Wczytywanie…</div>');
+  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null;
+  try {
+    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar] = await Promise.all([
+      sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
+      sb.from("hk_roster").select("roster").eq("tenant_id",TENANT_ID).eq("date",today).maybeSingle(),
+      getMirror("schedule"),
+      sb.from("shift_reports").select("shift_key,cash_current,safe_total,cash_closing,saved_at,employee").eq("tenant_id",TENANT_ID).eq("day_key",today).order("saved_at",{ascending:false}),
+      getMirror("payment_corrections"),
+      sb.from("manager_alerts").select("priority,done").eq("tenant_id",TENANT_ID),
+      sb.from("standing_reminders").select("title,active,created_at").eq("tenant_id",TENANT_ID).order("created_at",{ascending:false}).limit(40),
+      getMirror("reports_full"),
+      sb.from("payment_correction_approvals").select("correction_id").eq("tenant_id",TENANT_ID).then(r=>r,()=>({data:[]})),
+    ]);
+    plan   = (pl && pl.data) || {};
+    roster = (ro && ro.data && Array.isArray(ro.data.roster)) ? ro.data.roster : [];
+    sched  = sc;
+    cashRows = (sr && sr.data) || [];
+    corr   = Array.isArray(mc) ? mc : [];
+    alerts = (ma && ma.data) || [];
+    rems   = ((rm && rm.data) || []).filter(r => r.active !== false);
+    rf     = rfm;
+    appr   = (ar && ar.data) || [];
+  } catch { return body('<div class="empty">Nie udało się wczytać pulpitu.</div>'); }
+
+  // Obsada: HK z roster + recepcja z mirrora grafiku.
+  const recCount = (sched && typeof sched==="object" && sched[today]) ? Object.values(sched[today]).filter(Boolean).length : 0;
+  const hkCount = roster.length;
+  // Wyjazdy/pobyty dnia.
+  const types = countTypes(plan);
+  // Kasa: ostatni stan sejfu + czy zmiana zamykająca ma KW (fallback z reports_full).
+  let cash = cashRows.slice();
+  if (!cash.length && Array.isArray(rf)) {
+    cash = rf.filter(r => kasaIso(r.dayKey||r.day_key||r.savedAt)===today).map(r => ({
+      shift_key:r.shiftKey||r.shift_key, safe_total: typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal),
+      cash_closing:kasaNum(r.cashClosingDocumentsAmount), saved_at:r.savedAt }));
+    cash.sort((a,b)=>String(b.saved_at||"").localeCompare(String(a.saved_at||"")));
+  }
+  const safe = cash.length ? cash[0].safe_total : null;
+  const closingShift = cash.find(r => r.shift_key==="wieczorowa"||r.shift_key==="nocna");
+  const kwMissing = closingShift && (closingShift.cash_closing==null || closingShift.cash_closing===0);
+  const kwTxt = kwMissing ? "⚠ brak" : (closingShift ? "✓ zarejestr." : "—");
+  // Korekty oczekujące (bez decyzji panelu, nie done).
+  const apprIds = new Set(appr.map(a => a.correction_id));
+  const pendCorr = corr.filter(c => !c.done && !apprIds.has(c.id)).length;
+  // Zadania otwarte / pilne.
+  const openTasks = alerts.filter(a => !a.done);
+  const pilne = openTasks.filter(a => a.priority==="high").length;
+
+  const kpis = `<div class="kpis">
+    <div class="kpi"><div class="l">Obsada dziś</div><div class="v">${hkCount + recCount}</div></div>
+    <div class="kpi"><div class="l">Wyjazdy</div><div class="v gold">${fmtWP(types.w.reg, types.w.apt)}</div></div>
+    <div class="kpi"><div class="l">Zadania</div><div class="v${pilne?' bad':''}">${openTasks.length}</div></div>
+    <div class="kpi"><div class="l">Sejf</div><div class="v ok">${zl(safe)}</div></div>
+  </div>`;
+
+  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:1px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
+  const tile = (tab,title,lines) => `<div class="wcard" style="cursor:pointer" onclick="setHkTab('${tab}')">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:13.5px">${title}</span><span style="font-size:11px;color:var(--plum);font-weight:800">otwórz ›</span></div>
+    <div style="margin-top:7px">${lines}</div></div>`;
+
+  const tiles = [
+    tile("kasa","💰 Kasa", line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Stan sejfu", zl(safe)) + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
+    tile("zadania","✅ Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    tile("wyjazdy","🚪 Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
+    tile("live","👥 Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
+  ].join("");
+
+  const remHtml = rems.length
+    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k">📌 ${esc(r.title||"")}</span></div>`).join("")
+    : "";
+
+  body(`<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
+    + kpis
+    + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:6px">${tiles}</div>`
+    + remHtml);
+}
 
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
 const GRAFIK_BASE = "https://grzankatoster-sketch.github.io/hk-phone/grafik.html?t=";
