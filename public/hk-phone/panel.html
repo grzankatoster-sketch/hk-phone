@@ -379,6 +379,9 @@ function makeMockClient(){
       {id:"1",description:"Cieknący kran w 312",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"312",room:"312",source:"reception",reported_at:today+"T09:00:00",reported_by:"Recepcja"},
       {id:"2",description:"Przepalona żarówka na korytarzu",assigned_to:"Kamil",status:"in_progress",priority:"normal",space_id:"koryt. 2p",source:"hk",reported_at:today+"T08:10:00",reported_by:"Anna"},
       {id:"3",description:"Klimatyzacja nie chłodzi",assigned_to:null,status:"open",priority:"normal",space_id:"restauracja",source:"reception",reported_at:today+"T07:30:00",reported_by:"Recepcja"},
+      {id:"4",description:"Zacięty zamek w 210 (po terminie)",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"210",room:"210",source:"reception",reported_at:plus(-2)+"T12:00:00",due_at:plus(-1)+"T12:00:00",reported_by:"Recepcja"},
+      {id:"5",description:"Wymiana baterii w 305",assigned_to:"Kamil",status:"done",priority:"normal",space_id:"305",room:"305",source:"hk",reported_at:plus(-1)+"T09:00:00",started_at:plus(-1)+"T11:00:00",completed_at:plus(-1)+"T13:30:00",reported_by:"Marta"},
+      {id:"6",description:"Niedrożny odpływ 118",assigned_to:"Grzegorz",status:"done",priority:"high",space_id:"118",room:"118",source:"reception",reported_at:today+"T07:00:00",started_at:today+"T07:40:00",completed_at:today+"T09:10:00",reported_by:"Recepcja"},
     ],
     shift_reports: [
       {day_key:today,shift_key:"poranna",employee:"Kasia",cash_closing:1240.5,safe_total:5300,cash_current:820,saved_at:today+"T14:00:00",tasks_done:4},
@@ -802,7 +805,7 @@ function tabsFor(role){
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
-  if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["plan","Plan"]);
+  if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"]);
   if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
   if (A)                             t.push(["konta","Konta"]);
   return t;
@@ -818,6 +821,7 @@ const NAV_ICON = {
   zadania: _ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
   kasa:    _ic('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="17" cy="14.5" r="1.4"/>'),
   konserw: _ic('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.3L3 18l3 3 6.4-6.3a4 4 0 0 0 5.3-5.4l-2.6 2.6-2-2 2.6-2.6z"/>'),
+  sla:     _ic('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/>'),
   zmiany:  _ic('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v3l2 1"/>'),
   tablica: _ic('<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 0 1-5.8-1.6"/>'),
   plan:    _ic('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M9 11h6M9 15h4"/>'),
@@ -885,6 +889,7 @@ async function loadHkTab() {
   if (hkTab === "grafik")  return loadGrafik();
   if (hkTab === "zmiany")  return loadZmiany();
   if (hkTab === "konserw") return loadKonserw();
+  if (hkTab === "sla")     return loadSLA();
   if (hkTab === "plan")    return loadPlan();
   if (hkTab === "tablica") return loadTablica();
   if (hkTab === "akcje")   return loadAkcje();
@@ -2101,6 +2106,89 @@ function renderGrid() {
     }).join("");
   }
   body(html);
+}
+
+// ── Usterki SLA: czas reakcji/zamknięcia, zaległości, przekroczone terminy (faults).
+//    Czasy z reported_at → started_at (reakcja) → completed_at (zamknięcie); due_at = termin (SLA). ──
+let slaDays = 7;
+window.toggleSlaDays = () => { slaDays = slaDays===7 ? 30 : 7; loadSLA(); };
+const fmtH = h => h==null||isNaN(h) ? "—" : (h<1 ? Math.round(h*60)+" min" : (h<24 ? h.toFixed(1)+" h" : (h/24).toFixed(1)+" dni"));
+const SRC_LBL = { reception:"Recepcja", hk:"Housekeeping" };
+async function loadSLA() {
+  const today = new Date(); const from = new Date(today); from.setDate(today.getDate() - (slaDays-1));
+  const fromKey = isoDate(from);
+  const fromIso = new Date(fromKey+"T00:00:00").toISOString();
+  const now = Date.now();
+  body('<div class="spin">Wczytywanie…</div>');
+  let open = [], reported = [], closed = [];
+  try {
+    const [bo, rp, cl] = await Promise.all([
+      sb.from("faults").select("id,description,assigned_to,status,priority,room,space_id,source,reported_at,due_at,started_at")
+        .eq("tenant_id",TENANT_ID).in("status",["open","in_progress"]).order("reported_at",{ascending:true}).limit(300),
+      sb.from("faults").select("status,source,reported_at").eq("tenant_id",TENANT_ID).gte("reported_at",fromIso).limit(800),
+      sb.from("faults").select("priority,source,assigned_to,reported_at,started_at,completed_at,due_at").eq("tenant_id",TENANT_ID).eq("status","done").gte("completed_at",fromIso).limit(800),
+    ]);
+    open = (bo&&bo.data)||[]; reported = (rp&&rp.data)||[]; closed = (cl&&cl.data)||[];
+  } catch { return body('<div class="empty">Nie udało się pobrać danych usterek.</div>'); }
+
+  const toggle = `<button class="rost-addbtn fullspan" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="toggleSlaDays()">${slaDays===7?"Pokaż 30 dni":"Pokaż 7 dni"}</button>`;
+
+  const hrsBetween = (a,b) => (a&&b) ? (new Date(b).getTime()-new Date(a).getTime())/3600000 : null;
+  const ageH = r => (now - new Date(r.reported_at).getTime())/3600000;
+  // Czasy zamknięcia / reakcji w okresie.
+  const resol = closed.map(r=>hrsBetween(r.reported_at,r.completed_at)).filter(v=>v!=null&&v>=0);
+  const react = closed.map(r=>hrsBetween(r.reported_at,r.started_at)).filter(v=>v!=null&&v>=0);
+  const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+  const median = a => { if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+  const closedLate = closed.filter(r=>r.due_at&&r.completed_at&&new Date(r.completed_at)>new Date(r.due_at)).length;
+  // Zaległości: po terminie (due_at minęło) i długo otwarte (>24h).
+  const overdue = open.filter(r=>r.due_at&&new Date(r.due_at).getTime()<now);
+  const old24 = open.filter(r=>ageH(r)>24);
+  const oldest = open[0]; // posortowane rosnąco po reported_at
+
+  const kpis = `<div class="kpis">
+    <div class="kpi"><div class="l">Otwarte</div><div class="v${open.length?'':' ok'}">${open.length}</div></div>
+    <div class="kpi"><div class="l">Po terminie</div><div class="v${overdue.length?' bad':' ok'}">${overdue.length}</div></div>
+    <div class="kpi"><div class="l">Śr. zamknięcie</div><div class="v gold">${fmtH(avg(resol))}</div></div>
+    <div class="kpi"><div class="l">Zamknięte</div><div class="v ok">${closed.length}</div></div>
+  </div>`;
+
+  const line = (l,v,c) => `<div class="statrow"><span class="k">${l}</span><span class="v"${c?` style="color:${c}"`:""}>${v}</span></div>`;
+  const timesHtml = `<div class="soon">Czasy i przepływ (ostatnie ${slaDays} dni)</div>`
+    + line("Śr. czas reakcji (zgłoszenie → start)", fmtH(avg(react)))
+    + line("Śr. czas zamknięcia (zgłoszenie → koniec)", fmtH(avg(resol)))
+    + line("Mediana czasu zamknięcia", fmtH(median(resol)))
+    + line("Zgłoszone w okresie", reported.length)
+    + line("Zamknięte w okresie", closed.length)
+    + line("Zamknięte po terminie", closedLate, closedLate?"var(--bad)":"var(--ok)");
+
+  // Wg źródła (zgłoszone w okresie).
+  const bySrc = {}; reported.forEach(r=>{ const k=r.source||"reception"; bySrc[k]=(bySrc[k]||0)+1; });
+  const srcHtml = Object.keys(bySrc).length ? `<div class="soon">Zgłoszenia wg źródła</div>`
+    + Object.entries(bySrc).sort((a,b)=>b[1]-a[1]).map(([k,n])=>line(esc(SRC_LBL[k]||k), n)).join("") : "";
+
+  // Zaległości — najpierw po terminie, potem najstarsze. Wiek + przypisanie.
+  const backlog = [...open].sort((a,b)=>{
+    const ao=a.due_at&&new Date(a.due_at).getTime()<now, bo=b.due_at&&new Date(b.due_at).getTime()<now;
+    if (ao!==bo) return ao?-1:1;          // po terminie na górze
+    return new Date(a.reported_at)-new Date(b.reported_at); // potem najstarsze
+  }).slice(0,20);
+  const backHtml = backlog.length ? `<div class="soon">Zaległości (otwarte: ${open.length}, w tym >24h: ${old24.length})</div>`
+    + backlog.map(r=>{
+      const p = PRIO[r.priority]||PRIO.normal;
+      const od = r.due_at && new Date(r.due_at).getTime()<now;
+      const age = ageH(r);
+      const where = r.room ? `pok. ${esc(r.room)}` : esc(r.space_id||r.source||"");
+      return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span>
+          <span class="k" style="flex:1">${esc(r.description||"—")}</span>
+          <span class="chip" style="color:${od?'var(--bad)':'var(--muted)'};border-color:${od?'rgba(194,65,90,.4)':'var(--line)'}">${od?'po terminie':fmtH(age)}</span></div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">${where}${r.assigned_to?` · ${esc(r.assigned_to)}`:" · nieprzypisana"}${r.status==="in_progress"?" · w toku":""}</div>
+      </div>`; }).join("") : `<div class="empty">Brak otwartych usterek 🎉</div>`;
+
+  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">SLA usterek — czasy z okresu ${slaDays} dni, zaległości liczone na teraz. „Po terminie" = minął termin (due_at).</div>`
+    + kpis + timesHtml + srcHtml + backHtml);
 }
 
 // ── Konserwatorzy: obciążenie (usterki) + dodawanie zadań (insert faults → push przez webhook) ──
