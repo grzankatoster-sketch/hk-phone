@@ -140,9 +140,10 @@ function buildDays(meta){
 async function boot(){
   if(!sb){ app.innerHTML='<div class="box"><div class="big">Błąd</div><div class="sm">Brak biblioteki — odśwież stronę.</div></div>'; return; }
   if(!TOKEN){ app.innerHTML='<div class="box"><div class="big">Brak linku</div><div class="sm">Otwórz swój indywidualny link z grafikiem.</div></div>'; return; }
-  let data=null;
-  try { const r=await sb.rpc("get_availability",{p_token:TOKEN}); data=r.data; }
-  catch { app.innerHTML='<div class="box"><div class="big">Błąd połączenia</div><div class="sm">Spróbuj ponownie za chwilę.</div></div>'; return; }
+  let data=null, rpcErr=null;
+  try { const r=await sb.rpc("get_availability",{p_token:TOKEN}); data=r.data; rpcErr=r.error; }
+  catch (e) { rpcErr=e; }
+  if(rpcErr){ app.innerHTML='<div class="box"><div class="big">Błąd serwera</div><div class="sm">Nie udało się wczytać grafiku ('+esc((rpcErr&&rpcErr.message)||'')+'). To nie jest wina linku — przekaż ten komunikat menedżerowi.</div></div>'; return; }
   if(!data){ app.innerHTML='<div class="box"><div class="big">Link nieaktywny</div><div class="sm">Ten link wygasł lub jest nieprawidłowy. Poproś menedżera o nowy.</div></div>'; return; }
   META=data; CHOICE={}; HOURS={};
   (data.entries||[]).forEach(e=>{ CHOICE[e.date]=e.choice; if(e.start||e.end) HOURS[e.date]={start:e.start||"",end:e.end||""}; });
