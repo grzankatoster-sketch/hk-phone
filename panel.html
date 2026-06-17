@@ -189,7 +189,7 @@ body{font-family:var(--ui);background:
 .kpi{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:11px 13px;box-shadow:var(--shadow)}
 .kpi .l{font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
 .kpi .v{font-size:25px;color:var(--plum);margin-top:2px;line-height:1}
-.kpi .v.ok{color:var(--ok)} .kpi .v.gold{color:var(--gold)}
+.kpi .v.ok{color:var(--ok)} .kpi .v.gold{color:var(--gold)} .kpi .v.bad{color:var(--bad)}
 
 /* ── Komponenty: szlif ── */
 .wcard,.statrow,.day{box-shadow:var(--shadow);border-radius:14px}
@@ -379,6 +379,9 @@ function makeMockClient(){
       {id:"1",description:"Cieknący kran w 312",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"312",room:"312",source:"reception",reported_at:today+"T09:00:00",reported_by:"Recepcja"},
       {id:"2",description:"Przepalona żarówka na korytarzu",assigned_to:"Kamil",status:"in_progress",priority:"normal",space_id:"koryt. 2p",source:"hk",reported_at:today+"T08:10:00",reported_by:"Anna"},
       {id:"3",description:"Klimatyzacja nie chłodzi",assigned_to:null,status:"open",priority:"normal",space_id:"restauracja",source:"reception",reported_at:today+"T07:30:00",reported_by:"Recepcja"},
+      {id:"4",description:"Zacięty zamek w 210 (po terminie)",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"210",room:"210",source:"reception",reported_at:plus(-2)+"T12:00:00",due_at:plus(-1)+"T12:00:00",reported_by:"Recepcja"},
+      {id:"5",description:"Wymiana baterii w 305",assigned_to:"Kamil",status:"done",priority:"normal",space_id:"305",room:"305",source:"hk",reported_at:plus(-1)+"T09:00:00",started_at:plus(-1)+"T11:00:00",completed_at:plus(-1)+"T13:30:00",reported_by:"Marta"},
+      {id:"6",description:"Niedrożny odpływ 118",assigned_to:"Grzegorz",status:"done",priority:"high",space_id:"118",room:"118",source:"reception",reported_at:today+"T07:00:00",started_at:today+"T07:40:00",completed_at:today+"T09:10:00",reported_by:"Recepcja"},
     ],
     shift_reports: [
       {day_key:today,shift_key:"poranna",employee:"Kasia",cash_closing:1240.5,safe_total:5300,cash_current:820,saved_at:today+"T14:00:00",tasks_done:4},
@@ -394,6 +397,12 @@ function makeMockClient(){
       {id:"a2",title:"Dostawa ręczników",body:"Przyjechała o 9, rozłożona na piętrach",priority:"normal",created_by:"Tetiana",created_at:today+"T09:20:00",done:false},
     ],
     hk_roster: [{tenant_id:"00000000-0000-0000-0000-000000000001", date:today, roster:[{name:"Anna",role:"dyzur"},{name:"Marta",role:"poranna"},{name:"Oksana",role:"popoludnie"}]}],
+    hk_quality_checks: [
+      {id:"qc1",date:today,room:"102",cleaned_by:"Marta",target_worker:"Anna",status:"done",created_at:today+"T10:10:00",acked_at:today+"T10:25:00",items:[{q:"Pod łóżkiem?",checked:true},{q:"Ręczniki?",checked:true}]},
+      {id:"qc2",date:today,room:"201",cleaned_by:"Oksana",target_worker:"Anna",status:"pending",created_at:today+"T11:00:00",items:[{q:"Minibar?",checked:false}]},
+      {id:"qc3",date:plus(-1),room:"106",cleaned_by:"Marta",target_worker:"Oksana",status:"done",created_at:plus(-1)+"T09:40:00",acked_at:plus(-1)+"T09:55:00",items:[{q:"Łazienka?",checked:true}]},
+    ],
+    hk_qc_settings: [{tenant_id:"00000000-0000-0000-0000-000000000001",enabled:true,mode:"random",daily_limit:4}],
     standing_reminders: [
       {id:"s1",title:"Zawsze sprawdzaj depozyt przy check-in",body:"",active:true,created_by:"Koordynator",created_at:today+"T08:00:00"},
       {id:"s2",title:"Klucz do magazynu zwracamy na recepcję",body:"",active:true,created_by:"Admin",created_at:today+"T07:00:00"},
@@ -408,7 +417,10 @@ function makeMockClient(){
     ],
     panel_mirror: [
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"schedule", data:(()=>{ const o={}; o[today]={Kasia:{start:"7",end:"15",shift:"poranna"},Ola:{start:"15",end:"22",shift:"popoludniowa"}}; o[plus(1)]={Kasia:{start:"7",end:"15",shift:"poranna"},Marek:{start:"22",end:"7",shift:"nocna"}}; return o; })()},
-      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[{employee:"Kasia",amount:-50,reason:"zwrot za parking",dateKey:today}]},
+      {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"payment_corrections", data:[
+        {id:"corr-demo-1",docType:"paragon",reservation:"312",explanation:"Błędna kwota na paragonie — zawyżono o 50 zł, korekta do zwrotu gościowi.",submittedBy:"Kasia",submittedAt:"16.06.2026, 10:42",shift:"poranna",done:false},
+        {id:"corr-demo-2",docType:"faktura",reservation:"218",explanation:"Faktura na złe dane firmy, wystawiono korektę.",submittedBy:"Ola",submittedAt:"15.06.2026, 18:05",shift:"popoludniowa",done:false},
+      ]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"reports_full", data:[{dayKey:today,shiftKey:"poranna",employee:"Kasia"},{dayKey:today,shiftKey:"popoludniowa",employee:"Ola"}]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employees", data:["Kasia","Ola","Marek","Natalia","Rebecca"]},
       {tenant_id:"00000000-0000-0000-0000-000000000001", kind:"employee_reports", data:[{id:"d1",author:"Kasia",handoverTo:"Kierownik",subject:"Reklamacja pokój 214",reportDate:today,content:"Gość zgłosił niedziałającą klimatyzację. Przeniesiono do 218, usterkę przekazano konserwacji.",createdAt:today}]},
@@ -784,12 +796,16 @@ function tabsFor(role){
   // Gastro: osobny, węższy zestaw (bez modułów HK).
   if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
-  const t = [["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]];
+  const t = [];
+  // Pulpit dnia (jeden ekran-przegląd) — landing dla ról recepcyjnych/koordynatora.
+  if (A || RECEPCJA_ROLES.has(role)) t.push(["pulpit","Pulpit"]);
+  t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
+  if (A || role === "mgr_hk") t.push(["jakosc","Jakość"]); // pulpit losowych kontroli pokoi
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
-  if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["plan","Plan"]);
+  if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"]);
   if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
   if (A)                             t.push(["konta","Konta"]);
   return t;
@@ -797,6 +813,7 @@ function tabsFor(role){
 
 const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
 const NAV_ICON = {
+  pulpit:  _ic('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>'),
   live:    _ic('<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/>'),
   wyjazdy: _ic('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
   staty:   _ic('<path d="M3 3v18h18"/><rect x="7" y="11" width="3" height="6"/><rect x="12" y="7" width="3" height="10"/><rect x="17" y="13" width="3" height="4"/>'),
@@ -804,12 +821,14 @@ const NAV_ICON = {
   zadania: _ic('<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>'),
   kasa:    _ic('<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><circle cx="17" cy="14.5" r="1.4"/>'),
   konserw: _ic('<path d="M14.7 6.3a4 4 0 0 0-5.4 5.3L3 18l3 3 6.4-6.3a4 4 0 0 0 5.3-5.4l-2.6 2.6-2-2 2.6-2.6z"/>'),
+  sla:     _ic('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/>'),
   zmiany:  _ic('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v3l2 1"/>'),
   tablica: _ic('<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 0 1-5.8-1.6"/>'),
   plan:    _ic('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M9 11h6M9 15h4"/>'),
   akcje:   _ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
   praca:   _ic('<path d="M19 5l-7 7M14 4l6 6M8.5 10.5l5 5M3 21l3.5-1 9-9-2.5-2.5-9 9L3 21z"/>'),
+  jakosc:  _ic('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="m8.5 11 1.8 1.8 3.2-3.6"/>'),
 };
 const BRAND_SVG = '<svg viewBox="0 0 80 12" width="40" height="10" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>';
 const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); return f?f[1]:""; };
@@ -859,6 +878,8 @@ window.setHkTab = (t) => {
 
 async function loadHkTab() {
   stopLive();
+  if (hkTab === "pulpit")  return loadPulpit();
+  if (hkTab === "jakosc")  return loadQuality();
   if (hkTab === "praca")   return loadPraca();
   if (hkTab === "live")    return loadLive();
   if (hkTab === "wyjazdy") return loadWyjazdy();
@@ -868,6 +889,7 @@ async function loadHkTab() {
   if (hkTab === "grafik")  return loadGrafik();
   if (hkTab === "zmiany")  return loadZmiany();
   if (hkTab === "konserw") return loadKonserw();
+  if (hkTab === "sla")     return loadSLA();
   if (hkTab === "plan")    return loadPlan();
   if (hkTab === "tablica") return loadTablica();
   if (hkTab === "akcje")   return loadAkcje();
@@ -1546,19 +1568,81 @@ window.markZadanieDone = async (id) => {
 
 // ── Kasa: stan kasy ostatnich dni (shift_reports) ──
 const SHIFT_LBL = { poranna:"Poranna", popoludniowa:"Popołudniowa", wieczorowa:"Wieczorowa", nocna:"Nocna", dzienna:"Dzienna" };
+const DOC_KASA = { paragon:"Paragon", faktura:"Faktura", fiskalny:"Paragon fiskalny", inny:"Inny dokument" };
 const zl = v => (v==null||isNaN(v)) ? "—" : Number(v).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
 let kasaFull = false;
 window.toggleKasaFull = () => { kasaFull = !kasaFull; loadKasa(); };
+// Normalizuje datę do klucza ISO (YYYY-MM-DD). Mirror aplikacji recepcji zapisuje
+// część dat w formacie pl-PL ("DD.MM.RRRR, GG:MM" z fmtA), a część jako ISO/dayKey —
+// bez tej normalizacji filtr zakresu odrzucał wszystko (korekty/notatki nie pokazywały się).
+const kasaIso = v => {
+  if (!v) return "";
+  const s = String(v).trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  const m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);   // DD.MM.RRRR
+  if (m) return `${m[3]}-${pad(+m[2])}-${pad(+m[1])}`;
+  const t = new Date(s); return isNaN(t) ? "" : isoDate(t);
+};
+const kasaNum = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
 async function loadKasa() {
   const today = new Date(); const from = new Date(today); from.setDate(today.getDate() - (kasaFull ? 89 : 6));
   const fromKey = isoDate(from), toKey = isoDate(today);
+  const inRange = k => { const dk = kasaIso(k); return !!dk && dk>=fromKey && dk<=toKey; };
   const toggle = `<button class="rost-addbtn fullspan" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="toggleKasaFull()">${kasaFull ? "Pokaż ostatnie 7 dni" : "Pokaż pełną historię (90 dni)"}</button>`;
   let rows = [];
   try {
     const { data } = await sb.from("shift_reports").select("day_key,shift_key,employee,cash_closing,safe_total,cash_current,saved_at")
       .eq("tenant_id", TENANT_ID).gte("day_key", fromKey).lte("day_key", toKey).order("saved_at", { ascending:false }).limit(300);
     rows = data || [];
-  } catch { return body('<div class="empty">Nie udało się pobrać stanu kasy.</div>'); }
+  } catch {}
+  // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
+  // Zatwierdzenia korekt trzymamy osobno (payment_correction_approvals), bo mirror jest read-only.
+  const [corr, rf, notes, apprRes] = await Promise.all([
+    getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports"),
+    sb.from("payment_correction_approvals").select("correction_id,decision,manager,note,decided_at").eq("tenant_id", TENANT_ID).then(r=>r, ()=>({data:[]})),
+  ]);
+  const apprBy = {}; (apprRes && apprRes.data || []).forEach(a => { apprBy[a.correction_id] = a; });
+  // Fallback stanu kasy: gdy brak wierszy w shift_reports (zmiana zamknięta offline lub
+  // przed wdrożeniem zapisu do DB), odtwórz kasę z lustra raportów pełnych (reports_full).
+  if (!rows.length && Array.isArray(rf)) {
+    rows = rf.filter(r => inRange(r.dayKey||r.day_key||r.savedAt)).map(r => ({
+      day_key: kasaIso(r.dayKey||r.day_key||r.savedAt),
+      shift_key: r.shiftKey||r.shift_key,
+      employee: r.employeeName||r.employee,
+      cash_closing: kasaNum(r.cashClosingDocumentsAmount),
+      safe_total: typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal),
+      cash_current: kasaNum(r.cashCurrentAmount),
+      saved_at: r.savedAt,
+    }));
+  }
+  // ── Alerty „do weryfikacji" — czysto panelowe heurystyki na danych kasy/korekt ──
+  const alerts = [];
+  // 1) Zmiana zamykająca dzień (wieczorowa/nocna) bez zarejestrowanego KW.
+  rows.forEach(r => {
+    const closing = (r.shift_key==="wieczorowa"||r.shift_key==="nocna");
+    if (closing && (r.cash_closing==null || r.cash_closing===0)) {
+      const d = fmtDate(r.day_key);
+      alerts.push(`${d.txt}: ${SHIFT_LBL[r.shift_key]||r.shift_key} (${esc(r.employee||"—")}) — brak KW (zmiana zamykająca dzień)`);
+    }
+  });
+  // 2) Spadek stanu sejfu dzień-do-dnia (możliwy wypływ gotówki do zweryfikowania).
+  const safeByDay = {};
+  rows.forEach(r => { if (r.safe_total!=null) { const dk=r.day_key; if (!(dk in safeByDay)) safeByDay[dk]=r.safe_total; } });
+  const safeDays = Object.keys(safeByDay).sort();
+  for (let i=1;i<safeDays.length;i++){
+    const prev=safeByDay[safeDays[i-1]], cur=safeByDay[safeDays[i]];
+    if (prev>0 && cur < prev - 0.5) { const d=fmtDate(safeDays[i]); alerts.push(`${d.txt}: sejf spadł o ${zl(prev-cur)} (z ${zl(prev)} do ${zl(cur)})`); }
+  }
+  // 3) Korekty oczekujące dłużej niż 3 dni.
+  if (Array.isArray(corr)) {
+    const cut = isoDate(new Date(Date.now()-3*86400000));
+    corr.forEach(c => { if (!c.done && !apprBy[c.id]) { const dk=kasaIso(c.submittedAt||c.createdAt); if (dk && dk < cut) alerts.push(`Korekta „${esc(DOC_KASA[c.docType]||c.docType||"")}${c.reservation?` · rez. ${esc(c.reservation)}`:""}" oczekuje od ${dk}`); } });
+  }
+  const alertHtml = alerts.length
+    ? `<div class="fullspan" style="margin-bottom:10px;padding:11px 13px;border:1px solid rgba(194,65,90,.35);background:rgba(194,65,90,.07);border-radius:11px">
+        <div style="font-weight:800;font-size:12.5px;color:var(--bad);margin-bottom:5px">⚠️ Do weryfikacji (${alerts.length})</div>
+        ${alerts.slice(0,8).map(a=>`<div style="font-size:12px;color:var(--ink);padding:1px 0">• ${a}</div>`).join("")}
+      </div>` : "";
   let cashHtml;
   if (!rows.length) {
     cashHtml = `<div class="empty">Brak raportów kasy${kasaFull?"":" z ostatnich 7 dni"}. Pojawią się, gdy recepcja zamknie zmianę.</div>`;
@@ -1580,27 +1664,71 @@ async function loadKasa() {
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
-  // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
-  const [corr, rf, notes] = await Promise.all([getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports")]);
-  const inRange = k => { const dk=String(k||"").slice(0,10); return dk>=fromKey && dk<=toKey; };
+  // Korekty płatności (paragon/faktura) — dokumenty, nie kwoty. Rozwijany opis + decyzja kierownika.
   let corrHtml = "";
   if (Array.isArray(corr)) {
-    const list = corr.filter(c => inRange(c.dateKey||c.date||c.createdAt||c.savedAt)).slice(0,80);
-    if (list.length) corrHtml = `<div class="soon">Korekty płatności</div>` + list.map(c => {
-      const who = esc(c.employee||c.name||"—"); const am = Number(c.amount);
-      const when = String(c.dateKey||c.date||c.createdAt||c.savedAt||"").slice(0,10);
-      const reason = esc(c.reason||c.note||c.powod||"");
-      return `<div class="statrow"><div class="k"><div>${who}${reason?` — <span style="color:var(--muted);font-weight:600">${reason}</span>`:""}</div>${when?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(when)}</div>`:""}</div><div class="v" style="color:${am<0?"var(--bad)":"var(--ok)"}">${zl(am)}</div></div>`;
+    const list = corr.filter(c => inRange(c.submittedAt||c.createdAt||c.dateKey||c.date)).slice(0,80);
+    // Stan = decyzja z panelu (apprBy) ma pierwszeństwo; w jej braku — flaga done z aplikacji recepcji.
+    const stateOf = c => { const a=apprBy[c.id]; if (a) return a.decision==="rejected"?"rejected":"approved"; return c.done?"approved":"pending"; };
+    const pend = list.filter(c=>stateOf(c)==="pending").length;
+    if (list.length) corrHtml = `<div class="soon">Korekty płatności${pend?` <span style="color:var(--gold)">· ${pend} oczekuje</span>`:""}</div>` + list.map(c => {
+      const who = esc(c.submittedBy||c.employee||c.name||"—");
+      const when = esc(String(c.submittedAt||c.createdAt||"").trim());
+      const doc = esc(DOC_KASA[c.docType]||c.docType||"Korekta");
+      const resv = esc(c.reservation||"");
+      const why = esc(c.explanation||c.reason||c.note||"");
+      const shift = esc(SHIFT_LBL[c.shift]||c.shift||"");
+      const st = stateOf(c); const a = apprBy[c.id];
+      const dWhen = a&&a.decided_at ? new Date(a.decided_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+      const status = st==="approved"
+        ? `<span class="chip" style="color:var(--ok);border-color:rgba(15,122,74,.35);background:rgba(15,122,74,.07)">zatwierdzona</span>`
+        : st==="rejected"
+        ? `<span class="chip" style="color:var(--bad);border-color:rgba(194,65,90,.4);background:rgba(194,65,90,.07)">odrzucona</span>`
+        : `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">oczekuje</span>`;
+      const decided = a ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${a.decision==="rejected"?"Odrzucił":"Zatwierdził"}: ${esc(a.manager||"—")}${dWhen?` · ${dWhen}`:""}</div>` : "";
+      const cid = esc(String(c.id||"")).replace(/'/g,"\\'");
+      const actions = (st==="pending" && c.id)
+        ? `<div style="display:flex;gap:7px;margin-top:7px">
+            <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer" onclick="event.stopPropagation();decideCorrection('${cid}','approved')">Zatwierdź</button>
+            <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:12px;cursor:pointer" onclick="event.stopPropagation();decideCorrection('${cid}','rejected')">Odrzuć</button>
+          </div>` : "";
+      return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:4px;cursor:pointer" onclick="this.querySelector('.corr-body').style.display=this.querySelector('.corr-body').style.display==='block'?'none':'block'">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <div style="font-weight:800;font-size:13px">${doc}${resv?` · rez. ${resv}`:""}</div>${status}</div>
+        <div style="font-size:11.5px;color:var(--muted);font-weight:600">${who}${shift?` · ${shift}`:""}${when?` · ${when}`:""}</div>${decided}
+        <div class="corr-body" style="display:none;font-size:12.5px;color:var(--ink);white-space:pre-wrap;margin-top:2px;line-height:1.45">${why||"(brak opisu)"}</div>
+        ${actions}
+      </div>`;
     }).join("");
   }
+  // Raporty zmian = źródło raportu dobowego. Każda zmiana rozwijana: kasa, zadania, przekazanie, braki.
   let rfHtml = "";
   if (Array.isArray(rf)) {
-    const byDk = {}; rf.forEach(r => { const dk=String(r.dayKey||r.day_key||r.savedAt||"").slice(0,10); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
-    const dks = Object.keys(byDk).sort().reverse().slice(0,7);
-    if (dks.length) rfHtml = `<div class="soon">Raporty zmian (źródło raportu dobowego)</div>` + dks.map(dk => {
-      const d=fmtDate(dk);
-      const items=byDk[dk].map(r=>`<div style="font-size:12.5px;color:var(--ink);padding:2px 0">• ${esc(SHIFT_LBL[r.shiftKey||r.shift_key]||r.shiftKey||r.shift_key||"")} — ${esc(r.employee||r.employeeName||"—")}</div>`).join("");
-      return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:2px"><div style="font-weight:800;font-size:13px">${d.dow}, ${d.txt}</div>${items}</div>`;
+    const byDk = {}; rf.forEach(r => { const dk=kasaIso(r.dayKey||r.day_key||r.savedAt); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
+    const dks = Object.keys(byDk).sort().reverse().slice(0, kasaFull?90:7);
+    if (dks.length) rfHtml = `<div class="soon">Raporty zmian / dobowe</div>` + dks.map(dk => {
+      const d = fmtDate(dk);
+      const shifts = byDk[dk];
+      const items = shifts.map(r => {
+        const sh = esc(SHIFT_LBL[r.shiftKey||r.shift_key]||r.shiftLabel||r.shiftKey||r.shift_key||"");
+        const who = esc(r.employeeName||r.employee||"—");
+        const allTasks = [...(r.baseTasks||[]), ...(r.carryOver||[])];
+        const tDone = allTasks.filter(t=>t.status==="[OK]").length, tTot = allTasks.length;
+        const cash = `Kasa: ${zl(kasaNum(r.cashCurrentAmount))} · KW: ${zl(kasaNum(r.cashClosingDocumentsAmount))} · Sejf: ${zl(typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal))}`;
+        const handover = esc(r.handoverNote||"");
+        const taskLines = allTasks.map(t=>`<div style="font-size:12px;padding:1px 0">${t.status==="[OK]"?"✓":"✗"} ${esc(t.text)}</div>`).join("");
+        const missing = (r.missingTasks||[]).map(t=>esc(t.text||t)).filter(Boolean);
+        return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:3px;cursor:pointer" onclick="this.querySelector('.rf-body').style.display=this.querySelector('.rf-body').style.display==='block'?'none':'block'">
+          <div style="display:flex;justify-content:space-between;gap:8px"><div style="font-weight:800;font-size:12.5px">${sh} — ${who}</div><div style="font-size:11.5px;color:var(--muted);font-weight:700">${tTot?`${tDone}/${tTot} zadań`:""}</div></div>
+          <div style="font-size:11px;color:var(--muted);font-weight:600">${cash}</div>
+          <div class="rf-body" style="display:none;margin-top:5px">
+            ${handover?`<div style="font-size:12px;color:var(--ink);margin-bottom:6px"><b>Przekazanie:</b> ${handover}</div>`:""}
+            ${taskLines?`<div style="margin-bottom:4px">${taskLines}</div>`:""}
+            ${missing.length?`<div style="font-size:11.5px;color:var(--bad)"><b>Braki:</b> ${missing.join(", ")}</div>`:""}
+          </div>
+        </div>`;
+      }).join("");
+      return `<div style="margin-bottom:14px"><div style="font-weight:800;font-size:13px;margin-bottom:5px">${d.dow}, ${d.txt} <span style="color:var(--muted);font-weight:600">· ${shifts.length} ${shifts.length===1?"zmiana":"zmian"}</span></div>${items}</div>`;
     }).join("");
   }
   // Przesłane notatki służbowe (employee_reports) — pełna treść rozwijana po kliknięciu.
@@ -1610,7 +1738,7 @@ async function loadKasa() {
     if (list.length) notesHtml = `<div class="soon">Przesłane notatki służbowe</div>` + list.map((n,i) => {
       const subj = esc(n.subject||"Notatka służbowa");
       const author = esc(n.author||"—"); const to = esc(n.handoverTo||"");
-      const when = esc(String(n.reportDate||n.createdAt||"").slice(0,10));
+      const when = esc(kasaIso(n.reportDate||n.createdAt));
       const content = esc(n.content||"");
       return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:4px;cursor:pointer" onclick="this.querySelector('.note-body').style.display=this.querySelector('.note-body').style.display==='block'?'none':'block'">
         <div style="font-weight:800;font-size:13px">${subj}</div>
@@ -1619,7 +1747,164 @@ async function loadKasa() {
       </div>`;
     }).join("");
   }
-  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
+  body(toggle + alertHtml + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie. Kliknij korektę lub raport, by rozwinąć szczegóły.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
+}
+
+// Decyzja kierownika o korekcie (zatwierdź/odrzuć) — zapis do payment_correction_approvals.
+window.decideCorrection = async (correctionId, decision) => {
+  if (!correctionId) return;
+  const note = decision==="rejected" ? (prompt("Powód odrzucenia (opcjonalnie):")||"") : "";
+  try {
+    const { error } = await sb.from("payment_correction_approvals").upsert(
+      { tenant_id:TENANT_ID, correction_id:correctionId, decision, manager:CURRENT.name||"Panel", note, decided_at:new Date().toISOString() },
+      { onConflict:"tenant_id,correction_id" });
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"korekta_decyzja", p_detail:`${decision==="rejected"?"odrzucona":"zatwierdzona"} (${correctionId})` }); } catch {}
+    loadKasa();
+  } catch (e) { alert("Nie udało się zapisać decyzji" + (e&&e.message?`: ${e.message}`:".")); }
+};
+
+// ── Pulpit dnia: jeden ekran-przegląd dla koordynatora/recepcji. Agreguje dane z innych
+//    zakładek (obsada, wyjazdy, kasa, zadania, ogłoszenia); kafelki skaczą do sekcji. ──
+async function loadPulpit() {
+  const today = isoDate(new Date()); const d = fmtDate(today);
+  body('<div class="spin">Wczytywanie…</div>');
+  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null;
+  try {
+    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar] = await Promise.all([
+      sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
+      sb.from("hk_roster").select("roster").eq("tenant_id",TENANT_ID).eq("date",today).maybeSingle(),
+      getMirror("schedule"),
+      sb.from("shift_reports").select("shift_key,cash_current,safe_total,cash_closing,saved_at,employee").eq("tenant_id",TENANT_ID).eq("day_key",today).order("saved_at",{ascending:false}),
+      getMirror("payment_corrections"),
+      sb.from("manager_alerts").select("priority,done").eq("tenant_id",TENANT_ID),
+      sb.from("standing_reminders").select("title,active,created_at").eq("tenant_id",TENANT_ID).order("created_at",{ascending:false}).limit(40),
+      getMirror("reports_full"),
+      sb.from("payment_correction_approvals").select("correction_id").eq("tenant_id",TENANT_ID).then(r=>r,()=>({data:[]})),
+    ]);
+    plan   = (pl && pl.data) || {};
+    roster = (ro && ro.data && Array.isArray(ro.data.roster)) ? ro.data.roster : [];
+    sched  = sc;
+    cashRows = (sr && sr.data) || [];
+    corr   = Array.isArray(mc) ? mc : [];
+    alerts = (ma && ma.data) || [];
+    rems   = ((rm && rm.data) || []).filter(r => r.active !== false);
+    rf     = rfm;
+    appr   = (ar && ar.data) || [];
+  } catch { return body('<div class="empty">Nie udało się wczytać pulpitu.</div>'); }
+
+  // Obsada: HK z roster + recepcja z mirrora grafiku.
+  const recCount = (sched && typeof sched==="object" && sched[today]) ? Object.values(sched[today]).filter(Boolean).length : 0;
+  const hkCount = roster.length;
+  // Wyjazdy/pobyty dnia.
+  const types = countTypes(plan);
+  // Kasa: ostatni stan sejfu + czy zmiana zamykająca ma KW (fallback z reports_full).
+  let cash = cashRows.slice();
+  if (!cash.length && Array.isArray(rf)) {
+    cash = rf.filter(r => kasaIso(r.dayKey||r.day_key||r.savedAt)===today).map(r => ({
+      shift_key:r.shiftKey||r.shift_key, safe_total: typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal),
+      cash_closing:kasaNum(r.cashClosingDocumentsAmount), saved_at:r.savedAt }));
+    cash.sort((a,b)=>String(b.saved_at||"").localeCompare(String(a.saved_at||"")));
+  }
+  const safe = cash.length ? cash[0].safe_total : null;
+  const closingShift = cash.find(r => r.shift_key==="wieczorowa"||r.shift_key==="nocna");
+  const kwMissing = closingShift && (closingShift.cash_closing==null || closingShift.cash_closing===0);
+  const kwTxt = kwMissing ? "⚠ brak" : (closingShift ? "✓ zarejestr." : "—");
+  // Korekty oczekujące (bez decyzji panelu, nie done).
+  const apprIds = new Set(appr.map(a => a.correction_id));
+  const pendCorr = corr.filter(c => !c.done && !apprIds.has(c.id)).length;
+  // Zadania otwarte / pilne.
+  const openTasks = alerts.filter(a => !a.done);
+  const pilne = openTasks.filter(a => a.priority==="high").length;
+
+  const kpis = `<div class="kpis">
+    <div class="kpi"><div class="l">Obsada dziś</div><div class="v">${hkCount + recCount}</div></div>
+    <div class="kpi"><div class="l">Wyjazdy</div><div class="v gold">${fmtWP(types.w.reg, types.w.apt)}</div></div>
+    <div class="kpi"><div class="l">Zadania</div><div class="v${pilne?' bad':''}">${openTasks.length}</div></div>
+    <div class="kpi"><div class="l">Sejf</div><div class="v ok">${zl(safe)}</div></div>
+  </div>`;
+
+  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:1px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
+  const tile = (tab,title,lines) => `<div class="wcard" style="cursor:pointer" onclick="setHkTab('${tab}')">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:13.5px">${title}</span><span style="font-size:11px;color:var(--plum);font-weight:800">otwórz ›</span></div>
+    <div style="margin-top:7px">${lines}</div></div>`;
+
+  const tiles = [
+    tile("kasa","💰 Kasa", line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Stan sejfu", zl(safe)) + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
+    tile("zadania","✅ Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    tile("wyjazdy","🚪 Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
+    tile("live","👥 Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
+  ].join("");
+
+  const remHtml = rems.length
+    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k">📌 ${esc(r.title||"")}</span></div>`).join("")
+    : "";
+
+  body(`<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
+    + kpis
+    + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:6px">${tiles}</div>`
+    + remHtml);
+}
+
+// ── Jakość: pulpit losowych kontroli pokoi (hk_quality_checks). Telefon HK wymusza
+//    zaznaczenie WSZYSTKICH punktów przed zatwierdzeniem, więc „done" = pełne zaliczenie.
+//    Stąd metryki to pokrycie i wykonanie (nie % zaliczeń, który byłby zawsze 100%). ──
+let qualityDays = 7;
+window.toggleQualityDays = () => { qualityDays = qualityDays===7 ? 30 : 7; loadQuality(); };
+async function loadQuality() {
+  const today = new Date(); const from = new Date(today); from.setDate(today.getDate() - (qualityDays-1));
+  const fromKey = isoDate(from), toKey = isoDate(today);
+  body('<div class="spin">Wczytywanie…</div>');
+  let rows = [], settings = null;
+  try {
+    const [qc, st] = await Promise.all([
+      sb.from("hk_quality_checks").select("date,room,cleaned_by,target_worker,items,status,created_at,acked_at")
+        .eq("tenant_id",TENANT_ID).gte("date",fromKey).lte("date",toKey).order("created_at",{ascending:false}).limit(500),
+      sb.from("hk_qc_settings").select("enabled,daily_limit,mode,chosen_person").eq("tenant_id",TENANT_ID).maybeSingle(),
+    ]);
+    rows = (qc && qc.data) || []; settings = (st && st.data) || null;
+  } catch { return body('<div class="empty">Nie udało się pobrać kontroli jakości.</div>'); }
+
+  const toggle = `<button class="rost-addbtn fullspan" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="toggleQualityDays()">${qualityDays===7?"Pokaż 30 dni":"Pokaż 7 dni"}</button>`;
+
+  if (!rows.length) {
+    const off = settings && settings.enabled===false;
+    return body(toggle + `<div class="empty">Brak kontroli w okresie (${qualityDays} dni).${off?" Kontrole są wyłączone — włącz w ustawieniach (Na żywo › Przypomnienia).":""}</div>`);
+  }
+
+  const done = rows.filter(r => r.status==="done");
+  const pending = rows.filter(r => r.status!=="done");
+  // Per sprzątaczka (cleaned_by) — czyje pokoje kontrolowano i ile zatwierdzono.
+  const byCleaner = {}; rows.forEach(r => { const k=r.cleaned_by||"—"; (byCleaner[k]=byCleaner[k]||{total:0,done:0}); byCleaner[k].total++; if(r.status==="done") byCleaner[k].done++; });
+  // Per kontroler (target_worker) — kto realnie wykonuje przydzielone kontrole.
+  const byChecker = {}; rows.forEach(r => { const k=r.target_worker||"—"; (byChecker[k]=byChecker[k]||{total:0,done:0}); byChecker[k].total++; if(r.status==="done") byChecker[k].done++; });
+
+  const kpis = `<div class="kpis">
+    <div class="kpi"><div class="l">Kontrole</div><div class="v">${rows.length}</div></div>
+    <div class="kpi"><div class="l">Wykonane</div><div class="v ok">${done.length}</div></div>
+    <div class="kpi"><div class="l">Oczekujące</div><div class="v${pending.length?' bad':''}">${pending.length}</div></div>
+    <div class="kpi"><div class="l">Sprawdzeni</div><div class="v">${Object.keys(byCleaner).filter(k=>k!=="—").length}</div></div>
+  </div>`;
+
+  const rowsHtml = (obj) => Object.entries(obj).sort((a,b)=>b[1].total-a[1].total).map(([n,s]) =>
+    `<div class="statrow"><span class="k">${esc(n)}</span><span class="v">${s.done}/${s.total}<span style="font-size:11px;color:var(--muted);font-weight:600"> wyk.</span></span></div>`).join("");
+
+  const cleanerHtml = `<div class="soon">Sprawdzane sprzątaczki (czyje pokoje kontrolowano)</div>` + rowsHtml(byCleaner);
+  const checkerHtml = `<div class="soon">Aktywność kontrolerów (kto klika kontrole)</div>` + rowsHtml(byChecker);
+
+  const pendHtml = pending.length ? `<div class="soon">Oczekujące kontrole (${pending.length})</div>` +
+    pending.slice(0,20).map(r => { const d=fmtDate(r.date);
+      return `<div class="statrow"><span class="k">Pokój ${esc(r.room)} <span style="font-size:11px;color:var(--muted);font-weight:600">· ${esc(r.cleaned_by||"—")} → ${esc(r.target_worker||"—")}</span></span><span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">${d.txt}</span></div>`; }).join("") : "";
+
+  const recentHtml = `<div class="soon">Ostatnie kontrole</div>` +
+    rows.slice(0,25).map(r => { const d=fmtDate(r.date); const t=r.acked_at?new Date(r.acked_at).toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}):"";
+      const ok = r.status==="done";
+      const chip = ok
+        ? `<span class="chip" style="color:var(--ok);border-color:rgba(15,122,74,.35);background:rgba(15,122,74,.07)">✓ ${esc(d.txt)}${t?` · ${t}`:""}</span>`
+        : `<span class="chip" style="color:var(--gold);border-color:rgba(176,134,58,.4)">oczekuje · ${esc(d.txt)}</span>`;
+      return `<div class="statrow"><span class="k">Pokój ${esc(r.room)} <span style="font-size:11px;color:var(--muted);font-weight:600">· ${esc(r.cleaned_by||"—")}</span></span>${chip}</div>`; }).join("");
+
+  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Losowe kontrole pokoi — ostatnie ${qualityDays} dni. Kontroler potwierdza na telefonie każdy punkt checklisty (zatwierdza dopiero po zaznaczeniu wszystkich).</div>` + kpis + cleanerHtml + checkerHtml + pendHtml + recentHtml);
 }
 
 // ── Grafik: wysyłka linków per osoba (token) + podgląd zebranych odpowiedzi ──
@@ -1821,6 +2106,89 @@ function renderGrid() {
     }).join("");
   }
   body(html);
+}
+
+// ── Usterki SLA: czas reakcji/zamknięcia, zaległości, przekroczone terminy (faults).
+//    Czasy z reported_at → started_at (reakcja) → completed_at (zamknięcie); due_at = termin (SLA). ──
+let slaDays = 7;
+window.toggleSlaDays = () => { slaDays = slaDays===7 ? 30 : 7; loadSLA(); };
+const fmtH = h => h==null||isNaN(h) ? "—" : (h<1 ? Math.round(h*60)+" min" : (h<24 ? h.toFixed(1)+" h" : (h/24).toFixed(1)+" dni"));
+const SRC_LBL = { reception:"Recepcja", hk:"Housekeeping" };
+async function loadSLA() {
+  const today = new Date(); const from = new Date(today); from.setDate(today.getDate() - (slaDays-1));
+  const fromKey = isoDate(from);
+  const fromIso = new Date(fromKey+"T00:00:00").toISOString();
+  const now = Date.now();
+  body('<div class="spin">Wczytywanie…</div>');
+  let open = [], reported = [], closed = [];
+  try {
+    const [bo, rp, cl] = await Promise.all([
+      sb.from("faults").select("id,description,assigned_to,status,priority,room,space_id,source,reported_at,due_at,started_at")
+        .eq("tenant_id",TENANT_ID).in("status",["open","in_progress"]).order("reported_at",{ascending:true}).limit(300),
+      sb.from("faults").select("status,source,reported_at").eq("tenant_id",TENANT_ID).gte("reported_at",fromIso).limit(800),
+      sb.from("faults").select("priority,source,assigned_to,reported_at,started_at,completed_at,due_at").eq("tenant_id",TENANT_ID).eq("status","done").gte("completed_at",fromIso).limit(800),
+    ]);
+    open = (bo&&bo.data)||[]; reported = (rp&&rp.data)||[]; closed = (cl&&cl.data)||[];
+  } catch { return body('<div class="empty">Nie udało się pobrać danych usterek.</div>'); }
+
+  const toggle = `<button class="rost-addbtn fullspan" style="width:100%;padding:9px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;cursor:pointer;margin-bottom:10px" onclick="toggleSlaDays()">${slaDays===7?"Pokaż 30 dni":"Pokaż 7 dni"}</button>`;
+
+  const hrsBetween = (a,b) => (a&&b) ? (new Date(b).getTime()-new Date(a).getTime())/3600000 : null;
+  const ageH = r => (now - new Date(r.reported_at).getTime())/3600000;
+  // Czasy zamknięcia / reakcji w okresie.
+  const resol = closed.map(r=>hrsBetween(r.reported_at,r.completed_at)).filter(v=>v!=null&&v>=0);
+  const react = closed.map(r=>hrsBetween(r.reported_at,r.started_at)).filter(v=>v!=null&&v>=0);
+  const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+  const median = a => { if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; };
+  const closedLate = closed.filter(r=>r.due_at&&r.completed_at&&new Date(r.completed_at)>new Date(r.due_at)).length;
+  // Zaległości: po terminie (due_at minęło) i długo otwarte (>24h).
+  const overdue = open.filter(r=>r.due_at&&new Date(r.due_at).getTime()<now);
+  const old24 = open.filter(r=>ageH(r)>24);
+  const oldest = open[0]; // posortowane rosnąco po reported_at
+
+  const kpis = `<div class="kpis">
+    <div class="kpi"><div class="l">Otwarte</div><div class="v${open.length?'':' ok'}">${open.length}</div></div>
+    <div class="kpi"><div class="l">Po terminie</div><div class="v${overdue.length?' bad':' ok'}">${overdue.length}</div></div>
+    <div class="kpi"><div class="l">Śr. zamknięcie</div><div class="v gold">${fmtH(avg(resol))}</div></div>
+    <div class="kpi"><div class="l">Zamknięte</div><div class="v ok">${closed.length}</div></div>
+  </div>`;
+
+  const line = (l,v,c) => `<div class="statrow"><span class="k">${l}</span><span class="v"${c?` style="color:${c}"`:""}>${v}</span></div>`;
+  const timesHtml = `<div class="soon">Czasy i przepływ (ostatnie ${slaDays} dni)</div>`
+    + line("Śr. czas reakcji (zgłoszenie → start)", fmtH(avg(react)))
+    + line("Śr. czas zamknięcia (zgłoszenie → koniec)", fmtH(avg(resol)))
+    + line("Mediana czasu zamknięcia", fmtH(median(resol)))
+    + line("Zgłoszone w okresie", reported.length)
+    + line("Zamknięte w okresie", closed.length)
+    + line("Zamknięte po terminie", closedLate, closedLate?"var(--bad)":"var(--ok)");
+
+  // Wg źródła (zgłoszone w okresie).
+  const bySrc = {}; reported.forEach(r=>{ const k=r.source||"reception"; bySrc[k]=(bySrc[k]||0)+1; });
+  const srcHtml = Object.keys(bySrc).length ? `<div class="soon">Zgłoszenia wg źródła</div>`
+    + Object.entries(bySrc).sort((a,b)=>b[1]-a[1]).map(([k,n])=>line(esc(SRC_LBL[k]||k), n)).join("") : "";
+
+  // Zaległości — najpierw po terminie, potem najstarsze. Wiek + przypisanie.
+  const backlog = [...open].sort((a,b)=>{
+    const ao=a.due_at&&new Date(a.due_at).getTime()<now, bo=b.due_at&&new Date(b.due_at).getTime()<now;
+    if (ao!==bo) return ao?-1:1;          // po terminie na górze
+    return new Date(a.reported_at)-new Date(b.reported_at); // potem najstarsze
+  }).slice(0,20);
+  const backHtml = backlog.length ? `<div class="soon">Zaległości (otwarte: ${open.length}, w tym >24h: ${old24.length})</div>`
+    + backlog.map(r=>{
+      const p = PRIO[r.priority]||PRIO.normal;
+      const od = r.due_at && new Date(r.due_at).getTime()<now;
+      const age = ageH(r);
+      const where = r.room ? `pok. ${esc(r.room)}` : esc(r.space_id||r.source||"");
+      return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span>
+          <span class="k" style="flex:1">${esc(r.description||"—")}</span>
+          <span class="chip" style="color:${od?'var(--bad)':'var(--muted)'};border-color:${od?'rgba(194,65,90,.4)':'var(--line)'}">${od?'po terminie':fmtH(age)}</span></div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600">${where}${r.assigned_to?` · ${esc(r.assigned_to)}`:" · nieprzypisana"}${r.status==="in_progress"?" · w toku":""}</div>
+      </div>`; }).join("") : `<div class="empty">Brak otwartych usterek 🎉</div>`;
+
+  body(toggle + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">SLA usterek — czasy z okresu ${slaDays} dni, zaległości liczone na teraz. „Po terminie" = minął termin (due_at).</div>`
+    + kpis + timesHtml + srcHtml + backHtml);
 }
 
 // ── Konserwatorzy: obciążenie (usterki) + dodawanie zadań (insert faults → push przez webhook) ──
@@ -2080,7 +2448,8 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     konto_reset:"Reset hasła konta", konto_haslo:"Ustawił hasło konta",
                     grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
-                    konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji" };
+                    konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
+                    korekta_decyzja:"Decyzja o korekcie" };
 async function loadAkcje() {
   if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
   let rows = [];
