@@ -754,14 +754,38 @@ function setWorker(name) {
 async function pickWorker() {
   if (!sb) { render(); return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
-  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments").eq("date", TODAY).single();
+  // Imiona z DWÓCH źródeł: rozpisane pokoje (hk_plan) ORAZ obsada na dziś
+  // (hk_roster). Dzięki temu rozpisany pracownik pojawia się na liście wyboru,
+  // nawet jeśli recepcja nie przydzieliła mu jeszcze pokoi.
+  const [{ data: plan }, { data: rosterRow }] = await Promise.all([
+    sb.from("hk_plan").select("assignments,pm_assignments").eq("date", TODAY).maybeSingle(),
+    sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", TODAY).maybeSingle(),
+  ]);
+  const rosterNames = (Array.isArray(rosterRow?.roster) ? rosterRow.roster : [])
+    .map(p => (p && p.name) || (typeof p === "string" ? p : null))
+    .filter(Boolean);
   const names = [...new Set([
     ...Object.keys(plan?.assignments || {}),
     ...Object.keys(plan?.pm_assignments || {}),
+    ...rosterNames,
   ])].sort((a, b) => a.localeCompare(b, "pl"));
 
   if (!names.length) {
-    app.innerHTML = `<div class="loading"><div class="empty-icon">⚠️</div><div>Brak planu na dziś.<br>Otwórz swój link <b>?w=Imię</b>.</div></div>`;
+    // Brak rozpiski na dziś — ale apka z ekranu głównego i tak musi wiedzieć,
+    // kim jesteśmy (ma własny localStorage, osobny od Safari). Dajemy wpisać imię
+    // ręcznie; zapamiętamy je na tym telefonie i ikona zacznie działać na stałe.
+    app.innerHTML = `<div style="padding:24px 16px;max-width:480px;margin:0 auto">
+      <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum)">Kto sprząta?</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Nie ma jeszcze rozpiski na dziś. Wpisz swoje imię — zapamiętamy je na tym telefonie i nie trzeba będzie tego powtarzać.</div>
+      <input id="wname" type="text" autocomplete="name" placeholder="Twoje imię"
+        style="width:100%;padding:14px 16px;margin-bottom:12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;color:var(--ink);font-size:16px;box-sizing:border-box"/>
+      <button id="wgo" style="width:100%;padding:14px 16px;background:var(--plum);border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:700;cursor:pointer">Zapamiętaj i wejdź</button>
+    </div>`;
+    const inp = document.getElementById("wname");
+    const go  = () => { const v = (inp.value || "").trim(); if (v) setWorker(v); };
+    document.getElementById("wgo").onclick = go;
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    inp.focus();
     return;
   }
 
