@@ -1703,6 +1703,10 @@ export default function App(){
         const num=(v)=>{const n=parseFloat(v);return isNaN(n)?null:n;};
         supabase.from("shift_reports").insert({
           tenant_id:TENANT_ID,
+          // Realna tabela ma starą kolumnę date_key (NOT NULL, bez defaultu) obok
+          // nowszej day_key — bez date_key każdy insert leciał na 23502 i tabela
+          // była pusta. Trzymamy obie równe logicznemu dniowi zmiany.
+          date_key:logicalDayKey,
           day_key:logicalDayKey,
           shift_key:selectedShift,
           employee:employeeName,
@@ -1715,6 +1719,9 @@ export default function App(){
           handover:handoverNote.trim()||null,
           tasks_done:doneCount,
           tasks_total:currentTasks.length,
+          // report i data to jsonb-bliźniaki (dryf schematu) — wypełniamy oba,
+          // żeby czytelnik korzystający z którejkolwiek dostał pełny raport.
+          data:fullReportEntry,
           report:fullReportEntry,
         }).then(({error})=>{ if(error) console.warn("[shift_reports]",error.message); });
       }
