@@ -114,6 +114,8 @@ const OPTS = {
   hk:       [["dzien","Dzień"],["popoludnie","Popołudnie"],["off","Nie mogę"]],
   recepcja: [["poranna","Poranna"],["popoludniowa","Popoł."],["nocna","Nocna"],["off","Nie mogę"]],
 };
+// Kolejność porządkowania, gdy ktoś zaznaczy kilka zmian na jeden dzień (zapis: "poranna,nocna").
+const REC_ORDER = ["poranna","popoludniowa","nocna"];
 
 let META = null;             // { person, kind, period_type, period_start }
 let CHOICE = {};             // { 'YYYY-MM-DD': choice }
@@ -178,7 +180,12 @@ function render(){
         <button class="opt off ${isOff?"sel":""}" onclick="pickHK('${k}','off')">Nie mogę</button>
       </div>${(rano&&pop)?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę cały dzień — rano i popołudnie ✓</div>`:""}`;
     } else if (MODE==="shift"){
-      inner = `<div class="opts">${opts.map(([v,l])=>`<button class="opt ${v==="off"?"off":""} ${cur===v?"sel":""}" onclick="pick('${k}','${v}')">${esc(l)}</button>`).join("")}</div>`;
+      // Recepcja: można zaznaczyć KILKA zmian na jeden dzień (np. poranna + nocna). „Nie mogę" czyści resztę.
+      const sel = new Set((cur && cur!=="off" && cur!=="godziny") ? cur.split(",") : []);
+      const isOff = cur==="off"; const cnt = sel.size;
+      inner = `<div class="opts">${opts.filter(([v])=>v!=="off").map(([v,l])=>`<button class="opt ${sel.has(v)?"sel":""}" onclick="pickMulti('${k}','${v}')">${esc(l)}</button>`).join("")}
+        <button class="opt off ${isOff?"sel":""}" style="flex:0 0 auto;min-width:84px" onclick="pickMulti('${k}','off')">Nie mogę</button>
+      </div>${cnt>1?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę na ${cnt} zmiany ✓</div>`:""}`;
     } else {
       const h = HOURS[k]||{}; const isOff = cur==="off";
       const sel = (id,val,ph)=>`<select class="hsel" onchange="setH('${k}','${id}',this.value)"><option value="">${ph}</option>${HOPT.map(x=>`<option value="${x}"${String(val)===String(x)?" selected":""}>${x}:00</option>`).join("")}</select>`;
@@ -196,7 +203,7 @@ function render(){
   app.innerHTML = `
     ${cdBar}
     <div class="hi">Cześć ${esc(META.person||"")}!</div>
-    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Wybierz gotową zmianę."} Zapisuje się automatycznie.</div>
+    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Możesz zaznaczyć kilka zmian na jeden dzień (np. poranna i nocna)."} Zapisuje się automatycznie.</div>
     ${toggle}
     ${rows}
     <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>
@@ -230,9 +237,11 @@ function startCountdown(){
   CD_TIMER = setInterval(tick, 1000);
 }
 async function saveAvail(date, choice, start, end){
-  // Godziny → wersja 5-arg (wymaga migracji 0024). Zwykła zmiana → wersja 3-arg (działa zawsze).
-  const args = { p_token:TOKEN, p_date:date, p_choice:choice };
-  if (start != null || end != null) { args.p_start = start; args.p_end = end; }
+  // ZAWSZE wołamy wersję 5-arg (z p_start/p_end). W bazie istnieją dwie funkcje set_availability
+  // (stara 3-arg z 0012 + nowa 5-arg z 0024) — wysłanie 3 argumentów jest dla PostgREST
+  // niejednoznaczne (PGRST203) i zapis kafelka się wykładał. Komplet 5 nazwanych argów
+  // wybiera jednoznacznie nową funkcję. (Migracja 0030 dodatkowo usuwa starą funkcję.)
+  const args = { p_token:TOKEN, p_date:date, p_choice:choice, p_start: start ?? null, p_end: end ?? null };
   try { const { error } = await sb.rpc("set_availability", args); if(error) throw error; return true; }
   catch (e) { console.error("set_availability:", e); toast("Nie zapisano — " + ((e&&e.message)||"spróbuj ponownie."), "#c2415a"); return false; }
 }
@@ -257,6 +266,27 @@ window.pick = async (date, choice)=>{
   render();
   const ok = await saveAvail(date, choice, null, null);
   if (!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; if(prevH) HOURS[date]=prevH; render(); }
+};
+
+// Recepcja: wielokrotny wybór zmian na jeden dzień. Każdy kafelek to przełącznik; „Nie mogę" jest wyłączny.
+window.pickMulti = async (date, v)=>{
+  const cur = CHOICE[date] || "";
+  const prev = CHOICE[date];
+  if (v==="off"){
+    if (cur==="off"){ delete CHOICE[date]; render(); return; }   // ponowny klik odznacza „Nie mogę"
+    CHOICE[date] = "off"; delete HOURS[date]; render();
+    const ok = await saveAvail(date, "off", null, null);
+    if(!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; render(); }
+    return;
+  }
+  const set = new Set((cur && cur!=="off" && cur!=="godziny") ? cur.split(",") : []);
+  set.has(v) ? set.delete(v) : set.add(v);
+  if (set.size===0){ delete CHOICE[date]; render(); return; }   // nic nie zaznaczone → wpis znika lokalnie
+  const choice = REC_ORDER.filter(x=>set.has(x)).join(",");
+  CHOICE[date] = choice;        // optymistycznie
+  render();
+  const ok = await saveAvail(date, choice, null, null);
+  if(!ok){ if(prev===undefined) delete CHOICE[date]; else CHOICE[date]=prev; render(); }
 };
 
 // HK: Rano/Popołudnie to przełączniki — można mieć jedną, obie ('oba') lub żadną.
