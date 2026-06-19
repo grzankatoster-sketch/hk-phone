@@ -37,6 +37,9 @@ import InboxPanel from "./components/InboxPanel";
 import SignatureCanvas from "./components/SignatureCanvas";
 import WorkerSidebar from "./components/Rail/WorkerSidebar";
 import AdminSidebarRail from "./components/Rail/AdminSidebarRail";
+import { useAutoUpdate } from "./hooks/useAutoUpdate";
+import { useClock } from "./hooks/useClock";
+import { useDarkMode } from "./hooks/useDarkMode";
 import { getFullName } from "./lib/employees";
 import { supabase, supabaseReady } from "./lib/supabase";
 import { pushMirror } from "./lib/cloudSync";
@@ -421,10 +424,10 @@ const WORKER_TAB_LABELS = {
 const ADMIN_TAB_LABELS = {
   ewidencja: "Ewidencja", zadania: "Zadania", pracownicy: "Pracownicy",
   grafik: "Grafik", statystyki: "Statystyki", ustawienia: "Ustawienia",
-  korekty: "Korekty", parking: "Parking", usterki: "Usterki",
-  goscie: "Stali goście", wiadomosci: "Wiadomości", alerty: "Alerty",
+  korekty: "Korekty", usterki: "Usterki",
+  wiadomosci: "Wiadomości", alerty: "Alerty",
   przypomnienia: "Przypomnienia", historia: "Historia", wiki: "Wiki",
-  kasa: "Kasa", vouchery: "Vouchery", opinie: "Opinie",
+  kasa: "Kasa",
 };
 
 export default function App(){
@@ -654,8 +657,7 @@ export default function App(){
   const [entryWhen,setEntryWhen]=useState("next");   // next | dated | pending
   const [toasts,setToasts]=useState([]);
   const [confirmDialog,setConfirmDialog]=useState(null);
-  const [liveTime,setLiveTime]=useState("");
-  const [shiftElapsed,setShiftElapsed]=useState("");
+  const { liveTime, shiftElapsed }=useClock(shiftStartTime);
   const [showSearch,setShowSearch]=useState(false);
   const [paymentCorrections,setPaymentCorrections]=useState(()=>loadJson(STORAGE_KEYS.paymentCorrections,[]));
   useEffect(()=>{pushMirror("payment_corrections",paymentCorrections);},[paymentCorrections]);
@@ -702,7 +704,7 @@ export default function App(){
   const [globalNotifications,setGlobalNotifications]=useState(()=>loadJson(STORAGE_KEYS.globalNotifications,[]));
   const [newGlobalNote,setNewGlobalNote]=useState("");
   const [newGlobalNoteShift,setNewGlobalNoteShift]=useState("");
-  const [newGlobalNoteDate,setNewGlobalNoteDate]=useState(()=>new Date().toISOString().split("T")[0]);
+  const [newGlobalNoteDate,setNewGlobalNoteDate]=useState(()=>todayKey());
   const [dismissedGlobalNotes,setDismissedGlobalNotes]=useState(()=>{try{return JSON.parse(localStorage.getItem("reception-dismissed-gnotes")||"[]");}catch{return[];}});
   const [handoverLog,setHandoverLog]=useState(()=>loadJson(STORAGE_KEYS.handoverLog,[]));
   const [incidentLog,setIncidentLog]=useState(()=>loadJson(STORAGE_KEYS.incidentLog,[]));
@@ -720,8 +722,24 @@ export default function App(){
   const [pcReservation,setPcReservation]=useState("");
   const [pcExplanation,setPcExplanation]=useState("");
   const [pcSignature,setPcSignature]=useState(null);
-  const [workerDark,setWorkerDark]=useState(()=>localStorage.getItem(STORAGE_KEYS.workerDark)!=="false");
-  const [hkDate,setHkDate]=useState(()=>new Date().toISOString().split("T")[0]);
+  const { workerDark, setWorkerDark, adminDark, setAdminDark, dark }=useDarkMode(canAccessManagerPanel&&showAdminPanel);
+  const [hkDate,setHkDate]=useState(()=>todayKey());
+  // Po północy aplikacja zostawiona włączona musi przeskoczyć na nowy dzień —
+  // inaczej recepcja rozpisuje pokoje pod wczorajszą datą, a panel/telefony czytają
+  // dziś (lokalnie) → wszędzie 0. Podążamy tylko gdy hkDate wskazywał poprzednie
+  // „dziś" (nie ręcznie wybraną przez usera datę).
+  const _lastTodayRef=React.useRef(todayKey());
+  useEffect(()=>{
+    const id=setInterval(()=>{
+      const t=todayKey();
+      if(t!==_lastTodayRef.current){
+        const prev=_lastTodayRef.current;
+        _lastTodayRef.current=t;
+        setHkDate(d=>d===prev?t:d);
+      }
+    },60000);
+    return ()=>clearInterval(id);
+  },[]);
 
   // ─── Agent AI (poziom aplikacji): wykrywa propozycje zamian / prośby o pokój /
   // usterki / start-koniec pilnych pokoi. Bot (FAB) stale w HK, dymek w każdym oknie.
@@ -760,7 +778,7 @@ export default function App(){
   });
   const [hkData,setHkData]=useState(()=>{
     // Ładuj dane dla dzisiejszego dnia (per-date persistence)
-    const todayStr=new Date().toISOString().split("T")[0];
+    const todayStr=todayKey();
     const todayData=loadJson(`hk-data-${todayStr}`,null);
     if(todayData){return todayData;}
     // Fallback: stary klucz — zachowaj tylko typy pokoi
@@ -912,7 +930,6 @@ export default function App(){
     return()=>clearInterval(id);
   },[]);
 
-  const [adminDark,setAdminDark]=useState(()=>localStorage.getItem(STORAGE_KEYS.adminDark)!=="false");
   const [soundEnabled,setSoundEnabled]=useState(()=>localStorage.getItem(STORAGE_KEYS.soundEnabled)!=="false");
   const [lockedScreen,setLockedScreen]=useState(false);
   const lockTimerRef=useRef(null);
@@ -920,22 +937,6 @@ export default function App(){
   const [newTaskUrgent,setNewTaskUrgent]=useState(false);
 
   // ── Auto-updater state ────────────────────────────────────────────────────────
-  const [updateInfo,setUpdateInfo]=useState(null); // {version,releaseDate}
-  const [updateState,setUpdateState]=useState("idle"); // idle|available|downloading|downloaded|error
-  const [updateProgress,setUpdateProgress]=useState(0);
-  const [updateError,setUpdateError]=useState("");
-  const [updateNoticeDismissed,setUpdateNoticeDismissed]=useState(false); // ukrycie globalnego dymka "Później"
-
-  useEffect(()=>{
-    const api=window.electronAPI;
-    if(!api)return;
-    api.onUpdateAvailable(info=>{setUpdateInfo(info);setUpdateState("available");setUpdateNoticeDismissed(false);});
-    api.onUpdateNotAvailable(()=>{setUpdateState("idle");showToast("Masz najnowszą wersję aplikacji.","success",4000);});
-    api.onUpdateProgress(p=>{setUpdateState("downloading");setUpdateProgress(p.percent||0);});
-    api.onUpdateDownloaded(()=>{setUpdateState("downloaded");setUpdateNoticeDismissed(false);showToast("Aktualizacja pobrana — kliknij 'Zainstaluj'.","success",8000);});
-    api.onUpdateError(msg=>{setUpdateState("error");setUpdateError(msg);});
-    return()=>api.removeUpdateListeners?.();
-  },[]);
   const [newTaskWeekdaysOnly,setNewTaskWeekdaysOnly]=useState(false);
 
   // ── Tryb testowy — przesunięcie daty ─────────────────────────────────────────
@@ -982,10 +983,6 @@ export default function App(){
   const [cashVisible,setCashVisible]=useState(true);
   const [managerNewStala,setManagerNewStala]=useState("");
 
-  // dark = admin panel OR worker dark mode
-  const dark=(canAccessManagerPanel&&showAdminPanel)?adminDark:workerDark;
-
-  useEffect(()=>{localStorage.setItem(STORAGE_KEYS.workerDark,workerDark);},[workerDark]);
   useEffect(()=>{localStorage.setItem("hk-staff",JSON.stringify(hkStaff));},[hkStaff]);
   useEffect(()=>{
     localStorage.setItem("hk-data",JSON.stringify(hkData));
@@ -993,18 +990,6 @@ export default function App(){
   },[hkData,hkDate]);
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.messages,JSON.stringify(messages));},[messages]);
   useEffect(()=>{setUnreadMsgCount(messages.filter(m=>!m.readByAdmin).length);},[messages]);
-  useEffect(()=>{localStorage.setItem(STORAGE_KEYS.adminDark,adminDark);},[adminDark]);
-  // Theme toggle (sekcja 35) — sync 3 things:
-  // 1. body.app-dark (legacy mechanizm — niektóre reguły CSS jeszcze tego używają)
-  // 2. html.theme-dark / html.theme-light (nowy mechanizm — sekcja 1 tokeny)
-  // 3. localStorage["cc.theme"] (persistencja, czytana przy starcie aplikacji)
-  useEffect(()=>{
-    const dark=(canAccessManagerPanel&&showAdminPanel)?adminDark:workerDark;
-    document.body.classList.toggle("app-dark",dark);
-    document.documentElement.classList.toggle("theme-dark",dark);
-    document.documentElement.classList.toggle("theme-light",!dark);
-    try{localStorage.setItem("cc.theme",dark?"dark":"light");}catch{}
-  },[canAccessManagerPanel,showAdminPanel,adminDark,workerDark]);
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.soundEnabled,soundEnabled);},[soundEnabled]);
 
   const showToast=useCallback((msg,type="info",duration=4500)=>{
@@ -1012,6 +997,8 @@ export default function App(){
     if(duration>0)setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==id)),duration);
   },[]);
   const dismissToast=useCallback((id)=>setToasts(prev=>prev.filter(t=>t.id!==id)),[]);
+  // Auto-updater Electrona — wydzielony do hooka (Faza 0).
+  const { updateInfo, updateState, updateProgress, updateNoticeDismissed, setUpdateNoticeDismissed, checkForUpdates }=useAutoUpdate(showToast);
   const askConfirm=useCallback((message,onConfirm)=>setConfirmDialog({message,onConfirm}),[]);
 
   // ─── Agent: Zastosuj/Odrzuć z globalnego bota (logika lustrzana do HKLivePanel).
@@ -1099,16 +1086,6 @@ export default function App(){
     reset();
     return()=>{evs.forEach(e=>window.removeEventListener(e,reset));if(lockTimerRef.current)clearTimeout(lockTimerRef.current);};
   },[started]);
-
-  // Live clock
-  useEffect(()=>{
-    const update=()=>{
-      const now=new Date();
-      setLiveTime(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`);
-      if(shiftStartTime){const d=Math.floor((now-shiftStartTime)/60000);setShiftElapsed(`${Math.floor(d/60)}h ${d%60}min`);}
-    };
-    update();const iv=setInterval(update,1000);return()=>clearInterval(iv);
-  },[shiftStartTime]);
 
   // Load from storage
   useEffect(()=>{
@@ -1527,14 +1504,6 @@ export default function App(){
   const logManagerLogin=(manager)=>{const updated=[{id:crypto.randomUUID(),manager,loginAt:fmtA(),logoutAt:""},...adminActivityLog];setAdminActivityLog(updated);saveJson(STORAGE_KEYS.adminLog,updated);addAudit(manager,"Logowanie do panelu kierownika");const unresolved=loadJson(STORAGE_KEYS.incidentLog,[]).filter(i=>!i.resolved);if(unresolved.length>0){setTimeout(()=>showToast(`⚠ ${unresolved.length} niezakończon${unresolved.length===1?"a":"ych"} zmian${unresolved.length===1?"a":""} bez raportu — sprawdź zakładkę Historia.`,"warning",10000),600);}const pendingC=loadJson(STORAGE_KEYS.paymentCorrections,[]).filter(c=>!c.done);if(pendingC.length>0){setTimeout(()=>showToast(`${pendingC.length} korekta(-e) płatności oczekuje — zakładka Korekty.`,"warning",8000),1800);}};
 
   const handleAdminLogout=()=>{addAudit(currentManager,"Wylogowanie z panelu kierownika");const updated=adminActivityLog.map((item,i)=>i===0&&!item.logoutAt?{...item,logoutAt:fmtA()}:item);setAdminActivityLog(updated);saveJson(STORAGE_KEYS.adminLog,updated);clearManagerSession();setShowWiki(false);setEditingWikiId(null);setWikiTopic("");setWikiContent("");};
-  const handleCheckUpdate=async()=>{
-    if(!window.electronAPI?.checkForUpdates){showToast("Aktualizacje działają tylko w zainstalowanej wersji.","info");return;}
-    setUpdateState("idle");setUpdateError("");
-    const r=await window.electronAPI.checkForUpdates();
-    if(r?.isDev) showToast("Tryb dev — aktualizacje dostępne tylko w instalatorze.","info");
-    else if(r?.error) showToast("Błąd sprawdzania: "+r.error,"error");
-    else showToast("Sprawdzam aktualizacje…","info",3000);
-  };
   const saveWikiEntries=(entries)=>{
     setWikiEntries(entries);
     saveJson(STORAGE_KEYS.wiki,entries);
@@ -2022,14 +1991,6 @@ export default function App(){
     setPaymentCorrections(updated);saveJson(STORAGE_KEYS.paymentCorrections,updated);
   };
   const pendingCorrections=paymentCorrections.filter(c=>!c.done);
-  const [voucherVersion,setVoucherVersion]=useState(0);
-  const voucherCount=useMemo(()=>loadJson(STORAGE_KEYS.vouchers,[]).filter(v=>v.status==="issued").length,[voucherVersion]);
-  useEffect(()=>{
-    const onStorage=(e)=>{if(e.key===STORAGE_KEYS.vouchers)setVoucherVersion(v=>v+1);};
-    window.addEventListener("storage",onStorage);
-    const poll=setInterval(()=>setVoucherVersion(v=>v+1),5000);
-    return()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);};
-  },[]);
   const [correctionApprovalModal,setCorrectionApprovalModal]=React.useState(null); // {correction}
 
   const handleExportBackup=()=>{
@@ -2418,19 +2379,9 @@ export default function App(){
             employeeActivityLog={employeeActivityLog}
           />
         )}
-        {adminTab==="parking"&&(
-          <motion.div key="parking-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <ParkingPanel dark={adminDark} isAdmin={true} showToast={showToast} employees={employees} employeeName={currentManager}/>
-          </motion.div>
-        )}
         {adminTab==="usterki"&&(
           <motion.div key="usterki-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <FaultsPanel dark={adminDark} employeeName={currentManager} showToast={showToast} floors1={HK_FLOOR1} floors2={HK_FLOOR2} floors3={HK_FLOOR3} isManager={true}/>
-          </motion.div>
-        )}
-        {adminTab==="goscie"&&(
-          <motion.div key="goscie-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <StaliGosciePanel dark={adminDark} isAdmin={true} currentManager={currentManager} addAudit={addAudit}/>
           </motion.div>
         )}
         {adminTab==="wiadomosci"&&(
@@ -2481,16 +2432,6 @@ export default function App(){
             setStalaKasowaByManager={setStalaKasowaByManager}
             messages={messages}
           />
-        )}
-        {adminTab==="vouchery"&&(
-          <motion.div key="vouchery-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <VouchersPanel employeeName={currentManager||employeeName} isManager={true} showToast={showToast}/>
-          </motion.div>
-        )}
-        {adminTab==="opinie"&&(
-          <motion.div key="opinie-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <ReviewsPanel dark={adminDark} employeeName={currentManager||employeeName} isManager={true} showToast={showToast}/>
-          </motion.div>
         )}
         {adminTab==="czat"&&(
           <motion.div key="czat-a" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
@@ -3449,7 +3390,12 @@ export default function App(){
               <button className="btn btn-indigo" disabled={!canFinishShift}
                 onClick={()=>{
                   const isDeposit=selectedShift==="nocna"||selectedShift==="wieczorowa";
-                  if(isDeposit)setSafeConfirmStep(true);else{setFinishDialogOpen(false);finishShift();}
+                  if(isDeposit){
+                    // Przenieś już wpisaną KW końcową do pola sejfu — bez podwójnego wpisywania
+                    // i bez ryzyka, że puste pole da przyrost 0 → wpłatę 0.
+                    if(!safeDepositKW.trim()&&cashClosingDocumentsAmount.trim())setSafeDepositKW(cashClosingDocumentsAmount);
+                    setSafeConfirmStep(true);
+                  }else{setFinishDialogOpen(false);finishShift();}
                 }}>
                 {(selectedShift==="nocna"||selectedShift==="wieczorowa")?"Dalej →":"Zakończ zmianę"}
               </button>
@@ -3498,6 +3444,11 @@ export default function App(){
                       <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Płatność gotówkowa PO wpłacie do sejfu (zł) <span style={{color:"#c8a050"}}>— opcjonalne</span></div>
                       <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4,lineHeight:1.5}}>Gotówka, która wpłynęła już po wpłacie do sejfu (np. po 24:00) — zostanie wliczona jako KW zmiany porannej, NIE trafia do tego sejfu.</div>
                       <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={postDepositKW} onChange={e=>setPostDepositKW(e.target.value)} style={{fontSize:13}} autoFocus/>
+                    </div>
+                  )}
+                  {deposit<=0&&(
+                    <div style={{background:"#fdf3e3",border:"1px solid #e8c98a",borderLeft:"4px solid #c8a050",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,color:"#7a5a16",lineHeight:1.5}}>
+                      <strong>Do sejfu wychodzi 0 zł.</strong> Sprawdź, czy w polu „Stan KW" jest <u>aktualny</u> odczyt z drukarki kasowej (musi być wyższy niż KW poprzedniej zmiany: {fmtMoney(kwTotal)}). Jeśli w nocy nie było żadnej wpłaty gotówką — to jest OK, możesz zatwierdzić.
                     </div>
                   )}
                   {safeDepositKW&&(
@@ -3941,14 +3892,13 @@ export default function App(){
             setShowWiki={setShowWiki} setShowAuditLog={setShowAuditLog}
             handleAdminLogout={handleAdminLogout} setShowSearch={setShowSearch}
             adminDark={adminDark} setAdminDark={setAdminDark}
-            onCheckUpdate={handleCheckUpdate} currentManager={currentManager}
+            onCheckUpdate={checkForUpdates} currentManager={currentManager}
             unreadMsgCount={unreadMsgCount}
             updateState={updateState} updateInfo={updateInfo} updateProgress={updateProgress}
             onDownloadUpdate={()=>window.electronAPI?.downloadUpdate()}
             onInstallUpdate={()=>window.electronAPI?.installUpdate()}
             pendingCorrections={pendingCorrections.length}
             faultsCount={faultsCount}
-            voucherCount={voucherCount}
             chatCount={chatUnread}
             showToast={showToast}
           />

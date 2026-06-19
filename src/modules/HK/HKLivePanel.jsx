@@ -7,7 +7,9 @@ import { suggestReassignments, workerStats, suggestForRequest, HK_WORKER_ACTIONS
 import { markRequestHandled, getDismissedSwaps, markSwapDismissed } from "../../lib/useHKAgent";
 import { roomAdvisor, suggestAssignee, llmReady } from "../../lib/llm";
 
-const TODAY = () => new Date().toISOString().split("T")[0];
+// Data LOKALNA (nie UTC) — musi zgadzać się z panelem menedżera, telefonami HK
+// i resztą stacka, które kluczują dane po lokalnym dniu (todayKey/isoDate).
+const TODAY = () => { const d = new Date(); const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 const sugKey = (s) => `${s.from}->${s.to}:${s.rooms.join(",")}`;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -174,7 +176,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
         supabase.from("hk_rooms").select("*").eq("date", date),
         supabase.from("hk_tasks").select("*").eq("date", date).order("created_at"),
         supabase.from("hk_logs").select("*").eq("date", date).order("created_at"),
-        supabase.from("hk_plan").select("*").eq("date", date).maybeSingle(),
+        supabase.from("hk_plan").select("*").eq("date", date).order("updated_at", { ascending:false }).limit(1).maybeSingle(),
         supabase.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", date).maybeSingle(),
       ]);
       if (!active) return;

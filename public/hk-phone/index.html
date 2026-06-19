@@ -176,7 +176,7 @@ try {
   if (WORKER) localStorage.setItem("hk_worker", WORKER);
   else WORKER = localStorage.getItem("hk_worker") || "";
 } catch (e) { /* tryb prywatny / brak storage */ }
-const TODAY   = new Date().toISOString().split("T")[0];
+const TODAY   = (()=>{ const d=new Date(),p=n=>n<10?"0"+n:""+n; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); })(); // data LOKALNA — spójna z panelem/serwerem HK
 // Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -754,10 +754,20 @@ function setWorker(name) {
 async function pickWorker() {
   if (!sb) { render(); return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
-  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments").eq("date", TODAY).single();
+  // Imiona z DWÓCH źródeł: rozpisane pokoje (hk_plan) ORAZ obsada na dziś
+  // (hk_roster). Dzięki temu rozpisany pracownik pojawia się na liście wyboru,
+  // nawet jeśli recepcja nie przydzieliła mu jeszcze pokoi.
+  const [{ data: plan }, { data: rosterRow }] = await Promise.all([
+    sb.from("hk_plan").select("assignments,pm_assignments").eq("date", TODAY).maybeSingle(),
+    sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", TODAY).maybeSingle(),
+  ]);
+  const rosterNames = (Array.isArray(rosterRow?.roster) ? rosterRow.roster : [])
+    .map(p => (p && p.name) || (typeof p === "string" ? p : null))
+    .filter(Boolean);
   const names = [...new Set([
     ...Object.keys(plan?.assignments || {}),
     ...Object.keys(plan?.pm_assignments || {}),
+    ...rosterNames,
   ])].sort((a, b) => a.localeCompare(b, "pl"));
 
   if (!names.length) {

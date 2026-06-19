@@ -18,6 +18,14 @@ try { webpush = require("web-push"); } catch (e) {
 const PORT = 3737;
 let _server = null;
 
+// Data LOKALNA (nie UTC) — telefony pokojówek, panel menedżera i aplikacja
+// recepcji kluczują dane po lokalnym dniu. toISOString() dawało UTC i rozjeżdżało
+// daty między północą a ~2:00 oraz przy aplikacji włączonej przez noc.
+function _localToday() {
+  const d = new Date(), p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 // ─── Web Push: VAPID + subskrypcje ───────────────────────────────────────────
 const VAPID_FILE = path.join(os.homedir(), ".hkserver-vapid.json");
 const SUBS_FILE  = path.join(os.homedir(), ".hkserver-pushsubs.json");
@@ -91,7 +99,7 @@ async function sendPushToAll(payload, exceptWorker) {
 
 // ─── Stan ─────────────────────────────────────────────────────────────────────
 let _state = {
-  date:          new Date().toISOString().split("T")[0],
+  date:          _localToday(),
   assignments:   {},
   pmAssignments: {},
   rooms:         {},
@@ -230,7 +238,7 @@ function loadSavedState() {
   try {
     if (fs.existsSync(STATE_FILE)) {
       var saved = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
-      var today = new Date().toISOString().split("T")[0];
+      var today = _localToday();
       if (saved.date === today) _state = saved;
     }
   } catch {}
@@ -471,7 +479,7 @@ function mergeRemoteRooms(remoteState) {
 }
 
 function resetDay(date) {
-  _state.date        = date || new Date().toISOString().split("T")[0];
+  _state.date        = date || _localToday();
   _state.assignments = {};
   _state.rooms       = {};
   _clients           = {};
@@ -718,7 +726,7 @@ function mobilePage(workerName) {
   + '<div id="teamView" style="display:none;flex-direction:column;padding:12px;gap:0"><div style="padding:20px;text-align:center;color:#484f58">Wczytywanie...<\/div><\/div>\n'
   + '<script>\n'
   + 'var W=' + wJson + ';\n'
-  + 'var _allRooms=[];var _currentRoom=null;var _curTab="rooms";var _seen={};var toastT=null;var _seenTasks={};var _tasksReady=false;var _notifGranted=false;var _sbCfg=null;var _today=new Date().toISOString().split("T")[0];\n'
+  + 'var _allRooms=[];var _currentRoom=null;var _curTab="rooms";var _seen={};var toastT=null;var _seenTasks={};var _tasksReady=false;var _notifGranted=false;var _sbCfg=null;var _today=(function(){var d=new Date(),p=function(n){return n<10?"0"+n:""+n;};return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());})();\n'
   /* Tab switching */
   + 'function switchTab(t){_curTab=t;\n'
   + '  document.getElementById("listView").style.display=t==="rooms"?"":"none";\n'
