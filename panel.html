@@ -1108,7 +1108,7 @@ async function loadLive() {
         sb.from("hk_rooms").select("room,worker,status,vacated").eq("date", today),
         sb.from("hk_logs").select("action,worker,room,extra,log_time,created_at").eq("date", today).order("created_at", { ascending:false }).limit(14),
         sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).eq("date", today).maybeSingle(),
-        sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", today).maybeSingle(),
+        sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types").eq("date", today).order("updated_at", { ascending:false }).limit(1).maybeSingle(),
       ]);
       rooms = r1.data || []; logs = r2.data || [];
       roster = (r3.data && Array.isArray(r3.data.roster)) ? r3.data.roster : [];
