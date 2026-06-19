@@ -234,7 +234,7 @@ async function saveAvail(date, choice, start, end){
   const args = { p_token:TOKEN, p_date:date, p_choice:choice };
   if (start != null || end != null) { args.p_start = start; args.p_end = end; }
   try { const { error } = await sb.rpc("set_availability", args); if(error) throw error; return true; }
-  catch { toast("Nie zapisano — spróbuj ponownie.", "#c2415a"); return false; }
+  catch (e) { console.error("set_availability:", e); toast("Nie zapisano — " + ((e&&e.message)||"spróbuj ponownie."), "#c2415a"); return false; }
 }
 window.setH = async (date, which, val)=>{
   const h = HOURS[date] = HOURS[date] || { start:"", end:"" };
