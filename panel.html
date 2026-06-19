@@ -976,7 +976,8 @@ const _roleLbl = v => (HK_ROLE_OPT.find(o=>o[0]===v)||[null,v])[1] || v || "—"
 // Dzięki temu kierownik rozdziela uczciwie (widzi dyspozycyjność, nie klika w ciemno).
 const _AVAIL_LBL = { oba:"Rano+Popoł.", poranna:"Rano", dzien:"Rano", popoludnie:"Popoł.", dyzur:"Dyżur" };
 function availBadge(choice){
-  const t = _AVAIL_LBL[choice];
+  const labels = String(choice||"").split(",").map(s=>_AVAIL_LBL[s.trim()]).filter(Boolean);
+  const t = labels.length ? labels.join(" + ") : null;
   if (t) return `<span style="display:inline-block;font-size:10px;font-weight:800;color:var(--ok);background:rgba(31,122,82,.08);border:1px solid rgba(31,122,82,.4);border-radius:6px;padding:1px 6px;margin-top:3px;white-space:nowrap">✓ może: ${t}</span>`;
   return `<span style="display:inline-block;font-size:10px;font-weight:700;color:var(--muted);background:rgba(138,106,126,.1);border:1px solid var(--line-strong);border-radius:6px;padding:1px 6px;margin-top:3px;white-space:nowrap">brak dysp. w grafiku</span>`;
 }
@@ -1336,7 +1337,11 @@ window.showLiveWorker = async (w) => {
       status = `<span class="chip">do zrobienia</span>`;
     }
     const tline = times ? `<span style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${times}</span>` : "";
-    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}${tline}</span>${status}</div>`;
+    // Tag typu pokoju — czytelny też przy przewijaniu w obrębie sekcji.
+    const typeTag = r.pobyt
+      ? `<span style="font-size:9.5px;font-weight:800;color:#1f7a52;background:rgba(31,122,82,.1);border-radius:5px;padding:1px 5px;margin-right:6px;vertical-align:middle">PG</span>`
+      : `<span style="font-size:9.5px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border-radius:5px;padding:1px 5px;margin-right:6px;vertical-align:middle">WYJ</span>`;
+    return `<div class="statrow"><span class="k">${typeTag}Pokój ${esc(r.room)}${tline}</span>${status}</div>`;
   };
   // Osobno pokoje wyjazdowe (W/WP) i pobyty (PG/PGZ).
   const wj = roomsSorted.filter(r=>!r.pobyt), pg = roomsSorted.filter(r=>r.pobyt);
@@ -1457,7 +1462,7 @@ async function workerAvailabilityText(worker){
     const ch={dzien:"rano",popoludnie:"popoł.",poranna:"rano",oba:"rano+popoł.",popoludniowa:"popoł.",nocna:"nocna"};
     const mine=(grid||[]).filter(r=>r.person===worker && r.date && r.choice && r.choice!=="off" && r.date>=today)
       .sort((a,b)=>a.date.localeCompare(b.date)).slice(0,7);
-    return mine.map(r=>{ const [,m,d]=r.date.split("-"); return `${d}.${m} ${ch[r.choice]||r.choice}`; }).join(", ");
+    return mine.map(r=>{ const [,m,d]=r.date.split("-"); const lbl=String(r.choice).split(",").map(p=>ch[p.trim()]||p.trim()).join("+"); return `${d}.${m} ${lbl}`; }).join(", ");
   } catch { return ""; }
 }
 window.showWorker = async (w) => {
@@ -1912,6 +1917,13 @@ const GRAFIK_BASE = "https://grzankatoster-sketch.github.io/hk-phone/grafik.html
 const CHOICE_ABBR = { dzien:["R","#5a1d4a"], popoludnie:["P","#a07820"], off:["—","#8a6a7e"],
                       poranna:["R","#1D4ED8"], oba:["RP","#1f7a52"], popoludniowa:["Po","#C2410C"], nocna:["N","#0F172A"],
                       dzienna:["D","#15803D"], godziny:["G","#1f7a52"] };
+// Skrót do komórki grafiku — obsługuje też kilka zmian na jeden dzień (np. "poranna,nocna" → "R+N").
+function choiceAbbr(c){
+  if(!c) return null;
+  const m = String(c).split(",").map(s=>CHOICE_ABBR[s.trim()]).filter(Boolean);
+  if(!m.length) return null;
+  return m.length===1 ? m[0] : [m.map(x=>x[0]).join("+"), m[m.length-1][1]];
+}
 let hkWorkersCache = null;
 const nextMonday = () => { const d=new Date(); d.setHours(0,0,0,0); const a=(8-d.getDay())%7||7; d.setDate(d.getDate()+a); return isoDate(d); };
 const firstNextMonth = () => { const d=new Date(); return isoDate(new Date(d.getFullYear(), d.getMonth()+1, 1)); };
@@ -2083,7 +2095,7 @@ function renderGrid() {
     const head = `<th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--cream)">Osoba</th>` +
       dates.map(d => { const [,m,dd]=d.split("-"); return `<th style="padding:6px 6px;font-size:11px;color:var(--muted)">${dd}.${m}</th>`; }).join("");
     const bodyRows = persons.map(p => {
-      const cells = dates.map(d => { const c = byPD[p+"|"+d]; const a = CHOICE_ABBR[c];
+      const cells = dates.map(d => { const c = byPD[p+"|"+d]; const a = choiceAbbr(c);
         return `<td style="text-align:center;padding:5px 6px">${a?`<span style="display:inline-block;min-width:22px;font-weight:900;font-size:12px;color:${a[1]}">${a[0]}</span>`:`<span style="color:var(--line-strong)">·</span>`}</td>`; }).join("");
       return `<tr><td style="padding:6px 8px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(p)}</td>${cells}</tr>`;
     }).join("");
@@ -2095,14 +2107,14 @@ function renderGrid() {
       const avail = persons.filter(p => av(p,d)); const [,m,dd]=d.split("-");
       return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:4px">
         <div style="display:flex;width:100%;align-items:center;gap:8px"><span class="k" style="flex:1">${dd}.${m}</span><span class="v">${avail.length}</span></div>
-        ${avail.length?`<div class="chips">${avail.map(p=>{const a=CHOICE_ABBR[byPD[p+"|"+d]];return `<span class="chip">${esc(p)} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join("")}</div>`:`<div style="font-size:12px;color:var(--muted)">nikt nie może</div>`}
+        ${avail.length?`<div class="chips">${avail.map(p=>{const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${esc(p)} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join("")}</div>`:`<div style="font-size:12px;color:var(--muted)">nikt nie może</div>`}
       </div>`;
     }).join("");
   } else {
     html += persons.map(p => {
       const days = dates.filter(d => av(p,d));
       return `<div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(p))}</span><span class="nm">${esc(p)}</span><span class="prog">${days.length}</span></div>
-        <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=CHOICE_ABBR[byPD[p+"|"+d]];return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
+        <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
     }).join("");
   }
   body(html);
