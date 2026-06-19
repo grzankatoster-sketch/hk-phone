@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   hkAutomationGetSource: (dateKey) => ipcRenderer.invoke("hk-automation-get-source", dateKey),
   hkAutomationStatus: () => ipcRenderer.invoke("hk-automation-status"),
   hkAutomationRunNow: () => ipcRenderer.invoke("hk-automation-run-now"),
+  hkAutomationSetPassword: (password) => ipcRenderer.invoke("hk-automation-set-password", password),
   hkGetQr: (name, ip, baseUrl, pm) => ipcRenderer.invoke("hk-get-qr", name, ip, baseUrl, pm),
   hkGetKonserwatorQr: (name, faults) => ipcRenderer.invoke("hk-get-konserwator-qr", name, faults),
   hkFixFirewall: () => ipcRenderer.invoke("hk-fix-firewall"),

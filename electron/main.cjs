@@ -286,6 +286,13 @@ ipcMain.handle("hk-get-qr", async (_, name, overrideIp, baseUrl, pm) => {
 // HK Automation (wbudowany serwis IMAP → plany)
 ipcMain.handle("hk-automation-status",  () => hkAutomation.getStatus());
 ipcMain.handle("hk-automation-run-now", () => hkAutomation.runNow());
+// Jednorazowy zapis hasla IMAP (szyfrowany w userData, przezywa auto-update).
+// Po zapisie od razu odpalamy cykl, zeby menedzer widzial efekt bez czekania.
+ipcMain.handle("hk-automation-set-password", async (_, password) => {
+  const res = hkAutomation.setStoredPassword(password);
+  if (res.ok && password) hkAutomation.runNow().catch(() => {});
+  return res;
+});
 
 ipcMain.handle("hk-get-konserwator-qr", async (_, name, faults) => {
   const safeName = String(name || "").slice(0, 60);

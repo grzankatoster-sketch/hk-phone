@@ -7,7 +7,7 @@
 
 const fs   = require("fs");
 const path = require("path");
-const { app } = require("electron");
+const { app, safeStorage } = require("electron");
 const log  = require("electron-log");
 
 // ─── Reuse istniejących bibliotek demona ─────────────────────────────────────
@@ -84,6 +84,75 @@ function deepMerge(base, override) {
 
 function userConfigPath() {
   return path.join(app.getPath("userData"), "hk-automation-config.json");
+}
+
+// ─── Trwale haslo IMAP (przezywa auto-update) ────────────────────────────────
+// .env lezy obok exe i ginie przy kazdej aktualizacji (nowy folder app-<wersja>).
+// Dlatego haslo trzymamy zaszyfrowane (DPAPI/Keychain przez safeStorage) w
+// userData (%APPDATA%), ktore aktualizacja zachowuje. Plik NIE trafia do repo
+// ani do instalatora — powstaje lokalnie po jednorazowym wpisaniu hasla.
+function credFilePath() {
+  return path.join(app.getPath("userData"), "hk-automation-mail.cred");
+}
+
+function loadStoredPassword() {
+  try {
+    const file = credFilePath();
+    if (!fs.existsSync(file)) return "";
+    const buf = fs.readFileSync(file);
+    if (!buf || !buf.length) return "";
+    if (!safeStorage.isEncryptionAvailable()) {
+      log.warn("[hk-auto] safeStorage niedostepny — nie moge odszyfrowac hasla.");
+      return "";
+    }
+    return safeStorage.decryptString(buf);
+  } catch (e) {
+    log.warn("[hk-auto] Nie udalo sie odczytac zapisanego hasla:", e.message);
+    return "";
+  }
+}
+
+function setStoredPassword(plain) {
+  try {
+    const pw = String(plain ?? "");
+    const file = credFilePath();
+    if (!pw) {
+      if (fs.existsSync(file)) fs.unlinkSync(file);
+      return { ok: true, cleared: true };
+    }
+    if (!safeStorage.isEncryptionAvailable()) {
+      return { ok: false, error: "Szyfrowanie systemowe (safeStorage) niedostepne na tym koncie." };
+    }
+    fs.writeFileSync(file, safeStorage.encryptString(pw));
+    log.info("[hk-auto] Zapisano zaszyfrowane haslo IMAP.");
+    return { ok: true };
+  } catch (e) {
+    log.error("[hk-auto] Blad zapisu hasla:", e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+// Kolejnosc zrodel hasla: zmienna srodowiskowa → zaszyfrowane w userData →
+// jawne w configu (najslabsze, dla zgodnosci wstecz).
+function resolvePassword(config) {
+  return (
+    process.env[config?.mailbox?.passwordEnv || "HK_AUTOMATION_MAIL_PASSWORD"] ||
+    loadStoredPassword() ||
+    config?.mailbox?.password ||
+    ""
+  );
+}
+
+function hasPassword() {
+  try {
+    return Boolean(
+      process.env.HK_AUTOMATION_MAIL_PASSWORD ||
+      (fs.existsSync(credFilePath()) && fs.statSync(credFilePath()).size > 0) ||
+      loadConfig().mailbox.password
+    );
+  } catch (_) {
+    return false;
+  }
 }
 
 function loadUserOverrides() {
@@ -201,12 +270,15 @@ async function runNow() {
       log.warn(`[hk-auto] ${lastError}`);
       return { ok: false, error: lastError };
     }
-    const password = process.env[config.mailbox.passwordEnv || "HK_AUTOMATION_MAIL_PASSWORD"] || config.mailbox.password || "";
+    const password = resolvePassword(config);
     if (!password) {
-      lastError = "Brak hasla IMAP w zmiennej srodowiskowej HK_AUTOMATION_MAIL_PASSWORD.";
+      lastError = "Brak hasla IMAP — wpisz je raz w panelu menedzera (Automatyzacja HK).";
       log.warn(`[hk-auto] ${lastError}`);
       return { ok: false, error: lastError };
     }
+    // Udostepnij haslo bibliotekom korzystajacym z env (mail.cjs/config.cjs),
+    // gdy pochodzi z zaszyfrowanego magazynu zamiast ze zmiennej srodowiskowej.
+    if (!process.env.HK_AUTOMATION_MAIL_PASSWORD) process.env.HK_AUTOMATION_MAIL_PASSWORD = password;
     const written = await runOnce(config);
     lastRun = new Date().toISOString();
     lastWritten = written;
@@ -249,8 +321,8 @@ function getStatus() {
     nextRunAt,
     writtenLastCount: lastWritten.length,
     configPath: userConfigPath(),
-    hasPassword: Boolean(process.env.HK_AUTOMATION_MAIL_PASSWORD),
+    hasPassword: hasPassword(),
   };
 }
 
-module.exports = { start, stop, runNow, getStatus, loadConfig };
+module.exports = { start, stop, runNow, getStatus, loadConfig, setStoredPassword, hasPassword };
