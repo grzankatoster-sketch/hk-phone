@@ -59,6 +59,48 @@ describe("calculateSafeDeposit", () => {
   });
 });
 
+describe("regresja: pusty / zaniżony Stan KW przy wpłacie do sejfu", () => {
+  // Objaw zgłoszony: pracownik zatwierdza wpłatę, ale kasa się nie zmniejsza.
+  it("puste Stan KW (0) → wpłata 0, kasa wraca do stałej bez zmian", () => {
+    const r = calculateSafeDeposit({
+      stalaKasowa: 680,
+      kwTotal: 180,
+      safeDepositKW: 0, // pole zostawione puste
+      safeDepositAmount: 0,
+      postDepositKW: 0,
+    });
+    expect(r.kwIncrement).toBe(0);
+    expect(r.deposit).toBe(0);
+    expect(r.endingCash).toBe(680); // brak spadku = obserwowany bug
+  });
+
+  it("Stan KW niższe niż poprzednie → przyrost 0 (clamp), wpłata 0", () => {
+    const r = calculateSafeDeposit({
+      stalaKasowa: 680,
+      kwTotal: 180,
+      safeDepositKW: 150, // niżej niż KW poprzedniej zmiany
+      safeDepositAmount: 0,
+      postDepositKW: 0,
+    });
+    expect(r.kwIncrement).toBe(0);
+    expect(r.endingCash).toBe(680);
+  });
+
+  it("po pre-wypełnieniu KW końcową (260) → przyrost 80, kasa schodzi do stałej", () => {
+    // Po poprawce safeDepositKW jest pre-wypełnione poprawnym odczytem z drukarki.
+    const r = calculateSafeDeposit({
+      stalaKasowa: 680,
+      kwTotal: 180,
+      safeDepositKW: 260,
+      safeDepositAmount: 80, // domyślnie = przyrost KW
+      postDepositKW: 0,
+    });
+    expect(r.kwIncrement).toBe(80);
+    expect(r.totalBeforeDeposit).toBe(760);
+    expect(r.endingCash).toBe(680); // kasa wraca do stałej — przyrost trafił do sejfu
+  });
+});
+
 describe("sekwencja zmian (regresja całego dnia)", () => {
   it("zachowuje spójność endingCash i nextKwTotal przez 4 kroki", () => {
     const sequence = [
@@ -69,5 +111,42 @@ describe("sekwencja zmian (regresja całego dnia)", () => {
     ];
     expect(sequence.map(r => money(r.endingCash))).toEqual([600, 680, 550, 620]);
     expect(sequence.map(r => money(r.nextKwTotal))).toEqual([100, 180, 20, 90]);
+  });
+});
+
+describe("edge case'y wejścia", () => {
+  it("KW z przecinkiem dziesiętnym (format PL) liczy się poprawnie", () => {
+    const r = calculateShiftCash({ stalaKasowa: 500, kwTotal: 0, kwTotalInput: "120,50" });
+    expect(r.kwIncrement).toBe(120.5);
+    expect(r.endingCash).toBe(620.5);
+  });
+
+  it("śmieciowa stała kasowa → 0 (nigdy NaN)", () => {
+    const r = calculateShiftCash({ stalaKasowa: "abc", kwTotal: 0, kwTotalInput: 100 });
+    expect(r.stala).toBe(0);
+    expect(r.endingCash).toBe(100);
+  });
+
+  it("przyrost grosza bez artefaktów zmiennoprzecinkowych", () => {
+    // Bez zaokrąglenia 180.57 - 120.42 = 60.150000000000006 zł.
+    const r = calculateShiftCash({ stalaKasowa: 500, kwTotal: 120.42, kwTotalInput: 180.57 });
+    expect(r.kwIncrement).toBe(60.15);
+    expect(r.endingCash).toBe(560.15);
+  });
+});
+
+describe("wpłata do sejfu — kwoty graniczne", () => {
+  it("wpłata większa niż gotówka → endingCash poniżej zera (sygnał, nie clamp)", () => {
+    // Celowo bez clampu: ujemna kasa = czerwona flaga (wpłacono więcej niż było).
+    const r = calculateSafeDeposit({ stalaKasowa: 500, kwTotal: 0, safeDepositKW: 100, safeDepositAmount: 700, postDepositKW: 0 });
+    expect(r.totalBeforeDeposit).toBe(600);
+    expect(r.endingCash).toBe(-100);
+  });
+
+  it("kwoty z przecinkiem przy wpłacie — wynik zaokrąglony do grosza", () => {
+    const r = calculateSafeDeposit({ stalaKasowa: 500, kwTotal: "120,42", safeDepositKW: "180,57", safeDepositAmount: "60,15", postDepositKW: "0" });
+    expect(r.kwIncrement).toBe(60.15);
+    expect(r.totalBeforeDeposit).toBe(560.15);
+    expect(r.endingCash).toBe(500);
   });
 });
