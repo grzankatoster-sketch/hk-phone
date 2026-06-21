@@ -138,6 +138,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fitem .ic{font-weight:900;flex-shrink:0}
 .fitem .tm{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0;font-variant-numeric:tabular-nums}
 .empty{font-size:12.5px;color:var(--muted);text-align:center;padding:22px 10px;background:rgba(90,29,74,.03);border:1px dashed var(--line-strong);border-radius:11px}
+/* Zmiany — grafik edytowalny */
+.zm-nav{width:32px;height:30px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);border-radius:8px;font-size:16px;font-weight:800;cursor:pointer;line-height:1}
+.zm-nav:hover{background:rgba(90,29,74,.05)}
+.zm-h{width:100%;min-width:58px;font-size:11.5px;font-weight:600;text-align:center;border:1px solid var(--line);border-radius:6px;padding:3px 4px;background:var(--paper);color:var(--ink);outline:none}
+.zm-h:focus{border-color:var(--plum)}
+.zm-s{width:100%;margin-top:3px;font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px 3px;background:var(--paper);color:var(--muted);outline:none;cursor:pointer}
+.zm-days{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+.zm-day{flex:0 0 auto;min-width:42px;padding:6px 4px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);border-radius:9px;font-weight:800;font-size:12px;cursor:pointer;text-align:center;line-height:1.2}
+.zm-day.on{background:var(--plum);color:#fff;border-color:var(--plum)}
+.zm-list{display:flex;flex-direction:column;gap:7px}
+.zm-row{display:grid;grid-template-columns:1fr 86px 104px;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.zm-row .zm-name{font-weight:700;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zm-row .zm-s{margin-top:0}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1540,17 +1553,125 @@ window.genWorkerAI = async () => {
   if (btn){ btn.disabled=false; btn.textContent="✨ Generuj opis AI"; }
 };
 
+// ── Aktywna zmiana (kto pracuje teraz) — z lustra „schedule" aplikacji recepcji ──
+// Format lustra (jak w loadZmiany): sched["YYYY-MM-DD"]["Osoba"] = { shift, start, end }.
+// Okna zmian jako fallback, gdy wpis nie ma godzin (start/end). nocna kończy się po północy → koniec >24.
+const SHIFT_WIN = { poranna:[6,14], popoludnie:[14,22], popoludniowa:[14,22], wieczorowa:[14,23], dzienna:[7,19], nocna:[22,30], dyzur:[8,20] };
+const _hm = s => { if (s==null||s==="") return null; const m=String(s).match(/(\d{1,2})(?::?(\d{2}))?/); if(!m) return null; let h=+m[1]; if(m[2]) h+=(+m[2])/60; return h; };
+function shiftWindow(en){
+  let s=_hm(en.start), e=_hm(en.end);
+  if (s==null||e==null){ const w=SHIFT_WIN[en.shift]; if(w){ s=w[0]; e=w[1]; } }
+  if (s==null||e==null) return null;
+  if (e<=s) e+=24;            // zmiana przechodzi przez północ
+  return [s,e];
+}
+function shiftHoursLabel(en){
+  const s=(en.start??""), e=(en.end??""); if (s!==""||e!=="") return `${s}–${e}`;
+  const w=SHIFT_WIN[en.shift]; return w ? `${w[0]}–${w[1]>24?w[1]-24:w[1]}` : "";
+}
+function activeShiftData(sched){
+  const today = isoDate(new Date());
+  const yest  = isoDate(new Date(Date.now()-864e5));
+  const now = new Date(); const nowH = now.getHours()+now.getMinutes()/60;
+  const collect = dk => { const day = sched && sched[dk]; if(!day||typeof day!=="object") return [];
+    return Object.keys(day).filter(p=>day[p]).map(p=>({ person:p, shift:day[p].shift, start:day[p].start, end:day[p].end })); };
+  const todayEntries = collect(today);
+  const isActive = (en,off) => { const w=shiftWindow(en); if(!w) return false; const cur=nowH+(off?24:0); return cur>=w[0] && cur<w[1]; };
+  const active = [ ...todayEntries.filter(en=>isActive(en,0)),
+                   ...collect(yest).filter(en=>isActive(en,1)) ];   // wczorajsza nocka po północy
+  const byShift = {}; todayEntries.forEach(en=>{ const k=en.shift||"inna"; (byShift[k]=byShift[k]||[]).push(en); });
+  return { today, todayEntries, active, byShift };
+}
+function activeShiftCard(sched){
+  const d = activeShiftData(sched);
+  if (!sched || !d.todayEntries.length)
+    return `<div class="card" style="margin-bottom:12px"><div class="soon" style="margin-top:0">Aktywna zmiana — kto pracuje teraz</div>
+      <div class="note" style="margin:0">Brak grafiku na dziś (pojawi się, gdy recepcja zapisze grafik w aplikacji).</div></div>`;
+  const groups = {}; d.active.forEach(en=>{ const k=en.shift||"inna"; (groups[k]=groups[k]||[]).push(en); });
+  const keys = Object.keys(groups);
+  const inner = keys.length ? keys.map(k=>{
+      const ppl = groups[k].map(en=>esc(en.person)).join(", ");
+      const hrs = shiftHoursLabel(groups[k][0]);
+      return `<div class="statrow" style="gap:8px;align-items:center">
+        <span class="chip" style="color:var(--ok);border-color:rgba(31,122,82,.4);white-space:nowrap">● ${esc(SHIFT_LBL[k]||k)}${hrs?` · ${esc(hrs)}`:""}</span>
+        <span class="k" style="flex:1">${ppl}</span></div>`;
+    }).join("") : `<div class="note" style="margin:0">Nikt nie jest teraz na zmianie wg grafiku.</div>`;
+  return `<div class="card" style="margin-bottom:12px"><div class="soon" style="margin-top:0">Aktywna zmiana — kto pracuje teraz</div>${inner}</div>`;
+}
+
 // ── Zadania: przekazane na komputer recepcji (manager_alerts) + dodawanie z telefonu ──
 const PRIO = { high:{l:"Pilne",c:"#c2415a"}, normal:{l:"Zwykłe",c:"#5a1d4a"}, low:{l:"Info",c:"#8a6a7e"} };
+// Selektor zmiany w Zadaniach: cel (zmiana + osoby) jest dla wszystkich ról oprócz menedżera HK i gastronomii.
+const SHIFT_PICKER_OFF = new Set(["mgr_hk","mgr_gastro"]);
+let ZAD_SCHED = null;   // lustro „schedule" wczytane na czas renderu Zadań (do selektora osób)
+function zadShiftOptions(){
+  const d = activeShiftData(ZAD_SCHED);
+  let opts = `<option value="current">Aktualna zmiana (auto)</option>`;
+  Object.keys(d.byShift).forEach(k=>{
+    const names = d.byShift[k].map(e=>e.person).join(", ");
+    opts += `<option value="shift:${esc(k)}">${esc(SHIFT_LBL[k]||k)}${names?` — ${esc(names)}`:""}</option>`;
+  });
+  return opts + `<option value="all">Cała załoga dziś</option><option value="none">Bez przypisania do zmiany</option>`;
+}
+function zadPeopleFor(val){
+  const d = activeShiftData(ZAD_SCHED);
+  if (val==="none") return [];
+  if (val==="all")  return d.todayEntries.map(e=>e.person);
+  if (val==="current") return (d.active.length ? d.active : d.todayEntries).map(e=>e.person);
+  if (val && val.indexOf("shift:")===0){ const k=val.slice(6); return (d.byShift[k]||[]).map(e=>e.person); }
+  return [];
+}
+window.zadShiftChanged = () => {
+  const val = (document.getElementById("zShift")||{}).value || "current";
+  const box = document.getElementById("zPeople"); if (!box) return;
+  if (val==="none"){ box.innerHTML = `<div class="note" style="margin:0">Zadanie ogólne — bez przypisania do osób.</div>`; return; }
+  const people = [...new Set(zadPeopleFor(val))];
+  box.innerHTML = people.length
+    ? people.map(n=>`<label class="chip" style="cursor:pointer;display:inline-flex;gap:6px;align-items:center">
+        <input type="checkbox" class="zp" value="${esc(n)}" checked/> ${esc(n)}</label>`).join("")
+    : `<div class="note" style="margin:0">Brak osób w grafiku dla tej zmiany — zadanie pójdzie ogólnie na recepcję.</div>`;
+};
+// Recepcja filtruje alerty po target_shift === selectedShift, więc klucz MUSI być kluczem zmiany recepcji.
+const RECEPCJA_SHIFTS = new Set(["poranna","popoludniowa","wieczorowa","dzienna","nocna"]);
+// Klucz zmiany do kolumny manager_alerts.target_shift (null = wszystkie zmiany → alert widoczny dla każdej zmiany).
+function zadTargetShiftKey(){
+  const sel = document.getElementById("zShift"); if (!sel) return null;
+  const val = sel.value || "current";
+  if (val==="all" || val==="none") return null;
+  let key = null;
+  if (val.indexOf("shift:")===0) key = val.slice(6);
+  else { const d = activeShiftData(ZAD_SCHED); key = d.active.length ? d.active[0].shift : null; }  // current → aktywna zmiana
+  return RECEPCJA_SHIFTS.has(key) ? key : null;   // nieznany klucz → wszystkie zmiany (nie chowamy zadania na recepcji)
+}
+// Zawężenie do konkretnych osób (gdy odznaczono część grafiku) — trafia do treści, bo recepcja filtruje po zmianie, nie po osobie.
+function zadTargetPeople(){
+  const sel = document.getElementById("zShift"); if (!sel) return "";
+  const val = sel.value || "current"; if (val==="none") return "";
+  const all = [...new Set(zadPeopleFor(val))];
+  const checked = Array.from(document.querySelectorAll(".zp:checked")).map(c=>c.value);
+  if (!all.length || checked.length===all.length) return "";   // cała zmiana → bez listy osób
+  return checked.join(", ");
+}
 async function loadZadania() {
+  const showPicker = !SHIFT_PICKER_OFF.has(CURRENT.role);
   let rows = [];
   try {
-    const { data } = await sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done")
-      .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60);
-    rows = data || [];
+    const [alerts, sched] = await Promise.all([
+      sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done,target_shift")
+        .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60),
+      showPicker ? getMirror("schedule") : Promise.resolve(null),
+    ]);
+    rows = alerts.data || [];
+    ZAD_SCHED = sched || null;
   } catch { return body('<div class="empty">Nie udało się pobrać zadań.</div>'); }
   rows = rows.filter(r => !r.done);
+  const pickerHtml = showPicker ? `
+      <div class="field"><label>Na jaką zmianę?</label>
+        <select id="zShift" class="inp" onchange="zadShiftChanged()">${zadShiftOptions()}</select></div>
+      <div class="field"><label>Dotyczy osób (odznacz, by zawęzić)</label>
+        <div id="zPeople" class="chips"></div></div>` : "";
   const form = `
+    ${showPicker ? activeShiftCard(ZAD_SCHED) : ""}
     <div class="card" style="margin-bottom:12px">
       <div class="soon" style="margin-top:0">Przekaż zadanie na komputer recepcji</div>
       <div class="field"><label>Treść zadania</label>
@@ -1559,19 +1680,27 @@ async function loadZadania() {
         <input id="zBody" class="inp" placeholder="dodatkowy opis" onkeydown="if(event.key==='Enter')addZadanie()"/></div>
       <div class="field"><label>Priorytet</label>
         <select id="zPrio" class="inp"><option value="normal">Zwykłe</option><option value="high">Pilne</option><option value="low">Info</option></select></div>
+      ${pickerHtml}
       <button id="zBtn" class="btn" onclick="addZadanie()">Wyślij na komputer</button>
       <div id="zMsg" class="msg"></div>
     </div>`;
   const list = rows.length ? rows.map(r => {
     const p = PRIO[r.priority] || PRIO.normal;
     const when = r.created_at ? new Date(r.created_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+    // Cel zadania: zmiana z kolumny target_shift, osoby z pierwszej linii treści „Dla osób: …".
+    let bodyTxt = r.body || "", people = "";
+    const mt = bodyTxt.match(/^Dla(?: os[oó]b)?:\s*([^\n]+)\n?/i);
+    if (mt){ people = mt[1]; bodyTxt = bodyTxt.slice(mt[0].length); }
+    const shiftLbl = r.target_shift ? (SHIFT_LBL[r.target_shift]||r.target_shift) : "";
+    const tgt = shiftLbl ? (people ? `${shiftLbl} · ${people}` : shiftLbl) : (people ? `Osoby: ${people}` : "");
     return `<div class="statrow" style="align-items:flex-start;flex-direction:column;gap:4px">
       <div style="display:flex;align-items:center;gap:8px;width:100%">
         <span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span>
         <span class="k" style="flex:1">${esc(r.title||"")}</span>
         <span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span>
       </div>
-      ${r.body?`<div style="font-size:12.5px;color:var(--muted)">${esc(r.body)}</div>`:""}
+      ${tgt?`<span class="chip" style="color:var(--plum);border-color:var(--line-strong)">🕘 ${esc(tgt)}</span>`:""}
+      ${bodyTxt?`<div style="font-size:12.5px;color:var(--muted)">${esc(bodyTxt)}</div>`:""}
       <div style="display:flex;align-items:center;gap:8px;width:100%;margin-top:2px">
         ${r.created_by?`<span style="font-size:11px;color:var(--muted);flex:1">od: ${esc(r.created_by)}</span>`:`<span style="flex:1"></span>`}
         <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer"
@@ -1580,6 +1709,7 @@ async function loadZadania() {
     </div>`;
   }).join("") : '<div class="empty">Brak otwartych zadań. 🎉</div>';
   body(form + `<div class="soon">Przekazane zadania</div>` + list);
+  if (showPicker) zadShiftChanged();   // wypełnij listę osób dla domyślnej „aktualnej zmiany"
 }
 window.addZadanie = async () => {
   const title = (document.getElementById("zTitle")||{}).value || "";
@@ -1588,11 +1718,17 @@ window.addZadanie = async () => {
   const msg = document.getElementById("zMsg"); const btn = document.getElementById("zBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
   if (!title.trim()) return setM("Wpisz treść zadania.", "err");
+  // Cel zmiany → kolumna target_shift (recepcja filtruje alerty po zmianie: PreShiftModal/Inbox).
+  // Zawężenie do osób → pierwsza linia treści „Dla osób: …" (recepcja nie ma filtra po osobie).
+  const tShift  = (typeof zadTargetShiftKey === "function") ? zadTargetShiftKey() : null;
+  const tPeople = (typeof zadTargetPeople === "function") ? zadTargetPeople() : "";
+  const baseBody = bodyv.trim() || title.trim();
+  const finalBody = tPeople ? `Dla osób: ${tPeople}\n${baseBody}` : baseBody;
   if (btn){ btn.disabled=true; btn.textContent="Wysyłanie…"; }
   try {
     const { error } = await sb.from("manager_alerts").insert({
-      tenant_id: TENANT_ID, title: title.trim(), body: bodyv.trim() || title.trim(),
-      priority: prio, created_by: CURRENT.name || "Panel",
+      tenant_id: TENANT_ID, title: title.trim(), body: finalBody,
+      priority: prio, created_by: CURRENT.name || "Panel", target_shift: tShift,
     });
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"zadanie_dodane", p_detail: title.trim() }); } catch {}
@@ -1618,6 +1754,8 @@ const DOC_KASA = { paragon:"Paragon", faktura:"Faktura", fiskalny:"Paragon fiska
 const zl = v => (v==null||isNaN(v)) ? "—" : Number(v).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
 let kasaFull = false;
 window.toggleKasaFull = () => { kasaFull = !kasaFull; loadKasa(); };
+let kasaTab = "sejf";
+window.setKasaTab = (t) => { kasaTab = t; loadKasa(); };
 // Normalizuje datę do klucza ISO (YYYY-MM-DD). Mirror aplikacji recepcji zapisuje
 // część dat w formacie pl-PL ("DD.MM.RRRR, GG:MM" z fmtA), a część jako ISO/dayKey —
 // bez tej normalizacji filtr zakresu odrzucał wszystko (korekty/notatki nie pokazywały się).
@@ -1643,8 +1781,8 @@ async function loadKasa() {
   } catch {}
   // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
   // Zatwierdzenia korekt trzymamy osobno (payment_correction_approvals), bo mirror jest read-only.
-  const [corr, rf, notes, apprRes] = await Promise.all([
-    getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports"),
+  const [corr, rf, notes, cashState, apprRes] = await Promise.all([
+    getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports"), getMirror("cash_state"),
     sb.from("payment_correction_approvals").select("correction_id,decision,manager,note,decided_at").eq("tenant_id", TENANT_ID).then(r=>r, ()=>({data:[]})),
   ]);
   const apprBy = {}; (apprRes && apprRes.data || []).forEach(a => { apprBy[a.correction_id] = a; });
@@ -1661,6 +1799,7 @@ async function loadKasa() {
       saved_at: r.savedAt,
     }));
   }
+  let corrPend = 0, corrCount = 0, rfCount = 0, notesCount = 0;
   // ── Alerty „do weryfikacji" — czysto panelowe heurystyki na danych kasy/korekt ──
   const alerts = [];
   // 1) Zmiana zamykająca dzień (wieczorowa/nocna) bez zarejestrowanego KW.
@@ -1716,8 +1855,9 @@ async function loadKasa() {
     const list = corr.filter(c => inRange(c.submittedAt||c.createdAt||c.dateKey||c.date)).slice(0,80);
     // Stan = decyzja z panelu (apprBy) ma pierwszeństwo; w jej braku — flaga done z aplikacji recepcji.
     const stateOf = c => { const a=apprBy[c.id]; if (a) return a.decision==="rejected"?"rejected":"approved"; return c.done?"approved":"pending"; };
-    const pend = list.filter(c=>stateOf(c)==="pending").length;
-    if (list.length) corrHtml = `<div class="soon">Korekty płatności${pend?` <span style="color:var(--gold)">· ${pend} oczekuje</span>`:""}</div>` + list.map(c => {
+    corrPend = list.filter(c=>stateOf(c)==="pending").length;
+    corrCount = list.length;
+    if (list.length) corrHtml = list.map(c => {
       const who = esc(c.submittedBy||c.employee||c.name||"—");
       const when = esc(String(c.submittedAt||c.createdAt||"").trim());
       const doc = esc(DOC_KASA[c.docType]||c.docType||"Korekta");
@@ -1752,7 +1892,8 @@ async function loadKasa() {
   if (Array.isArray(rf)) {
     const byDk = {}; rf.forEach(r => { const dk=kasaIso(r.dayKey||r.day_key||r.savedAt); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
     const dks = Object.keys(byDk).sort().reverse().slice(0, kasaFull?90:7);
-    if (dks.length) rfHtml = `<div class="soon">Raporty zmian / dobowe</div>` + dks.map(dk => {
+    rfCount = dks.reduce((n,dk)=>n+byDk[dk].length,0);
+    if (dks.length) rfHtml = dks.map(dk => {
       const d = fmtDate(dk);
       const shifts = byDk[dk];
       const items = shifts.map(r => {
@@ -1781,7 +1922,8 @@ async function loadKasa() {
   let notesHtml = "";
   if (Array.isArray(notes)) {
     const list = notes.filter(n => inRange(n.reportDate||n.createdAt)).slice(0,40);
-    if (list.length) notesHtml = `<div class="soon">Przesłane notatki służbowe</div>` + list.map((n,i) => {
+    notesCount = list.length;
+    if (list.length) notesHtml = list.map((n,i) => {
       const subj = esc(n.subject||"Notatka służbowa");
       const author = esc(n.author||"—"); const to = esc(n.handoverTo||"");
       const when = esc(kasaIso(n.reportDate||n.createdAt));
@@ -1793,7 +1935,41 @@ async function loadKasa() {
       </div>`;
     }).join("");
   }
-  body(toggle + alertHtml + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie. Kliknij korektę lub raport, by rozwinąć szczegóły.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
+  // ── Hero: kasetka (live KPI recepcji = stała kasowa) jako główna liczba, sejf obok ──
+  const safeRow = rows.find(r => r.safe_total != null);
+  const lastRow = rows[0];
+  // Kasetka i sejf z lustra live recepcji (cash_state); w jego braku fallback do raportów.
+  const kasetkaVal = cashState && cashState.kasetka != null ? cashState.kasetka : null;
+  const safeVal = cashState && cashState.safe != null ? cashState.safe : (safeRow ? safeRow.safe_total : null);
+  const heroSub = lastRow
+    ? `Sejf: ${zl(safeVal)} · ostatnia zmiana: ${esc(SHIFT_LBL[lastRow.shift_key]||lastRow.shift_key||"—")} · ${esc(lastRow.employee||"—")} · ${fmtDate(lastRow.day_key).txt}`
+    : (safeVal!=null ? `Sejf: ${zl(safeVal)}` : "Brak zamkniętych zmian w wybranym okresie.");
+  const heroHtml = `<div class="fullspan" style="background:var(--plum);color:#fff;border-radius:14px;padding:15px 17px;margin-bottom:12px;box-shadow:0 4px 14px -6px rgba(90,29,74,.5)">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.78">Kasetka${kasetkaVal==null?" (oczekuje na dane z recepcji)":""}</div>
+      <div style="font-size:27px;font-weight:900;line-height:1.1;margin:3px 0 4px">${kasetkaVal!=null ? zl(kasetkaVal) : "—"}</div>
+      <div style="font-size:11.5px;font-weight:600;opacity:.82">${heroSub}</div>
+    </div>`;
+  // ── Zakładki: rozdzielają cztery niezależne tematy zamiast jednego scrolla ──
+  const tab = (id,label,count) => `<button class="tab ${kasaTab===id?"on":""}" onclick="setKasaTab('${id}')">${label}${count?` <span style="font-size:10.5px;opacity:.7">${count}</span>`:""}</button>`;
+  const tabsHtml = `<div class="tabs fullspan" style="margin:0 0 12px">
+      ${tab("sejf","Sejf")}${tab("korekty","Korekty",corrPend||corrCount)}${tab("raporty","Raporty",rfCount)}${tab("notatki","Notatki",notesCount)}
+    </div>`;
+  const hint = t => `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">${t}</div>`;
+  let panel;
+  if (kasaTab === "korekty") {
+    panel = corrPend ? hint(`${corrPend} korekt oczekuje na decyzję. Kliknij, by rozwinąć opis i zatwierdzić/odrzucić.`) : hint("Korekty płatności (paragon/faktura). Kliknij, by rozwinąć szczegóły.");
+    panel += corrHtml || `<div class="empty">Brak korekt w wybranym okresie.</div>`;
+  } else if (kasaTab === "raporty") {
+    panel = toggle + hint("Raporty zmian / dobowe. Kliknij zmianę, by zobaczyć kasę, zadania, przekazanie i braki.");
+    panel += rfHtml || `<div class="empty">Brak raportów zmian w wybranym okresie.</div>`;
+  } else if (kasaTab === "notatki") {
+    panel = hint("Przesłane notatki służbowe. Kliknij, by rozwinąć treść.");
+    panel += notesHtml || `<div class="empty">Brak notatek w wybranym okresie.</div>`;
+  } else {
+    panel = toggle + hint(`Stan sejfu po zmianach${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie.`);
+    panel += cashHtml;
+  }
+  body(heroHtml + alertHtml + tabsHtml + panel);
 }
 
 // Decyzja kierownika o korekcie (zatwierdź/odrzuć) — zapis do payment_correction_approvals.
@@ -2548,32 +2724,147 @@ window.planStatus = async (id, st) => {
   catch (e) { alert((e&&e.message)||"Błąd."); }
 };
 
-// ── Zmiany: grafik przydzielony (mirror "schedule" z aplikacji recepcji) ──
+// ── Zmiany: grafik EDYTOWALNY z dwukierunkowym sync NA ŻYWO do recepcji ──
+// Zapis idzie przez schedule_merge (migracja 0034) — per komórka, nie kasuje
+// cudzych wpisów. Realtime: zmiany z recepcji/innych urządzeń wchodzą same.
 const DOW_SH = ["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
 const SHIFT_CODE2 = { poranna:"P", popoludniowa:"PP", wieczorowa:"W", dzienna:"D", nocna:"N" };
+const ZM_SHIFT_OPTS = [["","— zmiana —"],["poranna","P · poranna"],["popoludniowa","PP · popołudniowa"],
+                       ["wieczorowa","W · wieczorowa"],["dzienna","D · dzienna"],["nocna","N · nocna"]];
+let ZM_MONDAY=null, ZM_SCHED={}, ZM_EMP_REG=[], ZM_EMPS=[], ZM_DAYS=[], ZM_DAYIDX=null, ZM_REV=0, ZM_UNSUB=null, ZM_RESIZE=null;
+
+const zmMonday = d => { const x=new Date(d); const off=(x.getDay()+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; };
+const zmHours  = c => c ? `${c.start||""}${c.end?"-"+c.end:""}` : "";
+function zmShiftSel(id,sel){ return `<select id="${id}" class="zm-s" onchange="zmEdit(this)">${ZM_SHIFT_OPTS.map(([v,l])=>`<option value="${v}"${v===sel?" selected":""}>${l}</option>`).join("")}</select>`; }
+
+async function zmFetchDoc(){
+  try{ const { data } = await sb.from("panel_mirror").select("data,rev,updated_device").eq("tenant_id",TENANT_ID).eq("kind","schedule").maybeSingle(); return data||null; }
+  catch{ return null; }
+}
+function zmSubscribe(cb){
+  try{
+    const ch = sb.channel("panel-zmiany")
+      .on("postgres_changes",{event:"*",schema:"public",table:"panel_mirror",filter:`tenant_id=eq.${TENANT_ID}`},
+          p=>{ if(p&&p.new&&p.new.kind==="schedule") cb(p.new); })
+      .subscribe();
+    return ()=>{ try{ sb.removeChannel(ch); }catch{} };
+  }catch{ return ()=>{}; }
+}
+function zmOnRealtime(row){
+  if(!row) return;
+  const me = hkStateDeviceId();
+  if(row.updated_device===me){ if(typeof row.rev==="number") ZM_REV=Math.max(ZM_REV,row.rev); return; } // własne echo
+  if(typeof row.rev==="number" && row.rev<=ZM_REV) return;                                              // starsze/zastosowane
+  ZM_REV = row.rev||ZM_REV;
+  if(row.data && typeof row.data==="object") ZM_SCHED = row.data;
+  const root = document.getElementById("zmRoot"); if(!root) return;                                     // nie jesteśmy w zakładce
+  const ae = document.activeElement;
+  if(ae && root.contains(ae) && /INPUT|SELECT/.test(ae.tagName||"")) return;                            // nie przerywaj edycji
+  zmRender();
+}
+
 async function loadZmiany() {
-  const sched = await getMirror("schedule");
-  if (!sched || typeof sched !== "object" || !Object.keys(sched).length)
-    return body('<div class="empty">Brak grafiku przydzielonego. Pojawi się, gdy recepcja zapisze grafik w aplikacji (po wdrożeniu nowej wersji aplikacji recepcji).</div>');
-  const mon = (()=>{ const d=new Date(); const off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); d.setHours(0,0,0,0); return d; })();
-  const days = [...Array(7)].map((_,i)=> isoDate(new Date(mon.getTime()+i*86400000)));
-  const emps = [...new Set(days.flatMap(dk => { const day=sched[dk]; return day&&typeof day==="object" ? Object.keys(day).filter(e=>day[e]) : []; }))].sort((a,b)=>a.localeCompare(b,"pl"));
-  if (!emps.length) return body('<div class="empty">Brak przypisań w tym tygodniu.</div>');
-  const head = `<th style="text-align:left;padding:7px 9px;position:sticky;left:0;background:var(--cream)">Pracownik</th>` +
-    days.map((d,i)=>`<th style="padding:7px 6px;font-size:11px;color:var(--muted)">${DOW_SH[i]}<br><span style="font-weight:400">${d.slice(8)}</span></th>`).join("");
-  const rows = emps.map(emp => {
-    const cells = days.map(dk => {
-      const e = sched[dk] && sched[dk][emp];
-      if (!e) return `<td style="text-align:center;padding:5px 6px;color:var(--line-strong)">·</td>`;
-      const code = SHIFT_CODE2[e.shift] || (e.shift?String(e.shift).slice(0,2).toUpperCase():"✓");
-      const hrs = (e.start||e.end) ? `${e.start||""}${e.end?"-"+e.end:""}` : "";
-      return `<td style="text-align:center;padding:5px 6px"><span style="font-weight:900;font-size:12px;color:var(--plum)">${esc(code)}</span>${hrs?`<div style="font-size:10px;color:var(--muted)">${esc(hrs)}</div>`:""}</td>`;
+  if(!ZM_MONDAY) ZM_MONDAY = zmMonday(new Date());
+  body('<div class="empty">Ładuję grafik…</div>');
+  const [doc, emps] = await Promise.all([ zmFetchDoc(), getMirror("employees") ]);
+  ZM_SCHED = (doc && doc.data && typeof doc.data==="object") ? doc.data : {};
+  ZM_REV   = (doc && typeof doc.rev==="number") ? doc.rev : 0;
+  ZM_EMP_REG = Array.isArray(emps) ? emps.filter(e=>typeof e==="string" && e.trim()) : [];
+  if(!ZM_UNSUB) ZM_UNSUB = zmSubscribe(zmOnRealtime);
+  if(!ZM_RESIZE){ let t; ZM_RESIZE=()=>{ clearTimeout(t); t=setTimeout(()=>{ if(document.getElementById("zmRoot")) zmRender(); },180); }; window.addEventListener("resize",ZM_RESIZE); }
+  zmRender();
+}
+
+function zmRender(){
+  const mon = ZM_MONDAY;
+  ZM_DAYS = [...Array(7)].map((_,i)=> isoDate(new Date(mon.getTime()+i*86400000)));
+  const schedEmps = new Set();
+  Object.values(ZM_SCHED).forEach(day=>{ if(day&&typeof day==="object") Object.keys(day).forEach(e=>{ if(day[e]) schedEmps.add(e); }); });
+  ZM_EMPS = [...new Set([...(ZM_EMP_REG||[]), ...schedEmps])].sort((a,b)=>a.localeCompare(b,"pl"));
+  const todayIso = isoDate(new Date());
+  const label = `${ZM_DAYS[0].slice(8)}–${ZM_DAYS[6].slice(8)}.${ZM_DAYS[0].slice(5,7)}`;
+  const nav = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <div class="note" style="margin:0;flex:1 1 220px">Grafik — edytuj tu, recepcja widzi zmiany na żywo.</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="zm-nav" onclick="zmNav(-1)" aria-label="Poprzedni tydzień">‹</button>
+      <span style="font-weight:800;font-size:13px;min-width:96px;text-align:center">${esc(label)}</span>
+      <button class="zm-nav" onclick="zmNav(1)" aria-label="Następny tydzień">›</button>
+      <button class="zm-nav" onclick="zmNav(0)" style="width:auto;padding:0 12px;font-size:12px">Dziś</button>
+    </div></div>`;
+  const grid = window.matchMedia("(max-width:640px)").matches ? zmMobile(todayIso) : zmDesktop(todayIso);
+  const top = activeShiftCard(ZM_SCHED);
+  if(!ZM_EMPS.length){ body(`<div id="zmRoot">${top}${nav}<div class="empty">Brak pracowników. Dodaj zmianę przez aplikację recepcji albo poczekaj na rejestr.</div></div>`); return; }
+  body(`<div id="zmRoot">${top}${nav}${grid}${zmLegend()}</div>`);
+}
+
+function zmDesktop(todayIso){
+  const head = `<th style="text-align:left;padding:7px 9px;position:sticky;left:0;background:var(--cream);z-index:1">Pracownik</th>` +
+    ZM_DAYS.map((d,i)=>`<th style="padding:7px 6px;font-size:11px;color:${d===todayIso?"var(--plum)":"var(--muted)"}">${DOW_SH[i]}<br><span style="font-weight:400">${d.slice(8)}</span></th>`).join("");
+  const rows = ZM_EMPS.map((emp,ei)=>{
+    const cells = ZM_DAYS.map((dk,di)=>{
+      const c = ZM_SCHED[dk] && ZM_SCHED[dk][emp];
+      const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
+      return `<td style="padding:4px 5px;${dk===todayIso?"background:var(--cream)":""}">
+        <input id="${hid}" class="zm-h" value="${esc(zmHours(c))}" placeholder="7-15" inputmode="numeric"
+               onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
+        ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</td>`;
     }).join("");
-    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(emp)}</td>${cells}</tr>`;
+    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line);z-index:1">${esc(emp)}</td>${cells}</tr>`;
   }).join("");
-  body(`<div class="note" style="margin-top:0;margin-bottom:8px">Grafik przydzielony — bieżący tydzień (z aplikacji recepcji).</div>
-    <div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
-      <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`);
+  return `<div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
+    <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function zmMobile(todayIso){
+  let di = ZM_DAYIDX;
+  if(di==null){ const t=ZM_DAYS.indexOf(todayIso); di = t>=0?t:0; }
+  ZM_DAYIDX = di;
+  const dk = ZM_DAYS[di];
+  const chips = ZM_DAYS.map((d,i)=>`<button class="zm-day${i===di?" on":""}" onclick="zmSetDay(${i})">${DOW_SH[i]}<br><span style="font-weight:400;font-size:10px">${d.slice(8)}</span></button>`).join("");
+  const list = ZM_EMPS.map((emp,ei)=>{
+    const c = ZM_SCHED[dk] && ZM_SCHED[dk][emp];
+    const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
+    return `<div class="zm-row">
+      <div class="zm-name">${esc(emp)}</div>
+      <input id="${hid}" class="zm-h" value="${esc(zmHours(c))}" placeholder="7-15" inputmode="numeric"
+             onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
+      ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</div>`;
+  }).join("");
+  return `<div class="zm-days">${chips}</div><div class="zm-list">${list}</div>`;
+}
+
+function zmLegend(){
+  return `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-size:11px;color:var(--muted)">Legenda:</span>` +
+    ZM_SHIFT_OPTS.slice(1).map(([v,l])=>`<span style="font-size:10.5px;color:var(--muted)">${esc(l)}</span>`).join(" · ") + `</div>`;
+}
+
+window.zmNav = (d)=>{ ZM_MONDAY = d===0 ? zmMonday(new Date()) : new Date(ZM_MONDAY.getTime()+d*7*86400000); ZM_DAYIDX=null; zmRender(); };
+window.zmSetDay = (i)=>{ ZM_DAYIDX=i; zmRender(); };
+window.zmEdit = async (el)=>{
+  const m = String(el.id||"").match(/^zm_[hs]_(\d+)_(\d+)$/); if(!m) return;
+  const di=+m[1], ei=+m[2], dk=ZM_DAYS[di], emp=ZM_EMPS[ei];
+  if(dk==null||emp==null) return;
+  const hEl=document.getElementById(`zm_h_${di}_${ei}`), sEl=document.getElementById(`zm_s_${di}_${ei}`);
+  if(!hEl||!sEl) return;
+  const h=(hEl.value||"").trim(), shift=sEl.value||"";
+  const prev = ZM_SCHED[dk] && ZM_SCHED[dk][emp];
+  let cell;
+  if(!h && !shift){ cell=null; }
+  else { const parts=h.split(/\s*[-–—]\s*/); cell={ start:parts[0]||"", end:parts[1]||"", shift:shift||null }; }
+  if(JSON.stringify(cell)===JSON.stringify(prev||null)) return; // bez zmiany
+  if(!ZM_SCHED[dk]) ZM_SCHED[dk]={};
+  ZM_SCHED[dk][emp]=cell; // optymistycznie lokalnie
+  const ok = await zmMerge({ [dk]: { [emp]: cell } });
+  if(ok){ try{ await sb.rpc("log_action",{ p_action:"grafik_edycja", p_detail:`${emp} ${dk}: ${cell?`${cell.start||""}${cell.end?"-"+cell.end:""}${cell.shift?" "+cell.shift:""}`:"—"}` }); }catch{} }
+};
+async function zmMerge(cells){
+  try{
+    const { data, error } = await sb.rpc("schedule_merge",{ p_cells:cells, p_device:hkStateDeviceId(), p_tenant:TENANT_ID });
+    if(error) throw error;
+    if(data && typeof data.rev==="number") ZM_REV=Math.max(ZM_REV,data.rev);
+    return true;
+  }catch(e){ console.error("[zmiany] merge:", e&&e.message); return false; }
 }
 
 // ── Tablica: stałe przypomnienia (standing_reminders) + ostatnie ogłoszenia (manager_alerts) ──
