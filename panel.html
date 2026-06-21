@@ -2077,12 +2077,15 @@ function renderGrid() {
   const dates = [...new Set(rows.filter(r=>r.date).map(r => r.date))].sort();
   const byPD = {}; rows.forEach(r => { if(r.date) byPD[r.person+"|"+r.date] = r.choice; });
   const tokenOf = {}; rows.forEach(r => { if(r.token && !tokenOf[r.person]) tokenOf[r.person] = r.token; });
+  // Preferowana liczba godzin na okres (jedna wartość per osoba — z availability_tokens.pref_hours).
+  const prefOf = {}; rows.forEach(r => { if(r.pref_hours!=null && prefOf[r.person]==null) prefOf[r.person] = r.pref_hours; });
+  const prefBadge = p => prefOf[p]!=null ? `<span style="display:inline-block;font-size:11px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border:1px solid var(--line-strong);border-radius:7px;padding:2px 7px;white-space:nowrap">chce ${prefOf[p]} godz.</span>` : "";
   const av = (p,d) => { const c = byPD[p+"|"+d]; return c && c !== "off" ? c : null; };
   let html = `<button class="link" onclick="setHkTab('grafik')">‹ Wróć do grafików</button>`;
   html += `<div class="soon">Linki indywidualne</div>` + persons.map(pn => {
     const tok = tokenOf[pn] || "";
     return `<div class="statrow" style="gap:8px">
-      <div class="k"><div>${esc(pn)}</div><div style="font-size:13px;font-weight:900;color:var(--plum);letter-spacing:.1em;margin-top:2px">kod: ${esc(tok)}</div></div>
+      <div class="k"><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">${esc(pn)} ${prefBadge(pn)}</div><div style="font-size:13px;font-weight:900;color:var(--plum);letter-spacing:.1em;margin-top:2px">kod: ${esc(tok)}</div></div>
       <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:11.5px;cursor:pointer" onclick="copyLink('${esc(tok)}', this)">Kopiuj</button>
       <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="regenLink('${esc(tok)}','${esc(reqId)}')">Odśwież</button>
     </div>`;
@@ -2113,7 +2116,7 @@ function renderGrid() {
   } else {
     html += persons.map(p => {
       const days = dates.filter(d => av(p,d));
-      return `<div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(p))}</span><span class="nm">${esc(p)}</span><span class="prog">${days.length}</span></div>
+      return `<div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(p))}</span><span class="nm">${esc(p)}</span>${prefOf[p]!=null?`<span style="font-size:11.5px;font-weight:800;color:var(--plum);margin-left:auto;margin-right:8px">chce ${prefOf[p]} godz.</span>`:""}<span class="prog">${days.length}</span></div>
         <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
     }).join("");
   }
