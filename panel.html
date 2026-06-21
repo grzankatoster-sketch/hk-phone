@@ -151,6 +151,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .zm-row{display:grid;grid-template-columns:1fr 86px 104px;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
 .zm-row .zm-name{font-weight:700;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .zm-row .zm-s{margin-top:0}
+/* Zmiany — layout grafik + podsumowanie z boku */
+.zm-wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:2px}
+.zm-grid{flex:1 1 440px;min-width:0}
+.zm-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)}
+.zm-side{flex:1 1 188px;max-width:236px;border:1px solid var(--line);border-radius:11px;background:var(--paper);padding:10px 4px 8px;align-self:stretch}
+.zm-side-hd{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:0 10px 8px}
+.zm-side-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-top:1px solid var(--line)}
+.zm-side-nm{font-weight:700;font-size:12.5px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zm-side-st{font-size:12px;font-weight:800;color:var(--plum);white-space:nowrap;flex:0 0 auto}
+.zm-side-st small{font-weight:600;color:var(--muted);font-size:10px}
+.zm-side-tot{border-top:2px solid var(--line-strong);margin-top:2px}
+.zm-side-tot .zm-side-nm{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.03em}
+.zm-side-orph{margin-top:8px;padding:8px 10px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.45}
+.zm-side-orph b{color:var(--bad);font-size:11px}
+.zm-side-orph i{display:block;margin-top:4px;font-size:10px;font-style:normal;color:var(--muted)}
+@media(max-width:760px){.zm-side{flex-basis:100%;max-width:none}}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -237,11 +253,11 @@ body{font-family:var(--ui);background:
   .tabs.mob,.top-out{display:none}
   .topbar{padding:18px 30px;background:rgba(247,241,236,.7)}
   .topbar h1{font-size:27px}
-  .content{padding:24px 30px 70px;max-width:1080px}
+  .content{padding:24px 36px 70px;max-width:1320px}
   .kpis{grid-template-columns:repeat(4,1fr);gap:12px}
   #hkBody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
   #hkBody>.card,#hkBody>.soon,#hkBody>.note,#hkBody>.empty,#hkBody>.feed,#hkBody>.panelbox,
-  #hkBody>.legend,#hkBody>.link,#hkBody>.fullspan,#hkBody>.kpis,#hkBody>.spin{grid-column:1/-1}
+  #hkBody>.legend,#hkBody>.link,#hkBody>.fullspan,#hkBody>.kpis,#hkBody>.spin,#hkBody>#zmRoot{grid-column:1/-1}
   .wcard,.statrow,.day{margin-bottom:0}
 }
 @media(min-width:1280px){ .content{margin:0 auto} }
@@ -357,6 +373,33 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   #printArea td.l{text-align:left;font-weight:700}
   @page{size:landscape;margin:10mm}
 }
+/* ── Zadania: kalendarz wyboru terminu (dzień/zmiana/osoba) ── */
+.zadcal-ov{position:fixed;inset:0;z-index:60;background:rgba(45,20,34,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;padding:0}
+@media(min-width:560px){.zadcal-ov{align-items:center;padding:18px}}
+.zadcal-box{background:var(--paper);width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;box-shadow:0 -8px 40px rgba(45,20,34,.28);overflow:hidden}
+@media(min-width:560px){.zadcal-box{border-radius:16px;box-shadow:0 18px 50px rgba(45,20,34,.32)}}
+.zadcal-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--plum)}
+.zadcal-top strong{flex:1;font-size:15px}
+.zadcal-x{border:none;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;line-height:1}
+.zadcal-x:hover{background:var(--cream)}
+.zadcal-hint{padding:8px 16px 4px;font-size:12px;color:var(--muted)}
+.zadcal-list{overflow-y:auto;padding:6px 12px 16px}
+.zadcal-day{border:1px solid var(--line);border-radius:12px;padding:10px 11px;margin-top:9px;background:var(--cream)}
+.zadcal-dayhead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.zadcal-dayhead>span{flex:1;font-weight:800;font-size:13px;color:var(--ink);text-transform:capitalize}
+.zadcal-allday{border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.zadcal-allday:hover{background:var(--plum);color:#fff}
+.zadcal-shift{margin-top:7px}
+.zadcal-shiftbtn{border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;padding:5px 11px;border-radius:999px;cursor:pointer;margin-bottom:5px}
+.zadcal-shiftbtn:hover{background:rgba(90,29,74,.08)}
+.zadcal-people{display:flex;flex-wrap:wrap;gap:6px}
+.zadcal-chip{border:1px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;font-size:12px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.zadcal-chip:hover{border-color:var(--plum);background:rgba(90,29,74,.06)}
+.zadpick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px}
+.zadpick-clear{border:1px solid var(--line);background:var(--paper);color:var(--muted);font-weight:700;font-size:11.5px;padding:4px 10px;border-radius:999px;cursor:pointer}
+.zadpick-clear:hover{color:var(--plum);border-color:var(--line-strong)}
+.zadcal-btn{margin-top:7px;border:1px dashed var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;padding:8px 12px;border-radius:10px;cursor:pointer;width:100%}
+.zadcal-btn:hover{background:rgba(90,29,74,.06)}
 </style>
 </head>
 <body>
@@ -837,6 +880,7 @@ const isoDate = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()
 const fmtDate = iso => { const [y,m,d]=iso.split("-").map(Number); const dt=new Date(y,m-1,d); return { dow:DOW[dt.getDay()], txt:d+" "+MON[m-1] }; };
 const DONE_STATES = new Set(["czyste","done","gotowe"]);
 let hkTab = "live";
+let hkLanded = false; // pierwsze wejście po zalogowaniu ląduje na Pulpicie (jeśli rola go ma)
 let liveTimer = null;
 
 function stopLive(){ if (liveTimer){ clearInterval(liveTimer); liveTimer=null; } }
@@ -889,6 +933,8 @@ const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); r
 function renderHkDashboard(role, name) {
   stopLive();
   const tabs = tabsFor(role);
+  // Domyślny ekran po zalogowaniu: Pulpit, jeśli rola go ma (menedżer HK nie ma → jego pierwsza zakładka).
+  if (!hkLanded) { hkLanded = true; hkTab = tabs.some(([k]) => k==="pulpit") ? "pulpit" : (tabs[0] && tabs[0][0]) || "live"; }
   if (!tabs.some(([k]) => k===hkTab)) hkTab = tabs[0][0];
   const roleLbl = (ROLE_INFO[role]||{}).label || role;
   const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span></button>`).join("");
@@ -1604,6 +1650,8 @@ const PRIO = { high:{l:"Pilne",c:"#c2415a"}, normal:{l:"Zwykłe",c:"#5a1d4a"}, l
 // Selektor zmiany w Zadaniach: cel (zmiana + osoby) jest dla wszystkich ról oprócz menedżera HK i gastronomii.
 const SHIFT_PICKER_OFF = new Set(["mgr_hk","mgr_gastro"]);
 let ZAD_SCHED = null;   // lustro „schedule" wczytane na czas renderu Zadań (do selektora osób)
+let ZAD_PICK  = null;   // wybór z kalendarza: { date:"YYYY-MM-DD", shift:""|klucz, people:[] }. null = tryb „dziś" (z <select>).
+let ZAD_CAL   = [];     // bufor terminów wyrenderowanych w modalu kalendarza (onclick → indeks)
 function zadShiftOptions(){
   const d = activeShiftData(ZAD_SCHED);
   let opts = `<option value="current">Aktualna zmiana (auto)</option>`;
@@ -1621,20 +1669,107 @@ function zadPeopleFor(val){
   if (val && val.indexOf("shift:")===0){ const k=val.slice(6); return (d.byShift[k]||[]).map(e=>e.person); }
   return [];
 }
-window.zadShiftChanged = () => {
-  const val = (document.getElementById("zShift")||{}).value || "current";
+// Render listy osób (checkboxy do zawężenia) z aktywnego terminu: wybór z kalendarza ma pierwszeństwo nad <select>.
+function zadRenderPeople(){
   const box = document.getElementById("zPeople"); if (!box) return;
-  if (val==="none"){ box.innerHTML = `<div class="note" style="margin:0">Zadanie ogólne — bez przypisania do osób.</div>`; return; }
-  const people = [...new Set(zadPeopleFor(val))];
+  let people;
+  if (ZAD_PICK){ people = ZAD_PICK.people || []; }
+  else {
+    const val = (document.getElementById("zShift")||{}).value || "current";
+    if (val==="none"){ box.innerHTML = `<div class="note" style="margin:0">Zadanie ogólne — bez przypisania do osób.</div>`; return; }
+    people = zadPeopleFor(val);
+  }
+  people = [...new Set(people)];
   box.innerHTML = people.length
     ? people.map(n=>`<label class="chip" style="cursor:pointer;display:inline-flex;gap:6px;align-items:center">
         <input type="checkbox" class="zp" value="${esc(n)}" checked/> ${esc(n)}</label>`).join("")
-    : `<div class="note" style="margin:0">Brak osób w grafiku dla tej zmiany — zadanie pójdzie ogólnie na recepcję.</div>`;
+    : `<div class="note" style="margin:0">Brak osób w grafiku dla tego terminu — zadanie pójdzie ogólnie na recepcję.</div>`;
+}
+// Podsumowanie wybranego terminu + stan <select> (gdy kalendarz aktywny — select wyłączony).
+function zadSyncPickUI(){
+  const sel = document.getElementById("zShift");
+  const box = document.getElementById("zPick");
+  if (ZAD_PICK){
+    if (box){
+      const f = fmtDate(ZAD_PICK.date);
+      const shiftLbl = ZAD_PICK.shift ? (SHIFT_LBL[ZAD_PICK.shift]||ZAD_PICK.shift) : "cały dzień";
+      box.style.display = "";
+      box.innerHTML = `<div class="zadpick">
+        <span class="chip" style="color:var(--plum);border-color:var(--line-strong)">📅 ${esc(f.dow)} ${esc(f.txt)} · ${esc(shiftLbl)}</span>
+        <button type="button" class="zadpick-clear" onclick="zadClearPick()">Wyczyść</button></div>`;
+    }
+    if (sel){ sel.disabled = true; sel.style.opacity = ".5"; }
+  } else {
+    if (box){ box.style.display = "none"; box.innerHTML = ""; }
+    if (sel){ sel.disabled = false; sel.style.opacity = ""; }
+  }
+}
+window.zadClearPick = () => { ZAD_PICK = null; zadSyncPickUI(); zadRenderPeople(); };
+// Zmiana <select> = powrót do trybu „dziś".
+window.zadShiftChanged = () => { ZAD_PICK = null; zadSyncPickUI(); zadRenderPeople(); };
+
+// ── Kalendarz: wybór konkretnego dnia / zmiany / osoby z grafiku (najbliższe 14 dni) ──
+window.zadOpenCal = () => {
+  const sched = ZAD_SCHED || {};
+  const base = new Date(); base.setHours(0,0,0,0);
+  ZAD_CAL = [];
+  let daysHtml = "";
+  for (let i=0;i<14;i++){
+    const dk = isoDate(new Date(base.getTime()+i*86400000));
+    const day = sched[dk];
+    const entries = (day && typeof day==="object")
+      ? Object.keys(day).filter(p=>day[p]).map(p=>({ person:p, shift:day[p].shift||"inna", start:day[p].start, end:day[p].end }))
+      : [];
+    const f = fmtDate(dk);
+    const dlabel = `${f.dow} ${f.txt}`;
+    const byShift = {}; entries.forEach(en=>{ (byShift[en.shift]=byShift[en.shift]||[]).push(en); });
+    const allPeople = entries.map(e=>e.person);
+    const dayIdx = entries.length ? ZAD_CAL.push({ date:dk, shift:"", people:allPeople })-1 : -1;
+    let inner;
+    if (!entries.length){
+      inner = `<div class="note" style="margin:0;font-size:12px">Brak grafiku na ten dzień.</div>`;
+    } else {
+      inner = Object.keys(byShift).map(k=>{
+        const ppl = byShift[k];
+        const hrs = shiftHoursLabel(ppl[0]);
+        const sIdx = ZAD_CAL.push({ date:dk, shift:k, people:ppl.map(e=>e.person) })-1;
+        const chips = ppl.map(e=>{
+          const pIdx = ZAD_CAL.push({ date:dk, shift:k, people:[e.person] })-1;
+          return `<button type="button" class="zadcal-chip" onclick="zadPickIdx(${pIdx})">${esc(e.person)}</button>`;
+        }).join("");
+        return `<div class="zadcal-shift">
+          <button type="button" class="zadcal-shiftbtn" onclick="zadPickIdx(${sIdx})">${esc(SHIFT_LBL[k]||k)}${hrs?` · ${esc(hrs)}`:""}</button>
+          <div class="zadcal-people">${chips}</div></div>`;
+      }).join("");
+    }
+    daysHtml += `<div class="zadcal-day">
+      <div class="zadcal-dayhead"><span>${esc(dlabel)}</span>
+        ${dayIdx>=0?`<button type="button" class="zadcal-allday" onclick="zadPickIdx(${dayIdx})">Cały dzień</button>`:""}
+      </div>${inner}</div>`;
+  }
+  const ov = document.createElement("div");
+  ov.id = "zadCalOv"; ov.className = "zadcal-ov";
+  ov.innerHTML = `<div class="zadcal-box" role="dialog" aria-modal="true" aria-label="Wybór dnia i zmiany">
+    <div class="zadcal-top"><strong>Wybierz termin zadania</strong>
+      <button type="button" class="zadcal-x" onclick="zadCloseCal()" aria-label="Zamknij">✕</button></div>
+    <div class="zadcal-hint">Dotknij dzień, zmianę lub osobę — grafik z aplikacji recepcji.</div>
+    <div class="zadcal-list">${daysHtml}</div></div>`;
+  ov.addEventListener("click", e=>{ if (e.target===ov) zadCloseCal(); });
+  document.body.appendChild(ov);
+  document.addEventListener("keydown", zadCalEsc);
+};
+function zadCalEsc(e){ if (e.key==="Escape") zadCloseCal(); }
+window.zadCloseCal = () => { const ov=document.getElementById("zadCalOv"); if (ov) ov.remove(); document.removeEventListener("keydown", zadCalEsc); };
+window.zadPickIdx = (i) => {
+  const t = ZAD_CAL[i]; if (!t) return;
+  ZAD_PICK = { date:t.date, shift:t.shift||"", people:[...new Set(t.people||[])] };
+  zadCloseCal(); zadSyncPickUI(); zadRenderPeople();
 };
 // Recepcja filtruje alerty po target_shift === selectedShift, więc klucz MUSI być kluczem zmiany recepcji.
 const RECEPCJA_SHIFTS = new Set(["poranna","popoludniowa","wieczorowa","dzienna","nocna"]);
 // Klucz zmiany do kolumny manager_alerts.target_shift (null = wszystkie zmiany → alert widoczny dla każdej zmiany).
 function zadTargetShiftKey(){
+  if (ZAD_PICK){ return RECEPCJA_SHIFTS.has(ZAD_PICK.shift) ? ZAD_PICK.shift : null; }
   const sel = document.getElementById("zShift"); if (!sel) return null;
   const val = sel.value || "current";
   if (val==="all" || val==="none") return null;
@@ -1643,11 +1778,17 @@ function zadTargetShiftKey(){
   else { const d = activeShiftData(ZAD_SCHED); key = d.active.length ? d.active[0].shift : null; }  // current → aktywna zmiana
   return RECEPCJA_SHIFTS.has(key) ? key : null;   // nieznany klucz → wszystkie zmiany (nie chowamy zadania na recepcji)
 }
-// Zawężenie do konkretnych osób (gdy odznaczono część grafiku) — trafia do treści, bo recepcja filtruje po zmianie, nie po osobie.
+// Data celu (kolumna manager_alerts.target_date). null = bez konkretnej daty (zachowanie „dziś").
+function zadTargetDate(){ return ZAD_PICK ? ZAD_PICK.date : null; }
+// Zawężenie do konkretnych osób (gdy odznaczono część grafiku) — trafia do treści, bo recepcja filtruje po zmianie/dacie, nie po osobie.
 function zadTargetPeople(){
-  const sel = document.getElementById("zShift"); if (!sel) return "";
-  const val = sel.value || "current"; if (val==="none") return "";
-  const all = [...new Set(zadPeopleFor(val))];
+  let all;
+  if (ZAD_PICK){ all = [...new Set(ZAD_PICK.people||[])]; }
+  else {
+    const sel = document.getElementById("zShift"); if (!sel) return "";
+    const val = sel.value || "current"; if (val==="none") return "";
+    all = [...new Set(zadPeopleFor(val))];
+  }
   const checked = Array.from(document.querySelectorAll(".zp:checked")).map(c=>c.value);
   if (!all.length || checked.length===all.length) return "";   // cała zmiana → bez listy osób
   return checked.join(", ");
@@ -1657,17 +1798,20 @@ async function loadZadania() {
   let rows = [];
   try {
     const [alerts, sched] = await Promise.all([
-      sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done,target_shift")
+      sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done,target_shift,target_date")
         .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60),
       showPicker ? getMirror("schedule") : Promise.resolve(null),
     ]);
     rows = alerts.data || [];
     ZAD_SCHED = sched || null;
   } catch { return body('<div class="empty">Nie udało się pobrać zadań.</div>'); }
+  ZAD_PICK = null;   // nowy render → start od trybu „dziś"
   rows = rows.filter(r => !r.done);
   const pickerHtml = showPicker ? `
       <div class="field"><label>Na jaką zmianę?</label>
-        <select id="zShift" class="inp" onchange="zadShiftChanged()">${zadShiftOptions()}</select></div>
+        <select id="zShift" class="inp" onchange="zadShiftChanged()">${zadShiftOptions()}</select>
+        <button type="button" class="zadcal-btn" onclick="zadOpenCal()">📅 Inny dzień / zmiana</button>
+        <div id="zPick" style="display:none"></div></div>
       <div class="field"><label>Dotyczy osób (odznacz, by zawęzić)</label>
         <div id="zPeople" class="chips"></div></div>` : "";
   const form = `
@@ -1692,7 +1836,9 @@ async function loadZadania() {
     const mt = bodyTxt.match(/^Dla(?: os[oó]b)?:\s*([^\n]+)\n?/i);
     if (mt){ people = mt[1]; bodyTxt = bodyTxt.slice(mt[0].length); }
     const shiftLbl = r.target_shift ? (SHIFT_LBL[r.target_shift]||r.target_shift) : "";
-    const tgt = shiftLbl ? (people ? `${shiftLbl} · ${people}` : shiftLbl) : (people ? `Osoby: ${people}` : "");
+    const dateLbl = r.target_date ? (()=>{ const f=fmtDate(r.target_date); return `${f.dow} ${f.txt}`; })() : "";
+    const parts = [dateLbl, shiftLbl, people].filter(Boolean);
+    const tgt = parts.length ? (parts.length===1 && people && !dateLbl && !shiftLbl ? `Osoby: ${people}` : parts.join(" · ")) : "";
     return `<div class="statrow" style="align-items:flex-start;flex-direction:column;gap:4px">
       <div style="display:flex;align-items:center;gap:8px;width:100%">
         <span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span>
@@ -1709,7 +1855,7 @@ async function loadZadania() {
     </div>`;
   }).join("") : '<div class="empty">Brak otwartych zadań. 🎉</div>';
   body(form + `<div class="soon">Przekazane zadania</div>` + list);
-  if (showPicker) zadShiftChanged();   // wypełnij listę osób dla domyślnej „aktualnej zmiany"
+  if (showPicker){ zadSyncPickUI(); zadRenderPeople(); }   // wypełnij listę osób dla domyślnej „aktualnej zmiany"
 }
 window.addZadanie = async () => {
   const title = (document.getElementById("zTitle")||{}).value || "";
@@ -1721,6 +1867,7 @@ window.addZadanie = async () => {
   // Cel zmiany → kolumna target_shift (recepcja filtruje alerty po zmianie: PreShiftModal/Inbox).
   // Zawężenie do osób → pierwsza linia treści „Dla osób: …" (recepcja nie ma filtra po osobie).
   const tShift  = (typeof zadTargetShiftKey === "function") ? zadTargetShiftKey() : null;
+  const tDate   = (typeof zadTargetDate === "function") ? zadTargetDate() : null;
   const tPeople = (typeof zadTargetPeople === "function") ? zadTargetPeople() : "";
   const baseBody = bodyv.trim() || title.trim();
   const finalBody = tPeople ? `Dla osób: ${tPeople}\n${baseBody}` : baseBody;
@@ -1728,7 +1875,7 @@ window.addZadanie = async () => {
   try {
     const { error } = await sb.from("manager_alerts").insert({
       tenant_id: TENANT_ID, title: title.trim(), body: finalBody,
-      priority: prio, created_by: CURRENT.name || "Panel", target_shift: tShift,
+      priority: prio, created_by: CURRENT.name || "Panel", target_shift: tShift, target_date: tDate,
     });
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"zadanie_dodane", p_detail: title.trim() }); } catch {}
@@ -1838,15 +1985,18 @@ async function loadKasa() {
     const days = Object.keys(byDay).sort().reverse().slice(0, 1);
     cashHtml = days.map(dk => {
       const d = fmtDate(dk);
-      const items = byDay[dk].map(r => `
+      const items = byDay[dk].map(r => {
+        // Kasetka (bieżąca gotówka): z raportu zmiany, a w jej braku z live stanu recepcji.
+        const rowKasetka = r.cash_current != null ? r.cash_current : (cashState && cashState.kasetka != null ? cashState.kasetka : r.safe_total);
+        return `
         <div class="statrow" style="margin-bottom:6px">
           <div class="k">
             <div>${esc(SHIFT_LBL[r.shift_key]||r.shift_key||"")} · ${esc(r.employee||"—")}</div>
             <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">
-              Kasetka: ${zl(r.cash_current)} · KW: ${zl(r.cash_closing)}</div>
+              KW: ${zl(r.cash_closing)}</div>
           </div>
-          <div class="v" title="Kasa">${zl(r.safe_total)}</div>
-        </div>`).join("");
+          <div class="v" title="Kasetka">${zl(rowKasetka)}</div>
+        </div>`; }).join("");
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
@@ -1994,7 +2144,7 @@ async function loadPulpit() {
   body('<div class="spin">Wczytywanie…</div>');
   let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null;
   try {
-    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar] = await Promise.all([
+    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs] = await Promise.all([
       sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
       sb.from("hk_roster").select("roster").eq("tenant_id",TENANT_ID).eq("date",today).maybeSingle(),
       getMirror("schedule"),
@@ -2004,6 +2154,7 @@ async function loadPulpit() {
       sb.from("standing_reminders").select("title,active,created_at").eq("tenant_id",TENANT_ID).order("created_at",{ascending:false}).limit(40),
       getMirror("reports_full"),
       sb.from("payment_correction_approvals").select("correction_id").eq("tenant_id",TENANT_ID).then(r=>r,()=>({data:[]})),
+      getMirror("cash_state"),
     ]);
     plan   = (pl && pl.data) || {};
     roster = (ro && ro.data && Array.isArray(ro.data.roster)) ? ro.data.roster : [];
@@ -2030,6 +2181,8 @@ async function loadPulpit() {
     cash.sort((a,b)=>String(b.saved_at||"").localeCompare(String(a.saved_at||"")));
   }
   const safe = cash.length ? cash[0].safe_total : null;
+  // Live stan kasy (kasetka) z lustra recepcji; fallback do safe_total z raportu.
+  const kasaLive = (cs && cs.kasetka != null) ? cs.kasetka : safe;
   const closingShift = cash.find(r => r.shift_key==="wieczorowa"||r.shift_key==="nocna");
   const kwMissing = closingShift && (closingShift.cash_closing==null || closingShift.cash_closing===0);
   const kwTxt = kwMissing ? "⚠ brak" : (closingShift ? "✓ zarejestr." : "—");
@@ -2044,28 +2197,30 @@ async function loadPulpit() {
     <div class="kpi"><div class="l">Obsada dziś</div><div class="v">${hkCount + recCount}</div></div>
     <div class="kpi"><div class="l">Wyjazdy</div><div class="v gold">${fmtWP(types.w.reg, types.w.apt)}</div></div>
     <div class="kpi"><div class="l">Zadania</div><div class="v${pilne?' bad':''}">${openTasks.length}</div></div>
-    <div class="kpi"><div class="l">Sejf</div><div class="v ok">${zl(safe)}</div></div>
+    <div class="kpi"><div class="l">Kasa</div><div class="v ok">${zl(kasaLive)}</div></div>
   </div>`;
 
-  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:1px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
-  const tile = (tab,title,lines) => `<div class="wcard" style="cursor:pointer" onclick="setHkTab('${tab}')">
-    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:13.5px">${title}</span><span style="font-size:11px;color:var(--plum);font-weight:800">otwórz ›</span></div>
-    <div style="margin-top:7px">${lines}</div></div>`;
+  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
+  const tile = (tab,icon,title,lines) => `<div class="wcard" style="cursor:pointer;padding:16px 17px" onclick="setHkTab('${tab}')">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="display:flex;align-items:center;gap:11px;font-weight:800;font-size:15px"><span style="font-size:26px;line-height:1">${icon}</span>${title}</span>
+      <span style="font-size:11.5px;color:var(--plum);font-weight:800">otwórz ›</span></div>
+    <div style="margin-top:11px">${lines}</div></div>`;
 
   const tiles = [
-    tile("kasa","💰 Kasa", line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Stan sejfu", zl(safe)) + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
-    tile("zadania","✅ Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
-    tile("wyjazdy","🚪 Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
-    tile("live","👥 Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
+    tile("kasa","💰","Kasa", line("Kasetka", zl(kasaLive)) + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
+    tile("zadania","✅","Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    tile("wyjazdy","🚪","Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
+    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
   ].join("");
 
   const remHtml = rems.length
-    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k">📌 ${esc(r.title||"")}</span></div>`).join("")
+    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k" style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">📌</span>${esc(r.title||"")}</span></div>`).join("")
     : "";
 
-  body(`<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
+  body(`<div class="note fullspan" style="margin-top:0;margin-bottom:12px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
     + kpis
-    + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:6px">${tiles}</div>`
+    + `<div class="fullspan" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:4px">${tiles}</div>`
     + remHtml);
 }
 
@@ -2732,7 +2887,7 @@ const DOW_SH = ["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
 const SHIFT_CODE2 = { poranna:"P", popoludniowa:"PP", wieczorowa:"W", dzienna:"D", nocna:"N" };
 const ZM_SHIFT_OPTS = [["","— zmiana —"],["poranna","P · poranna"],["popoludniowa","PP · popołudniowa"],
                        ["wieczorowa","W · wieczorowa"],["dzienna","D · dzienna"],["nocna","N · nocna"]];
-let ZM_MONDAY=null, ZM_SCHED={}, ZM_EMP_REG=[], ZM_EMPS=[], ZM_DAYS=[], ZM_DAYIDX=null, ZM_REV=0, ZM_UNSUB=null, ZM_RESIZE=null;
+let ZM_MONDAY=null, ZM_SCHED={}, ZM_EMP_REG=[], ZM_EMPS=[], ZM_ORPHANS=[], ZM_DAYS=[], ZM_DAYIDX=null, ZM_REV=0, ZM_UNSUB=null, ZM_RESIZE=null;
 
 const zmMonday = d => { const x=new Date(d); const off=(x.getDay()+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; };
 const zmHours  = c => c ? `${c.start||""}${c.end?"-"+c.end:""}` : "";
@@ -2779,9 +2934,13 @@ async function loadZmiany() {
 function zmRender(){
   const mon = ZM_MONDAY;
   ZM_DAYS = [...Array(7)].map((_,i)=> isoDate(new Date(mon.getTime()+i*86400000)));
+  const reg = [...new Set((ZM_EMP_REG||[]).filter(e=>typeof e==="string" && e.trim()))];
   const schedEmps = new Set();
   Object.values(ZM_SCHED).forEach(day=>{ if(day&&typeof day==="object") Object.keys(day).forEach(e=>{ if(day[e]) schedEmps.add(e); }); });
-  ZM_EMPS = [...new Set([...(ZM_EMP_REG||[]), ...schedEmps])].sort((a,b)=>a.localeCompare(b,"pl"));
+  // Rejestr recepcji = źródło prawdy. Starzy/usunięci pracownicy zostają w wpisach grafiku,
+  // ale nie są pokazywani jako wiersze — tylko sygnalizowani w podsumowaniu (do sprzątnięcia).
+  ZM_EMPS    = (reg.length ? reg : [...schedEmps]).sort((a,b)=>a.localeCompare(b,"pl"));
+  ZM_ORPHANS = reg.length ? [...schedEmps].filter(e=>!reg.includes(e)).sort((a,b)=>a.localeCompare(b,"pl")) : [];
   const todayIso = isoDate(new Date());
   const label = `${ZM_DAYS[0].slice(8)}–${ZM_DAYS[6].slice(8)}.${ZM_DAYS[0].slice(5,7)}`;
   const nav = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -2795,7 +2954,32 @@ function zmRender(){
   const grid = window.matchMedia("(max-width:640px)").matches ? zmMobile(todayIso) : zmDesktop(todayIso);
   const top = activeShiftCard(ZM_SCHED);
   if(!ZM_EMPS.length){ body(`<div id="zmRoot">${top}${nav}<div class="empty">Brak pracowników. Dodaj zmianę przez aplikację recepcji albo poczekaj na rejestr.</div></div>`); return; }
-  body(`<div id="zmRoot">${top}${nav}${grid}${zmLegend()}</div>`);
+  body(`<div id="zmRoot">${top}${nav}<div class="zm-wrap">${grid}${zmSidebar()}</div>${zmLegend()}</div>`);
+}
+
+// Godziny komórki grafiku — z okna zmiany (obsługuje nockę i brak start/end). Zwraca liczbę godzin.
+function zmCellHours(c){ const w = shiftWindow(c||{}); return w ? Math.round((w[1]-w[0])*10)/10 : 0; }
+
+// Podsumowanie tygodnia z boku: ile zmian i ile godzin na osobę (tylko rejestr recepcji).
+function zmSidebar(){
+  const rows = ZM_EMPS.map(emp=>{
+    let sh=0, hrs=0;
+    ZM_DAYS.forEach(dk=>{ const c=ZM_SCHED[dk]&&ZM_SCHED[dk][emp]; if(c){ sh++; hrs+=zmCellHours(c); } });
+    return { emp, sh, hrs };
+  });
+  const tSh = rows.reduce((a,r)=>a+r.sh,0), tHrs = rows.reduce((a,r)=>a+r.hrs,0);
+  const fmt = h => (Math.round(h*10)/10).toString().replace(".",",");
+  const list = rows.map(r=>`<div class="zm-side-row">
+      <span class="zm-side-nm">${esc(r.emp)}</span>
+      <span class="zm-side-st">${r.sh}<small> zm</small> · ${fmt(r.hrs)}<small> h</small></span></div>`).join("");
+  const orph = ZM_ORPHANS.length ? `<div class="zm-side-orph">
+      <b>Spoza rejestru (${ZM_ORPHANS.length})</b>: ${ZM_ORPHANS.map(esc).join(", ")}
+      <i>Byli pracownicy w grafiku — dodaj do rejestru recepcji albo wyczyść ich wpisy.</i></div>` : "";
+  return `<aside class="zm-side">
+    <div class="zm-side-hd">Podsumowanie · ${esc(`${ZM_DAYS[0].slice(8)}–${ZM_DAYS[6].slice(8)}`)}</div>
+    ${list}
+    <div class="zm-side-row zm-side-tot"><span class="zm-side-nm">Razem</span><span class="zm-side-st">${tSh}<small> zm</small> · ${fmt(tHrs)}<small> h</small></span></div>
+    ${orph}</aside>`;
 }
 
 function zmDesktop(todayIso){
@@ -2812,7 +2996,7 @@ function zmDesktop(todayIso){
     }).join("");
     return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line);z-index:1">${esc(emp)}</td>${cells}</tr>`;
   }).join("");
-  return `<div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
+  return `<div class="zm-grid zm-scroll">
     <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 
@@ -2831,7 +3015,7 @@ function zmMobile(todayIso){
              onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
       ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</div>`;
   }).join("");
-  return `<div class="zm-days">${chips}</div><div class="zm-list">${list}</div>`;
+  return `<div class="zm-grid"><div class="zm-days">${chips}</div><div class="zm-list">${list}</div></div>`;
 }
 
 function zmLegend(){
