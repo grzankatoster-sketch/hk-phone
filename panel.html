@@ -317,6 +317,33 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   .praca-desktop .pd-ttl{font-family:var(--serif);font-size:24px;color:var(--plum)}
   .praca-desktop .pd-sub{font-size:14px;color:var(--muted);max-width:420px;line-height:1.55}
 }
+/* ── Edytowalna tabela „Ułóż grafik" ── */
+.sched-tbl{border-collapse:collapse;min-width:100%;font-size:13px}
+.sched-tbl th,.sched-tbl td{border:1px solid var(--line);padding:3px 4px;text-align:center}
+.sched-tbl th{background:var(--cream);font-size:11px;color:var(--muted);font-weight:800;white-space:nowrap;position:sticky;top:0;z-index:2}
+.sched-tbl .dcol{text-align:left;font-weight:800;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--paper);z-index:1}
+.sched-tbl tr.wknd .dcol{background:rgba(90,29,74,.05)}
+.sched-tbl tfoot td{background:var(--cream);font-weight:900;font-size:12px}
+.scell{width:60px;max-width:64px;padding:7px 4px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;color:var(--ink);font-size:13px;font-weight:700;font-family:inherit;text-align:center;outline:none}
+.scell:focus{border-color:var(--plum);box-shadow:0 0 0 2px rgba(90,29,74,.14)}
+.scell.can{background:#eef7f1}
+.scell.off{background:#fbecef}
+.scell.warn{border-color:#C2410C}
+.sched-foot-l{text-align:left;font-weight:800;color:var(--plum);white-space:nowrap;position:sticky;left:0;background:var(--cream)}
+#printArea{display:none}
+@media print{
+  body{background:#fff}
+  body>*{visibility:hidden}
+  #printArea,#printArea *{visibility:visible}
+  #printArea{display:block;position:absolute;left:0;top:0;width:100%;padding:0}
+  #printArea h2{font-size:18px;margin:0 0 4px}
+  #printArea .psub{font-size:11px;color:#444;margin:0 0 10px}
+  #printArea table{border-collapse:collapse;width:100%;font-size:11px}
+  #printArea th,#printArea td{border:1px solid #999;padding:4px 5px;text-align:center}
+  #printArea th{background:#eee}
+  #printArea td.l{text-align:left;font-weight:700}
+  @page{size:landscape;margin:10mm}
+}
 </style>
 </head>
 <body>
@@ -493,6 +520,19 @@ const sb = DEMO ? makeMockClient()
   : ((window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } })
       : null);
+
+// Wspólny stan dnia (hk_state, migracja 0032) — grafik/obsada ustawiona w panelu
+// kierownika trafia NA ŻYWO na recepcję (z dymkiem bota) i do telefonu koordynatora.
+function hkStateDeviceId(){
+  try{ let id=localStorage.getItem("hk-state-device-id");
+    if(!id){ id=(crypto&&crypto.randomUUID?crypto.randomUUID():"dev-"+Date.now()+"-"+Math.random().toString(16).slice(2)); localStorage.setItem("hk-state-device-id",id); }
+    return id; }catch(e){ return "dev-"+Math.random().toString(16).slice(2); }
+}
+async function pushHkStateRoster(iso, roster){
+  if(!sb||!iso) return;
+  try{ await sb.rpc("hk_state_merge",{ p_date:iso, p_patch:{ roster:roster||[] }, p_by:"hk_manager", p_device:hkStateDeviceId(), p_tenant:TENANT_ID }); }
+  catch(e){ /* hk_roster i tak zapisany — hk_state to warstwa live/bota */ }
+}
 
 // Etykiety ról + placeholdery widoków (kolejne iteracje wpinają tu realne moduły).
 const ROLE_INFO = {
@@ -1081,6 +1121,7 @@ window.rosterSave = async (iso, btn) => {
   try {
     const { error } = await sb.from("hk_roster").upsert({ tenant_id:TENANT_ID, date:iso, roster:ROSTER[iso]||[], updated_at:new Date().toISOString() }, { onConflict:"tenant_id,date" });
     if (error) throw error;
+    pushHkStateRoster(iso, ROSTER[iso]||[]);
     try { await sb.rpc("log_action", { p_action:"obsada_zapis", p_detail:`${iso} (${(ROSTER[iso]||[]).length} os.)` }); } catch {}
     if (btn){ btn.disabled=false; btn.textContent="Zapisano ✓"; setTimeout(()=>{ if(btn) btn.textContent="Zapisz obsadę"; }, 1600); }
   } catch (e) { if (btn){ btn.disabled=false; btn.textContent="Zapisz obsadę"; } alert((e&&e.message)||"Błąd zapisu."); }
@@ -1960,6 +2001,7 @@ async function loadGrafik() {
     workers = [...new Set([...(dept === "recepcja" ? [] : hk), ...(dept === "hk" ? [] : recep)])].sort((a,b)=>a.localeCompare(b,"pl"));
     // Każdy menedżer widzi TYLKO swoje wysłane grafiki; admin widzi wszystkie.
     reqs = (r.data || []).filter(x => CURRENT.role === "admin" || x.created_by === CURRENT.name);
+    reqs.forEach(x => { REQ_META[x.id] = { period_type: x.period_type, period_start: String(x.period_start) }; });
   } catch {}
   const defKind = dept === "hk" ? "hk" : "recepcja";
   const wchecks = workers.length
@@ -2064,6 +2106,7 @@ window.delGrafik = async (reqId, btn) => {
   } catch (e) { if(btn){ btn.disabled=false; btn.textContent="Usuń"; } alert((e&&e.message)||"Nie udało się usunąć grafiku."); }
 };
 let GRID_ROWS = [], GRID_REQ = null, gridView = "grid";
+let REQ_META = {};            // { reqId: { period_type, period_start } } — do wyliczenia dni grafiku
 window.openGrid = async (reqId) => {
   body('<div class="spin">Wczytywanie odpowiedzi…</div>');
   try { const { data } = await sb.rpc("get_request_grid", { p_request_id: reqId }); GRID_ROWS = data || []; GRID_REQ = reqId; }
@@ -2081,6 +2124,14 @@ function renderGrid() {
   const prefOf = {}; rows.forEach(r => { if(r.pref_hours!=null && prefOf[r.person]==null) prefOf[r.person] = r.pref_hours; });
   const prefBadge = p => prefOf[p]!=null ? `<span style="display:inline-block;font-size:11px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border:1px solid var(--line-strong);border-radius:7px;padding:2px 7px;white-space:nowrap">chce ${prefOf[p]} godz.</span>` : "";
   const av = (p,d) => { const c = byPD[p+"|"+d]; return c && c !== "off" ? c : null; };
+  // Realne godziny (od–do) dla wpisów „godziny" — recepcja wpisuje je z telefonu.
+  const hoursOf = {}; rows.forEach(r => { if(r.date && ((r.start_h!=null&&r.start_h!=="")||(r.end_h!=null&&r.end_h!=="")) ) hoursOf[r.person+"|"+r.date] = {start:r.start_h, end:r.end_h}; });
+  // Etykieta komórki: dla „godziny" pokazuje faktyczne godziny (np. 8–16), inaczej skrót zmiany.
+  const cellLabel = (p,d) => {
+    const c = byPD[p+"|"+d];
+    if (c === "godziny"){ const h = hoursOf[p+"|"+d]; if (h){ const s=(h.start??""), e=(h.end??""); if (s!==""||e!=="") return [`${s}–${e}`, "#1f7a52"]; } }
+    return choiceAbbr(c);
+  };
   let html = `<button class="link" onclick="setHkTab('grafik')">‹ Wróć do grafików</button>`;
   html += `<div class="soon">Linki indywidualne</div>` + persons.map(pn => {
     const tok = tokenOf[pn] || "";
@@ -2091,15 +2142,17 @@ function renderGrid() {
     </div>`;
   }).join("");
   if (!dates.length) { html += '<div class="empty">Nikt jeszcze nie odpowiedział.</div>'; return body(html); }
+  html += `<button class="btn fullspan" style="width:100%;margin-top:14px;background:#0f7a4a" onclick="openSchedule('${esc(reqId)}')">📋 Ułóż grafik z tych danych →</button>`;
   const vbtn = (v,l)=>`<button class="tab ${gridView===v?"on":""}" style="flex:0 0 auto" onclick="setGridView('${v}')">${l}</button>`;
   html += `<div class="tabs" style="margin:14px 0 8px">${vbtn("grid","Siatka")}${vbtn("summary","Podsumowanie dni")}${vbtn("person","Per osoba")}</div>`;
-  const legend = Object.entries(CHOICE_ABBR).map(([k,a])=>`<span style="color:${a[1]};font-weight:800">${a[0]}</span> ${k}`).join(" · ");
+  const legend = Object.entries(CHOICE_ABBR).filter(([k])=>k!=="godziny").map(([k,a])=>`<span style="color:${a[1]};font-weight:800">${a[0]}</span> ${k}`).join(" · ")
+    + ` · <span style="color:#1f7a52;font-weight:800">8–16</span> godziny (od–do)`;
   if (gridView === "grid") {
     const head = `<th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--cream)">Osoba</th>` +
       dates.map(d => { const [,m,dd]=d.split("-"); return `<th style="padding:6px 6px;font-size:11px;color:var(--muted)">${dd}.${m}</th>`; }).join("");
     const bodyRows = persons.map(p => {
-      const cells = dates.map(d => { const c = byPD[p+"|"+d]; const a = choiceAbbr(c);
-        return `<td style="text-align:center;padding:5px 6px">${a?`<span style="display:inline-block;min-width:22px;font-weight:900;font-size:12px;color:${a[1]}">${a[0]}</span>`:`<span style="color:var(--line-strong)">·</span>`}</td>`; }).join("");
+      const cells = dates.map(d => { const a = cellLabel(p,d);
+        return `<td style="text-align:center;padding:5px 6px">${a?`<span style="display:inline-block;min-width:22px;font-weight:900;font-size:${a[0].length>3?"10.5px":"12px"};color:${a[1]};white-space:nowrap">${esc(a[0])}</span>`:`<span style="color:var(--line-strong)">·</span>`}</td>`; }).join("");
       return `<tr><td style="padding:6px 8px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(p)}</td>${cells}</tr>`;
     }).join("");
     html += `<div class="note" style="margin-top:0">Legenda: ${legend}</div>
@@ -2110,18 +2163,157 @@ function renderGrid() {
       const avail = persons.filter(p => av(p,d)); const [,m,dd]=d.split("-");
       return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:4px">
         <div style="display:flex;width:100%;align-items:center;gap:8px"><span class="k" style="flex:1">${dd}.${m}</span><span class="v">${avail.length}</span></div>
-        ${avail.length?`<div class="chips">${avail.map(p=>{const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${esc(p)} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join("")}</div>`:`<div style="font-size:12px;color:var(--muted)">nikt nie może</div>`}
+        ${avail.length?`<div class="chips">${avail.map(p=>{const a=cellLabel(p,d);return `<span class="chip">${esc(p)} <b style="color:${a?a[1]:"inherit"}">${a?esc(a[0]):""}</b></span>`;}).join("")}</div>`:`<div style="font-size:12px;color:var(--muted)">nikt nie może</div>`}
       </div>`;
     }).join("");
   } else {
     html += persons.map(p => {
       const days = dates.filter(d => av(p,d));
       return `<div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(p))}</span><span class="nm">${esc(p)}</span>${prefOf[p]!=null?`<span style="font-size:11.5px;font-weight:800;color:var(--plum);margin-left:auto;margin-right:8px">chce ${prefOf[p]} godz.</span>`:""}<span class="prog">${days.length}</span></div>
-        <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
+        <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=cellLabel(p,d);return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?esc(a[0]):""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
     }).join("");
   }
   body(html);
 }
+
+// ══ UŁÓŻ GRAFIK: edytowalna tabela (dni × osoby) z zebranej dyspozycyjności ══
+let SCHED = null;  // { reqId, persons, days, prefOf, decl, cells, status, dirty }
+
+// Dni całego okresu zbiórki (z REQ_META); fallback: dni z odpowiedzi.
+function schedDays(reqId){
+  const meta = REQ_META[reqId];
+  if (meta && meta.period_start && /^\d{4}-\d{2}-\d{2}$/.test(meta.period_start)){
+    const [y,m,d] = meta.period_start.split("-").map(Number); const out=[];
+    if (meta.period_type === "week"){ const st=new Date(y,m-1,d); for(let i=0;i<7;i++) out.push(isoDate(new Date(st.getTime()+i*86400000))); }
+    else { const last=new Date(y,m,0).getDate(); for(let i=1;i<=last;i++) out.push(isoDate(new Date(y,m-1,i))); }
+    return out;
+  }
+  return [...new Set(GRID_ROWS.filter(r=>r.date).map(r=>r.date))].sort();
+}
+// „8–16" → 8 (liczba godzin). Zawijanie przez północ (22–6 = 8). Pojedyncza liczba = tyle godzin.
+function schedHours(v){
+  if (!v) return 0;
+  const s = String(v).replace(/[–—]/g,"-");
+  const m = s.match(/(\d{1,2})\s*-\s*(\d{1,2})/);
+  if (m){ let a=+m[1], b=+m[2], diff=b-a; if(diff<0) diff+=24; return diff; }
+  const n = parseFloat(s.replace(",",".")); return isFinite(n) ? n : 0;
+}
+function schedDayCount(di){ const S=SCHED, d=S.days[di]; let n=0; S.persons.forEach(p=>{ const v=S.cells[p+"|"+d]; if(v&&String(v).trim()) n++; }); return n||""; }
+function schedSum(pi){ const S=SCHED, p=S.persons[pi]; let h=0,days=0; S.days.forEach(d=>{ const v=S.cells[p+"|"+d]; if(v&&String(v).trim()){ days++; h+=schedHours(v); } }); return {h:Math.round(h),days}; }
+function schedSumHtml(pi){ const S=SCHED, p=S.persons[pi]; const {h,days}=schedSum(pi); const pref=S.prefOf[p];
+  let col="var(--ink)", mark="";
+  if (pref!=null){ if(h===pref){col="var(--ok)";mark=" ✓";} else if(Math.abs(h-pref)<=4){col="#a07820";} else {col="var(--bad)";mark=" ⚠";} }
+  return `<span style="color:${col}">${h}h<span style="font-weight:600;color:var(--muted);font-size:10px"> · ${days}d</span>${mark}</span>`;
+}
+
+window.openSchedule = async (reqId) => {
+  body('<div class="spin">Wczytywanie…</div>');
+  if (GRID_REQ !== reqId || !GRID_ROWS.length){
+    try { const { data } = await sb.rpc("get_request_grid", { p_request_id: reqId }); GRID_ROWS = data||[]; GRID_REQ = reqId; }
+    catch { return body('<div class="empty">Nie udało się pobrać danych.</div>'); }
+  }
+  let saved = null;
+  try { const { data } = await sb.rpc("get_schedule", { p_request_id: reqId }); saved = data; } catch {}
+  const rows = GRID_ROWS;
+  const persons = [...new Set(rows.map(r=>r.person))].sort((a,b)=>a.localeCompare(b,"pl"));
+  const days = schedDays(reqId);
+  const prefOf = {}; rows.forEach(r=>{ if(r.pref_hours!=null && prefOf[r.person]==null) prefOf[r.person]=r.pref_hours; });
+  // Deklaracje pracownika per komórka (placeholder/podświetlenie).
+  const decl = {};
+  rows.forEach(r=>{ if(!r.date) return; const key=r.person+"|"+r.date;
+    if (r.choice==="off") decl[key]={off:true,txt:"nie może"};
+    else if (r.choice==="godziny"){ const t=`${r.start_h??""}–${r.end_h??""}`; decl[key]={off:false,txt:(t==="–"?"godziny":t)}; }
+    else if (r.choice) decl[key]={off:false,txt:r.choice};
+  });
+  const cells = (saved && saved.cells && typeof saved.cells==="object") ? {...saved.cells} : {};
+  SCHED = { reqId, persons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
+  renderSchedule();
+};
+
+function renderSchedule(){
+  const S = SCHED; if(!S) return;
+  const meta = REQ_META[S.reqId]||{};
+  const periodLbl = meta.period_type==="month" ? "miesiąc" : "tydzień";
+  const head = `<th class="dcol" style="text-align:left">Dzień</th>` +
+    S.persons.map(p=>`<th>${esc(p)}${S.prefOf[p]!=null?`<div style="font-size:9px;color:var(--plum);font-weight:700">chce ${S.prefOf[p]}h</div>`:""}</th>`).join("") +
+    `<th>Obsada</th>`;
+  const bodyRows = S.days.map((d,di)=>{
+    const [y,m,dd]=d.split("-"); const dt=new Date(+y,+m-1,+dd); const dow=DOW[dt.getDay()];
+    const wknd = (dt.getDay()%6===0) ? "wknd":"";
+    const cells = S.persons.map((p,pi)=>{
+      const key=p+"|"+d; const cur=S.cells[key]||""; const dc=S.decl[key];
+      let cls="scell", title="";
+      if (dc&&dc.off){ cls+=" off"; title="zadeklarowała: nie może"; if(cur) cls+=" warn"; }
+      else if (dc&&dc.txt){ cls+=" can"; title="zadeklarowała: "+dc.txt; }
+      const ph = (dc&&!dc.off&&dc.txt&&dc.txt!=="godziny")?dc.txt:"";
+      return `<td><input class="${cls}" value="${esc(cur)}" placeholder="${esc(ph)}" title="${esc(title)}" onchange="schedSetCell(${di},${pi},this.value)"/></td>`;
+    }).join("");
+    return `<tr class="${wknd}"><td class="dcol">${dd}.${m} <span style="font-weight:600;color:var(--muted);font-size:10px">${dow.slice(0,3)}</span></td>${cells}<td id="sob_${di}">${schedDayCount(di)}</td></tr>`;
+  }).join("");
+  const footSum = `<tr><td class="sched-foot-l">Σ godzin</td>${S.persons.map((p,pi)=>`<td id="ssum_${pi}">${schedSumHtml(pi)}</td>`).join("")}<td></td></tr>`;
+  const note = S.dirty ? `<span style="color:#C2410C">● Niezapisane zmiany</span>`
+    : (S.status==="published" ? `<span style="color:var(--ok)">✓ Opublikowany</span>` : `<span style="color:var(--muted)">Szkic zapisany</span>`);
+  const html = `<button class="link" onclick="openGrid('${esc(S.reqId)}')">‹ Wróć do odpowiedzi</button>
+    <div class="soon" style="margin-top:0">Ułóż grafik — ${periodLbl}</div>
+    <div class="note" style="margin-top:0">Wpisz godziny zmiany (np. <b>8–16</b>) w komórce. Zielone = osoba może, różowe = wpisała „nie może". Σ liczy godziny i porównuje z preferencją.</div>
+    <div id="schedNote" style="font-size:12px;font-weight:800;margin:8px 0">${note}</div>
+    <div class="fullspan" style="overflow:auto;max-height:64vh;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
+      <table class="sched-tbl"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody><tfoot>${footSum}</tfoot></table></div>
+    <div class="fullspan" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedFill()">Wstaw deklaracje</button>
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;cursor:pointer" onclick="schedClear()">Wyczyść</button>
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedPrint()">🖨 Drukuj</button>
+      <button class="btn" style="flex:2;min-width:160px;margin-top:0" onclick="schedSave(this)">Zapisz grafik</button>
+    </div>
+    <div id="schedMsg" class="msg"></div>`;
+  body(html);
+}
+window.schedSetCell = (di,pi,val)=>{
+  const S=SCHED; if(!S) return;
+  const p=S.persons[pi], d=S.days[di]; const key=p+"|"+d; const v=String(val||"").trim();
+  if (v) S.cells[key]=v; else delete S.cells[key];
+  S.dirty=true;
+  const ss=document.getElementById("ssum_"+pi); if(ss) ss.innerHTML=schedSumHtml(pi);
+  const so=document.getElementById("sob_"+di); if(so) so.textContent=schedDayCount(di);
+  const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:#C2410C">● Niezapisane zmiany</span>`;
+};
+window.schedFill = ()=>{
+  const S=SCHED; if(!S) return;
+  if(!confirm("Wstawić deklarowane godziny pracowników do komórek? Tam, gdzie ktoś podał godziny, nadpisze obecny wpis.")) return;
+  S.persons.forEach(p=> S.days.forEach(d=>{ const dc=S.decl[p+"|"+d]; if(dc&&!dc.off&&dc.txt&&dc.txt!=="godziny") S.cells[p+"|"+d]=dc.txt; }));
+  S.dirty=true; renderSchedule();
+};
+window.schedClear = ()=>{ const S=SCHED; if(!S) return; if(!confirm("Wyczyścić wszystkie wpisane zmiany?")) return; S.cells={}; S.dirty=true; renderSchedule(); };
+window.schedSave = async (btn)=>{
+  const S=SCHED; if(!S) return;
+  if(btn){ btn.disabled=true; btn.textContent="Zapisywanie…"; }
+  const msg=document.getElementById("schedMsg");
+  try {
+    const { error } = await sb.rpc("save_schedule", { p_request_id:S.reqId, p_cells:S.cells, p_status:"draft" });
+    if(error) throw error;
+    S.dirty=false; S.status="draft";
+    if(msg){ msg.className="msg info"; msg.textContent="Zapisano grafik."; }
+    const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:var(--muted)">Szkic zapisany</span>`;
+  } catch(e){ if(msg){ msg.className="msg err"; msg.textContent=(e&&e.message)||"Nie udało się zapisać."; } }
+  if(btn){ btn.disabled=false; btn.textContent="Zapisz grafik"; }
+};
+window.schedPrint = ()=>{
+  const S=SCHED; if(!S) return;
+  const meta=REQ_META[S.reqId]||{};
+  const title = `Grafik — ${meta.period_type==="month"?"miesiąc":"tydzień"}`;
+  const sub = S.days.length ? `${fmtDate(S.days[0]).txt} – ${fmtDate(S.days[S.days.length-1]).txt} · wydruk ${fmtDate(isoDate(new Date())).txt}` : "";
+  const head = `<th class="l">Dzień</th>`+S.persons.map(p=>`<th>${esc(p)}</th>`).join("")+`<th>Obsada</th>`;
+  const rowsHtml = S.days.map((d,di)=>{ const [y,m,dd]=d.split("-"); const dow=DOW[new Date(+y,+m-1,+dd).getDay()].slice(0,3);
+    const tds=S.persons.map(p=>`<td>${esc(S.cells[p+"|"+d]||"")}</td>`).join("");
+    return `<tr><td class="l">${dd}.${m} ${dow}</td>${tds}<td>${schedDayCount(di)||""}</td></tr>`;
+  }).join("");
+  const sumRow=`<tr><td class="l"><b>Σ godzin</b></td>${S.persons.map((p,pi)=>{const {h}=schedSum(pi);return `<td><b>${h}h</b></td>`;}).join("")}<td></td></tr>`;
+  let area=document.getElementById("printArea");
+  if(!area){ area=document.createElement("div"); area.id="printArea"; document.body.appendChild(area); }
+  area.innerHTML=`<h2>${esc(title)}</h2><div class="psub">${esc(sub)}</div>
+    <table><thead><tr>${head}</tr></thead><tbody>${rowsHtml}</tbody><tfoot>${sumRow}</tfoot></table>`;
+  window.print();
+};
 
 // ── Usterki SLA: czas reakcji/zamknięcia, zaległości, przekroczone terminy (faults).
 //    Czasy z reported_at → started_at (reakcja) → completed_at (zamknięcie); due_at = termin (SLA). ──
@@ -2464,6 +2656,7 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
                     konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
+                    grafik_ulozony:"Ułożył grafik", grafik_opublikowany:"Opublikował grafik",
                     korekta_decyzja:"Decyzja o korekcie" };
 async function loadAkcje() {
   if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
