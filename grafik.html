@@ -84,7 +84,10 @@ body{font-family:var(--ui);background:
 .opt.sel{box-shadow:0 6px 16px -7px rgba(90,29,74,.6)}
 .legend{gap:12px}.legend span{font-weight:600}
 .sub b,.hi{color:var(--plum)}
-.hsel{flex:1;min-width:0;padding:12px 10px;border:1.5px solid var(--line-strong);border-radius:10px;background:var(--paper);color:var(--ink);font-size:15px;font-weight:600;font-family:inherit}
+.hinp{flex:1;min-width:0;padding:13px 8px;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--paper);color:var(--ink);font-size:18px;font-weight:800;font-family:inherit;text-align:center}
+.hinp:focus{outline:none;border-color:var(--plum)}
+.hinp::-webkit-outer-spin-button,.hinp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.hinp[type=number]{-moz-appearance:textfield;appearance:textfield}
 .cdbar{position:sticky;top:0;z-index:9;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.42);color:#8a6a1e;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:13px;text-align:center}
 .cdbar.warn{background:rgba(194,65,90,.1);border-color:rgba(194,65,90,.45);color:var(--bad)}
 .cdbar b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
@@ -120,7 +123,6 @@ let META = null;             // { person, kind, period_type, period_start, pref_
 let CHOICE = {};             // { 'YYYY-MM-DD': choice }
 let MODE = "shift", HOURS = {};                 // tryb wyboru + { date: {start,end} }
 let PREF = "";               // preferowana liczba godzin na cały okres (per osoba)
-const HOPT = Array.from({length:25}, (_,i)=>i); // 0..24
 
 function toast(msg, color="#0f7a4a"){
   const e=document.createElement("div"); e.className="toast"; e.style.color=color; e.textContent=msg;
@@ -180,9 +182,10 @@ function render(){
       </div>${(rano&&pop)?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę cały dzień — rano i popołudnie ✓</div>`:""}`;
     } else {
       const h = HOURS[k]||{}; const isOff = cur==="off";
-      const sel = (id,val,ph)=>`<select class="hsel" onchange="setH('${k}','${id}',this.value)"><option value="">${ph}</option>${HOPT.map(x=>`<option value="${x}"${String(val)===String(x)?" selected":""}>${x}:00</option>`).join("")}</select>`;
+      // Wpisywanie z klawiatury numerycznej (telefon) — godzina 0–24, bez przewijania listy.
+      const inp = (id,val,ph)=>`<input class="hinp" type="number" inputmode="numeric" min="0" max="24" step="1" placeholder="${ph}" value="${(val==null||val==="")?"":esc(String(val))}" onchange="setH('${k}','${id}',this.value)"/>`;
       inner = `<div class="opts" style="align-items:center">
-        ${sel("start",h.start,"od")}<span style="color:var(--muted);font-weight:800">–</span>${sel("end",h.end,"do")}
+        ${inp("start",h.start,"od")}<span style="color:var(--muted);font-weight:800">–</span>${inp("end",h.end,"do")}
         <button class="opt off ${isOff?"sel":""}" style="flex:0 0 auto;min-width:88px" onclick="pick('${k}','off')">Nie mogę</button>
       </div>${(cur==="godziny"&&(h.start||h.end))?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę ${h.start||"?"}:00–${h.end||"?"}:00 ✓</div>`:""}`;
     }
@@ -273,11 +276,14 @@ async function saveAvail(date, choice, start, end){
   try { const { error } = await sb.rpc("set_availability", args); if(error) throw error; return true; }
   catch (e) { console.error("set_availability:", e); toast("Nie zapisano — " + ((e&&e.message)||"spróbuj ponownie."), "#c2415a"); return false; }
 }
-window.setH = async (date, which, val)=>{
+window.setH = async (date, which, raw)=>{
+  // Wpisana godzina → liczba całkowita 0–24 (puste = nie podano).
+  let val = String(raw==null?"":raw).trim();
+  if (val !== ""){ let n = Math.round(Number(val)); if(!isFinite(n)){ n = ""; } else { if(n<0)n=0; if(n>24)n=24; } val = n===""?"":String(n); }
   const h = HOURS[date] = HOURS[date] || { start:"", end:"" };
   h[which] = val;
-  if (h.start && h.end){ CHOICE[date]="godziny"; render(); await saveAvail(date,"godziny",h.start,h.end); }
-  else render();
+  if (h.start!=="" && h.end!==""){ CHOICE[date]="godziny"; render(); await saveAvail(date,"godziny",h.start,h.end); }
+  else { if (CHOICE[date]==="godziny") delete CHOICE[date]; render(); }   // niekompletne → wpis znika lokalnie
 };
 window.confirmAvail = () => {
   const filled = Object.keys(CHOICE).length;
