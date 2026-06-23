@@ -138,6 +138,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fitem .ic{font-weight:900;flex-shrink:0}
 .fitem .tm{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0;font-variant-numeric:tabular-nums}
 .empty{font-size:12.5px;color:var(--muted);text-align:center;padding:22px 10px;background:rgba(90,29,74,.03);border:1px dashed var(--line-strong);border-radius:11px}
+/* Zmiany — grafik edytowalny */
+.zm-nav{width:32px;height:30px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);border-radius:8px;font-size:16px;font-weight:800;cursor:pointer;line-height:1}
+.zm-nav:hover{background:rgba(90,29,74,.05)}
+.zm-h{width:100%;min-width:58px;font-size:11.5px;font-weight:600;text-align:center;border:1px solid var(--line);border-radius:6px;padding:3px 4px;background:var(--paper);color:var(--ink);outline:none}
+.zm-h:focus{border-color:var(--plum)}
+.zm-s{width:100%;margin-top:3px;font-size:10px;border:1px solid var(--line);border-radius:6px;padding:2px 3px;background:var(--paper);color:var(--muted);outline:none;cursor:pointer}
+.zm-days{display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px}
+.zm-day{flex:0 0 auto;min-width:42px;padding:6px 4px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);border-radius:9px;font-weight:800;font-size:12px;cursor:pointer;text-align:center;line-height:1.2}
+.zm-day.on{background:var(--plum);color:#fff;border-color:var(--plum)}
+.zm-list{display:flex;flex-direction:column;gap:7px}
+.zm-row{display:grid;grid-template-columns:1fr 86px 104px;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.zm-row .zm-name{font-weight:700;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zm-row .zm-s{margin-top:0}
+/* Zmiany — layout grafik + podsumowanie z boku */
+.zm-wrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-top:2px}
+.zm-grid{flex:1 1 440px;min-width:0}
+.zm-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)}
+.zm-side{flex:1 1 188px;max-width:236px;border:1px solid var(--line);border-radius:11px;background:var(--paper);padding:10px 4px 8px;align-self:stretch}
+.zm-side-hd{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding:0 10px 8px}
+.zm-side-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;border-top:1px solid var(--line)}
+.zm-side-nm{font-weight:700;font-size:12.5px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zm-side-st{font-size:12px;font-weight:800;color:var(--plum);white-space:nowrap;flex:0 0 auto}
+.zm-side-st small{font-weight:600;color:var(--muted);font-size:10px}
+.zm-side-tot{border-top:2px solid var(--line-strong);margin-top:2px}
+.zm-side-tot .zm-side-nm{color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.03em}
+.zm-side-orph{margin-top:8px;padding:8px 10px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);line-height:1.45}
+.zm-side-orph b{color:var(--bad);font-size:11px}
+.zm-side-orph i{display:block;margin-top:4px;font-size:10px;font-style:normal;color:var(--muted)}
+@media(max-width:760px){.zm-side{flex-basis:100%;max-width:none}}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -224,11 +253,11 @@ body{font-family:var(--ui);background:
   .tabs.mob,.top-out{display:none}
   .topbar{padding:18px 30px;background:rgba(247,241,236,.7)}
   .topbar h1{font-size:27px}
-  .content{padding:24px 30px 70px;max-width:1080px}
+  .content{padding:24px 36px 70px;max-width:1320px}
   .kpis{grid-template-columns:repeat(4,1fr);gap:12px}
   #hkBody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
   #hkBody>.card,#hkBody>.soon,#hkBody>.note,#hkBody>.empty,#hkBody>.feed,#hkBody>.panelbox,
-  #hkBody>.legend,#hkBody>.link,#hkBody>.fullspan,#hkBody>.kpis,#hkBody>.spin{grid-column:1/-1}
+  #hkBody>.legend,#hkBody>.link,#hkBody>.fullspan,#hkBody>.kpis,#hkBody>.spin,#hkBody>#zmRoot{grid-column:1/-1}
   .wcard,.statrow,.day{margin-bottom:0}
 }
 @media(min-width:1280px){ .content{margin:0 auto} }
@@ -248,6 +277,28 @@ body{font-family:var(--ui);background:
 .acct .av{box-shadow:0 5px 12px -4px rgba(90,29,74,.55),inset 0 1px 0 rgba(255,255,255,.25)}
 .side-out:active,.btn:active{transform:scale(.985)}
 .navbtn span{flex:1}
+.navbadge{flex:0 0 auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c2415a;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.tab .navbadge{margin-left:5px}
+/* ── Dzwonek powiadomień (topbar) + dropdown ── */
+.notif-wrap{position:relative;display:inline-flex;margin-left:auto}
+.top-bell{position:relative;background:rgba(90,29,74,.07);border:1px solid var(--line);border-radius:10px;width:38px;height:34px;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--plum)}
+.top-bell:hover{background:rgba(90,29,74,.12)}
+.top-bell .navbadge{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;font-size:10px}
+.notif-menu{position:absolute;top:42px;right:0;z-index:1200;width:284px;max-height:72vh;overflow:auto;background:var(--paper);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 16px 48px rgba(90,29,74,.22);padding:6px}
+.notif-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 6px;font-weight:800;color:var(--plum);font-size:13px}
+.notif-gear{background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:8px;line-height:1}
+.notif-gear:hover{background:rgba(90,29,74,.06)}
+.notif-row{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;font:inherit;color:var(--ink)}
+.notif-row:hover{background:rgba(90,29,74,.05)}
+.notif-row .ni{font-size:15px;width:20px;text-align:center}
+.notif-row .nl{flex:1;font-size:13.5px;font-weight:600}
+.notif-row .nz{color:var(--muted);font-size:12px}
+.notif-set{display:flex;align-items:center;gap:10px;padding:9px 10px;cursor:pointer;border-radius:10px}
+.notif-set:hover{background:rgba(90,29,74,.05)}
+.notif-set input{width:17px;height:17px;accent-color:var(--plum);cursor:pointer}
+.notif-set .ni{font-size:15px;width:20px;text-align:center}
+.notif-set .nl{font-size:13.5px;font-weight:600}
+.notif-empty,.notif-foot{padding:11px 10px;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
 .auth-foot{text-align:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:22px;opacity:.8}
 .soon{display:flex;align-items:center;gap:8px}
 .soon::before{content:"";width:14px;height:1.5px;background:var(--gold);border-radius:2px;flex-shrink:0}
@@ -317,6 +368,60 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   .praca-desktop .pd-ttl{font-family:var(--serif);font-size:24px;color:var(--plum)}
   .praca-desktop .pd-sub{font-size:14px;color:var(--muted);max-width:420px;line-height:1.55}
 }
+/* ── Edytowalna tabela „Ułóż grafik" ── */
+.sched-tbl{border-collapse:collapse;min-width:100%;font-size:13px}
+.sched-tbl th,.sched-tbl td{border:1px solid var(--line);padding:3px 4px;text-align:center}
+.sched-tbl th{background:var(--cream);font-size:11px;color:var(--muted);font-weight:800;white-space:nowrap;position:sticky;top:0;z-index:2}
+.sched-tbl .dcol{text-align:left;font-weight:800;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--paper);z-index:1}
+.sched-tbl tr.wknd .dcol{background:rgba(90,29,74,.05)}
+.sched-tbl tfoot td{background:var(--cream);font-weight:900;font-size:12px}
+.scell{width:60px;max-width:64px;padding:7px 4px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;color:var(--ink);font-size:13px;font-weight:700;font-family:inherit;text-align:center;outline:none}
+.scell:focus{border-color:var(--plum);box-shadow:0 0 0 2px rgba(90,29,74,.14)}
+.scell.can{background:#eef7f1}
+.scell.off{background:#fbecef}
+.scell.warn{border-color:#C2410C}
+.sched-foot-l{text-align:left;font-weight:800;color:var(--plum);white-space:nowrap;position:sticky;left:0;background:var(--cream)}
+#printArea{display:none}
+@media print{
+  body{background:#fff}
+  body>*{visibility:hidden}
+  #printArea,#printArea *{visibility:visible}
+  #printArea{display:block;position:absolute;left:0;top:0;width:100%;padding:0}
+  #printArea h2{font-size:18px;margin:0 0 4px}
+  #printArea .psub{font-size:11px;color:#444;margin:0 0 10px}
+  #printArea table{border-collapse:collapse;width:100%;font-size:11px}
+  #printArea th,#printArea td{border:1px solid #999;padding:4px 5px;text-align:center}
+  #printArea th{background:#eee}
+  #printArea td.l{text-align:left;font-weight:700}
+  @page{size:landscape;margin:10mm}
+}
+/* ── Zadania: kalendarz wyboru terminu (dzień/zmiana/osoba) ── */
+.zadcal-ov{position:fixed;inset:0;z-index:60;background:rgba(45,20,34,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;padding:0}
+@media(min-width:560px){.zadcal-ov{align-items:center;padding:18px}}
+.zadcal-box{background:var(--paper);width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;box-shadow:0 -8px 40px rgba(45,20,34,.28);overflow:hidden}
+@media(min-width:560px){.zadcal-box{border-radius:16px;box-shadow:0 18px 50px rgba(45,20,34,.32)}}
+.zadcal-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--plum)}
+.zadcal-top strong{flex:1;font-size:15px}
+.zadcal-x{border:none;background:transparent;color:var(--muted);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:8px;line-height:1}
+.zadcal-x:hover{background:var(--cream)}
+.zadcal-hint{padding:8px 16px 4px;font-size:12px;color:var(--muted)}
+.zadcal-list{overflow-y:auto;padding:6px 12px 16px}
+.zadcal-day{border:1px solid var(--line);border-radius:12px;padding:10px 11px;margin-top:9px;background:var(--cream)}
+.zadcal-dayhead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.zadcal-dayhead>span{flex:1;font-weight:800;font-size:13px;color:var(--ink);text-transform:capitalize}
+.zadcal-allday{border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.zadcal-allday:hover{background:var(--plum);color:#fff}
+.zadcal-shift{margin-top:7px}
+.zadcal-shiftbtn{border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;padding:5px 11px;border-radius:999px;cursor:pointer;margin-bottom:5px}
+.zadcal-shiftbtn:hover{background:rgba(90,29,74,.08)}
+.zadcal-people{display:flex;flex-wrap:wrap;gap:6px}
+.zadcal-chip{border:1px solid var(--line);background:var(--paper);color:var(--ink);font-weight:600;font-size:12px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.zadcal-chip:hover{border-color:var(--plum);background:rgba(90,29,74,.06)}
+.zadpick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px}
+.zadpick-clear{border:1px solid var(--line);background:var(--paper);color:var(--muted);font-weight:700;font-size:11.5px;padding:4px 10px;border-radius:999px;cursor:pointer}
+.zadpick-clear:hover{color:var(--plum);border-color:var(--line-strong)}
+.zadcal-btn{margin-top:7px;border:1px dashed var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;padding:8px 12px;border-radius:10px;cursor:pointer;width:100%}
+.zadcal-btn:hover{background:rgba(90,29,74,.06)}
 </style>
 </head>
 <body>
@@ -436,7 +541,9 @@ function makeMockClient(){
       {actor:"Recepcja",actor_role:"mgr_recepcja",action:"zadanie_dodane",detail:"Sprawdzić rezerwację 312",created_at:today+"T11:00:00"},
     ],
     list_availability_requests: ()=> [
-      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,expires_at:new Date(Date.now()+20*3600000).toISOString(),persons:4,answered:2},
+      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,expires_at:new Date(Date.now()+20*3600000).toISOString(),kind:"hk",persons:4,answered:2},
+      // Korelacja działu: grafik recepcji zebrany przez menedżera recepcji — widoczny też dla koordynatora.
+      {id:"r2",period_type:"week",period_start:plus(3),created_by:"Menedżer recepcji",created_at:today,expires_at:new Date(Date.now()+40*3600000).toISOString(),kind:"recepcja",persons:3,answered:1},
     ],
     get_request_grid: ()=> {
       const ppl=["Anna","Marta","Oksana","Tetiana"], days=[today,plus(1),plus(2)], ch=["poranna","popoludnie","oba","off"], out=[];
@@ -445,6 +552,13 @@ function makeMockClient(){
     },
     create_availability_request: ()=> [{person:"Anna",token:"A1B2C3"},{person:"Marta",token:"D4E5F6"}],
     admin_list_accounts: ()=> ACC,
+    admin_login_sessions: ()=> [
+      {actor:"Tetiana",actor_role:"mgr_hk",login_at:today+"T07:55:00",actions:3,last_action_at:today+"T08:40:00"},
+      {actor:"Recepcja",actor_role:"mgr_recepcja",login_at:today+"T10:50:00",actions:1,last_action_at:today+"T11:00:00"},
+      {actor:"Marek",actor_role:"mgr_glowny",login_at:today+"T09:10:00",actions:0,last_action_at:null},
+      {actor:"Marek",actor_role:"mgr_glowny",login_at:plus(-1)+"T14:00:00",actions:0,last_action_at:null},
+    ],
+    admin_list_audit: ()=> RPC.list_panel_audit(),
     log_action: ()=> null, admin_add_account: ()=> "acc_demo@conrad-panel.com",
     admin_set_role: ()=> null, admin_set_active: ()=> null,
     admin_reset_account: ()=> "acc_new@conrad-panel.com", admin_set_password: ()=> true, admin_set_name: ()=> null,
@@ -493,6 +607,19 @@ const sb = DEMO ? makeMockClient()
   : ((window.supabase && window.supabase.createClient)
       ? window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } })
       : null);
+
+// Wspólny stan dnia (hk_state, migracja 0032) — grafik/obsada ustawiona w panelu
+// kierownika trafia NA ŻYWO na recepcję (z dymkiem bota) i do telefonu koordynatora.
+function hkStateDeviceId(){
+  try{ let id=localStorage.getItem("hk-state-device-id");
+    if(!id){ id=(crypto&&crypto.randomUUID?crypto.randomUUID():"dev-"+Date.now()+"-"+Math.random().toString(16).slice(2)); localStorage.setItem("hk-state-device-id",id); }
+    return id; }catch(e){ return "dev-"+Math.random().toString(16).slice(2); }
+}
+async function pushHkStateRoster(iso, roster){
+  if(!sb||!iso) return;
+  try{ await sb.rpc("hk_state_merge",{ p_date:iso, p_patch:{ roster:roster||[] }, p_by:"hk_manager", p_device:hkStateDeviceId(), p_tenant:TENANT_ID }); }
+  catch(e){ /* hk_roster i tak zapisany — hk_state to warstwa live/bota */ }
+}
 
 // Etykiety ról + placeholdery widoków (kolejne iteracje wpinają tu realne moduły).
 const ROLE_INFO = {
@@ -603,7 +730,7 @@ window.submitLogin = async () => {
       if (remember) localStorage.setItem("panel_remember_name", a.name);
       else localStorage.removeItem("panel_remember_name");
     } catch(_) {}
-    await showPanelFromSession();
+    await showPanelFromSession(true);
   } catch (e) {
     setMsg((e && e.message) || "Nie udało się zalogować.", "err");
     if (btn) { btn.disabled = false; btn.textContent = "Zaloguj"; }
@@ -714,7 +841,7 @@ window.submitAuth = async (i, first) => {
       const { error } = await sb.auth.signInWithPassword({ email: a.email, password: pw });
       if (error) throw new Error("Błędne hasło.");
     }
-    await showPanelFromSession();
+    await showPanelFromSession(true);
   } catch (e) {
     setMsg((e && e.message) || "Nie udało się zalogować.", "err");
     if (btn) { btn.disabled = false; btn.textContent = first ? "Ustaw hasło i wejdź" : "Zaloguj"; }
@@ -723,7 +850,7 @@ window.submitAuth = async (i, first) => {
 
 let CURRENT = { role: null, name: "" };
 
-async function showPanelFromSession() {
+async function showPanelFromSession(fresh) {
   app.innerHTML = '<div class="spin">Wczytywanie panelu…</div>';
   let role = null, name = "";
   let { data: { user } } = await sb.auth.getUser();
@@ -756,10 +883,15 @@ async function showPanelFromSession() {
     app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Twoje konto nie ma jeszcze przypisanej roli. Skontaktuj się z adminem.</div></div>`;
     return;
   }
-  CURRENT = { role, name };
+  CURRENT = { role, name, email: user.email };
+  // Rejestruj tylko realne wejście (kliknięcie „Zaloguj"), nie odświeżenie/wznowienie PWA —
+  // dzięki temu admin widzi w „Logach" kto faktycznie wszedł i czy coś potem zrobił.
+  if (fresh) { try { await sb.rpc("log_action", { p_action:"logowanie", p_detail: role||"" }); } catch {} }
+  startMailWatch();   // licznik nieprzeczytanej poczty (badge na zakładce „Poczta")
   // Admin: pełny pulpit + Konta. Gastro: własny zestaw (Grafik/Zadania/Akcje).
   // Pozostałe role dziedziczą widok HK.
   renderHkDashboard(role, name);
+  notifInit();        // preferencje powiadomień + watcher (dzwonek/badge per kategoria)
 }
 
 function renderPlaceholder(role, name) {
@@ -784,6 +916,7 @@ const isoDate = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()
 const fmtDate = iso => { const [y,m,d]=iso.split("-").map(Number); const dt=new Date(y,m-1,d); return { dow:DOW[dt.getDay()], txt:d+" "+MON[m-1] }; };
 const DONE_STATES = new Set(["czyste","done","gotowe"]);
 let hkTab = "live";
+let hkLanded = false; // pierwsze wejście po zalogowaniu ląduje na Pulpicie (jeśli rola go ma)
 let liveTimer = null;
 
 function stopLive(){ if (liveTimer){ clearInterval(liveTimer); liveTimer=null; } }
@@ -794,9 +927,11 @@ const GRAFIK_ROLES   = new Set(["mgr_hk","koordynator","mgr_recepcja","mgr_glown
 const KONSERW_ROLES  = new Set(["mgr_glowny","mgr_operacyjny"]);
 function tabsFor(role){
   // Gastro: osobny, węższy zestaw (bez modułów HK).
-  if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
+  if (role === "mgr_gastro") return [["poczta","Poczta"],["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
   const t = [];
+  // Poczta wewnętrzna (panel ↔ panel) — dla każdej roli, zaraz po Pulpicie.
+  t.push(["poczta","Poczta"]);
   // Pulpit dnia (jeden ekran-przegląd) — landing dla ról recepcyjnych/koordynatora.
   if (A || RECEPCJA_ROLES.has(role)) t.push(["pulpit","Pulpit"]);
   t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
@@ -807,7 +942,7 @@ function tabsFor(role){
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
   if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"]);
   if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
-  if (A)                             t.push(["konta","Konta"]);
+  if (A)                             t.push(["konta","Konta"], ["logi","Logi"]);
   return t;
 }
 
@@ -829,6 +964,8 @@ const NAV_ICON = {
   konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
   praca:   _ic('<path d="M19 5l-7 7M14 4l6 6M8.5 10.5l5 5M3 21l3.5-1 9-9-2.5-2.5-9 9L3 21z"/>'),
   jakosc:  _ic('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="m8.5 11 1.8 1.8 3.2-3.6"/>'),
+  poczta:  _ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
+  logi:    _ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/>'),
 };
 const BRAND_SVG = '<svg viewBox="0 0 80 12" width="40" height="10" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>';
 const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); return f?f[1]:""; };
@@ -836,10 +973,16 @@ const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); r
 function renderHkDashboard(role, name) {
   stopLive();
   const tabs = tabsFor(role);
+  // Domyślny ekran po zalogowaniu: Pulpit, jeśli rola go ma (menedżer HK nie ma → jego pierwsza zakładka).
+  if (!hkLanded) { hkLanded = true; hkTab = tabs.some(([k]) => k==="pulpit") ? "pulpit" : (tabs[0] && tabs[0][0]) || "live"; }
   if (!tabs.some(([k]) => k===hkTab)) hkTab = tabs[0][0];
   const roleLbl = (ROLE_INFO[role]||{}).label || role;
-  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span></button>`).join("");
-  const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span></button>`).join("");
+  // Badge na zakładce = suma nieprzeczytanych z włączonych kategorii powiadomień
+  // mapujących się na tę zakładkę (poczta/korekty/notatki/raporty/zadania/grafik).
+  const badge = k => notifAvailCats().some(c => NOTIF_CATS[c].tab === k)
+    ? `<span class="navbadge" data-notifbadge="${k}" hidden></span>` : "";
+  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
+  const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
   const av = esc(initials(name)), avbg = avatarBg(name);
   app.className = "dash";
   app.innerHTML = `
@@ -857,6 +1000,10 @@ function renderHkDashboard(role, name) {
       <main class="main">
         <header class="topbar">
           <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
+          <div class="notif-wrap">
+            <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" title="Powiadomienia">🔔<span id="notifBellCount" class="navbadge" hidden></span></button>
+            <div id="notifMenu" class="notif-menu" hidden></div>
+          </div>
           <button class="top-out" onclick="changeMyPassword()">Hasło</button>
           <button class="top-out" onclick="doLogout()">Wyloguj</button>
         </header>
@@ -874,10 +1021,12 @@ window.setHkTab = (t) => {
   const tt = document.getElementById("pageTitle"); if (tt) tt.textContent = tabTitle(CURRENT.role, t);
   const hb = document.getElementById("hkBody"); if (hb) hb.innerHTML = '<div class="spin">Wczytywanie…</div>';
   loadHkTab();
+  notifMarkTabSeen(t);   // wejście w zakładkę = oznacz jej powiadomienia jako przeczytane
 };
 
 async function loadHkTab() {
   stopLive();
+  if (hkTab === "poczta")  return loadPoczta();
   if (hkTab === "pulpit")  return loadPulpit();
   if (hkTab === "jakosc")  return loadQuality();
   if (hkTab === "praca")   return loadPraca();
@@ -894,6 +1043,7 @@ async function loadHkTab() {
   if (hkTab === "tablica") return loadTablica();
   if (hkTab === "akcje")   return loadAkcje();
   if (hkTab === "konta")   return loadKonta();
+  if (hkTab === "logi")    return loadLogi();
 }
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
@@ -1081,6 +1231,7 @@ window.rosterSave = async (iso, btn) => {
   try {
     const { error } = await sb.from("hk_roster").upsert({ tenant_id:TENANT_ID, date:iso, roster:ROSTER[iso]||[], updated_at:new Date().toISOString() }, { onConflict:"tenant_id,date" });
     if (error) throw error;
+    pushHkStateRoster(iso, ROSTER[iso]||[]);
     try { await sb.rpc("log_action", { p_action:"obsada_zapis", p_detail:`${iso} (${(ROSTER[iso]||[]).length} os.)` }); } catch {}
     if (btn){ btn.disabled=false; btn.textContent="Zapisano ✓"; setTimeout(()=>{ if(btn) btn.textContent="Zapisz obsadę"; }, 1600); }
   } catch (e) { if (btn){ btn.disabled=false; btn.textContent="Zapisz obsadę"; } alert((e&&e.message)||"Błąd zapisu."); }
@@ -1337,7 +1488,11 @@ window.showLiveWorker = async (w) => {
       status = `<span class="chip">do zrobienia</span>`;
     }
     const tline = times ? `<span style="display:block;font-size:11px;color:var(--muted);font-weight:600;margin-top:2px">${times}</span>` : "";
-    return `<div class="statrow"><span class="k">Pokój ${esc(r.room)}${tline}</span>${status}</div>`;
+    // Tag typu pokoju — czytelny też przy przewijaniu w obrębie sekcji.
+    const typeTag = r.pobyt
+      ? `<span style="font-size:9.5px;font-weight:800;color:#1f7a52;background:rgba(31,122,82,.1);border-radius:5px;padding:1px 5px;margin-right:6px;vertical-align:middle">PG</span>`
+      : `<span style="font-size:9.5px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border-radius:5px;padding:1px 5px;margin-right:6px;vertical-align:middle">WYJ</span>`;
+    return `<div class="statrow"><span class="k">${typeTag}Pokój ${esc(r.room)}${tline}</span>${status}</div>`;
   };
   // Osobno pokoje wyjazdowe (W/WP) i pobyty (PG/PGZ).
   const wj = roomsSorted.filter(r=>!r.pobyt), pg = roomsSorted.filter(r=>r.pobyt);
@@ -1495,17 +1650,223 @@ window.genWorkerAI = async () => {
   if (btn){ btn.disabled=false; btn.textContent="✨ Generuj opis AI"; }
 };
 
+// ── Aktywna zmiana (kto pracuje teraz) — z lustra „schedule" aplikacji recepcji ──
+// Format lustra (jak w loadZmiany): sched["YYYY-MM-DD"]["Osoba"] = { shift, start, end }.
+// Okna zmian jako fallback, gdy wpis nie ma godzin (start/end). nocna kończy się po północy → koniec >24.
+const SHIFT_WIN = { poranna:[6,14], popoludnie:[14,22], popoludniowa:[14,22], wieczorowa:[14,23], dzienna:[7,19], nocna:[22,30], dyzur:[8,20] };
+const _hm = s => { if (s==null||s==="") return null; const m=String(s).match(/(\d{1,2})(?::?(\d{2}))?/); if(!m) return null; let h=+m[1]; if(m[2]) h+=(+m[2])/60; return h; };
+function shiftWindow(en){
+  let s=_hm(en.start), e=_hm(en.end);
+  if (s==null||e==null){ const w=SHIFT_WIN[en.shift]; if(w){ s=w[0]; e=w[1]; } }
+  if (s==null||e==null) return null;
+  if (e<=s) e+=24;            // zmiana przechodzi przez północ
+  return [s,e];
+}
+function shiftHoursLabel(en){
+  const s=(en.start??""), e=(en.end??""); if (s!==""||e!=="") return `${s}–${e}`;
+  const w=SHIFT_WIN[en.shift]; return w ? `${w[0]}–${w[1]>24?w[1]-24:w[1]}` : "";
+}
+function activeShiftData(sched){
+  const today = isoDate(new Date());
+  const yest  = isoDate(new Date(Date.now()-864e5));
+  const now = new Date(); const nowH = now.getHours()+now.getMinutes()/60;
+  const collect = dk => { const day = sched && sched[dk]; if(!day||typeof day!=="object") return [];
+    return Object.keys(day).filter(p=>day[p]).map(p=>({ person:p, shift:day[p].shift, start:day[p].start, end:day[p].end })); };
+  const todayEntries = collect(today);
+  const isActive = (en,off) => { const w=shiftWindow(en); if(!w) return false; const cur=nowH+(off?24:0); return cur>=w[0] && cur<w[1]; };
+  const active = [ ...todayEntries.filter(en=>isActive(en,0)),
+                   ...collect(yest).filter(en=>isActive(en,1)) ];   // wczorajsza nocka po północy
+  const byShift = {}; todayEntries.forEach(en=>{ const k=en.shift||"inna"; (byShift[k]=byShift[k]||[]).push(en); });
+  return { today, todayEntries, active, byShift };
+}
+function activeShiftCard(sched){
+  const d = activeShiftData(sched);
+  if (!sched || !d.todayEntries.length)
+    return `<div class="card" style="margin-bottom:12px"><div class="soon" style="margin-top:0">Aktywna zmiana — kto pracuje teraz</div>
+      <div class="note" style="margin:0">Brak grafiku na dziś (pojawi się, gdy recepcja zapisze grafik w aplikacji).</div></div>`;
+  const groups = {}; d.active.forEach(en=>{ const k=en.shift||"inna"; (groups[k]=groups[k]||[]).push(en); });
+  const keys = Object.keys(groups);
+  const inner = keys.length ? keys.map(k=>{
+      const ppl = groups[k].map(en=>esc(en.person)).join(", ");
+      const hrs = shiftHoursLabel(groups[k][0]);
+      return `<div class="statrow" style="gap:8px;align-items:center">
+        <span class="chip" style="color:var(--ok);border-color:rgba(31,122,82,.4);white-space:nowrap">● ${esc(SHIFT_LBL[k]||k)}${hrs?` · ${esc(hrs)}`:""}</span>
+        <span class="k" style="flex:1">${ppl}</span></div>`;
+    }).join("") : `<div class="note" style="margin:0">Nikt nie jest teraz na zmianie wg grafiku.</div>`;
+  return `<div class="card" style="margin-bottom:12px"><div class="soon" style="margin-top:0">Aktywna zmiana — kto pracuje teraz</div>${inner}</div>`;
+}
+
 // ── Zadania: przekazane na komputer recepcji (manager_alerts) + dodawanie z telefonu ──
 const PRIO = { high:{l:"Pilne",c:"#c2415a"}, normal:{l:"Zwykłe",c:"#5a1d4a"}, low:{l:"Info",c:"#8a6a7e"} };
+// Selektor zmiany w Zadaniach: cel (zmiana + osoby) jest dla wszystkich ról oprócz menedżera HK i gastronomii.
+const SHIFT_PICKER_OFF = new Set(["mgr_hk","mgr_gastro"]);
+let ZAD_SCHED = null;   // lustro „schedule" wczytane na czas renderu Zadań (do selektora osób)
+let ZAD_PICK  = null;   // wybór z kalendarza: { date:"YYYY-MM-DD", shift:""|klucz, people:[] }. null = tryb „dziś" (z <select>).
+let ZAD_CAL   = [];     // bufor terminów wyrenderowanych w modalu kalendarza (onclick → indeks)
+function zadShiftOptions(){
+  const d = activeShiftData(ZAD_SCHED);
+  let opts = `<option value="current">Aktualna zmiana (auto)</option>`;
+  Object.keys(d.byShift).forEach(k=>{
+    const names = d.byShift[k].map(e=>e.person).join(", ");
+    opts += `<option value="shift:${esc(k)}">${esc(SHIFT_LBL[k]||k)}${names?` — ${esc(names)}`:""}</option>`;
+  });
+  return opts + `<option value="all">Cała załoga dziś</option><option value="none">Bez przypisania do zmiany</option>`;
+}
+function zadPeopleFor(val){
+  const d = activeShiftData(ZAD_SCHED);
+  if (val==="none") return [];
+  if (val==="all")  return d.todayEntries.map(e=>e.person);
+  if (val==="current") return (d.active.length ? d.active : d.todayEntries).map(e=>e.person);
+  if (val && val.indexOf("shift:")===0){ const k=val.slice(6); return (d.byShift[k]||[]).map(e=>e.person); }
+  return [];
+}
+// Render listy osób (checkboxy do zawężenia) z aktywnego terminu: wybór z kalendarza ma pierwszeństwo nad <select>.
+function zadRenderPeople(){
+  const box = document.getElementById("zPeople"); if (!box) return;
+  let people;
+  if (ZAD_PICK){ people = ZAD_PICK.people || []; }
+  else {
+    const val = (document.getElementById("zShift")||{}).value || "current";
+    if (val==="none"){ box.innerHTML = `<div class="note" style="margin:0">Zadanie ogólne — bez przypisania do osób.</div>`; return; }
+    people = zadPeopleFor(val);
+  }
+  people = [...new Set(people)];
+  box.innerHTML = people.length
+    ? people.map(n=>`<label class="chip" style="cursor:pointer;display:inline-flex;gap:6px;align-items:center">
+        <input type="checkbox" class="zp" value="${esc(n)}" checked/> ${esc(n)}</label>`).join("")
+    : `<div class="note" style="margin:0">Brak osób w grafiku dla tego terminu — zadanie pójdzie ogólnie na recepcję.</div>`;
+}
+// Podsumowanie wybranego terminu + stan <select> (gdy kalendarz aktywny — select wyłączony).
+function zadSyncPickUI(){
+  const sel = document.getElementById("zShift");
+  const box = document.getElementById("zPick");
+  if (ZAD_PICK){
+    if (box){
+      const f = fmtDate(ZAD_PICK.date);
+      const shiftLbl = ZAD_PICK.shift ? (SHIFT_LBL[ZAD_PICK.shift]||ZAD_PICK.shift) : "cały dzień";
+      box.style.display = "";
+      box.innerHTML = `<div class="zadpick">
+        <span class="chip" style="color:var(--plum);border-color:var(--line-strong)">📅 ${esc(f.dow)} ${esc(f.txt)} · ${esc(shiftLbl)}</span>
+        <button type="button" class="zadpick-clear" onclick="zadClearPick()">Wyczyść</button></div>`;
+    }
+    if (sel){ sel.disabled = true; sel.style.opacity = ".5"; }
+  } else {
+    if (box){ box.style.display = "none"; box.innerHTML = ""; }
+    if (sel){ sel.disabled = false; sel.style.opacity = ""; }
+  }
+}
+window.zadClearPick = () => { ZAD_PICK = null; zadSyncPickUI(); zadRenderPeople(); };
+// Zmiana <select> = powrót do trybu „dziś".
+window.zadShiftChanged = () => { ZAD_PICK = null; zadSyncPickUI(); zadRenderPeople(); };
+
+// ── Kalendarz: wybór konkretnego dnia / zmiany / osoby z grafiku (najbliższe 14 dni) ──
+window.zadOpenCal = () => {
+  const sched = ZAD_SCHED || {};
+  const base = new Date(); base.setHours(0,0,0,0);
+  ZAD_CAL = [];
+  let daysHtml = "";
+  for (let i=0;i<14;i++){
+    const dk = isoDate(new Date(base.getTime()+i*86400000));
+    const day = sched[dk];
+    const entries = (day && typeof day==="object")
+      ? Object.keys(day).filter(p=>day[p]).map(p=>({ person:p, shift:day[p].shift||"inna", start:day[p].start, end:day[p].end }))
+      : [];
+    const f = fmtDate(dk);
+    const dlabel = `${f.dow} ${f.txt}`;
+    const byShift = {}; entries.forEach(en=>{ (byShift[en.shift]=byShift[en.shift]||[]).push(en); });
+    const allPeople = entries.map(e=>e.person);
+    const dayIdx = entries.length ? ZAD_CAL.push({ date:dk, shift:"", people:allPeople })-1 : -1;
+    let inner;
+    if (!entries.length){
+      inner = `<div class="note" style="margin:0;font-size:12px">Brak grafiku na ten dzień.</div>`;
+    } else {
+      inner = Object.keys(byShift).map(k=>{
+        const ppl = byShift[k];
+        const hrs = shiftHoursLabel(ppl[0]);
+        const sIdx = ZAD_CAL.push({ date:dk, shift:k, people:ppl.map(e=>e.person) })-1;
+        const chips = ppl.map(e=>{
+          const pIdx = ZAD_CAL.push({ date:dk, shift:k, people:[e.person] })-1;
+          return `<button type="button" class="zadcal-chip" onclick="zadPickIdx(${pIdx})">${esc(e.person)}</button>`;
+        }).join("");
+        return `<div class="zadcal-shift">
+          <button type="button" class="zadcal-shiftbtn" onclick="zadPickIdx(${sIdx})">${esc(SHIFT_LBL[k]||k)}${hrs?` · ${esc(hrs)}`:""}</button>
+          <div class="zadcal-people">${chips}</div></div>`;
+      }).join("");
+    }
+    daysHtml += `<div class="zadcal-day">
+      <div class="zadcal-dayhead"><span>${esc(dlabel)}</span>
+        ${dayIdx>=0?`<button type="button" class="zadcal-allday" onclick="zadPickIdx(${dayIdx})">Cały dzień</button>`:""}
+      </div>${inner}</div>`;
+  }
+  const ov = document.createElement("div");
+  ov.id = "zadCalOv"; ov.className = "zadcal-ov";
+  ov.innerHTML = `<div class="zadcal-box" role="dialog" aria-modal="true" aria-label="Wybór dnia i zmiany">
+    <div class="zadcal-top"><strong>Wybierz termin zadania</strong>
+      <button type="button" class="zadcal-x" onclick="zadCloseCal()" aria-label="Zamknij">✕</button></div>
+    <div class="zadcal-hint">Dotknij dzień, zmianę lub osobę — grafik z aplikacji recepcji.</div>
+    <div class="zadcal-list">${daysHtml}</div></div>`;
+  ov.addEventListener("click", e=>{ if (e.target===ov) zadCloseCal(); });
+  document.body.appendChild(ov);
+  document.addEventListener("keydown", zadCalEsc);
+};
+function zadCalEsc(e){ if (e.key==="Escape") zadCloseCal(); }
+window.zadCloseCal = () => { const ov=document.getElementById("zadCalOv"); if (ov) ov.remove(); document.removeEventListener("keydown", zadCalEsc); };
+window.zadPickIdx = (i) => {
+  const t = ZAD_CAL[i]; if (!t) return;
+  ZAD_PICK = { date:t.date, shift:t.shift||"", people:[...new Set(t.people||[])] };
+  zadCloseCal(); zadSyncPickUI(); zadRenderPeople();
+};
+// Recepcja filtruje alerty po target_shift === selectedShift, więc klucz MUSI być kluczem zmiany recepcji.
+const RECEPCJA_SHIFTS = new Set(["poranna","popoludniowa","wieczorowa","dzienna","nocna"]);
+// Klucz zmiany do kolumny manager_alerts.target_shift (null = wszystkie zmiany → alert widoczny dla każdej zmiany).
+function zadTargetShiftKey(){
+  if (ZAD_PICK){ return RECEPCJA_SHIFTS.has(ZAD_PICK.shift) ? ZAD_PICK.shift : null; }
+  const sel = document.getElementById("zShift"); if (!sel) return null;
+  const val = sel.value || "current";
+  if (val==="all" || val==="none") return null;
+  let key = null;
+  if (val.indexOf("shift:")===0) key = val.slice(6);
+  else { const d = activeShiftData(ZAD_SCHED); key = d.active.length ? d.active[0].shift : null; }  // current → aktywna zmiana
+  return RECEPCJA_SHIFTS.has(key) ? key : null;   // nieznany klucz → wszystkie zmiany (nie chowamy zadania na recepcji)
+}
+// Data celu (kolumna manager_alerts.target_date). null = bez konkretnej daty (zachowanie „dziś").
+function zadTargetDate(){ return ZAD_PICK ? ZAD_PICK.date : null; }
+// Zawężenie do konkretnych osób (gdy odznaczono część grafiku) — trafia do treści, bo recepcja filtruje po zmianie/dacie, nie po osobie.
+function zadTargetPeople(){
+  let all;
+  if (ZAD_PICK){ all = [...new Set(ZAD_PICK.people||[])]; }
+  else {
+    const sel = document.getElementById("zShift"); if (!sel) return "";
+    const val = sel.value || "current"; if (val==="none") return "";
+    all = [...new Set(zadPeopleFor(val))];
+  }
+  const checked = Array.from(document.querySelectorAll(".zp:checked")).map(c=>c.value);
+  if (!all.length || checked.length===all.length) return "";   // cała zmiana → bez listy osób
+  return checked.join(", ");
+}
 async function loadZadania() {
+  const showPicker = !SHIFT_PICKER_OFF.has(CURRENT.role);
   let rows = [];
   try {
-    const { data } = await sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done")
-      .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60);
-    rows = data || [];
+    const [alerts, sched] = await Promise.all([
+      sb.from("manager_alerts").select("id,title,body,priority,created_by,created_at,done,target_shift,target_date")
+        .eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60),
+      showPicker ? getMirror("schedule") : Promise.resolve(null),
+    ]);
+    rows = alerts.data || [];
+    ZAD_SCHED = sched || null;
   } catch { return body('<div class="empty">Nie udało się pobrać zadań.</div>'); }
+  ZAD_PICK = null;   // nowy render → start od trybu „dziś"
   rows = rows.filter(r => !r.done);
+  const pickerHtml = showPicker ? `
+      <div class="field"><label>Na jaką zmianę?</label>
+        <select id="zShift" class="inp" onchange="zadShiftChanged()">${zadShiftOptions()}</select>
+        <button type="button" class="zadcal-btn" onclick="zadOpenCal()">📅 Inny dzień / zmiana</button>
+        <div id="zPick" style="display:none"></div></div>
+      <div class="field"><label>Dotyczy osób (odznacz, by zawęzić)</label>
+        <div id="zPeople" class="chips"></div></div>` : "";
   const form = `
+    ${showPicker ? activeShiftCard(ZAD_SCHED) : ""}
     <div class="card" style="margin-bottom:12px">
       <div class="soon" style="margin-top:0">Przekaż zadanie na komputer recepcji</div>
       <div class="field"><label>Treść zadania</label>
@@ -1514,19 +1875,29 @@ async function loadZadania() {
         <input id="zBody" class="inp" placeholder="dodatkowy opis" onkeydown="if(event.key==='Enter')addZadanie()"/></div>
       <div class="field"><label>Priorytet</label>
         <select id="zPrio" class="inp"><option value="normal">Zwykłe</option><option value="high">Pilne</option><option value="low">Info</option></select></div>
+      ${pickerHtml}
       <button id="zBtn" class="btn" onclick="addZadanie()">Wyślij na komputer</button>
       <div id="zMsg" class="msg"></div>
     </div>`;
   const list = rows.length ? rows.map(r => {
     const p = PRIO[r.priority] || PRIO.normal;
     const when = r.created_at ? new Date(r.created_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+    // Cel zadania: zmiana z kolumny target_shift, osoby z pierwszej linii treści „Dla osób: …".
+    let bodyTxt = r.body || "", people = "";
+    const mt = bodyTxt.match(/^Dla(?: os[oó]b)?:\s*([^\n]+)\n?/i);
+    if (mt){ people = mt[1]; bodyTxt = bodyTxt.slice(mt[0].length); }
+    const shiftLbl = r.target_shift ? (SHIFT_LBL[r.target_shift]||r.target_shift) : "";
+    const dateLbl = r.target_date ? (()=>{ const f=fmtDate(r.target_date); return `${f.dow} ${f.txt}`; })() : "";
+    const parts = [dateLbl, shiftLbl, people].filter(Boolean);
+    const tgt = parts.length ? (parts.length===1 && people && !dateLbl && !shiftLbl ? `Osoby: ${people}` : parts.join(" · ")) : "";
     return `<div class="statrow" style="align-items:flex-start;flex-direction:column;gap:4px">
       <div style="display:flex;align-items:center;gap:8px;width:100%">
         <span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span>
         <span class="k" style="flex:1">${esc(r.title||"")}</span>
         <span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span>
       </div>
-      ${r.body?`<div style="font-size:12.5px;color:var(--muted)">${esc(r.body)}</div>`:""}
+      ${tgt?`<span class="chip" style="color:var(--plum);border-color:var(--line-strong)">🕘 ${esc(tgt)}</span>`:""}
+      ${bodyTxt?`<div style="font-size:12.5px;color:var(--muted)">${esc(bodyTxt)}</div>`:""}
       <div style="display:flex;align-items:center;gap:8px;width:100%;margin-top:2px">
         ${r.created_by?`<span style="font-size:11px;color:var(--muted);flex:1">od: ${esc(r.created_by)}</span>`:`<span style="flex:1"></span>`}
         <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer"
@@ -1535,6 +1906,7 @@ async function loadZadania() {
     </div>`;
   }).join("") : '<div class="empty">Brak otwartych zadań. 🎉</div>';
   body(form + `<div class="soon">Przekazane zadania</div>` + list);
+  if (showPicker){ zadSyncPickUI(); zadRenderPeople(); }   // wypełnij listę osób dla domyślnej „aktualnej zmiany"
 }
 window.addZadanie = async () => {
   const title = (document.getElementById("zTitle")||{}).value || "";
@@ -1543,11 +1915,19 @@ window.addZadanie = async () => {
   const msg = document.getElementById("zMsg"); const btn = document.getElementById("zBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
   if (!title.trim()) return setM("Wpisz treść zadania.", "err");
+  // Cel zmiany → kolumna target_shift (recepcja filtruje alerty po zmianie: PreShiftModal/Inbox).
+  // Zawężenie do osób → pierwsza linia treści „Dla osób: …" (recepcja nie ma filtra po osobie).
+  const tShift  = (typeof zadTargetShiftKey === "function") ? zadTargetShiftKey() : null;
+  const tDate   = (typeof zadTargetDate === "function") ? zadTargetDate() : null;
+  const tPeople = (typeof zadTargetPeople === "function") ? zadTargetPeople() : "";
+  const baseBody = bodyv.trim() || title.trim();
+  const finalBody = tPeople ? `Dla osób: ${tPeople}\n${baseBody}` : baseBody;
   if (btn){ btn.disabled=true; btn.textContent="Wysyłanie…"; }
   try {
     const { error } = await sb.from("manager_alerts").insert({
-      tenant_id: TENANT_ID, title: title.trim(), body: bodyv.trim() || title.trim(),
-      priority: prio, created_by: CURRENT.name || "Panel",
+      tenant_id: TENANT_ID, title: title.trim(), body: finalBody,
+      priority: prio, created_by: CURRENT.name || "Panel", target_shift: tShift, target_date: tDate,
+      kind: "task",   // zadanie → zakładka „Zadania" recepcji (nie „Pilne"; pilne = high pokazuje się też jako alert)
     });
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"zadanie_dodane", p_detail: title.trim() }); } catch {}
@@ -1567,12 +1947,489 @@ window.markZadanieDone = async (id) => {
   } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
 };
 
+// ─────────────────────────── Poczta wewnętrzna (panel ↔ panel) ───────────────────────────
+// Kanał osoba↔osoba/rola na bazie manager_messages (migracja 0037). Niezależny od
+// manager_alerts (tamto celuje w zmianę recepcji). Typy: prośba / zadanie / info.
+const MAIL_KIND   = { prosba:"Prośba", zadanie:"Zadanie", info:"Info" };
+const MAIL_STATUS = { open:{l:"Otwarta",c:"#5a1d4a"}, in_progress:{l:"W toku",c:"#b5761e"}, done:{l:"Zrobione",c:"#1f7a52"}, rejected:{l:"Odrzucona",c:"#c2415a"} };
+let MAIL_VIEW = "list";      // list (karty próśb + composer na dole) | thread
+let MAIL_THREAD = null;      // id otwartego wątku
+let MAIL_ACCOUNTS = [];      // lista kont (adresaci)
+let MAIL_UNREAD = 0;
+let MAIL_CH = null;          // kanał realtime
+
+const mailWhen = iso => iso ? new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+const mailIsMine = r => r.from_email === CURRENT.email;
+const mailToMe   = r => r.to_email === CURRENT.email || r.to_role === CURRENT.role;
+const mailDest   = r => r.to_email
+  ? ((MAIL_ACCOUNTS.find(a=>a.email===r.to_email)||{}).name || "osoba")
+  : ("wszyscy: " + ROLE_LABEL(r.to_role));
+
+function setMailBadge(){
+  // Poczta jest jedną z kategorii powiadomień — jej licznik karmi wspólny system
+  // (dzwonek + badge na zakładce). „Nieprzeczytane poczty" liczymy z read_at.
+  NOTIF_COUNTS.poczta = notifOn("poczta") ? (MAIL_UNREAD || 0) : 0;
+  notifPaint();
+}
+async function refreshMailUnread(){
+  if (!CURRENT.email) return;
+  try {
+    const { count } = await sb.from("manager_messages")
+      .select("id", { count:"exact", head:true })
+      .or(`to_email.eq.${CURRENT.email},to_role.eq.${CURRENT.role}`)
+      .is("read_at", null).neq("from_email", CURRENT.email);
+    MAIL_UNREAD = count || 0; setMailBadge();
+  } catch {}
+}
+function startMailWatch(){
+  refreshMailUnread();
+  try { if (MAIL_CH) sb.removeChannel(MAIL_CH); } catch {}
+  try {
+    MAIL_CH = sb.channel("panel-poczta")
+      .on("postgres_changes", { event:"*", schema:"public", table:"manager_messages", filter:`tenant_id=eq.${TENANT_ID}` },
+        () => { refreshMailUnread();
+          // Odśwież widok poczty na żywo, ale nie wycieraj tekstu, gdy ktoś właśnie pisze prośbę/odpowiedź.
+          if (hkTab!=="poczta") return;
+          const ae = document.activeElement;
+          if (ae && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName||"") && /^m(To|Body|Pilne|Desk|Reply)$/.test(ae.id||"")) return;
+          loadPoczta();
+        })
+      .subscribe();
+  } catch {}
+}
+
+// ─────────────────────────── Powiadomienia panelu (per konto) ───────────────────────────
+// Każde konto wybiera, O CZYM chce powiadomień (dzwonek w topbarze + badge na zakładce).
+// Preferencje w panel_notif_prefs (mig. 0039). „Nieprzeczytane" liczymy po stronie klienta:
+//   • poczta  → manager_messages.read_at (MAIL_UNREAD),
+//   • korekty / notatki / raporty → snapshot panel_mirror, różnica id vs ostatnio widziane,
+//   • zadania → manager_alerts kind=task (otwarte), różnica id,
+//   • grafik  → zmiana snapshotu schedule (hash) vs ostatnio widziany.
+// Stan „widziane" trzymamy w localStorage (per email+kategoria) — bez zmian schematu.
+// Pierwsze wejście NIE buczy wstecznie: nieznaną kategorię inicjalizujemy bieżącym stanem.
+const NOTIF_CATS = {
+  poczta:  { label:"Poczta",           icon:"✉",  tab:"poczta"  },
+  korekty: { label:"Korekty kasy",     icon:"🧾", tab:"kasa"    },
+  notatki: { label:"Notatki służbowe", icon:"📝", tab:"kasa"    },
+  raporty: { label:"Raporty zmian",    icon:"📋", tab:"kasa"    },
+  zadania: { label:"Zadania",          icon:"✓",  tab:"zadania" },
+  grafik:  { label:"Grafik",           icon:"📅", tab:"grafik"  },
+};
+let NOTIF_PREFS = null;     // { cat:bool } z DB; null = jeszcze nie wczytane (traktuj jak „wszystko ON")
+let NOTIF_COUNTS = {};      // { cat:liczba nieprzeczytanych }
+let NOTIF_CH = null;        // kanał realtime (panel_mirror + manager_alerts)
+let NOTIF_OPEN = false;     // dropdown otwarty
+let NOTIF_SETTINGS = false; // dropdown pokazuje ustawienia
+
+// Kategoria dostępna dla roli, gdy rola ma odpowiadającą zakładkę (spójne z tabsFor).
+function notifAvail(cat){
+  const tab = NOTIF_CATS[cat] && NOTIF_CATS[cat].tab;
+  return (tabsFor(CURRENT.role) || []).some(([k]) => k === tab);
+}
+// Włączona = dostępna dla roli I nie odznaczona (brak wpisu → domyślnie ON).
+function notifOn(cat){
+  if (!notifAvail(cat)) return false;
+  if (NOTIF_PREFS && cat in NOTIF_PREFS) return !!NOTIF_PREFS[cat];
+  return true;
+}
+function notifAvailCats(){ return Object.keys(NOTIF_CATS).filter(notifAvail); }
+
+const notifSeenKey = cat => `notif_seen:${CURRENT.email}:${cat}`;
+function notifHash(s){ let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; }
+
+// Klucze elementów danej kategorii — do różnicy „nowe vs widziane".
+async function notifKeys(cat){
+  try {
+    if (cat === "korekty"){ const a = await getMirror("payment_corrections"); return Array.isArray(a) ? a.map(x => String(x.id || x.reservation || "")).filter(Boolean) : []; }
+    if (cat === "notatki"){ const a = await getMirror("employee_reports");   return Array.isArray(a) ? a.map(x => String(x.id || ((x.createdAt||"") + "|" + (x.author||"")))).filter(Boolean) : []; }
+    if (cat === "raporty"){ const a = await getMirror("reports_full");        return Array.isArray(a) ? a.map(x => String((x.dayKey||x.day_key||"") + "|" + (x.shiftKey||x.shift_key||"") + "|" + (x.employee||x.employeeName||""))).filter(Boolean) : []; }
+    if (cat === "grafik"){ const s = await getMirror("schedule"); return s ? ["h:" + notifHash(JSON.stringify(s))] : []; }
+    if (cat === "zadania"){
+      const { data } = await sb.from("manager_alerts").select("id,done").eq("tenant_id", TENANT_ID).eq("kind", "task");
+      return (data || []).filter(r => !r.done).map(r => String(r.id));
+    }
+  } catch {}
+  return [];
+}
+
+// Przelicz liczniki wszystkich (poza pocztą — ta z MAIL_UNREAD przez setMailBadge).
+async function notifRefresh(){
+  if (!CURRENT.email) return;
+  NOTIF_COUNTS.poczta = notifOn("poczta") ? (MAIL_UNREAD || 0) : 0;
+  await Promise.all(notifAvailCats().filter(c => c !== "poczta").map(async cat => {
+    if (!notifOn(cat)) { NOTIF_COUNTS[cat] = 0; return; }
+    const raw = localStorage.getItem(notifSeenKey(cat));
+    const keys = await notifKeys(cat);
+    if (raw == null) { try { localStorage.setItem(notifSeenKey(cat), JSON.stringify(keys)); } catch {} NOTIF_COUNTS[cat] = 0; return; }
+    let seen; try { seen = new Set(JSON.parse(raw || "[]")); } catch { seen = new Set(); }
+    NOTIF_COUNTS[cat] = keys.filter(k => !seen.has(k)).length;
+  }));
+  notifPaint();
+}
+
+// Wejście w zakładkę = oznacz jej kategorie jako przeczytane (poczta: read_at osobno).
+async function notifMarkTabSeen(tab){
+  const cats = notifAvailCats().filter(c => NOTIF_CATS[c].tab === tab && c !== "poczta");
+  if (!cats.length) return;
+  await Promise.all(cats.map(async cat => {
+    const keys = await notifKeys(cat);
+    try { localStorage.setItem(notifSeenKey(cat), JSON.stringify(keys)); } catch {}
+    NOTIF_COUNTS[cat] = 0;
+  }));
+  notifPaint();
+}
+
+function notifTabCount(tab){
+  return notifAvailCats().filter(c => NOTIF_CATS[c].tab === tab && notifOn(c)).reduce((s, c) => s + (NOTIF_COUNTS[c] || 0), 0);
+}
+function notifTotal(){ return notifAvailCats().filter(notifOn).reduce((s, c) => s + (NOTIF_COUNTS[c] || 0), 0); }
+
+function notifPaint(){
+  document.querySelectorAll("[data-notifbadge]").forEach(el => {
+    const n = notifTabCount(el.getAttribute("data-notifbadge"));
+    if (n > 0){ el.hidden = false; el.textContent = n > 99 ? "99+" : String(n); }
+    else { el.hidden = true; el.textContent = ""; }
+  });
+  const b = document.getElementById("notifBellCount");
+  if (b){ const t = notifTotal(); if (t > 0){ b.hidden = false; b.textContent = t > 99 ? "99+" : String(t); } else { b.hidden = true; b.textContent = ""; } }
+  if (NOTIF_OPEN) notifRenderMenu();
+}
+
+// ── Dropdown dzwonka ──
+window.notifToggle = () => {
+  NOTIF_OPEN = !NOTIF_OPEN; NOTIF_SETTINGS = false;
+  const m = document.getElementById("notifMenu"); if (!m) return;
+  m.hidden = !NOTIF_OPEN; if (NOTIF_OPEN) notifRenderMenu();
+};
+document.addEventListener("click", (e) => {
+  if (!NOTIF_OPEN) return;
+  if (e.target.closest(".notif-wrap")) return;   // klik w dzwonek/menu — nie zamykaj
+  NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true;
+});
+
+function notifRenderMenu(){
+  const m = document.getElementById("notifMenu"); if (!m) return;
+  if (NOTIF_SETTINGS){
+    const rows = notifAvailCats().map(c => `
+      <label class="notif-set">
+        <input type="checkbox" ${notifOn(c) ? "checked" : ""} onchange="notifSetPref('${c}', this.checked)">
+        <span class="ni">${NOTIF_CATS[c].icon}</span><span class="nl">${NOTIF_CATS[c].label}</span>
+      </label>`).join("");
+    m.innerHTML = `<div class="notif-hd"><button class="notif-gear" onclick="notifBackList()" title="Wróć">‹</button>
+        <span>Co Cię powiadamiać</span><span style="width:22px"></span></div>
+      ${rows}
+      <div class="notif-foot">Wybór zapisuje się automatycznie i działa na każdym urządzeniu.</div>`;
+    return;
+  }
+  const cats = notifAvailCats().filter(notifOn);
+  const rows = cats.map(c => {
+    const n = NOTIF_COUNTS[c] || 0;
+    return `<button class="notif-row" onclick="notifOpenCat('${c}')">
+      <span class="ni">${NOTIF_CATS[c].icon}</span>
+      <span class="nl">${NOTIF_CATS[c].label}</span>
+      ${n > 0 ? `<span class="navbadge">${n > 99 ? "99+" : n}</span>` : `<span class="nz">—</span>`}
+    </button>`;
+  }).join("");
+  m.innerHTML = `<div class="notif-hd"><span>Powiadomienia</span>
+      <button class="notif-gear" onclick="notifGoSettings()" title="Ustawienia">⚙</button></div>
+    ${rows || `<div class="notif-empty">Wszystkie powiadomienia wyłączone.<br>Włącz je w ⚙ ustawieniach.</div>`}`;
+}
+window.notifOpenCat  = (c) => { NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true; setHkTab(NOTIF_CATS[c].tab); };
+window.notifGoSettings = () => { NOTIF_SETTINGS = true; notifRenderMenu(); };
+window.notifBackList   = () => { NOTIF_SETTINGS = false; notifRenderMenu(); };
+window.notifSetPref = async (cat, on) => {
+  if (!NOTIF_PREFS) NOTIF_PREFS = {};
+  NOTIF_PREFS[cat] = !!on;
+  await notifSavePrefs();
+  await notifRefresh();
+  notifRenderMenu();
+};
+
+// ── Preferencje w DB (panel_notif_prefs) ──
+async function notifLoadPrefs(){
+  NOTIF_PREFS = {};
+  if (!CURRENT.email) return;
+  try {
+    const { data } = await sb.from("panel_notif_prefs").select("prefs")
+      .eq("tenant_id", TENANT_ID).eq("email", CURRENT.email).maybeSingle();
+    if (data && data.prefs && typeof data.prefs === "object") NOTIF_PREFS = data.prefs;
+  } catch {}
+}
+async function notifSavePrefs(){
+  if (!CURRENT.email) return;
+  try {
+    await sb.from("panel_notif_prefs").upsert(
+      { tenant_id: TENANT_ID, email: CURRENT.email, prefs: NOTIF_PREFS, updated_at: new Date().toISOString() },
+      { onConflict: "tenant_id,email" });
+  } catch {}
+}
+
+async function notifInit(){
+  await notifLoadPrefs();
+  await notifRefresh();
+  try { if (NOTIF_CH) sb.removeChannel(NOTIF_CH); } catch {}
+  try {
+    NOTIF_CH = sb.channel("panel-notif")
+      .on("postgres_changes", { event:"*", schema:"public", table:"panel_mirror",   filter:`tenant_id=eq.${TENANT_ID}` }, () => notifRefresh())
+      .on("postgres_changes", { event:"*", schema:"public", table:"manager_alerts", filter:`tenant_id=eq.${TENANT_ID}` }, () => notifRefresh())
+      .subscribe();
+  } catch {}
+}
+
+async function loadPoczta(){
+  body('<div class="spin">Wczytywanie poczty…</div>');
+  try {
+    const [accRes, msgRes] = await Promise.all([
+      sb.from("app_accounts").select("name,email,role,active"),
+      sb.from("manager_messages").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:true }).limit(500),
+    ]);
+    MAIL_ACCOUNTS = (accRes.data || []).filter(a => a.active !== false);
+    window._MAIL_ROWS = msgRes.data || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać poczty.</div>'); }
+  if (MAIL_VIEW === "thread")  return mailRenderThread();
+  return mailRenderList();
+}
+
+function mailThreads(){
+  // Grupuj po thread_id; zwróć ostatnią wiadomość + meta (czy nieprzeczytane, korespondent).
+  const rows = window._MAIL_ROWS || [];
+  const byThread = {};
+  rows.forEach(r => { (byThread[r.thread_id] = byThread[r.thread_id] || []).push(r); });
+  return Object.values(byThread).map(list => {
+    list.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+    const root = list[0], last = list[list.length-1];
+    const unread = list.filter(r => mailToMe(r) && !mailIsMine(r) && !r.read_at).length;
+    return { id: root.thread_id, root, last, count:list.length, unread, list };
+  }).sort((a,b)=> new Date(b.last.created_at)-new Date(a.last.created_at));
+}
+
+// „Kto czegoś od Ciebie chce" — luźne karty próśb. Bez tematu/typu/priorytetu jako pól.
+// Komponowanie na samym DOLE listy (prosty pasek „poproś kogoś"), bez paska zakładek u góry.
+function mailReqMsg(t){ return t.list.find(r => r.kind !== "info") || t.root; }   // wiadomość prośby ze statusem
+function mailRenderList(){
+  const threads = mailThreads();
+  // Do Ciebie: wątki z prośbą do mnie od kogoś innego.   Twoje prośby: które ja rozpocząłem.
+  const incoming = threads.filter(t => t.list.some(r => mailToMe(r) && !mailIsMine(r)));
+  const outgoing = threads.filter(t => mailIsMine(t.root));
+
+  const card = (t, mine) => {
+    const r = t.root, req = mailReqMsg(t);
+    const st = MAIL_STATUS[req.status] || MAIL_STATUS.open;
+    const who = mine ? mailDest(r) : r.from_name;
+    const lead = mine ? `Prosisz <b>${esc(who)}</b>:` : `<b>${esc(who)}</b> prosi Cię:`;
+    const closed = req.status === "done" || req.status === "rejected";
+    const av = esc(initials(who)), avbg = avatarBg(who);
+    const actions = (!mine && !closed)
+      ? `<button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer"
+            onclick="event.stopPropagation();mailQuickDone('${req.id}')">✓ Zrobione</button>
+         <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font-weight:800;font-size:11.5px;cursor:pointer"
+            onclick="event.stopPropagation();mailOpen('${r.thread_id}')">Odpisz</button>`
+      : `<span class="chip" style="color:${st.c};border-color:${st.c}55">${st.l}</span>`;
+    return `<div class="statrow" style="align-items:flex-start;gap:11px;cursor:pointer;${t.unread?'box-shadow:inset 3px 0 0 #c2415a':''}" onclick="mailOpen('${r.thread_id}')">
+      <span class="me-av" style="width:38px;height:38px;flex:0 0 auto;background:${avbg};font-size:13px">${av}</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="flex:1;font-size:13.5px;${t.unread?'font-weight:800':''}">${lead}${r.priority==="high"?' <span class="chip" style="color:#c2415a;border-color:#c2415a55">pilne</span>':''}</span>
+          ${t.unread?`<span class="navbadge">${t.unread}</span>`:""}
+          <span class="tm" style="font-size:11px;color:var(--muted)">${esc(mailWhen(t.last.created_at))}</span>
+        </div>
+        <div style="font-size:13px;color:var(--ink);white-space:pre-wrap">${esc(r.body||"")}${t.count>1?` <span style="color:var(--muted)">· ${t.count} wiad.</span>`:""}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px">${actions}</div>
+      </div>
+    </div>`;
+  };
+
+  const inHtml  = incoming.length ? incoming.map(t => card(t,false)).join("")
+                                  : `<div class="empty">Nikt nic od Ciebie teraz nie chce 🎉</div>`;
+  const outHtml = outgoing.length ? `<div class="soon" style="margin-top:16px">Twoje prośby</div>` + outgoing.map(t => card(t,true)).join("") : "";
+  body(`${inHtml}${outHtml}${mailComposer()}`);
+}
+
+// Pasek „poproś kogoś" — na samym DOLE listy. Krótko: do kogo + o co + (pilne) + wyślij.
+function mailComposer(){
+  const me = CURRENT.email;
+  const people = MAIL_ACCOUNTS.filter(a => a.email !== me)
+    .map(a => `<option value="email:${esc(a.email)}">${esc(a.name)} — ${esc(ROLE_LABEL(a.role))}</option>`).join("");
+  const roles = [...new Set(MAIL_ACCOUNTS.map(a=>a.role))]
+    .map(rr => `<option value="role:${rr}">Wszyscy: ${esc(ROLE_LABEL(rr))}</option>`).join("");
+  return `<div class="card" style="margin-top:16px">
+    <div class="soon" style="margin-top:0">Poproś kogoś o coś</div>
+    <div class="field"><select id="mTo" class="inp">
+      <option value="">— do kogo? —</option>
+      <optgroup label="Osoby">${people}</optgroup>
+      <optgroup label="Działy / role">${roles}</optgroup>
+    </select></div>
+    <div class="field"><textarea id="mBody" class="inp" rows="2" placeholder="Czego potrzebujesz? np. sprawdź proszę grafik na piątek"></textarea></div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+      <label class="remember" style="margin:0"><input id="mPilne" type="checkbox"/><span>❗ pilne</span></label>
+      ${mailCanBridge() ? `<label class="remember" style="margin:0"><input id="mDesk" type="checkbox"/><span>📌 pokaż też na recepcji</span></label>` : ""}
+    </div>
+    <button id="mBtn" class="btn" onclick="mailSend()">Wyślij prośbę</button>
+    <div id="mMsg" class="msg"></div>
+  </div>`;
+}
+// Most do recepcji: tylko role, które i tak wystawiają zadania na dyżur (jak zakładka Zadania).
+function mailCanBridge(){ return CURRENT.role==="admin" || RECEPCJA_ROLES.has(CURRENT.role); }
+
+// Szybkie „Zrobione" wprost z karty (bez wchodzenia w wątek).
+window.mailQuickDone = async (id) => {
+  try {
+    const { error } = await sb.from("manager_messages")
+      .update({ status:"done", done_at:new Date().toISOString(), done_by:CURRENT.name||"Panel" }).eq("id", id);
+    if (error) throw error;
+    loadPoczta();
+  } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
+};
+
+window.mailSend = async () => {
+  const to   = (document.getElementById("mTo")||{}).value || "";
+  const bd   = (document.getElementById("mBody")||{}).value || "";
+  const prio = (document.getElementById("mPilne")||{}).checked ? "high" : "normal";
+  const msg = document.getElementById("mMsg"), btn = document.getElementById("mBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!to)        return setM("Wybierz, kogo prosisz.", "err");
+  if (!bd.trim()) return setM("Napisz, o co prosisz.", "err");
+  // Bez osobnego pola „temat" — temat to skrót treści (kolumna subject jest NOT NULL).
+  const subj = bd.trim().split("\n")[0].slice(0, 60);
+  const row = {
+    tenant_id: TENANT_ID, thread_id: crypto.randomUUID(),
+    from_email: CURRENT.email, from_name: CURRENT.name || "Panel", from_role: CURRENT.role,
+    subject: subj, body: bd.trim(), kind: "prosba", priority: prio, status: "open",
+  };
+  if (to.startsWith("email:")) row.to_email = to.slice(6);
+  else if (to.startsWith("role:")) row.to_role = to.slice(5);
+  const toDesk = mailCanBridge() && !!(document.getElementById("mDesk")||{}).checked;
+  if (btn){ btn.disabled=true; btn.textContent="Wysyłanie…"; }
+  try {
+    const { error } = await sb.from("manager_messages").insert(row);
+    if (error) throw error;
+    // Most do recepcji: kopia jako zadanie na komputer dyżuru (target_shift/date null = widoczne od razu).
+    if (toDesk){
+      try {
+        await sb.from("manager_alerts").insert({
+          tenant_id: TENANT_ID, title: subj, body: bd.trim(),
+          priority: prio, created_by: CURRENT.name || "Panel",
+          target_shift: null, target_date: null, kind: "task",
+        });
+      } catch {}
+    }
+    try { await sb.rpc("log_action", { p_action:"poczta_wyslana", p_detail: subj + (toDesk?" (+recepcja)":"") }); } catch {}
+    loadPoczta();
+  } catch (e) {
+    setM((e&&e.message)||"Nie udało się wysłać.", "err");
+    if (btn){ btn.disabled=false; btn.textContent="Wyślij prośbę"; }
+  }
+};
+
+window.mailGo = (v) => { MAIL_VIEW = v; MAIL_THREAD = (v==="thread"?MAIL_THREAD:null); loadPoczta(); };
+window.mailOpen = async (threadId) => { MAIL_THREAD = threadId; MAIL_VIEW = "thread"; await mailMarkThreadRead(threadId); loadPoczta(); };
+
+async function mailMarkThreadRead(threadId){
+  const rows = (window._MAIL_ROWS || []).filter(r => r.thread_id===threadId && mailToMe(r) && !mailIsMine(r) && !r.read_at);
+  if (!rows.length) return;
+  const ids = rows.map(r=>r.id);
+  try { await sb.from("manager_messages").update({ read_at:new Date().toISOString() }).in("id", ids); } catch {}
+  rows.forEach(r => r.read_at = new Date().toISOString());
+  refreshMailUnread();
+}
+
+function mailRenderThread(){
+  const list = (window._MAIL_ROWS || []).filter(r => r.thread_id===MAIL_THREAD)
+    .sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  if (!list.length){ MAIL_VIEW="list"; return mailRenderList(); }
+  const root = list[0];
+  const reqMsg = list.find(r => r.kind!=="info");  // wiadomość prośby/zadania ze statusem
+  const st = reqMsg ? (MAIL_STATUS[reqMsg.status] || MAIL_STATUS.open) : null;
+  const bubbles = list.map(r => {
+    const mine = mailIsMine(r);
+    return `<div style="display:flex;${mine?'justify-content:flex-end':''};margin-bottom:8px">
+      <div style="max-width:80%;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:${mine?'rgba(90,29,74,.06)':'var(--paper)'}">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px">${esc(r.from_name)}${mine?" (Ty)":""} · ${esc(mailWhen(r.created_at))}</div>
+        <div style="font-size:13.5px;white-space:pre-wrap">${esc(r.body)}</div>
+        ${r.reply_note?`<div style="font-size:12px;color:var(--muted);margin-top:5px;border-top:1px dashed var(--line);padding-top:5px">↳ ${esc(r.reply_note)}</div>`:""}
+      </div></div>`;
+  }).join("");
+  // Akcje na prośbie/zadaniu — tylko dla adresata, gdy jeszcze otwarte/w toku.
+  let actions = "";
+  if (reqMsg && mailToMe(reqMsg) && !mailIsMine(reqMsg) && (reqMsg.status==="open"||reqMsg.status==="in_progress")){
+    actions = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+      ${reqMsg.status==="open"?`<button class="btn" style="width:auto;padding:8px 14px;background:#b5761e" onclick="mailSetStatus('${reqMsg.id}','in_progress')">Przyjmuję / w toku</button>`:""}
+      <button class="btn" style="width:auto;padding:8px 14px;background:#1f7a52" onclick="mailSetStatus('${reqMsg.id}','done')">✓ Zrobione</button>
+      <button class="btn" style="width:auto;padding:8px 14px;background:#c2415a" onclick="mailReject('${reqMsg.id}')">Odrzuć</button>
+    </div>`;
+  }
+  body(`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <button class="zm-nav" style="width:auto;padding:0 14px;font-weight:800" onclick="mailGo('list')">‹ Wróć</button>
+      <span class="k" style="flex:1;font-size:16px;font-weight:800">${esc(root.subject||"(bez tematu)")}</span>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <span class="chip" style="color:var(--plum);border-color:var(--line-strong)">${MAIL_KIND[root.kind]||root.kind}</span>
+        ${st?`<span class="chip" style="color:${st.c};border-color:${st.c}55">${st.l}</span>`:""}
+        ${root.priority==="high"?`<span class="chip" style="color:#c2415a;border-color:#c2415a55">Pilne</span>`:""}
+        <span style="font-size:11.5px;color:var(--muted)">do: ${esc(mailDest(root))}</span>
+      </div>
+      ${bubbles}
+      ${actions}
+      <div class="field" style="margin-top:6px"><label>Odpowiedz</label>
+        <textarea id="mReply" class="inp" rows="3" placeholder="Napisz odpowiedź…"></textarea></div>
+      <button class="btn" onclick="mailReply()">Wyślij odpowiedź</button>
+      <div id="mrMsg" class="msg"></div>
+    </div>`);
+}
+
+window.mailSetStatus = async (id, status) => {
+  const patch = { status };
+  if (status==="done"){ patch.done_at = new Date().toISOString(); patch.done_by = CURRENT.name || "Panel"; }
+  try {
+    const { error } = await sb.from("manager_messages").update(patch).eq("id", id);
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"poczta_status", p_detail: status }); } catch {}
+    loadPoczta();
+  } catch (e) { alert((e&&e.message)||"Nie udało się zmienić statusu."); }
+};
+
+window.mailReject = async (id) => {
+  const note = prompt("Powód odrzucenia (opcjonalnie):") || "";
+  try {
+    const { error } = await sb.from("manager_messages").update({ status:"rejected", reply_note: note.trim() || null }).eq("id", id);
+    if (error) throw error;
+    loadPoczta();
+  } catch (e) { alert((e&&e.message)||"Nie udało się odrzucić."); }
+};
+
+window.mailReply = async () => {
+  const txt = (document.getElementById("mReply")||{}).value || "";
+  const msg = document.getElementById("mrMsg");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!txt.trim()) return setM("Wpisz treść odpowiedzi.", "err");
+  const list = (window._MAIL_ROWS || []).filter(r => r.thread_id===MAIL_THREAD)
+    .sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  const root = list[0]; const last = list[list.length-1];
+  // Adresat odpowiedzi = druga strona wątku (jeśli ja jestem nadawcą roota → adresat roota; inaczej → nadawca roota).
+  const row = {
+    tenant_id: TENANT_ID, thread_id: MAIL_THREAD, parent_id: last.id,
+    from_email: CURRENT.email, from_name: CURRENT.name || "Panel", from_role: CURRENT.role,
+    subject: root.subject, body: txt.trim(), kind: "info", priority: root.priority || "normal", status: "open",
+  };
+  if (mailIsMine(root)){ if (root.to_email) row.to_email = root.to_email; else row.to_role = root.to_role; }
+  else { row.to_email = root.from_email; }
+  try {
+    const { error } = await sb.from("manager_messages").insert(row);
+    if (error) throw error;
+    loadPoczta();
+  } catch (e) { setM((e&&e.message)||"Nie udało się wysłać odpowiedzi.", "err"); }
+};
+
 // ── Kasa: stan kasy ostatnich dni (shift_reports) ──
 const SHIFT_LBL = { poranna:"Poranna", popoludniowa:"Popołudniowa", wieczorowa:"Wieczorowa", nocna:"Nocna", dzienna:"Dzienna" };
 const DOC_KASA = { paragon:"Paragon", faktura:"Faktura", fiskalny:"Paragon fiskalny", inny:"Inny dokument" };
 const zl = v => (v==null||isNaN(v)) ? "—" : Number(v).toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2})+" zł";
 let kasaFull = false;
 window.toggleKasaFull = () => { kasaFull = !kasaFull; loadKasa(); };
+let kasaTab = "sejf";
+window.setKasaTab = (t) => { kasaTab = t; loadKasa(); };
 // Normalizuje datę do klucza ISO (YYYY-MM-DD). Mirror aplikacji recepcji zapisuje
 // część dat w formacie pl-PL ("DD.MM.RRRR, GG:MM" z fmtA), a część jako ISO/dayKey —
 // bez tej normalizacji filtr zakresu odrzucał wszystko (korekty/notatki nie pokazywały się).
@@ -1598,8 +2455,8 @@ async function loadKasa() {
   } catch {}
   // Korekty płatności + raporty zmian + notatki służbowe — z mirrora aplikacji recepcji (panel_mirror).
   // Zatwierdzenia korekt trzymamy osobno (payment_correction_approvals), bo mirror jest read-only.
-  const [corr, rf, notes, apprRes] = await Promise.all([
-    getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports"),
+  const [corr, rf, notes, cashState, apprRes] = await Promise.all([
+    getMirror("payment_corrections"), getMirror("reports_full"), getMirror("employee_reports"), getMirror("cash_state"),
     sb.from("payment_correction_approvals").select("correction_id,decision,manager,note,decided_at").eq("tenant_id", TENANT_ID).then(r=>r, ()=>({data:[]})),
   ]);
   const apprBy = {}; (apprRes && apprRes.data || []).forEach(a => { apprBy[a.correction_id] = a; });
@@ -1616,6 +2473,7 @@ async function loadKasa() {
       saved_at: r.savedAt,
     }));
   }
+  let corrPend = 0, corrCount = 0, rfCount = 0, notesCount = 0;
   // ── Alerty „do weryfikacji" — czysto panelowe heurystyki na danych kasy/korekt ──
   const alerts = [];
   // 1) Zmiana zamykająca dzień (wieczorowa/nocna) bez zarejestrowanego KW.
@@ -1632,7 +2490,7 @@ async function loadKasa() {
   const safeDays = Object.keys(safeByDay).sort();
   for (let i=1;i<safeDays.length;i++){
     const prev=safeByDay[safeDays[i-1]], cur=safeByDay[safeDays[i]];
-    if (prev>0 && cur < prev - 0.5) { const d=fmtDate(safeDays[i]); alerts.push(`${d.txt}: sejf spadł o ${zl(prev-cur)} (z ${zl(prev)} do ${zl(cur)})`); }
+    if (prev>0 && cur < prev - 0.5) { const d=fmtDate(safeDays[i]); alerts.push(`${d.txt}: kasa spadła o ${zl(prev-cur)} (z ${zl(prev)} do ${zl(cur)})`); }
   }
   // 3) Korekty oczekujące dłużej niż 3 dni.
   if (Array.isArray(corr)) {
@@ -1646,22 +2504,30 @@ async function loadKasa() {
       </div>` : "";
   let cashHtml;
   if (!rows.length) {
-    cashHtml = `<div class="empty">Brak raportów kasy${kasaFull?"":" z ostatnich 7 dni"}. Pojawią się, gdy recepcja zamknie zmianę.</div>`;
+    cashHtml = `<div class="empty">Brak raportów kasy. Pojawią się, gdy recepcja zamknie zmianę.</div>`;
   } else {
     const byDay = {};
     rows.forEach(r => { (byDay[r.day_key] = byDay[r.day_key] || []).push(r); });
-    const days = Object.keys(byDay).sort().reverse();
+    // Tylko bieżący (najnowszy) dzień — bez historii kasy z poprzednich dni.
+    const days = Object.keys(byDay).sort().reverse().slice(0, 1);
     cashHtml = days.map(dk => {
       const d = fmtDate(dk);
-      const items = byDay[dk].map(r => `
+      const items = byDay[dk].map(r => {
+        // Kasetka (bieżąca gotówka) = live stan recepcji (cash_state.kasetka) ma pierwszeństwo
+        // przed zrzutem z raportu zmiany: zamykająca zmiana (nocna/wieczorowa) zapisuje cash_current
+        // SPRZED wpłaty do sejfu (np. 800), a po wpłacie stała wraca do 500 — panel ma pokazać 500
+        // jak recepcja i jak hero. Historyczny zrzut per zmiana zostaje w podzakładce „Raporty".
+        const rowKasetka = (cashState && cashState.kasetka != null) ? cashState.kasetka
+                         : (r.cash_current != null ? r.cash_current : r.safe_total);
+        return `
         <div class="statrow" style="margin-bottom:6px">
           <div class="k">
             <div>${esc(SHIFT_LBL[r.shift_key]||r.shift_key||"")} · ${esc(r.employee||"—")}</div>
             <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">
-              Kasa: ${zl(r.cash_current)} · KW: ${zl(r.cash_closing)}</div>
+              KW: ${zl(r.cash_closing)}</div>
           </div>
-          <div class="v" title="Sejf">${zl(r.safe_total)}</div>
-        </div>`).join("");
+          <div class="v" title="Kasetka">${zl(rowKasetka)}</div>
+        </div>`; }).join("");
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
   }
@@ -1671,8 +2537,9 @@ async function loadKasa() {
     const list = corr.filter(c => inRange(c.submittedAt||c.createdAt||c.dateKey||c.date)).slice(0,80);
     // Stan = decyzja z panelu (apprBy) ma pierwszeństwo; w jej braku — flaga done z aplikacji recepcji.
     const stateOf = c => { const a=apprBy[c.id]; if (a) return a.decision==="rejected"?"rejected":"approved"; return c.done?"approved":"pending"; };
-    const pend = list.filter(c=>stateOf(c)==="pending").length;
-    if (list.length) corrHtml = `<div class="soon">Korekty płatności${pend?` <span style="color:var(--gold)">· ${pend} oczekuje</span>`:""}</div>` + list.map(c => {
+    corrPend = list.filter(c=>stateOf(c)==="pending").length;
+    corrCount = list.length;
+    if (list.length) corrHtml = list.map(c => {
       const who = esc(c.submittedBy||c.employee||c.name||"—");
       const when = esc(String(c.submittedAt||c.createdAt||"").trim());
       const doc = esc(DOC_KASA[c.docType]||c.docType||"Korekta");
@@ -1707,7 +2574,8 @@ async function loadKasa() {
   if (Array.isArray(rf)) {
     const byDk = {}; rf.forEach(r => { const dk=kasaIso(r.dayKey||r.day_key||r.savedAt); if(inRange(dk)) (byDk[dk]=byDk[dk]||[]).push(r); });
     const dks = Object.keys(byDk).sort().reverse().slice(0, kasaFull?90:7);
-    if (dks.length) rfHtml = `<div class="soon">Raporty zmian / dobowe</div>` + dks.map(dk => {
+    rfCount = dks.reduce((n,dk)=>n+byDk[dk].length,0);
+    if (dks.length) rfHtml = dks.map(dk => {
       const d = fmtDate(dk);
       const shifts = byDk[dk];
       const items = shifts.map(r => {
@@ -1715,7 +2583,7 @@ async function loadKasa() {
         const who = esc(r.employeeName||r.employee||"—");
         const allTasks = [...(r.baseTasks||[]), ...(r.carryOver||[])];
         const tDone = allTasks.filter(t=>t.status==="[OK]").length, tTot = allTasks.length;
-        const cash = `Kasa: ${zl(kasaNum(r.cashCurrentAmount))} · KW: ${zl(kasaNum(r.cashClosingDocumentsAmount))} · Sejf: ${zl(typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal))}`;
+        const cash = `Kasetka: ${zl(kasaNum(r.cashCurrentAmount))} · KW: ${zl(kasaNum(r.cashClosingDocumentsAmount))} · Kasa: ${zl(typeof r.safeTotal==="number"?r.safeTotal:kasaNum(r.safeTotal))}`;
         const handover = esc(r.handoverNote||"");
         const taskLines = allTasks.map(t=>`<div style="font-size:12px;padding:1px 0">${t.status==="[OK]"?"✓":"✗"} ${esc(t.text)}</div>`).join("");
         const missing = (r.missingTasks||[]).map(t=>esc(t.text||t)).filter(Boolean);
@@ -1736,7 +2604,8 @@ async function loadKasa() {
   let notesHtml = "";
   if (Array.isArray(notes)) {
     const list = notes.filter(n => inRange(n.reportDate||n.createdAt)).slice(0,40);
-    if (list.length) notesHtml = `<div class="soon">Przesłane notatki służbowe</div>` + list.map((n,i) => {
+    notesCount = list.length;
+    if (list.length) notesHtml = list.map((n,i) => {
       const subj = esc(n.subject||"Notatka służbowa");
       const author = esc(n.author||"—"); const to = esc(n.handoverTo||"");
       const when = esc(kasaIso(n.reportDate||n.createdAt));
@@ -1748,7 +2617,41 @@ async function loadKasa() {
       </div>`;
     }).join("");
   }
-  body(toggle + alertHtml + `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Stan kasy${kasaFull?" (pełna historia)":" — ostatnie 7 dni"}. Po prawej: kwota w sejfie. Kliknij korektę lub raport, by rozwinąć szczegóły.</div>` + cashHtml + corrHtml + rfHtml + notesHtml);
+  // ── Hero: kasetka (live KPI recepcji = stała kasowa) jako główna liczba, sejf obok ──
+  const safeRow = rows.find(r => r.safe_total != null);
+  const lastRow = rows[0];
+  // Kasetka i sejf z lustra live recepcji (cash_state); w jego braku fallback do raportów.
+  const kasetkaVal = cashState && cashState.kasetka != null ? cashState.kasetka : null;
+  const safeVal = cashState && cashState.safe != null ? cashState.safe : (safeRow ? safeRow.safe_total : null);
+  const heroSub = lastRow
+    ? `Kasa: ${zl(safeVal)} · ostatnia zmiana: ${esc(SHIFT_LBL[lastRow.shift_key]||lastRow.shift_key||"—")} · ${esc(lastRow.employee||"—")} · ${fmtDate(lastRow.day_key).txt}`
+    : (safeVal!=null ? `Kasa: ${zl(safeVal)}` : "Brak zamkniętych zmian w wybranym okresie.");
+  const heroHtml = `<div class="fullspan" style="background:var(--plum);color:#fff;border-radius:14px;padding:15px 17px;margin-bottom:12px;box-shadow:0 4px 14px -6px rgba(90,29,74,.5)">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;opacity:.78">Kasetka${kasetkaVal==null?" (oczekuje na dane z recepcji)":""}</div>
+      <div style="font-size:27px;font-weight:900;line-height:1.1;margin:3px 0 4px">${kasetkaVal!=null ? zl(kasetkaVal) : "—"}</div>
+      <div style="font-size:11.5px;font-weight:600;opacity:.82">${heroSub}</div>
+    </div>`;
+  // ── Zakładki: rozdzielają cztery niezależne tematy zamiast jednego scrolla ──
+  const tab = (id,label,count) => `<button class="tab ${kasaTab===id?"on":""}" onclick="setKasaTab('${id}')">${label}${count?` <span style="font-size:10.5px;opacity:.7">${count}</span>`:""}</button>`;
+  const tabsHtml = `<div class="tabs fullspan" style="margin:0 0 12px">
+      ${tab("sejf","Kasa")}${tab("korekty","Korekty",corrPend||corrCount)}${tab("raporty","Raporty",rfCount)}${tab("notatki","Notatki",notesCount)}
+    </div>`;
+  const hint = t => `<div class="note fullspan" style="margin-top:0;margin-bottom:10px">${t}</div>`;
+  let panel;
+  if (kasaTab === "korekty") {
+    panel = corrPend ? hint(`${corrPend} korekt oczekuje na decyzję. Kliknij, by rozwinąć opis i zatwierdzić/odrzucić.`) : hint("Korekty płatności (paragon/faktura). Kliknij, by rozwinąć szczegóły.");
+    panel += corrHtml || `<div class="empty">Brak korekt w wybranym okresie.</div>`;
+  } else if (kasaTab === "raporty") {
+    panel = toggle + hint("Raporty zmian / dobowe. Kliknij zmianę, by zobaczyć kasę, zadania, przekazanie i braki.");
+    panel += rfHtml || `<div class="empty">Brak raportów zmian w wybranym okresie.</div>`;
+  } else if (kasaTab === "notatki") {
+    panel = hint("Przesłane notatki służbowe. Kliknij, by rozwinąć treść.");
+    panel += notesHtml || `<div class="empty">Brak notatek w wybranym okresie.</div>`;
+  } else {
+    panel = hint("Bieżący stan kasy po ostatnich zmianach. Po prawej: kwota w kasie.");
+    panel += cashHtml;
+  }
+  body(heroHtml + alertHtml + tabsHtml + panel);
 }
 
 // Decyzja kierownika o korekcie (zatwierdź/odrzuć) — zapis do payment_correction_approvals.
@@ -1770,9 +2673,9 @@ window.decideCorrection = async (correctionId, decision) => {
 async function loadPulpit() {
   const today = isoDate(new Date()); const d = fmtDate(today);
   body('<div class="spin">Wczytywanie…</div>');
-  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null;
+  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null, cashState=null;
   try {
-    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar] = await Promise.all([
+    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs] = await Promise.all([
       sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
       sb.from("hk_roster").select("roster").eq("tenant_id",TENANT_ID).eq("date",today).maybeSingle(),
       getMirror("schedule"),
@@ -1782,6 +2685,7 @@ async function loadPulpit() {
       sb.from("standing_reminders").select("title,active,created_at").eq("tenant_id",TENANT_ID).order("created_at",{ascending:false}).limit(40),
       getMirror("reports_full"),
       sb.from("payment_correction_approvals").select("correction_id").eq("tenant_id",TENANT_ID).then(r=>r,()=>({data:[]})),
+      getMirror("cash_state"),
     ]);
     plan   = (pl && pl.data) || {};
     roster = (ro && ro.data && Array.isArray(ro.data.roster)) ? ro.data.roster : [];
@@ -1792,6 +2696,7 @@ async function loadPulpit() {
     rems   = ((rm && rm.data) || []).filter(r => r.active !== false);
     rf     = rfm;
     appr   = (ar && ar.data) || [];
+    cashState = (cs && typeof cs === "object") ? cs : null;
   } catch { return body('<div class="empty">Nie udało się wczytać pulpitu.</div>'); }
 
   // Obsada: HK z roster + recepcja z mirrora grafiku.
@@ -1808,6 +2713,8 @@ async function loadPulpit() {
     cash.sort((a,b)=>String(b.saved_at||"").localeCompare(String(a.saved_at||"")));
   }
   const safe = cash.length ? cash[0].safe_total : null;
+  // Live stan kasy (kasetka) z lustra recepcji; fallback do safe_total z raportu.
+  const kasaLive = (cashState && cashState.kasetka != null) ? cashState.kasetka : safe;
   const closingShift = cash.find(r => r.shift_key==="wieczorowa"||r.shift_key==="nocna");
   const kwMissing = closingShift && (closingShift.cash_closing==null || closingShift.cash_closing===0);
   const kwTxt = kwMissing ? "⚠ brak" : (closingShift ? "✓ zarejestr." : "—");
@@ -1822,28 +2729,30 @@ async function loadPulpit() {
     <div class="kpi"><div class="l">Obsada dziś</div><div class="v">${hkCount + recCount}</div></div>
     <div class="kpi"><div class="l">Wyjazdy</div><div class="v gold">${fmtWP(types.w.reg, types.w.apt)}</div></div>
     <div class="kpi"><div class="l">Zadania</div><div class="v${pilne?' bad':''}">${openTasks.length}</div></div>
-    <div class="kpi"><div class="l">Sejf</div><div class="v ok">${zl(safe)}</div></div>
+    <div class="kpi"><div class="l">Kasa</div><div class="v ok">${zl(kasaLive)}</div></div>
   </div>`;
 
-  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:1px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
-  const tile = (tab,title,lines) => `<div class="wcard" style="cursor:pointer" onclick="setHkTab('${tab}')">
-    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:800;font-size:13.5px">${title}</span><span style="font-size:11px;color:var(--plum);font-weight:800">otwórz ›</span></div>
-    <div style="margin-top:7px">${lines}</div></div>`;
+  const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
+  const tile = (tab,icon,title,lines) => `<div class="wcard" style="cursor:pointer;padding:16px 17px" onclick="setHkTab('${tab}')">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="display:flex;align-items:center;gap:11px;font-weight:800;font-size:15px"><span style="font-size:26px;line-height:1">${icon}</span>${title}</span>
+      <span style="font-size:11.5px;color:var(--plum);font-weight:800">otwórz ›</span></div>
+    <div style="margin-top:11px">${lines}</div></div>`;
 
   const tiles = [
-    tile("kasa","💰 Kasa", line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Stan sejfu", zl(safe)) + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
-    tile("zadania","✅ Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
-    tile("wyjazdy","🚪 Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
-    tile("live","👥 Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
+    tile("kasa","💰","Kasa", line("Kasetka", zl(kasaLive)) + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
+    tile("zadania","✅","Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    tile("wyjazdy","🚪","Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
+    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
   ].join("");
 
   const remHtml = rems.length
-    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k">📌 ${esc(r.title||"")}</span></div>`).join("")
+    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k" style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">📌</span>${esc(r.title||"")}</span></div>`).join("")
     : "";
 
-  body(`<div class="note fullspan" style="margin-top:0;margin-bottom:10px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
+  body(`<div class="note fullspan" style="margin-top:0;margin-bottom:12px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
     + kpis
-    + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:6px">${tiles}</div>`
+    + `<div class="fullspan" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:4px">${tiles}</div>`
     + remHtml);
 }
 
@@ -1954,8 +2863,14 @@ async function loadGrafik() {
     // recepcja: najpierw pełna lista z rejestru, potem uzupełnienie o osoby z zamkniętych zmian
     const recep = [...new Set([...(Array.isArray(roster) ? roster : []), ...(rec.data || []).map(x => x.employee)].filter(Boolean))];
     workers = [...new Set([...(dept === "recepcja" ? [] : hk), ...(dept === "hk" ? [] : recep)])].sort((a,b)=>a.localeCompare(b,"pl"));
-    // Każdy menedżer widzi TYLKO swoje wysłane grafiki; admin widzi wszystkie.
-    reqs = (r.data || []).filter(x => CURRENT.role === "admin" || x.created_by === CURRENT.name);
+    // Korelacja działu: cały dział widzi wspólną pulę grafików (koordynator i
+    // menedżer recepcji widzą się nawzajem). Admin — wszystkie; menedżer HK — HK;
+    // role recepcyjne — recepcja. Stare prośby bez tokenów (kind=null) tylko admin.
+    reqs = (r.data || []).filter(x => {
+      if (CURRENT.role === "admin") return true;
+      return dept === "hk" ? x.kind === "hk" : x.kind === "recepcja";
+    });
+    reqs.forEach(x => { REQ_META[x.id] = { period_type: x.period_type, period_start: String(x.period_start) }; });
   } catch {}
   const defKind = dept === "hk" ? "hk" : "recepcja";
   const wchecks = workers.length
@@ -1967,10 +2882,13 @@ async function loadGrafik() {
     const lbl = r.period_type === "week" ? "tydzień" : "miesiąc";
     const ex = grafikExpiry(r.expires_at);
     const exHtml = ex.txt ? ` · <span style="color:${ex.closed||ex.warn?'var(--bad)':'var(--ok)'};font-weight:800">${ex.closed?'🔒 '+ex.txt:'🟢 '+ex.txt}</span>` : "";
+    // Usuwać może tylko właściciel grafiku (lub admin) — wg RPC; cudze są tylko do wglądu.
+    const canDel = CURRENT.role === "admin" || r.created_by === CURRENT.name;
+    const delBtn = canDel ? `<button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="delGrafik('${r.id}', this)">Usuń</button>` : "";
     return `<div class="statrow" style="cursor:pointer;gap:8px">
       <div class="k" onclick="openGrid('${r.id}')" style="flex:1"><div>${lbl} od ${d.txt}</div>
         <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">${r.answered}/${r.persons} odpowiedziało${r.created_by?" · "+esc(r.created_by):""}${exHtml}</div></div>
-      <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="delGrafik('${r.id}', this)">Usuń</button>
+      ${delBtn}
       <span class="v" style="font-size:13px" onclick="openGrid('${r.id}')">›</span>
     </div>`;
   }).join("") : '<div class="empty">Brak wysłanych grafików.</div>';
@@ -2060,6 +2978,7 @@ window.delGrafik = async (reqId, btn) => {
   } catch (e) { if(btn){ btn.disabled=false; btn.textContent="Usuń"; } alert((e&&e.message)||"Nie udało się usunąć grafiku."); }
 };
 let GRID_ROWS = [], GRID_REQ = null, gridView = "grid";
+let REQ_META = {};            // { reqId: { period_type, period_start } } — do wyliczenia dni grafiku
 window.openGrid = async (reqId) => {
   body('<div class="spin">Wczytywanie odpowiedzi…</div>');
   try { const { data } = await sb.rpc("get_request_grid", { p_request_id: reqId }); GRID_ROWS = data || []; GRID_REQ = reqId; }
@@ -2073,26 +2992,39 @@ function renderGrid() {
   const dates = [...new Set(rows.filter(r=>r.date).map(r => r.date))].sort();
   const byPD = {}; rows.forEach(r => { if(r.date) byPD[r.person+"|"+r.date] = r.choice; });
   const tokenOf = {}; rows.forEach(r => { if(r.token && !tokenOf[r.person]) tokenOf[r.person] = r.token; });
+  // Preferowana liczba godzin na okres (jedna wartość per osoba — z availability_tokens.pref_hours).
+  const prefOf = {}; rows.forEach(r => { if(r.pref_hours!=null && prefOf[r.person]==null) prefOf[r.person] = r.pref_hours; });
+  const prefBadge = p => prefOf[p]!=null ? `<span style="display:inline-block;font-size:11px;font-weight:800;color:var(--plum);background:rgba(90,29,74,.08);border:1px solid var(--line-strong);border-radius:7px;padding:2px 7px;white-space:nowrap">chce ${prefOf[p]} godz.</span>` : "";
   const av = (p,d) => { const c = byPD[p+"|"+d]; return c && c !== "off" ? c : null; };
+  // Realne godziny (od–do) dla wpisów „godziny" — recepcja wpisuje je z telefonu.
+  const hoursOf = {}; rows.forEach(r => { if(r.date && ((r.start_h!=null&&r.start_h!=="")||(r.end_h!=null&&r.end_h!=="")) ) hoursOf[r.person+"|"+r.date] = {start:r.start_h, end:r.end_h}; });
+  // Etykieta komórki: dla „godziny" pokazuje faktyczne godziny (np. 8–16), inaczej skrót zmiany.
+  const cellLabel = (p,d) => {
+    const c = byPD[p+"|"+d];
+    if (c === "godziny"){ const h = hoursOf[p+"|"+d]; if (h){ const s=(h.start??""), e=(h.end??""); if (s!==""||e!=="") return [`${s}–${e}`, "#1f7a52"]; } }
+    return choiceAbbr(c);
+  };
   let html = `<button class="link" onclick="setHkTab('grafik')">‹ Wróć do grafików</button>`;
   html += `<div class="soon">Linki indywidualne</div>` + persons.map(pn => {
     const tok = tokenOf[pn] || "";
     return `<div class="statrow" style="gap:8px">
-      <div class="k"><div>${esc(pn)}</div><div style="font-size:13px;font-weight:900;color:var(--plum);letter-spacing:.1em;margin-top:2px">kod: ${esc(tok)}</div></div>
+      <div class="k"><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">${esc(pn)} ${prefBadge(pn)}</div><div style="font-size:13px;font-weight:900;color:var(--plum);letter-spacing:.1em;margin-top:2px">kod: ${esc(tok)}</div></div>
       <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:11.5px;cursor:pointer" onclick="copyLink('${esc(tok)}', this)">Kopiuj</button>
       <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="regenLink('${esc(tok)}','${esc(reqId)}')">Odśwież</button>
     </div>`;
   }).join("");
   if (!dates.length) { html += '<div class="empty">Nikt jeszcze nie odpowiedział.</div>'; return body(html); }
+  html += `<button class="btn fullspan" style="width:100%;margin-top:14px;background:#0f7a4a" onclick="openSchedule('${esc(reqId)}')">📋 Ułóż grafik z tych danych →</button>`;
   const vbtn = (v,l)=>`<button class="tab ${gridView===v?"on":""}" style="flex:0 0 auto" onclick="setGridView('${v}')">${l}</button>`;
   html += `<div class="tabs" style="margin:14px 0 8px">${vbtn("grid","Siatka")}${vbtn("summary","Podsumowanie dni")}${vbtn("person","Per osoba")}</div>`;
-  const legend = Object.entries(CHOICE_ABBR).map(([k,a])=>`<span style="color:${a[1]};font-weight:800">${a[0]}</span> ${k}`).join(" · ");
+  const legend = Object.entries(CHOICE_ABBR).filter(([k])=>k!=="godziny").map(([k,a])=>`<span style="color:${a[1]};font-weight:800">${a[0]}</span> ${k}`).join(" · ")
+    + ` · <span style="color:#1f7a52;font-weight:800">8–16</span> godziny (od–do)`;
   if (gridView === "grid") {
     const head = `<th style="text-align:left;padding:6px 8px;position:sticky;left:0;background:var(--cream)">Osoba</th>` +
       dates.map(d => { const [,m,dd]=d.split("-"); return `<th style="padding:6px 6px;font-size:11px;color:var(--muted)">${dd}.${m}</th>`; }).join("");
     const bodyRows = persons.map(p => {
-      const cells = dates.map(d => { const c = byPD[p+"|"+d]; const a = choiceAbbr(c);
-        return `<td style="text-align:center;padding:5px 6px">${a?`<span style="display:inline-block;min-width:22px;font-weight:900;font-size:12px;color:${a[1]}">${a[0]}</span>`:`<span style="color:var(--line-strong)">·</span>`}</td>`; }).join("");
+      const cells = dates.map(d => { const a = cellLabel(p,d);
+        return `<td style="text-align:center;padding:5px 6px">${a?`<span style="display:inline-block;min-width:22px;font-weight:900;font-size:${a[0].length>3?"10.5px":"12px"};color:${a[1]};white-space:nowrap">${esc(a[0])}</span>`:`<span style="color:var(--line-strong)">·</span>`}</td>`; }).join("");
       return `<tr><td style="padding:6px 8px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(p)}</td>${cells}</tr>`;
     }).join("");
     html += `<div class="note" style="margin-top:0">Legenda: ${legend}</div>
@@ -2103,18 +3035,157 @@ function renderGrid() {
       const avail = persons.filter(p => av(p,d)); const [,m,dd]=d.split("-");
       return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:4px">
         <div style="display:flex;width:100%;align-items:center;gap:8px"><span class="k" style="flex:1">${dd}.${m}</span><span class="v">${avail.length}</span></div>
-        ${avail.length?`<div class="chips">${avail.map(p=>{const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${esc(p)} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join("")}</div>`:`<div style="font-size:12px;color:var(--muted)">nikt nie może</div>`}
+        ${avail.length?`<div class="chips">${avail.map(p=>{const a=cellLabel(p,d);return `<span class="chip">${esc(p)} <b style="color:${a?a[1]:"inherit"}">${a?esc(a[0]):""}</b></span>`;}).join("")}</div>`:`<div style="font-size:12px;color:var(--muted)">nikt nie może</div>`}
       </div>`;
     }).join("");
   } else {
     html += persons.map(p => {
       const days = dates.filter(d => av(p,d));
-      return `<div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(p))}</span><span class="nm">${esc(p)}</span><span class="prog">${days.length}</span></div>
-        <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=choiceAbbr(byPD[p+"|"+d]);return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?a[0]:""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
+      return `<div class="wcard" style="cursor:default"><div class="wtop"><span class="av">${esc(initials(p))}</span><span class="nm">${esc(p)}</span>${prefOf[p]!=null?`<span style="font-size:11.5px;font-weight:800;color:var(--plum);margin-left:auto;margin-right:8px">chce ${prefOf[p]} godz.</span>`:""}<span class="prog">${days.length}</span></div>
+        <div class="chips">${days.length?days.map(d=>{const [,m,dd]=d.split("-");const a=cellLabel(p,d);return `<span class="chip">${dd}.${m} <b style="color:${a?a[1]:"inherit"}">${a?esc(a[0]):""}</b></span>`;}).join(""):'<span style="font-size:12px;color:var(--muted)">brak dyspozycyjności</span>'}</div></div>`;
     }).join("");
   }
   body(html);
 }
+
+// ══ UŁÓŻ GRAFIK: edytowalna tabela (dni × osoby) z zebranej dyspozycyjności ══
+let SCHED = null;  // { reqId, persons, days, prefOf, decl, cells, status, dirty }
+
+// Dni całego okresu zbiórki (z REQ_META); fallback: dni z odpowiedzi.
+function schedDays(reqId){
+  const meta = REQ_META[reqId];
+  if (meta && meta.period_start && /^\d{4}-\d{2}-\d{2}$/.test(meta.period_start)){
+    const [y,m,d] = meta.period_start.split("-").map(Number); const out=[];
+    if (meta.period_type === "week"){ const st=new Date(y,m-1,d); for(let i=0;i<7;i++) out.push(isoDate(new Date(st.getTime()+i*86400000))); }
+    else { const last=new Date(y,m,0).getDate(); for(let i=1;i<=last;i++) out.push(isoDate(new Date(y,m-1,i))); }
+    return out;
+  }
+  return [...new Set(GRID_ROWS.filter(r=>r.date).map(r=>r.date))].sort();
+}
+// „8–16" → 8 (liczba godzin). Zawijanie przez północ (22–6 = 8). Pojedyncza liczba = tyle godzin.
+function schedHours(v){
+  if (!v) return 0;
+  const s = String(v).replace(/[–—]/g,"-");
+  const m = s.match(/(\d{1,2})\s*-\s*(\d{1,2})/);
+  if (m){ let a=+m[1], b=+m[2], diff=b-a; if(diff<0) diff+=24; return diff; }
+  const n = parseFloat(s.replace(",",".")); return isFinite(n) ? n : 0;
+}
+function schedDayCount(di){ const S=SCHED, d=S.days[di]; let n=0; S.persons.forEach(p=>{ const v=S.cells[p+"|"+d]; if(v&&String(v).trim()) n++; }); return n||""; }
+function schedSum(pi){ const S=SCHED, p=S.persons[pi]; let h=0,days=0; S.days.forEach(d=>{ const v=S.cells[p+"|"+d]; if(v&&String(v).trim()){ days++; h+=schedHours(v); } }); return {h:Math.round(h),days}; }
+function schedSumHtml(pi){ const S=SCHED, p=S.persons[pi]; const {h,days}=schedSum(pi); const pref=S.prefOf[p];
+  let col="var(--ink)", mark="";
+  if (pref!=null){ if(h===pref){col="var(--ok)";mark=" ✓";} else if(Math.abs(h-pref)<=4){col="#a07820";} else {col="var(--bad)";mark=" ⚠";} }
+  return `<span style="color:${col}">${h}h<span style="font-weight:600;color:var(--muted);font-size:10px"> · ${days}d</span>${mark}</span>`;
+}
+
+window.openSchedule = async (reqId) => {
+  body('<div class="spin">Wczytywanie…</div>');
+  if (GRID_REQ !== reqId || !GRID_ROWS.length){
+    try { const { data } = await sb.rpc("get_request_grid", { p_request_id: reqId }); GRID_ROWS = data||[]; GRID_REQ = reqId; }
+    catch { return body('<div class="empty">Nie udało się pobrać danych.</div>'); }
+  }
+  let saved = null;
+  try { const { data } = await sb.rpc("get_schedule", { p_request_id: reqId }); saved = data; } catch {}
+  const rows = GRID_ROWS;
+  const persons = [...new Set(rows.map(r=>r.person))].sort((a,b)=>a.localeCompare(b,"pl"));
+  const days = schedDays(reqId);
+  const prefOf = {}; rows.forEach(r=>{ if(r.pref_hours!=null && prefOf[r.person]==null) prefOf[r.person]=r.pref_hours; });
+  // Deklaracje pracownika per komórka (placeholder/podświetlenie).
+  const decl = {};
+  rows.forEach(r=>{ if(!r.date) return; const key=r.person+"|"+r.date;
+    if (r.choice==="off") decl[key]={off:true,txt:"nie może"};
+    else if (r.choice==="godziny"){ const t=`${r.start_h??""}–${r.end_h??""}`; decl[key]={off:false,txt:(t==="–"?"godziny":t)}; }
+    else if (r.choice) decl[key]={off:false,txt:r.choice};
+  });
+  const cells = (saved && saved.cells && typeof saved.cells==="object") ? {...saved.cells} : {};
+  SCHED = { reqId, persons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
+  renderSchedule();
+};
+
+function renderSchedule(){
+  const S = SCHED; if(!S) return;
+  const meta = REQ_META[S.reqId]||{};
+  const periodLbl = meta.period_type==="month" ? "miesiąc" : "tydzień";
+  const head = `<th class="dcol" style="text-align:left">Dzień</th>` +
+    S.persons.map(p=>`<th>${esc(p)}${S.prefOf[p]!=null?`<div style="font-size:9px;color:var(--plum);font-weight:700">chce ${S.prefOf[p]}h</div>`:""}</th>`).join("") +
+    `<th>Obsada</th>`;
+  const bodyRows = S.days.map((d,di)=>{
+    const [y,m,dd]=d.split("-"); const dt=new Date(+y,+m-1,+dd); const dow=DOW[dt.getDay()];
+    const wknd = (dt.getDay()%6===0) ? "wknd":"";
+    const cells = S.persons.map((p,pi)=>{
+      const key=p+"|"+d; const cur=S.cells[key]||""; const dc=S.decl[key];
+      let cls="scell", title="";
+      if (dc&&dc.off){ cls+=" off"; title="zadeklarowała: nie może"; if(cur) cls+=" warn"; }
+      else if (dc&&dc.txt){ cls+=" can"; title="zadeklarowała: "+dc.txt; }
+      const ph = (dc&&!dc.off&&dc.txt&&dc.txt!=="godziny")?dc.txt:"";
+      return `<td><input class="${cls}" value="${esc(cur)}" placeholder="${esc(ph)}" title="${esc(title)}" onchange="schedSetCell(${di},${pi},this.value)"/></td>`;
+    }).join("");
+    return `<tr class="${wknd}"><td class="dcol">${dd}.${m} <span style="font-weight:600;color:var(--muted);font-size:10px">${dow.slice(0,3)}</span></td>${cells}<td id="sob_${di}">${schedDayCount(di)}</td></tr>`;
+  }).join("");
+  const footSum = `<tr><td class="sched-foot-l">Σ godzin</td>${S.persons.map((p,pi)=>`<td id="ssum_${pi}">${schedSumHtml(pi)}</td>`).join("")}<td></td></tr>`;
+  const note = S.dirty ? `<span style="color:#C2410C">● Niezapisane zmiany</span>`
+    : (S.status==="published" ? `<span style="color:var(--ok)">✓ Opublikowany</span>` : `<span style="color:var(--muted)">Szkic zapisany</span>`);
+  const html = `<button class="link" onclick="openGrid('${esc(S.reqId)}')">‹ Wróć do odpowiedzi</button>
+    <div class="soon" style="margin-top:0">Ułóż grafik — ${periodLbl}</div>
+    <div class="note" style="margin-top:0">Wpisz godziny zmiany (np. <b>8–16</b>) w komórce. Zielone = osoba może, różowe = wpisała „nie może". Σ liczy godziny i porównuje z preferencją.</div>
+    <div id="schedNote" style="font-size:12px;font-weight:800;margin:8px 0">${note}</div>
+    <div class="fullspan" style="overflow:auto;max-height:64vh;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
+      <table class="sched-tbl"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody><tfoot>${footSum}</tfoot></table></div>
+    <div class="fullspan" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedFill()">Wstaw deklaracje</button>
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;cursor:pointer" onclick="schedClear()">Wyczyść</button>
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedPrint()">🖨 Drukuj</button>
+      <button class="btn" style="flex:2;min-width:160px;margin-top:0" onclick="schedSave(this)">Zapisz grafik</button>
+    </div>
+    <div id="schedMsg" class="msg"></div>`;
+  body(html);
+}
+window.schedSetCell = (di,pi,val)=>{
+  const S=SCHED; if(!S) return;
+  const p=S.persons[pi], d=S.days[di]; const key=p+"|"+d; const v=String(val||"").trim();
+  if (v) S.cells[key]=v; else delete S.cells[key];
+  S.dirty=true;
+  const ss=document.getElementById("ssum_"+pi); if(ss) ss.innerHTML=schedSumHtml(pi);
+  const so=document.getElementById("sob_"+di); if(so) so.textContent=schedDayCount(di);
+  const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:#C2410C">● Niezapisane zmiany</span>`;
+};
+window.schedFill = ()=>{
+  const S=SCHED; if(!S) return;
+  if(!confirm("Wstawić deklarowane godziny pracowników do komórek? Tam, gdzie ktoś podał godziny, nadpisze obecny wpis.")) return;
+  S.persons.forEach(p=> S.days.forEach(d=>{ const dc=S.decl[p+"|"+d]; if(dc&&!dc.off&&dc.txt&&dc.txt!=="godziny") S.cells[p+"|"+d]=dc.txt; }));
+  S.dirty=true; renderSchedule();
+};
+window.schedClear = ()=>{ const S=SCHED; if(!S) return; if(!confirm("Wyczyścić wszystkie wpisane zmiany?")) return; S.cells={}; S.dirty=true; renderSchedule(); };
+window.schedSave = async (btn)=>{
+  const S=SCHED; if(!S) return;
+  if(btn){ btn.disabled=true; btn.textContent="Zapisywanie…"; }
+  const msg=document.getElementById("schedMsg");
+  try {
+    const { error } = await sb.rpc("save_schedule", { p_request_id:S.reqId, p_cells:S.cells, p_status:"draft" });
+    if(error) throw error;
+    S.dirty=false; S.status="draft";
+    if(msg){ msg.className="msg info"; msg.textContent="Zapisano grafik."; }
+    const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:var(--muted)">Szkic zapisany</span>`;
+  } catch(e){ if(msg){ msg.className="msg err"; msg.textContent=(e&&e.message)||"Nie udało się zapisać."; } }
+  if(btn){ btn.disabled=false; btn.textContent="Zapisz grafik"; }
+};
+window.schedPrint = ()=>{
+  const S=SCHED; if(!S) return;
+  const meta=REQ_META[S.reqId]||{};
+  const title = `Grafik — ${meta.period_type==="month"?"miesiąc":"tydzień"}`;
+  const sub = S.days.length ? `${fmtDate(S.days[0]).txt} – ${fmtDate(S.days[S.days.length-1]).txt} · wydruk ${fmtDate(isoDate(new Date())).txt}` : "";
+  const head = `<th class="l">Dzień</th>`+S.persons.map(p=>`<th>${esc(p)}</th>`).join("")+`<th>Obsada</th>`;
+  const rowsHtml = S.days.map((d,di)=>{ const [y,m,dd]=d.split("-"); const dow=DOW[new Date(+y,+m-1,+dd).getDay()].slice(0,3);
+    const tds=S.persons.map(p=>`<td>${esc(S.cells[p+"|"+d]||"")}</td>`).join("");
+    return `<tr><td class="l">${dd}.${m} ${dow}</td>${tds}<td>${schedDayCount(di)||""}</td></tr>`;
+  }).join("");
+  const sumRow=`<tr><td class="l"><b>Σ godzin</b></td>${S.persons.map((p,pi)=>{const {h}=schedSum(pi);return `<td><b>${h}h</b></td>`;}).join("")}<td></td></tr>`;
+  let area=document.getElementById("printArea");
+  if(!area){ area=document.createElement("div"); area.id="printArea"; document.body.appendChild(area); }
+  area.innerHTML=`<h2>${esc(title)}</h2><div class="psub">${esc(sub)}</div>
+    <table><thead><tr>${head}</tr></thead><tbody>${rowsHtml}</tbody><tfoot>${sumRow}</tfoot></table>`;
+  window.print();
+};
 
 // ── Usterki SLA: czas reakcji/zamknięcia, zaległości, przekroczone terminy (faults).
 //    Czasy z reported_at → started_at (reakcja) → completed_at (zamknięcie); due_at = termin (SLA). ──
@@ -2277,6 +3348,22 @@ window.addKonserwTask = async () => {
 
 // ── Plan: dzienne zadania (np. Parking) dla konserwatorów + odpowiedź/status ──
 const PLAN_TYPES = ["Parking","Sprzątanie terenu","Przegląd techniczny","Inne"];
+// Generator „Plan działania" (AI) — tylko menedżer główny/operacyjny/admin.
+const PLAN_AI_ROLES = new Set(["mgr_glowny","mgr_operacyjny","admin"]);
+// Lista WSZYSTKICH pracowników (recepcja + obsada HK + konserwatorzy), unikalna.
+async function gatherAllEmployees() {
+  const out = new Set(KONSERW_BASE);
+  try {
+    const recep = await getMirror("employees");
+    (Array.isArray(recep) ? recep : []).forEach(n => { if (typeof n === "string" && n.trim()) out.add(n.trim()); });
+  } catch {}
+  try {
+    const from = isoDate(new Date(Date.now() - 30*864e5));
+    const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).gte("date", from).limit(60);
+    (data || []).forEach(r => (Array.isArray(r.roster) ? r.roster : []).forEach(e => { const n = (e && e.name || "").trim(); if (n) out.add(n); }));
+  } catch {}
+  return [...out].sort((a,b) => a.localeCompare(b, "pl"));
+}
 async function loadPlan() {
   let rows = [];
   const fromKey = isoDate(new Date(Date.now() - 7*864e5));
@@ -2284,6 +3371,20 @@ async function loadPlan() {
       .eq("tenant_id", TENANT_ID).gte("date", fromKey).order("date", { ascending:false }).limit(200); rows = data || []; }
   catch { return body('<div class="empty">Nie udało się pobrać planu.</div>'); }
   const today = isoDate(new Date());
+  const aiCard = PLAN_AI_ROLES.has(CURRENT.role) ? `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">✨ Plan działania (AI)</div>
+    <div class="field"><label>Cel planu</label><input id="apGoal" class="inp" placeholder="np. Przygotować hotel do sezonu letniego"/></div>
+    <div class="field"><label>Zakres</label><select id="apRange" class="inp">
+      <option value="0">Lista kroków (bez podziału na dni)</option>
+      <option value="1">Jeden dzień (dziś)</option>
+      <option value="3">Harmonogram — 3 dni</option>
+      <option value="5">Harmonogram — 5 dni</option>
+      <option value="7">Harmonogram — 7 dni</option>
+    </select></div>
+    <button id="apBtn" class="btn" onclick="genActionPlan()">✨ Rozpisz plan AI</button>
+    <div id="apMsg" class="msg"></div>
+    <div id="apPreview"></div>
+  </div>` : "";
   const form = `<div class="card" style="margin-bottom:12px">
     <div class="soon" style="margin-top:0">Dodaj zadanie do planu</div>
     <div class="field"><label>Plan</label><select id="plKind" class="inp">${PLAN_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
@@ -2293,7 +3394,7 @@ async function loadPlan() {
     <button id="plBtn" class="btn" onclick="addPlan()">Dodaj do planu</button>
     <div id="plMsg" class="msg"></div>
   </div>`;
-  if (!rows.length) return body(form + '<div class="empty">Brak zadań w planie (ostatnie 7 dni).</div>');
+  if (!rows.length) return body(aiCard + form + '<div class="empty">Brak zadań w planie (ostatnie 7 dni).</div>');
   const byPlan = {};
   rows.forEach(r => { (byPlan[r.plan] = byPlan[r.plan] || {})[r.date] = (byPlan[r.plan][r.date] || []); byPlan[r.plan][r.date].push(r); });
   const sections = Object.keys(byPlan).sort().map(pl => {
@@ -2304,7 +3405,7 @@ async function loadPlan() {
     }).join("");
     return `<div class="soon">📋 ${esc(pl)}</div>${blocks}`;
   }).join("");
-  body(form + sections);
+  body(aiCard + form + sections);
 }
 function planRow(r) {
   const done = r.status === "done";
@@ -2349,32 +3450,293 @@ window.planStatus = async (id, st) => {
   catch (e) { alert((e&&e.message)||"Błąd."); }
 };
 
-// ── Zmiany: grafik przydzielony (mirror "schedule" z aplikacji recepcji) ──
+// ── Plan działania (AI): cel → kroki (lub harmonogram) z przydziałem osób ──
+// LLM rozpisuje plan; menedżer poprawia podgląd i zapisuje kroki jako zadania w panel_plan.
+window.AP_EMPLOYEES = [];
+window.genActionPlan = async () => {
+  const goal   = ((document.getElementById("apGoal")||{}).value || "").trim();
+  const rangeN = parseInt((document.getElementById("apRange")||{}).value || "0", 10) || 0;
+  const msg = document.getElementById("apMsg"), btn = document.getElementById("apBtn"), prev = document.getElementById("apPreview");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!goal) return setM("Wpisz cel planu.", "err");
+  setM(""); if (prev) prev.innerHTML="";
+  if (btn){ btn.disabled=true; btn.textContent="Rozpisuję…"; }
+  try {
+    const employees = await gatherAllEmployees();
+    AP_EMPLOYEES = employees;
+    const days = [];
+    if (rangeN >= 1) { const t=new Date(); t.setHours(0,0,0,0); for (let i=0;i<rangeN;i++) days.push(isoDate(new Date(t.getTime()+i*86400000))); }
+    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"plan", tenant_id:TENANT_ID, payload:{ goal, days, employees } } });
+    if (error) throw error;
+    const plan = data && data.data;
+    if (!plan || !Array.isArray(plan.steps) || !plan.steps.length)
+      return setM("AI nie zwróciło kroków — sformułuj cel inaczej albo dodaj kroki ręcznie poniżej.", "err");
+    renderActionPlanPreview(plan, employees);
+  } catch (e) {
+    setM("AI niedostępne ("+((e&&e.message)||"błąd")+"). Dodaj kroki ręcznie poniżej.", "err");
+  } finally {
+    if (btn){ btn.disabled=false; btn.textContent="✨ Rozpisz plan AI"; }
+  }
+};
+function renderActionPlanPreview(plan, employees) {
+  const prev = document.getElementById("apPreview");
+  if (!prev) return;
+  const opts = who => `<option value="">— zespół / dowolny —</option>` +
+    employees.map(n=>`<option${n===who?" selected":""}>${esc(n)}</option>`).join("");
+  const rows = plan.steps.map(s => `
+    <div class="ap-row" style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:7px;display:flex;flex-direction:column;gap:6px">
+      <input class="inp ap-task" value="${esc(s.task||"")}" placeholder="Co wykonać"/>
+      <div style="display:flex;gap:6px">
+        <input class="inp ap-day" type="date" value="${esc(s.day||"")}" style="flex:0 0 46%"/>
+        <select class="inp ap-who" style="flex:1">${opts(s.assigned_to||"")}</select>
+      </div>
+      <button class="rost-addbtn" style="align-self:flex-end;padding:4px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11px;cursor:pointer" onclick="this.closest('.ap-row').remove()">Usuń</button>
+    </div>`).join("");
+  prev.innerHTML = `
+    <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="field"><label>Tytuł planu</label><input id="apTitle" class="inp" value="${esc(plan.title||"Plan działania")}"/></div>
+      ${plan.note?`<div class="msg info" style="display:block;margin:4px 0 8px">💡 ${esc(plan.note)}</div>`:""}
+      <div id="apSteps">${rows}</div>
+      <button class="btn" onclick="saveActionPlan()">Zapisz plan do zadań</button>
+      <div id="apSaveMsg" class="msg"></div>
+    </div>`;
+}
+window.saveActionPlan = async () => {
+  const title = (((document.getElementById("apTitle")||{}).value || "").trim()) || "Plan działania";
+  const msg = document.getElementById("apSaveMsg");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  const today = isoDate(new Date());
+  const rows = [...document.querySelectorAll("#apSteps .ap-row")].map(el => ({
+    task: ((el.querySelector(".ap-task")||{}).value || "").trim(),
+    date: (el.querySelector(".ap-day")||{}).value || today,
+    who:  (el.querySelector(".ap-who")||{}).value || null,
+  })).filter(r => r.task);
+  if (!rows.length) return setM("Brak kroków do zapisania.", "err");
+  setM("Zapisuję…", "info");
+  try {
+    const payload = rows.map(r => ({ tenant_id:TENANT_ID, plan:title, date:r.date, task:r.task, assigned_to:r.who, status:"open", created_by:CURRENT.name||"Panel" }));
+    const { error } = await sb.from("panel_plan").insert(payload);
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"plan_ai_zapisany", p_detail:`${title}: ${rows.length} kroków` }); } catch {}
+    loadPlan();
+  } catch (e) { setM((e&&e.message)||"Nie udało się zapisać.", "err"); }
+};
+
+// ── Zmiany: grafik EDYTOWALNY z dwukierunkowym sync NA ŻYWO do recepcji ──
+// Zapis idzie przez schedule_merge (migracja 0034) — per komórka, nie kasuje
+// cudzych wpisów. Realtime: zmiany z recepcji/innych urządzeń wchodzą same.
 const DOW_SH = ["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
 const SHIFT_CODE2 = { poranna:"P", popoludniowa:"PP", wieczorowa:"W", dzienna:"D", nocna:"N" };
+const ZM_SHIFT_OPTS = [["","— zmiana —"],["poranna","P · poranna"],["popoludniowa","PP · popołudniowa"],
+                       ["wieczorowa","W · wieczorowa"],["dzienna","D · dzienna"],["nocna","N · nocna"]];
+let ZM_MONDAY=null, ZM_SCHED={}, ZM_EMP_REG=[], ZM_EMPS=[], ZM_ORPHANS=[], ZM_EXTRA=[], ZM_DAYS=[], ZM_DAYIDX=null, ZM_REV=0, ZM_UNSUB=null, ZM_RESIZE=null;
+
+const zmMonday = d => { const x=new Date(d); const off=(x.getDay()+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; };
+const zmHours  = c => c ? `${c.start||""}${c.end?"-"+c.end:""}` : "";
+function zmShiftSel(id,sel){ return `<select id="${id}" class="zm-s" onchange="zmEdit(this)">${ZM_SHIFT_OPTS.map(([v,l])=>`<option value="${v}"${v===sel?" selected":""}>${l}</option>`).join("")}</select>`; }
+
+async function zmFetchDoc(){
+  try{ const { data } = await sb.from("panel_mirror").select("data,rev,updated_device").eq("tenant_id",TENANT_ID).eq("kind","schedule").maybeSingle(); return data||null; }
+  catch{ return null; }
+}
+function zmSubscribe(cb){
+  try{
+    const ch = sb.channel("panel-zmiany")
+      .on("postgres_changes",{event:"*",schema:"public",table:"panel_mirror",filter:`tenant_id=eq.${TENANT_ID}`},
+          p=>{ if(p&&p.new&&p.new.kind==="schedule") cb(p.new); })
+      .subscribe();
+    return ()=>{ try{ sb.removeChannel(ch); }catch{} };
+  }catch{ return ()=>{}; }
+}
+function zmOnRealtime(row){
+  if(!row) return;
+  const me = hkStateDeviceId();
+  if(row.updated_device===me){ if(typeof row.rev==="number") ZM_REV=Math.max(ZM_REV,row.rev); return; } // własne echo
+  if(typeof row.rev==="number" && row.rev<=ZM_REV) return;                                              // starsze/zastosowane
+  ZM_REV = row.rev||ZM_REV;
+  if(row.data && typeof row.data==="object") ZM_SCHED = row.data;
+  const root = document.getElementById("zmRoot"); if(!root) return;                                     // nie jesteśmy w zakładce
+  const ae = document.activeElement;
+  if(ae && root.contains(ae) && /INPUT|SELECT/.test(ae.tagName||"")) return;                            // nie przerywaj edycji
+  zmRender();
+}
+
 async function loadZmiany() {
-  const sched = await getMirror("schedule");
-  if (!sched || typeof sched !== "object" || !Object.keys(sched).length)
-    return body('<div class="empty">Brak grafiku przydzielonego. Pojawi się, gdy recepcja zapisze grafik w aplikacji (po wdrożeniu nowej wersji aplikacji recepcji).</div>');
-  const mon = (()=>{ const d=new Date(); const off=(d.getDay()+6)%7; d.setDate(d.getDate()-off); d.setHours(0,0,0,0); return d; })();
-  const days = [...Array(7)].map((_,i)=> isoDate(new Date(mon.getTime()+i*86400000)));
-  const emps = [...new Set(days.flatMap(dk => { const day=sched[dk]; return day&&typeof day==="object" ? Object.keys(day).filter(e=>day[e]) : []; }))].sort((a,b)=>a.localeCompare(b,"pl"));
-  if (!emps.length) return body('<div class="empty">Brak przypisań w tym tygodniu.</div>');
-  const head = `<th style="text-align:left;padding:7px 9px;position:sticky;left:0;background:var(--cream)">Pracownik</th>` +
-    days.map((d,i)=>`<th style="padding:7px 6px;font-size:11px;color:var(--muted)">${DOW_SH[i]}<br><span style="font-weight:400">${d.slice(8)}</span></th>`).join("");
-  const rows = emps.map(emp => {
-    const cells = days.map(dk => {
-      const e = sched[dk] && sched[dk][emp];
-      if (!e) return `<td style="text-align:center;padding:5px 6px;color:var(--line-strong)">·</td>`;
-      const code = SHIFT_CODE2[e.shift] || (e.shift?String(e.shift).slice(0,2).toUpperCase():"✓");
-      const hrs = (e.start||e.end) ? `${e.start||""}${e.end?"-"+e.end:""}` : "";
-      return `<td style="text-align:center;padding:5px 6px"><span style="font-weight:900;font-size:12px;color:var(--plum)">${esc(code)}</span>${hrs?`<div style="font-size:10px;color:var(--muted)">${esc(hrs)}</div>`:""}</td>`;
+  if(!ZM_MONDAY) ZM_MONDAY = zmMonday(new Date());
+  body('<div class="empty">Ładuję grafik…</div>');
+  const [doc, emps] = await Promise.all([ zmFetchDoc(), getMirror("employees") ]);
+  ZM_SCHED = (doc && doc.data && typeof doc.data==="object") ? doc.data : {};
+  ZM_REV   = (doc && typeof doc.rev==="number") ? doc.rev : 0;
+  ZM_EMP_REG = Array.isArray(emps) ? emps.filter(e=>typeof e==="string" && e.trim()) : [];
+  if(!ZM_UNSUB) ZM_UNSUB = zmSubscribe(zmOnRealtime);
+  if(!ZM_RESIZE){ let t; ZM_RESIZE=()=>{ clearTimeout(t); t=setTimeout(()=>{ if(document.getElementById("zmRoot")) zmRender(); },180); }; window.addEventListener("resize",ZM_RESIZE); }
+  zmRender();
+}
+
+function zmRender(){
+  const mon = ZM_MONDAY;
+  ZM_DAYS = [...Array(7)].map((_,i)=> isoDate(new Date(mon.getTime()+i*86400000)));
+  const reg = [...new Set((ZM_EMP_REG||[]).filter(e=>typeof e==="string" && e.trim()))];
+  const schedEmps = new Set();
+  Object.values(ZM_SCHED).forEach(day=>{ if(day&&typeof day==="object") Object.keys(day).forEach(e=>{ if(day[e]) schedEmps.add(e); }); });
+  // Wiersze = UNIA: rejestr recepcji (źródło prawdy) + osoby z grafiku + ręcznie dodane
+  // (np. menedżer, który sam dobiera sobie wolne dni i nie jest w rejestrze). Dzięki temu
+  // każdy, kto ma wpis lub został dodany, dostaje wiersz do edycji. Dopasowanie odporne na
+  // ogonki/wielkość liter (np. „Paweł"→„Pawel"); duplikaty scalamy po normalizacji, zachowując
+  // pierwszy wariant pisowni (rejestr ma pierwszeństwo). Zapis per-komórka (schedule_merge)
+  // nigdy nie kasuje istniejącego grafiku — dodanie osoby jest bezpieczne.
+  const extra = (ZM_EXTRA||[]).filter(e=>typeof e==="string" && e.trim());
+  const seen = new Set(); ZM_EMPS = [];
+  [...reg, ...schedEmps, ...extra].forEach(e=>{ const n=zmNorm(e); if(n && !seen.has(n)){ seen.add(n); ZM_EMPS.push(e); } });
+  ZM_EMPS.sort((a,b)=>a.localeCompare(b,"pl"));
+  const regNorm = new Set(reg.map(zmNorm));
+  ZM_ORPHANS = reg.length ? [...schedEmps].filter(e=>!regNorm.has(zmNorm(e))).sort((a,b)=>a.localeCompare(b,"pl")) : [];
+  const todayIso = isoDate(new Date());
+  const label = `${ZM_DAYS[0].slice(8)}–${ZM_DAYS[6].slice(8)}.${ZM_DAYS[0].slice(5,7)}`;
+  const nav = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+    <div class="note" style="margin:0;flex:1 1 220px">Grafik — edytuj tu, recepcja widzi zmiany na żywo.</div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="zm-nav" onclick="zmNav(-1)" aria-label="Poprzedni tydzień">‹</button>
+      <span style="font-weight:800;font-size:13px;min-width:96px;text-align:center">${esc(label)}</span>
+      <button class="zm-nav" onclick="zmNav(1)" aria-label="Następny tydzień">›</button>
+      <button class="zm-nav" onclick="zmNav(0)" style="width:auto;padding:0 12px;font-size:12px">Dziś</button>
+      <button class="zm-nav" onclick="zmAddPerson()" style="width:auto;padding:0 12px;font-size:12px;color:var(--plum)" title="Dodaj osobę do grafiku (np. siebie)">+ Osoba</button>
+    </div></div>`;
+  const grid = window.matchMedia("(max-width:640px)").matches ? zmMobile(todayIso) : zmDesktop(todayIso);
+  const top = activeShiftCard(ZM_SCHED);
+  if(!ZM_EMPS.length){ body(`<div id="zmRoot">${top}${nav}<div class="empty">Brak pracowników. Dodaj osobę przyciskiem „+ Osoba", dodaj zmianę przez aplikację recepcji albo poczekaj na rejestr.</div></div>`); return; }
+  body(`<div id="zmRoot">${top}${nav}<div class="zm-wrap">${grid}${zmSidebar()}</div>${zmLegend()}</div>`);
+}
+
+// Normalizacja imienia: bez ogonków, bez wielkości liter ("Paweł" → "pawel").
+function zmNorm(s){ return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase(); }
+// Komórka grafiku dla osoby z rejestru — exact, a w razie braku dopasowanie po normalizacji
+// (dane zapisane pod wariantem pisowni, np. „Paweł", trafiają do wiersza rejestru „Pawel").
+function zmCellOf(dk, emp){
+  const day = ZM_SCHED[dk]; if(!day || typeof day!=="object") return null;
+  if(day[emp]) return day[emp];
+  const n = zmNorm(emp);
+  for(const k in day){ if(day[k] && zmNorm(k)===n) return day[k]; }
+  return null;
+}
+// Klucz w danym dniu zapisany pod inną pisownią niż imię z rejestru (do scalenia przy edycji).
+function zmVariantKey(dk, emp){
+  const day = ZM_SCHED[dk]; if(!day) return null;
+  const n = zmNorm(emp);
+  for(const k in day){ if(k!==emp && zmNorm(k)===n) return k; }
+  return null;
+}
+
+// Godziny komórki grafiku — z okna zmiany (obsługuje nockę i brak start/end). Zwraca liczbę godzin.
+function zmCellHours(c){ const w = shiftWindow(c||{}); return w ? Math.round((w[1]-w[0])*10)/10 : 0; }
+
+// Podsumowanie tygodnia z boku: ile zmian i ile godzin na osobę (imiona z rejestru recepcji).
+function zmSidebar(){
+  const rows = ZM_EMPS.map(emp=>{
+    let sh=0, hrs=0;
+    ZM_DAYS.forEach(dk=>{ const c=zmCellOf(dk,emp); if(c){ sh++; hrs+=zmCellHours(c); } });
+    return { emp, sh, hrs };
+  });
+  const tSh = rows.reduce((a,r)=>a+r.sh,0), tHrs = rows.reduce((a,r)=>a+r.hrs,0);
+  const fmt = h => (Math.round(h*10)/10).toString().replace(".",",");
+  const list = rows.map(r=>`<div class="zm-side-row">
+      <span class="zm-side-nm">${esc(r.emp)}</span>
+      <span class="zm-side-st">${r.sh}<small> zm</small> · ${fmt(r.hrs)}<small> h</small></span></div>`).join("");
+  const orph = ZM_ORPHANS.length ? `<div class="zm-side-orph">
+      <b>Spoza rejestru (${ZM_ORPHANS.length})</b>: ${ZM_ORPHANS.map(esc).join(", ")}
+      <i>Byli pracownicy w grafiku — dodaj do rejestru recepcji albo wyczyść ich wpisy.</i></div>` : "";
+  return `<aside class="zm-side">
+    <div class="zm-side-hd">Podsumowanie · ${esc(`${ZM_DAYS[0].slice(8)}–${ZM_DAYS[6].slice(8)}`)}</div>
+    ${list}
+    <div class="zm-side-row zm-side-tot"><span class="zm-side-nm">Razem</span><span class="zm-side-st">${tSh}<small> zm</small> · ${fmt(tHrs)}<small> h</small></span></div>
+    ${orph}</aside>`;
+}
+
+function zmDesktop(todayIso){
+  const head = `<th style="text-align:left;padding:7px 9px;position:sticky;left:0;background:var(--cream);z-index:1">Pracownik</th>` +
+    ZM_DAYS.map((d,i)=>`<th style="padding:7px 6px;font-size:11px;color:${d===todayIso?"var(--plum)":"var(--muted)"}">${DOW_SH[i]}<br><span style="font-weight:400">${d.slice(8)}</span></th>`).join("");
+  const rows = ZM_EMPS.map((emp,ei)=>{
+    const cells = ZM_DAYS.map((dk,di)=>{
+      const c = zmCellOf(dk, emp);
+      const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
+      return `<td style="padding:4px 5px;${dk===todayIso?"background:var(--cream)":""}">
+        <input id="${hid}" class="zm-h" value="${esc(zmHours(c))}" placeholder="7-15" inputmode="numeric"
+               onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
+        ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</td>`;
     }).join("");
-    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line)">${esc(emp)}</td>${cells}</tr>`;
+    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line);z-index:1">${esc(emp)}</td>${cells}</tr>`;
   }).join("");
-  body(`<div class="note" style="margin-top:0;margin-bottom:8px">Grafik przydzielony — bieżący tydzień (z aplikacji recepcji).</div>
-    <div class="fullspan" style="overflow-x:auto;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
-      <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`);
+  return `<div class="zm-grid zm-scroll">
+    <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function zmMobile(todayIso){
+  let di = ZM_DAYIDX;
+  if(di==null){ const t=ZM_DAYS.indexOf(todayIso); di = t>=0?t:0; }
+  ZM_DAYIDX = di;
+  const dk = ZM_DAYS[di];
+  const chips = ZM_DAYS.map((d,i)=>`<button class="zm-day${i===di?" on":""}" onclick="zmSetDay(${i})">${DOW_SH[i]}<br><span style="font-weight:400;font-size:10px">${d.slice(8)}</span></button>`).join("");
+  const list = ZM_EMPS.map((emp,ei)=>{
+    const c = zmCellOf(dk, emp);
+    const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
+    return `<div class="zm-row">
+      <div class="zm-name">${esc(emp)}</div>
+      <input id="${hid}" class="zm-h" value="${esc(zmHours(c))}" placeholder="7-15" inputmode="numeric"
+             onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
+      ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</div>`;
+  }).join("");
+  return `<div class="zm-grid"><div class="zm-days">${chips}</div><div class="zm-list">${list}</div></div>`;
+}
+
+function zmLegend(){
+  return `<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-size:11px;color:var(--muted)">Legenda:</span>` +
+    ZM_SHIFT_OPTS.slice(1).map(([v,l])=>`<span style="font-size:10.5px;color:var(--muted)">${esc(l)}</span>`).join(" · ") + `</div>`;
+}
+
+window.zmNav = (d)=>{ ZM_MONDAY = d===0 ? zmMonday(new Date()) : new Date(ZM_MONDAY.getTime()+d*7*86400000); ZM_DAYIDX=null; zmRender(); };
+window.zmSetDay = (i)=>{ ZM_DAYIDX=i; zmRender(); };
+// Dodaje wiersz osoby do grafiku (np. menedżera, który sam wpisuje sobie wolne dni i nie ma go
+// w rejestrze recepcji). To tylko dodaje pusty wiersz — nic nie zapisuje i nie kasuje. Dopiero
+// wpisanie godzin/zmiany trafia do bazy przez schedule_merge (per-komórka, bez nadpisywania).
+window.zmAddPerson = ()=>{
+  const name = (prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
+  if(!name) return;
+  const n = zmNorm(name);
+  if(ZM_EMPS.some(e=>zmNorm(e)===n)){ alert("Ta osoba jest już w grafiku."); return; }
+  if(!ZM_EXTRA) ZM_EXTRA=[];
+  ZM_EXTRA.push(name);
+  zmRender();
+};
+window.zmEdit = async (el)=>{
+  const m = String(el.id||"").match(/^zm_[hs]_(\d+)_(\d+)$/); if(!m) return;
+  const di=+m[1], ei=+m[2], dk=ZM_DAYS[di], emp=ZM_EMPS[ei];
+  if(dk==null||emp==null) return;
+  const hEl=document.getElementById(`zm_h_${di}_${ei}`), sEl=document.getElementById(`zm_s_${di}_${ei}`);
+  if(!hEl||!sEl) return;
+  const h=(hEl.value||"").trim(), shift=sEl.value||"";
+  const prev = zmCellOf(dk, emp);
+  let cell;
+  if(!h && !shift){ cell=null; }
+  else { const parts=h.split(/\s*[-–—]\s*/); cell={ start:parts[0]||"", end:parts[1]||"", shift:shift||null }; }
+  if(JSON.stringify(cell)===JSON.stringify(prev||null)) return; // bez zmiany
+  if(!ZM_SCHED[dk]) ZM_SCHED[dk]={};
+  // Zapis zawsze pod imieniem z rejestru recepcji; ewentualny wariant pisowni (np. „Paweł"
+  // przy rejestrze „Pawel") czyścimy, żeby nie zostawał duplikat w grafiku.
+  const variant = zmVariantKey(dk, emp);
+  ZM_SCHED[dk][emp]=cell; // optymistycznie lokalnie
+  const cells = { [emp]: cell };
+  if(variant){ delete ZM_SCHED[dk][variant]; cells[variant]=null; }
+  const ok = await zmMerge({ [dk]: cells });
+  if(ok){ try{ await sb.rpc("log_action",{ p_action:"grafik_edycja", p_detail:`${emp} ${dk}: ${cell?`${cell.start||""}${cell.end?"-"+cell.end:""}${cell.shift?" "+cell.shift:""}`:"—"}` }); }catch{} }
+};
+async function zmMerge(cells){
+  try{
+    const { data, error } = await sb.rpc("schedule_merge",{ p_cells:cells, p_device:hkStateDeviceId(), p_tenant:TENANT_ID });
+    if(error) throw error;
+    if(data && typeof data.rev==="number") ZM_REV=Math.max(ZM_REV,data.rev);
+    return true;
+  }catch(e){ console.error("[zmiany] merge:", e&&e.message); return false; }
 }
 
 // ── Tablica: stałe przypomnienia (standing_reminders) + ostatnie ogłoszenia (manager_alerts) ──
@@ -2457,6 +3819,7 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
                     konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
+                    grafik_ulozony:"Ułożył grafik", grafik_opublikowany:"Opublikował grafik",
                     korekta_decyzja:"Decyzja o korekcie" };
 async function loadAkcje() {
   if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
@@ -2559,8 +3922,90 @@ window.toggleKonto = async (email, makeActive) => {
   catch (e) { alert((e&&e.message)||"Błąd."); }
 };
 
+// ── Logi (admin): kto się logował i czy coś realnie zrobił ──
+const AUDIT_LABEL = {
+  logowanie:"wejście do panelu", obsada_zapis:"zapis obsady HK", zadanie_dodane:"dodał zadanie",
+  zadanie_zrobione:"oznaczył zadanie zrobione", poczta_wyslana:"wysłał pocztę", poczta_status:"zmiana statusu poczty",
+  korekta_decyzja:"decyzja o korekcie kasy", zadanie_konserwator:"zlecenie dla konserwatora",
+  plan_dodane:"wpis do planu", grafik_edycja:"edycja grafiku", grafik_utworzony:"utworzył grafik",
+  grafik_wpis:"wpis do grafiku", przypomnienie_dodane:"dodał przypomnienie",
+};
+const auditLabel = a => AUDIT_LABEL[a] || a;
+const fmtDT = ts => { const d=new Date(ts); return `${d.getDate()} ${MON[d.getMonth()]}, ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+let LOGI_DAYS = 14;
+window.setLogiDays = (n) => { LOGI_DAYS = n; loadLogi(); };
+async function loadLogi() {
+  let sessions = [], feed = [];
+  try {
+    const [{ data: s }, { data: f }] = await Promise.all([
+      sb.rpc("admin_login_sessions", { p_days: LOGI_DAYS }),
+      sb.rpc("admin_list_audit",     { p_days: LOGI_DAYS }),
+    ]);
+    sessions = s || []; feed = f || [];
+  } catch { return body('<div class="empty">Brak uprawnień lub błąd wczytywania logów.</div>'); }
+
+  // Podsumowanie per osoba: ile wejść i ile „pustych" (wszedł i nic nie zrobił).
+  const byActor = {};
+  sessions.forEach(s => {
+    const k = s.actor || "—";
+    const a = byActor[k] || (byActor[k] = { actor:k, role:s.actor_role, logins:0, empty:0, last:null });
+    a.logins++; if ((s.actions||0) === 0) a.empty++;
+    if (!a.last || s.login_at > a.last) a.last = s.login_at;
+  });
+  const summary = Object.values(byActor).sort((x,y)=> y.empty-x.empty || y.logins-x.logins);
+
+  const dayBtn = (n,lbl) => `<button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);font-weight:800;font-size:12px;cursor:pointer;background:${LOGI_DAYS===n?"var(--plum)":"var(--paper)"};color:${LOGI_DAYS===n?"#fff":"var(--plum)"}" onclick="setLogiDays(${n})">${lbl}</button>`;
+  const range = `<div style="display:flex;gap:7px;margin-bottom:12px">${dayBtn(7,"7 dni")}${dayBtn(14,"14 dni")}${dayBtn(30,"30 dni")}</div>`;
+
+  const sumCards = summary.map(a => {
+    const bad = a.empty > 0;
+    const tag = bad
+      ? `<span style="font-size:11px;font-weight:800;color:var(--bad)">${a.empty}/${a.logins} wejść bez działań</span>`
+      : `<span style="font-size:11px;font-weight:800;color:var(--ok)">${a.logins} wejść — aktywny(a)</span>`;
+    return `<div class="wcard" style="cursor:default;border-left:3px solid ${bad?"var(--bad)":"var(--ok)"}">
+      <div class="wtop"><span class="av">${esc(initials(a.actor))}</span>
+        <span class="nm">${esc(a.actor)}</span>
+        <span style="font-size:11px;color:var(--muted)">${esc(ROLE_LABEL(a.role))}</span></div>
+      <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center">
+        ${tag}<span style="font-size:11px;color:var(--muted)">ostatnio: ${a.last?esc(fmtDT(a.last)):"—"}</span></div>
+    </div>`;
+  }).join("");
+
+  const sessRows = sessions.map(s => {
+    const empty = (s.actions||0) === 0;
+    return `<div class="wcard" style="cursor:default;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div><b>${esc(s.actor||"—")}</b> <span style="font-size:11px;color:var(--muted)">${esc(ROLE_LABEL(s.actor_role))}</span></div>
+        <span style="font-size:11px;color:var(--muted)">${esc(fmtDT(s.login_at))}</span>
+      </div>
+      <div style="margin-top:5px;font-size:12px;font-weight:800;color:${empty?"var(--bad)":"var(--ok)"}">
+        ${empty?"⚠ wszedł i nic nie zrobił":`✓ ${s.actions} ${s.actions===1?"akcja":(s.actions<5?"akcje":"akcji")}${s.last_action_at?" · ostatnia "+esc(fmtDT(s.last_action_at)):""}`}
+      </div>
+    </div>`;
+  }).join("");
+
+  const feedRows = feed.map(r => `<div class="wcard" style="cursor:default;padding:9px 12px">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <span style="font-size:12px"><b>${esc(r.actor||"—")}</b> — ${esc(auditLabel(r.action))}</span>
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(fmtDT(r.created_at))}</span>
+      </div>
+      ${r.detail?`<div style="margin-top:3px;font-size:11px;color:var(--muted)">${esc(r.detail)}</div>`:""}
+    </div>`).join("");
+
+  body(range
+    + `<div class="soon" style="margin-top:0">Podsumowanie wg osoby</div>`
+    + `<div class="note" style="margin-bottom:8px">Czerwone = osoba logowała się, ale nie wykonała żadnej akcji w panelu. Liczone z ostatnich ${LOGI_DAYS} dni.</div>`
+    + (sumCards || '<div class="empty">Brak zarejestrowanych wejść w tym okresie.</div>')
+    + `<div class="soon">Wejścia po kolei (${sessions.length})</div>`
+    + (sessRows || '<div class="empty">Brak wejść.</div>')
+    + `<div class="soon">Pełny dziennik akcji (${feed.length})</div>`
+    + (feedRows || '<div class="empty">Brak akcji.</div>'));
+}
+
 window.doLogout = async () => {
   stopLive();
+  try { if (MAIL_CH) sb.removeChannel(MAIL_CH); MAIL_CH = null; } catch {}
+  MAIL_UNREAD = 0; MAIL_VIEW = "list"; MAIL_THREAD = null;
   await sb.auth.signOut();
   showLogin();
 };
