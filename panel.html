@@ -277,6 +277,8 @@ body{font-family:var(--ui);background:
 .acct .av{box-shadow:0 5px 12px -4px rgba(90,29,74,.55),inset 0 1px 0 rgba(255,255,255,.25)}
 .side-out:active,.btn:active{transform:scale(.985)}
 .navbtn span{flex:1}
+.navbadge{flex:0 0 auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c2415a;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.tab .navbadge{margin-left:5px}
 .auth-foot{text-align:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:22px;opacity:.8}
 .soon{display:flex;align-items:center;gap:8px}
 .soon::before{content:"";width:14px;height:1.5px;background:var(--gold);border-radius:2px;flex-shrink:0}
@@ -519,7 +521,9 @@ function makeMockClient(){
       {actor:"Recepcja",actor_role:"mgr_recepcja",action:"zadanie_dodane",detail:"Sprawdzić rezerwację 312",created_at:today+"T11:00:00"},
     ],
     list_availability_requests: ()=> [
-      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,expires_at:new Date(Date.now()+20*3600000).toISOString(),persons:4,answered:2},
+      {id:"r1",period_type:"week",period_start:plus(3),created_by:"Tetiana",created_at:today,expires_at:new Date(Date.now()+20*3600000).toISOString(),kind:"hk",persons:4,answered:2},
+      // Korelacja działu: grafik recepcji zebrany przez menedżera recepcji — widoczny też dla koordynatora.
+      {id:"r2",period_type:"week",period_start:plus(3),created_by:"Menedżer recepcji",created_at:today,expires_at:new Date(Date.now()+40*3600000).toISOString(),kind:"recepcja",persons:3,answered:1},
     ],
     get_request_grid: ()=> {
       const ppl=["Anna","Marta","Oksana","Tetiana"], days=[today,plus(1),plus(2)], ch=["poranna","popoludnie","oba","off"], out=[];
@@ -528,6 +532,13 @@ function makeMockClient(){
     },
     create_availability_request: ()=> [{person:"Anna",token:"A1B2C3"},{person:"Marta",token:"D4E5F6"}],
     admin_list_accounts: ()=> ACC,
+    admin_login_sessions: ()=> [
+      {actor:"Tetiana",actor_role:"mgr_hk",login_at:today+"T07:55:00",actions:3,last_action_at:today+"T08:40:00"},
+      {actor:"Recepcja",actor_role:"mgr_recepcja",login_at:today+"T10:50:00",actions:1,last_action_at:today+"T11:00:00"},
+      {actor:"Marek",actor_role:"mgr_glowny",login_at:today+"T09:10:00",actions:0,last_action_at:null},
+      {actor:"Marek",actor_role:"mgr_glowny",login_at:plus(-1)+"T14:00:00",actions:0,last_action_at:null},
+    ],
+    admin_list_audit: ()=> RPC.list_panel_audit(),
     log_action: ()=> null, admin_add_account: ()=> "acc_demo@conrad-panel.com",
     admin_set_role: ()=> null, admin_set_active: ()=> null,
     admin_reset_account: ()=> "acc_new@conrad-panel.com", admin_set_password: ()=> true, admin_set_name: ()=> null,
@@ -699,7 +710,7 @@ window.submitLogin = async () => {
       if (remember) localStorage.setItem("panel_remember_name", a.name);
       else localStorage.removeItem("panel_remember_name");
     } catch(_) {}
-    await showPanelFromSession();
+    await showPanelFromSession(true);
   } catch (e) {
     setMsg((e && e.message) || "Nie udało się zalogować.", "err");
     if (btn) { btn.disabled = false; btn.textContent = "Zaloguj"; }
@@ -810,7 +821,7 @@ window.submitAuth = async (i, first) => {
       const { error } = await sb.auth.signInWithPassword({ email: a.email, password: pw });
       if (error) throw new Error("Błędne hasło.");
     }
-    await showPanelFromSession();
+    await showPanelFromSession(true);
   } catch (e) {
     setMsg((e && e.message) || "Nie udało się zalogować.", "err");
     if (btn) { btn.disabled = false; btn.textContent = first ? "Ustaw hasło i wejdź" : "Zaloguj"; }
@@ -819,7 +830,7 @@ window.submitAuth = async (i, first) => {
 
 let CURRENT = { role: null, name: "" };
 
-async function showPanelFromSession() {
+async function showPanelFromSession(fresh) {
   app.innerHTML = '<div class="spin">Wczytywanie panelu…</div>';
   let role = null, name = "";
   let { data: { user } } = await sb.auth.getUser();
@@ -852,7 +863,11 @@ async function showPanelFromSession() {
     app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Twoje konto nie ma jeszcze przypisanej roli. Skontaktuj się z adminem.</div></div>`;
     return;
   }
-  CURRENT = { role, name };
+  CURRENT = { role, name, email: user.email };
+  // Rejestruj tylko realne wejście (kliknięcie „Zaloguj"), nie odświeżenie/wznowienie PWA —
+  // dzięki temu admin widzi w „Logach" kto faktycznie wszedł i czy coś potem zrobił.
+  if (fresh) { try { await sb.rpc("log_action", { p_action:"logowanie", p_detail: role||"" }); } catch {} }
+  startMailWatch();   // licznik nieprzeczytanej poczty (badge na zakładce „Poczta")
   // Admin: pełny pulpit + Konta. Gastro: własny zestaw (Grafik/Zadania/Akcje).
   // Pozostałe role dziedziczą widok HK.
   renderHkDashboard(role, name);
@@ -891,9 +906,11 @@ const GRAFIK_ROLES   = new Set(["mgr_hk","koordynator","mgr_recepcja","mgr_glown
 const KONSERW_ROLES  = new Set(["mgr_glowny","mgr_operacyjny"]);
 function tabsFor(role){
   // Gastro: osobny, węższy zestaw (bez modułów HK).
-  if (role === "mgr_gastro") return [["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
+  if (role === "mgr_gastro") return [["poczta","Poczta"],["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
   const t = [];
+  // Poczta wewnętrzna (panel ↔ panel) — dla każdej roli, zaraz po Pulpicie.
+  t.push(["poczta","Poczta"]);
   // Pulpit dnia (jeden ekran-przegląd) — landing dla ról recepcyjnych/koordynatora.
   if (A || RECEPCJA_ROLES.has(role)) t.push(["pulpit","Pulpit"]);
   t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
@@ -904,7 +921,7 @@ function tabsFor(role){
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
   if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"]);
   if (A || GRAFIK_ROLES.has(role))   t.push(["akcje","Akcje"]);
-  if (A)                             t.push(["konta","Konta"]);
+  if (A)                             t.push(["konta","Konta"], ["logi","Logi"]);
   return t;
 }
 
@@ -926,6 +943,8 @@ const NAV_ICON = {
   konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
   praca:   _ic('<path d="M19 5l-7 7M14 4l6 6M8.5 10.5l5 5M3 21l3.5-1 9-9-2.5-2.5-9 9L3 21z"/>'),
   jakosc:  _ic('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="m8.5 11 1.8 1.8 3.2-3.6"/>'),
+  poczta:  _ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
+  logi:    _ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/>'),
 };
 const BRAND_SVG = '<svg viewBox="0 0 80 12" width="40" height="10" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>';
 const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); return f?f[1]:""; };
@@ -937,8 +956,9 @@ function renderHkDashboard(role, name) {
   if (!hkLanded) { hkLanded = true; hkTab = tabs.some(([k]) => k==="pulpit") ? "pulpit" : (tabs[0] && tabs[0][0]) || "live"; }
   if (!tabs.some(([k]) => k===hkTab)) hkTab = tabs[0][0];
   const roleLbl = (ROLE_INFO[role]||{}).label || role;
-  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span></button>`).join("");
-  const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span></button>`).join("");
+  const badge = k => k==="poczta" ? `<span class="navbadge" data-mailbadge ${MAIL_UNREAD?"":'hidden'}>${MAIL_UNREAD||""}</span>` : "";
+  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
+  const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
   const av = esc(initials(name)), avbg = avatarBg(name);
   app.className = "dash";
   app.innerHTML = `
@@ -977,6 +997,7 @@ window.setHkTab = (t) => {
 
 async function loadHkTab() {
   stopLive();
+  if (hkTab === "poczta")  return loadPoczta();
   if (hkTab === "pulpit")  return loadPulpit();
   if (hkTab === "jakosc")  return loadQuality();
   if (hkTab === "praca")   return loadPraca();
@@ -993,6 +1014,7 @@ async function loadHkTab() {
   if (hkTab === "tablica") return loadTablica();
   if (hkTab === "akcje")   return loadAkcje();
   if (hkTab === "konta")   return loadKonta();
+  if (hkTab === "logi")    return loadLogi();
 }
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
@@ -1876,6 +1898,7 @@ window.addZadanie = async () => {
     const { error } = await sb.from("manager_alerts").insert({
       tenant_id: TENANT_ID, title: title.trim(), body: finalBody,
       priority: prio, created_by: CURRENT.name || "Panel", target_shift: tShift, target_date: tDate,
+      kind: "task",   // zadanie → zakładka „Zadania" recepcji (nie „Pilne"; pilne = high pokazuje się też jako alert)
     });
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"zadanie_dodane", p_detail: title.trim() }); } catch {}
@@ -1893,6 +1916,296 @@ window.markZadanieDone = async (id) => {
     try { await sb.rpc("log_action", { p_action:"zadanie_zrobione", p_detail:"oznaczono zrobione" }); } catch {}
     loadZadania();
   } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
+};
+
+// ─────────────────────────── Poczta wewnętrzna (panel ↔ panel) ───────────────────────────
+// Kanał osoba↔osoba/rola na bazie manager_messages (migracja 0037). Niezależny od
+// manager_alerts (tamto celuje w zmianę recepcji). Typy: prośba / zadanie / info.
+const MAIL_KIND   = { prosba:"Prośba", zadanie:"Zadanie", info:"Info" };
+const MAIL_STATUS = { open:{l:"Otwarta",c:"#5a1d4a"}, in_progress:{l:"W toku",c:"#b5761e"}, done:{l:"Zrobione",c:"#1f7a52"}, rejected:{l:"Odrzucona",c:"#c2415a"} };
+let MAIL_VIEW = "inbox";     // inbox | sent | compose | thread
+let MAIL_THREAD = null;      // id otwartego wątku
+let MAIL_ACCOUNTS = [];      // lista kont (adresaci)
+let MAIL_UNREAD = 0;
+let MAIL_CH = null;          // kanał realtime
+
+const mailWhen = iso => iso ? new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+const mailIsMine = r => r.from_email === CURRENT.email;
+const mailToMe   = r => r.to_email === CURRENT.email || r.to_role === CURRENT.role;
+const mailDest   = r => r.to_email
+  ? ((MAIL_ACCOUNTS.find(a=>a.email===r.to_email)||{}).name || "osoba")
+  : ("wszyscy: " + ROLE_LABEL(r.to_role));
+
+function setMailBadge(){
+  document.querySelectorAll("[data-mailbadge]").forEach(el => {
+    if (MAIL_UNREAD > 0){ el.hidden = false; el.textContent = MAIL_UNREAD > 99 ? "99+" : String(MAIL_UNREAD); }
+    else { el.hidden = true; el.textContent = ""; }
+  });
+}
+async function refreshMailUnread(){
+  if (!CURRENT.email) return;
+  try {
+    const { count } = await sb.from("manager_messages")
+      .select("id", { count:"exact", head:true })
+      .or(`to_email.eq.${CURRENT.email},to_role.eq.${CURRENT.role}`)
+      .is("read_at", null).neq("from_email", CURRENT.email);
+    MAIL_UNREAD = count || 0; setMailBadge();
+  } catch {}
+}
+function startMailWatch(){
+  refreshMailUnread();
+  try { if (MAIL_CH) sb.removeChannel(MAIL_CH); } catch {}
+  try {
+    MAIL_CH = sb.channel("panel-poczta")
+      .on("postgres_changes", { event:"*", schema:"public", table:"manager_messages", filter:`tenant_id=eq.${TENANT_ID}` },
+        () => { refreshMailUnread(); if (hkTab==="poczta" && (MAIL_VIEW==="inbox"||MAIL_VIEW==="thread")) loadPoczta(); })
+      .subscribe();
+  } catch {}
+}
+
+async function loadPoczta(){
+  body('<div class="spin">Wczytywanie poczty…</div>');
+  try {
+    const [accRes, msgRes] = await Promise.all([
+      sb.from("app_accounts").select("name,email,role,active"),
+      sb.from("manager_messages").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:true }).limit(500),
+    ]);
+    MAIL_ACCOUNTS = (accRes.data || []).filter(a => a.active !== false);
+    window._MAIL_ROWS = msgRes.data || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać poczty.</div>'); }
+  if (MAIL_VIEW === "compose") return mailRenderCompose();
+  if (MAIL_VIEW === "thread")  return mailRenderThread();
+  return mailRenderList();
+}
+
+function mailTabsBar(){
+  const tab = (v,l) => `<button class="zm-nav" style="width:auto;padding:0 14px;font-weight:800;${MAIL_VIEW===v?'background:var(--plum);color:#fff;border-color:var(--plum)':''}" onclick="mailGo('${v}')">${l}</button>`;
+  return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+    ${tab('inbox','Odebrane')}${tab('sent','Wysłane')}
+    <span style="flex:1"></span>
+    <button class="btn" style="width:auto;padding:8px 16px" onclick="mailGo('compose')">✉ Nowa wiadomość</button>
+  </div>`;
+}
+
+function mailThreads(){
+  // Grupuj po thread_id; zwróć ostatnią wiadomość + meta (czy nieprzeczytane, korespondent).
+  const rows = window._MAIL_ROWS || [];
+  const byThread = {};
+  rows.forEach(r => { (byThread[r.thread_id] = byThread[r.thread_id] || []).push(r); });
+  return Object.values(byThread).map(list => {
+    list.sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+    const root = list[0], last = list[list.length-1];
+    const unread = list.filter(r => mailToMe(r) && !mailIsMine(r) && !r.read_at).length;
+    return { id: root.thread_id, root, last, count:list.length, unread, list };
+  }).sort((a,b)=> new Date(b.last.created_at)-new Date(a.last.created_at));
+}
+
+function mailRenderList(){
+  // Odebrane: wątki z choć jedną wiadomością do mnie od kogoś innego.
+  // Wysłane: wątki, które ja rozpocząłem.
+  const threads = mailThreads().filter(t => MAIL_VIEW==="sent"
+    ? mailIsMine(t.root)
+    : t.list.some(r => mailToMe(r) && !mailIsMine(r)));
+  const rowsHtml = threads.length ? threads.map(t => {
+    const r = t.root, p = PRIO[r.priority] || PRIO.normal;
+    const counterpart = MAIL_VIEW==="sent" ? ("do: " + mailDest(r)) : ("od: " + r.from_name);
+    const st = MAIL_STATUS[t.last.status] || MAIL_STATUS.open;
+    const kindLbl = MAIL_KIND[r.kind] || r.kind;
+    return `<div class="statrow" style="align-items:flex-start;flex-direction:column;gap:5px;cursor:pointer;${t.unread?'box-shadow:inset 3px 0 0 #c2415a':''}" onclick="mailOpen('${r.thread_id}')">
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <span class="chip" style="color:${p.c};border-color:${p.c}55">${kindLbl}</span>
+        ${r.kind!=="info" ? `<span class="chip" style="color:${st.c};border-color:${st.c}55">${st.l}</span>` : ""}
+        <span class="k" style="flex:1;${t.unread?'font-weight:800':''}">${esc(r.subject||"(bez tematu)")}</span>
+        ${t.unread?`<span class="navbadge">${t.unread}</span>`:""}
+        <span class="tm" style="font-size:11px;color:var(--muted)">${esc(mailWhen(t.last.created_at))}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <span style="font-size:11.5px;color:var(--muted);flex:1">${esc(counterpart)}${t.count>1?` · ${t.count} wiad.`:""}</span>
+        ${r.priority==="high"?`<span class="chip" style="color:#c2415a;border-color:#c2415a55">Pilne</span>`:""}
+      </div>
+    </div>`;
+  }).join("") : `<div class="empty">${MAIL_VIEW==="sent"?"Nie wysłałeś jeszcze żadnej wiadomości.":"Brak wiadomości. 📭"}</div>`;
+  body(mailTabsBar() + rowsHtml);
+}
+
+function mailRecipientSelect(sel){
+  const me = CURRENT.email;
+  const people = MAIL_ACCOUNTS.filter(a => a.email !== me)
+    .map(a => `<option value="email:${esc(a.email)}"${sel==="email:"+a.email?" selected":""}>${esc(a.name)} — ${esc(ROLE_LABEL(a.role))}</option>`).join("");
+  const roles = [...new Set(MAIL_ACCOUNTS.map(a=>a.role))]
+    .map(rr => `<option value="role:${rr}"${sel==="role:"+rr?" selected":""}>Wszyscy: ${esc(ROLE_LABEL(rr))}</option>`).join("");
+  return `<select id="mTo" class="inp">
+    <option value="">— wybierz adresata —</option>
+    <optgroup label="Osoby">${people}</optgroup>
+    <optgroup label="Działy / role (broadcast)">${roles}</optgroup>
+  </select>`;
+}
+
+function mailRenderCompose(){
+  body(mailTabsBar() + `
+    <div class="card">
+      <div class="soon" style="margin-top:0">Nowa wiadomość</div>
+      <div class="field"><label>Do kogo</label>${mailRecipientSelect("")}</div>
+      <div class="field"><label>Typ</label>
+        <select id="mKind" class="inp">
+          <option value="prosba">Prośba (wymaga odpowiedzi)</option>
+          <option value="zadanie">Zadanie (do odhaczenia)</option>
+          <option value="info">Info (do wiadomości)</option>
+        </select></div>
+      <div class="field"><label>Priorytet</label>
+        <select id="mPrio" class="inp"><option value="normal">Zwykły</option><option value="high">Pilne</option></select></div>
+      <div class="field"><label>Temat</label>
+        <input id="mSubject" class="inp" placeholder="np. Prośba o zmianę grafiku w piątek"/></div>
+      <div class="field"><label>Treść</label>
+        <textarea id="mBody" class="inp" rows="5" placeholder="Napisz wiadomość…"></textarea></div>
+      ${mailCanBridge() ? `<label class="remember" style="margin:2px 0 12px"><input id="mDesk" type="checkbox"/><span>📌 Pokaż też na komputerze recepcji (dyżur) — jako zadanie</span></label>` : ""}
+      <button id="mBtn" class="btn" onclick="mailSend()">Wyślij</button>
+      <div id="mMsg" class="msg"></div>
+    </div>`);
+}
+// Most do recepcji: tylko role, które i tak wystawiają zadania na dyżur (jak zakładka Zadania).
+function mailCanBridge(){ return CURRENT.role==="admin" || RECEPCJA_ROLES.has(CURRENT.role); }
+
+window.mailSend = async () => {
+  const to   = (document.getElementById("mTo")||{}).value || "";
+  const kind = (document.getElementById("mKind")||{}).value || "prosba";
+  const prio = (document.getElementById("mPrio")||{}).value || "normal";
+  const subj = (document.getElementById("mSubject")||{}).value || "";
+  const bd   = (document.getElementById("mBody")||{}).value || "";
+  const msg = document.getElementById("mMsg"), btn = document.getElementById("mBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!to)         return setM("Wybierz adresata.", "err");
+  if (!subj.trim())return setM("Wpisz temat.", "err");
+  if (!bd.trim())  return setM("Wpisz treść wiadomości.", "err");
+  const row = {
+    tenant_id: TENANT_ID, thread_id: crypto.randomUUID(),
+    from_email: CURRENT.email, from_name: CURRENT.name || "Panel", from_role: CURRENT.role,
+    subject: subj.trim(), body: bd.trim(), kind, priority: prio, status: "open",
+  };
+  if (to.startsWith("email:")) row.to_email = to.slice(6);
+  else if (to.startsWith("role:")) row.to_role = to.slice(5);
+  const toDesk = mailCanBridge() && !!(document.getElementById("mDesk")||{}).checked;
+  if (btn){ btn.disabled=true; btn.textContent="Wysyłanie…"; }
+  try {
+    const { error } = await sb.from("manager_messages").insert(row);
+    if (error) throw error;
+    // Most do recepcji: kopia jako zadanie na komputer dyżuru (target_shift/date null = widoczne od razu).
+    if (toDesk){
+      try {
+        await sb.from("manager_alerts").insert({
+          tenant_id: TENANT_ID, title: subj.trim(), body: bd.trim(),
+          priority: prio==="high" ? "high" : "normal", created_by: CURRENT.name || "Panel",
+          target_shift: null, target_date: null, kind: "task",
+        });
+      } catch {}
+    }
+    try { await sb.rpc("log_action", { p_action:"poczta_wyslana", p_detail: subj.trim() + (toDesk?" (+recepcja)":"") }); } catch {}
+    MAIL_VIEW = "sent"; loadPoczta();
+  } catch (e) {
+    setM((e&&e.message)||"Nie udało się wysłać.", "err");
+    if (btn){ btn.disabled=false; btn.textContent="Wyślij"; }
+  }
+};
+
+window.mailGo = (v) => { MAIL_VIEW = v; MAIL_THREAD = (v==="thread"?MAIL_THREAD:null); loadPoczta(); };
+window.mailOpen = async (threadId) => { MAIL_THREAD = threadId; MAIL_VIEW = "thread"; await mailMarkThreadRead(threadId); loadPoczta(); };
+
+async function mailMarkThreadRead(threadId){
+  const rows = (window._MAIL_ROWS || []).filter(r => r.thread_id===threadId && mailToMe(r) && !mailIsMine(r) && !r.read_at);
+  if (!rows.length) return;
+  const ids = rows.map(r=>r.id);
+  try { await sb.from("manager_messages").update({ read_at:new Date().toISOString() }).in("id", ids); } catch {}
+  rows.forEach(r => r.read_at = new Date().toISOString());
+  refreshMailUnread();
+}
+
+function mailRenderThread(){
+  const list = (window._MAIL_ROWS || []).filter(r => r.thread_id===MAIL_THREAD)
+    .sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  if (!list.length){ MAIL_VIEW="inbox"; return mailRenderList(); }
+  const root = list[0];
+  const reqMsg = list.find(r => r.kind!=="info");  // wiadomość prośby/zadania ze statusem
+  const st = reqMsg ? (MAIL_STATUS[reqMsg.status] || MAIL_STATUS.open) : null;
+  const bubbles = list.map(r => {
+    const mine = mailIsMine(r);
+    return `<div style="display:flex;${mine?'justify-content:flex-end':''};margin-bottom:8px">
+      <div style="max-width:80%;border:1px solid var(--line);border-radius:12px;padding:9px 12px;background:${mine?'rgba(90,29,74,.06)':'var(--paper)'}">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:3px">${esc(r.from_name)}${mine?" (Ty)":""} · ${esc(mailWhen(r.created_at))}</div>
+        <div style="font-size:13.5px;white-space:pre-wrap">${esc(r.body)}</div>
+        ${r.reply_note?`<div style="font-size:12px;color:var(--muted);margin-top:5px;border-top:1px dashed var(--line);padding-top:5px">↳ ${esc(r.reply_note)}</div>`:""}
+      </div></div>`;
+  }).join("");
+  // Akcje na prośbie/zadaniu — tylko dla adresata, gdy jeszcze otwarte/w toku.
+  let actions = "";
+  if (reqMsg && mailToMe(reqMsg) && !mailIsMine(reqMsg) && (reqMsg.status==="open"||reqMsg.status==="in_progress")){
+    actions = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+      ${reqMsg.status==="open"?`<button class="btn" style="width:auto;padding:8px 14px;background:#b5761e" onclick="mailSetStatus('${reqMsg.id}','in_progress')">Przyjmuję / w toku</button>`:""}
+      <button class="btn" style="width:auto;padding:8px 14px;background:#1f7a52" onclick="mailSetStatus('${reqMsg.id}','done')">✓ Zrobione</button>
+      <button class="btn" style="width:auto;padding:8px 14px;background:#c2415a" onclick="mailReject('${reqMsg.id}')">Odrzuć</button>
+    </div>`;
+  }
+  body(`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <button class="zm-nav" style="width:auto;padding:0 14px;font-weight:800" onclick="mailGo('${mailIsMine(root)?'sent':'inbox'}')">‹ Wróć</button>
+      <span class="k" style="flex:1;font-size:16px;font-weight:800">${esc(root.subject||"(bez tematu)")}</span>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+        <span class="chip" style="color:var(--plum);border-color:var(--line-strong)">${MAIL_KIND[root.kind]||root.kind}</span>
+        ${st?`<span class="chip" style="color:${st.c};border-color:${st.c}55">${st.l}</span>`:""}
+        ${root.priority==="high"?`<span class="chip" style="color:#c2415a;border-color:#c2415a55">Pilne</span>`:""}
+        <span style="font-size:11.5px;color:var(--muted)">do: ${esc(mailDest(root))}</span>
+      </div>
+      ${bubbles}
+      ${actions}
+      <div class="field" style="margin-top:6px"><label>Odpowiedz</label>
+        <textarea id="mReply" class="inp" rows="3" placeholder="Napisz odpowiedź…"></textarea></div>
+      <button class="btn" onclick="mailReply()">Wyślij odpowiedź</button>
+      <div id="mrMsg" class="msg"></div>
+    </div>`);
+}
+
+window.mailSetStatus = async (id, status) => {
+  const patch = { status };
+  if (status==="done"){ patch.done_at = new Date().toISOString(); patch.done_by = CURRENT.name || "Panel"; }
+  try {
+    const { error } = await sb.from("manager_messages").update(patch).eq("id", id);
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"poczta_status", p_detail: status }); } catch {}
+    loadPoczta();
+  } catch (e) { alert((e&&e.message)||"Nie udało się zmienić statusu."); }
+};
+
+window.mailReject = async (id) => {
+  const note = prompt("Powód odrzucenia (opcjonalnie):") || "";
+  try {
+    const { error } = await sb.from("manager_messages").update({ status:"rejected", reply_note: note.trim() || null }).eq("id", id);
+    if (error) throw error;
+    loadPoczta();
+  } catch (e) { alert((e&&e.message)||"Nie udało się odrzucić."); }
+};
+
+window.mailReply = async () => {
+  const txt = (document.getElementById("mReply")||{}).value || "";
+  const msg = document.getElementById("mrMsg");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!txt.trim()) return setM("Wpisz treść odpowiedzi.", "err");
+  const list = (window._MAIL_ROWS || []).filter(r => r.thread_id===MAIL_THREAD)
+    .sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
+  const root = list[0]; const last = list[list.length-1];
+  // Adresat odpowiedzi = druga strona wątku (jeśli ja jestem nadawcą roota → adresat roota; inaczej → nadawca roota).
+  const row = {
+    tenant_id: TENANT_ID, thread_id: MAIL_THREAD, parent_id: last.id,
+    from_email: CURRENT.email, from_name: CURRENT.name || "Panel", from_role: CURRENT.role,
+    subject: root.subject, body: txt.trim(), kind: "info", priority: root.priority || "normal", status: "open",
+  };
+  if (mailIsMine(root)){ if (root.to_email) row.to_email = root.to_email; else row.to_role = root.to_role; }
+  else { row.to_email = root.from_email; }
+  try {
+    const { error } = await sb.from("manager_messages").insert(row);
+    if (error) throw error;
+    loadPoczta();
+  } catch (e) { setM((e&&e.message)||"Nie udało się wysłać odpowiedzi.", "err"); }
 };
 
 // ── Kasa: stan kasy ostatnich dni (shift_reports) ──
@@ -2142,7 +2455,7 @@ window.decideCorrection = async (correctionId, decision) => {
 async function loadPulpit() {
   const today = isoDate(new Date()); const d = fmtDate(today);
   body('<div class="spin">Wczytywanie…</div>');
-  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null;
+  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null, cashState=null;
   try {
     const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs] = await Promise.all([
       sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
@@ -2165,6 +2478,7 @@ async function loadPulpit() {
     rems   = ((rm && rm.data) || []).filter(r => r.active !== false);
     rf     = rfm;
     appr   = (ar && ar.data) || [];
+    cashState = (cs && typeof cs === "object") ? cs : null;
   } catch { return body('<div class="empty">Nie udało się wczytać pulpitu.</div>'); }
 
   // Obsada: HK z roster + recepcja z mirrora grafiku.
@@ -2182,7 +2496,7 @@ async function loadPulpit() {
   }
   const safe = cash.length ? cash[0].safe_total : null;
   // Live stan kasy (kasetka) z lustra recepcji; fallback do safe_total z raportu.
-  const kasaLive = (cs && cs.kasetka != null) ? cs.kasetka : safe;
+  const kasaLive = (cashState && cashState.kasetka != null) ? cashState.kasetka : safe;
   const closingShift = cash.find(r => r.shift_key==="wieczorowa"||r.shift_key==="nocna");
   const kwMissing = closingShift && (closingShift.cash_closing==null || closingShift.cash_closing===0);
   const kwTxt = kwMissing ? "⚠ brak" : (closingShift ? "✓ zarejestr." : "—");
@@ -2331,8 +2645,13 @@ async function loadGrafik() {
     // recepcja: najpierw pełna lista z rejestru, potem uzupełnienie o osoby z zamkniętych zmian
     const recep = [...new Set([...(Array.isArray(roster) ? roster : []), ...(rec.data || []).map(x => x.employee)].filter(Boolean))];
     workers = [...new Set([...(dept === "recepcja" ? [] : hk), ...(dept === "hk" ? [] : recep)])].sort((a,b)=>a.localeCompare(b,"pl"));
-    // Każdy menedżer widzi TYLKO swoje wysłane grafiki; admin widzi wszystkie.
-    reqs = (r.data || []).filter(x => CURRENT.role === "admin" || x.created_by === CURRENT.name);
+    // Korelacja działu: cały dział widzi wspólną pulę grafików (koordynator i
+    // menedżer recepcji widzą się nawzajem). Admin — wszystkie; menedżer HK — HK;
+    // role recepcyjne — recepcja. Stare prośby bez tokenów (kind=null) tylko admin.
+    reqs = (r.data || []).filter(x => {
+      if (CURRENT.role === "admin") return true;
+      return dept === "hk" ? x.kind === "hk" : x.kind === "recepcja";
+    });
     reqs.forEach(x => { REQ_META[x.id] = { period_type: x.period_type, period_start: String(x.period_start) }; });
   } catch {}
   const defKind = dept === "hk" ? "hk" : "recepcja";
@@ -2345,10 +2664,13 @@ async function loadGrafik() {
     const lbl = r.period_type === "week" ? "tydzień" : "miesiąc";
     const ex = grafikExpiry(r.expires_at);
     const exHtml = ex.txt ? ` · <span style="color:${ex.closed||ex.warn?'var(--bad)':'var(--ok)'};font-weight:800">${ex.closed?'🔒 '+ex.txt:'🟢 '+ex.txt}</span>` : "";
+    // Usuwać może tylko właściciel grafiku (lub admin) — wg RPC; cudze są tylko do wglądu.
+    const canDel = CURRENT.role === "admin" || r.created_by === CURRENT.name;
+    const delBtn = canDel ? `<button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="delGrafik('${r.id}', this)">Usuń</button>` : "";
     return `<div class="statrow" style="cursor:pointer;gap:8px">
       <div class="k" onclick="openGrid('${r.id}')" style="flex:1"><div>${lbl} od ${d.txt}</div>
         <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">${r.answered}/${r.persons} odpowiedziało${r.created_by?" · "+esc(r.created_by):""}${exHtml}</div></div>
-      <button class="rost-addbtn" style="padding:7px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;font-size:11.5px;cursor:pointer" onclick="delGrafik('${r.id}', this)">Usuń</button>
+      ${delBtn}
       <span class="v" style="font-size:13px" onclick="openGrid('${r.id}')">›</span>
     </div>`;
   }).join("") : '<div class="empty">Brak wysłanych grafików.</div>';
@@ -2808,6 +3130,22 @@ window.addKonserwTask = async () => {
 
 // ── Plan: dzienne zadania (np. Parking) dla konserwatorów + odpowiedź/status ──
 const PLAN_TYPES = ["Parking","Sprzątanie terenu","Przegląd techniczny","Inne"];
+// Generator „Plan działania" (AI) — tylko menedżer główny/operacyjny/admin.
+const PLAN_AI_ROLES = new Set(["mgr_glowny","mgr_operacyjny","admin"]);
+// Lista WSZYSTKICH pracowników (recepcja + obsada HK + konserwatorzy), unikalna.
+async function gatherAllEmployees() {
+  const out = new Set(KONSERW_BASE);
+  try {
+    const recep = await getMirror("employees");
+    (Array.isArray(recep) ? recep : []).forEach(n => { if (typeof n === "string" && n.trim()) out.add(n.trim()); });
+  } catch {}
+  try {
+    const from = isoDate(new Date(Date.now() - 30*864e5));
+    const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).gte("date", from).limit(60);
+    (data || []).forEach(r => (Array.isArray(r.roster) ? r.roster : []).forEach(e => { const n = (e && e.name || "").trim(); if (n) out.add(n); }));
+  } catch {}
+  return [...out].sort((a,b) => a.localeCompare(b, "pl"));
+}
 async function loadPlan() {
   let rows = [];
   const fromKey = isoDate(new Date(Date.now() - 7*864e5));
@@ -2815,6 +3153,20 @@ async function loadPlan() {
       .eq("tenant_id", TENANT_ID).gte("date", fromKey).order("date", { ascending:false }).limit(200); rows = data || []; }
   catch { return body('<div class="empty">Nie udało się pobrać planu.</div>'); }
   const today = isoDate(new Date());
+  const aiCard = PLAN_AI_ROLES.has(CURRENT.role) ? `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">✨ Plan działania (AI)</div>
+    <div class="field"><label>Cel planu</label><input id="apGoal" class="inp" placeholder="np. Przygotować hotel do sezonu letniego"/></div>
+    <div class="field"><label>Zakres</label><select id="apRange" class="inp">
+      <option value="0">Lista kroków (bez podziału na dni)</option>
+      <option value="1">Jeden dzień (dziś)</option>
+      <option value="3">Harmonogram — 3 dni</option>
+      <option value="5">Harmonogram — 5 dni</option>
+      <option value="7">Harmonogram — 7 dni</option>
+    </select></div>
+    <button id="apBtn" class="btn" onclick="genActionPlan()">✨ Rozpisz plan AI</button>
+    <div id="apMsg" class="msg"></div>
+    <div id="apPreview"></div>
+  </div>` : "";
   const form = `<div class="card" style="margin-bottom:12px">
     <div class="soon" style="margin-top:0">Dodaj zadanie do planu</div>
     <div class="field"><label>Plan</label><select id="plKind" class="inp">${PLAN_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
@@ -2824,7 +3176,7 @@ async function loadPlan() {
     <button id="plBtn" class="btn" onclick="addPlan()">Dodaj do planu</button>
     <div id="plMsg" class="msg"></div>
   </div>`;
-  if (!rows.length) return body(form + '<div class="empty">Brak zadań w planie (ostatnie 7 dni).</div>');
+  if (!rows.length) return body(aiCard + form + '<div class="empty">Brak zadań w planie (ostatnie 7 dni).</div>');
   const byPlan = {};
   rows.forEach(r => { (byPlan[r.plan] = byPlan[r.plan] || {})[r.date] = (byPlan[r.plan][r.date] || []); byPlan[r.plan][r.date].push(r); });
   const sections = Object.keys(byPlan).sort().map(pl => {
@@ -2835,7 +3187,7 @@ async function loadPlan() {
     }).join("");
     return `<div class="soon">📋 ${esc(pl)}</div>${blocks}`;
   }).join("");
-  body(form + sections);
+  body(aiCard + form + sections);
 }
 function planRow(r) {
   const done = r.status === "done";
@@ -2880,6 +3232,78 @@ window.planStatus = async (id, st) => {
   catch (e) { alert((e&&e.message)||"Błąd."); }
 };
 
+// ── Plan działania (AI): cel → kroki (lub harmonogram) z przydziałem osób ──
+// LLM rozpisuje plan; menedżer poprawia podgląd i zapisuje kroki jako zadania w panel_plan.
+window.AP_EMPLOYEES = [];
+window.genActionPlan = async () => {
+  const goal   = ((document.getElementById("apGoal")||{}).value || "").trim();
+  const rangeN = parseInt((document.getElementById("apRange")||{}).value || "0", 10) || 0;
+  const msg = document.getElementById("apMsg"), btn = document.getElementById("apBtn"), prev = document.getElementById("apPreview");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!goal) return setM("Wpisz cel planu.", "err");
+  setM(""); if (prev) prev.innerHTML="";
+  if (btn){ btn.disabled=true; btn.textContent="Rozpisuję…"; }
+  try {
+    const employees = await gatherAllEmployees();
+    AP_EMPLOYEES = employees;
+    const days = [];
+    if (rangeN >= 1) { const t=new Date(); t.setHours(0,0,0,0); for (let i=0;i<rangeN;i++) days.push(isoDate(new Date(t.getTime()+i*86400000))); }
+    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"plan", tenant_id:TENANT_ID, payload:{ goal, days, employees } } });
+    if (error) throw error;
+    const plan = data && data.data;
+    if (!plan || !Array.isArray(plan.steps) || !plan.steps.length)
+      return setM("AI nie zwróciło kroków — sformułuj cel inaczej albo dodaj kroki ręcznie poniżej.", "err");
+    renderActionPlanPreview(plan, employees);
+  } catch (e) {
+    setM("AI niedostępne ("+((e&&e.message)||"błąd")+"). Dodaj kroki ręcznie poniżej.", "err");
+  } finally {
+    if (btn){ btn.disabled=false; btn.textContent="✨ Rozpisz plan AI"; }
+  }
+};
+function renderActionPlanPreview(plan, employees) {
+  const prev = document.getElementById("apPreview");
+  if (!prev) return;
+  const opts = who => `<option value="">— zespół / dowolny —</option>` +
+    employees.map(n=>`<option${n===who?" selected":""}>${esc(n)}</option>`).join("");
+  const rows = plan.steps.map(s => `
+    <div class="ap-row" style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:7px;display:flex;flex-direction:column;gap:6px">
+      <input class="inp ap-task" value="${esc(s.task||"")}" placeholder="Co wykonać"/>
+      <div style="display:flex;gap:6px">
+        <input class="inp ap-day" type="date" value="${esc(s.day||"")}" style="flex:0 0 46%"/>
+        <select class="inp ap-who" style="flex:1">${opts(s.assigned_to||"")}</select>
+      </div>
+      <button class="rost-addbtn" style="align-self:flex-end;padding:4px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11px;cursor:pointer" onclick="this.closest('.ap-row').remove()">Usuń</button>
+    </div>`).join("");
+  prev.innerHTML = `
+    <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
+      <div class="field"><label>Tytuł planu</label><input id="apTitle" class="inp" value="${esc(plan.title||"Plan działania")}"/></div>
+      ${plan.note?`<div class="msg info" style="display:block;margin:4px 0 8px">💡 ${esc(plan.note)}</div>`:""}
+      <div id="apSteps">${rows}</div>
+      <button class="btn" onclick="saveActionPlan()">Zapisz plan do zadań</button>
+      <div id="apSaveMsg" class="msg"></div>
+    </div>`;
+}
+window.saveActionPlan = async () => {
+  const title = (((document.getElementById("apTitle")||{}).value || "").trim()) || "Plan działania";
+  const msg = document.getElementById("apSaveMsg");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  const today = isoDate(new Date());
+  const rows = [...document.querySelectorAll("#apSteps .ap-row")].map(el => ({
+    task: ((el.querySelector(".ap-task")||{}).value || "").trim(),
+    date: (el.querySelector(".ap-day")||{}).value || today,
+    who:  (el.querySelector(".ap-who")||{}).value || null,
+  })).filter(r => r.task);
+  if (!rows.length) return setM("Brak kroków do zapisania.", "err");
+  setM("Zapisuję…", "info");
+  try {
+    const payload = rows.map(r => ({ tenant_id:TENANT_ID, plan:title, date:r.date, task:r.task, assigned_to:r.who, status:"open", created_by:CURRENT.name||"Panel" }));
+    const { error } = await sb.from("panel_plan").insert(payload);
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"plan_ai_zapisany", p_detail:`${title}: ${rows.length} kroków` }); } catch {}
+    loadPlan();
+  } catch (e) { setM((e&&e.message)||"Nie udało się zapisać.", "err"); }
+};
+
 // ── Zmiany: grafik EDYTOWALNY z dwukierunkowym sync NA ŻYWO do recepcji ──
 // Zapis idzie przez schedule_merge (migracja 0034) — per komórka, nie kasuje
 // cudzych wpisów. Realtime: zmiany z recepcji/innych urządzeń wchodzą same.
@@ -2887,7 +3311,7 @@ const DOW_SH = ["Pn","Wt","Śr","Cz","Pt","Sb","Nd"];
 const SHIFT_CODE2 = { poranna:"P", popoludniowa:"PP", wieczorowa:"W", dzienna:"D", nocna:"N" };
 const ZM_SHIFT_OPTS = [["","— zmiana —"],["poranna","P · poranna"],["popoludniowa","PP · popołudniowa"],
                        ["wieczorowa","W · wieczorowa"],["dzienna","D · dzienna"],["nocna","N · nocna"]];
-let ZM_MONDAY=null, ZM_SCHED={}, ZM_EMP_REG=[], ZM_EMPS=[], ZM_ORPHANS=[], ZM_DAYS=[], ZM_DAYIDX=null, ZM_REV=0, ZM_UNSUB=null, ZM_RESIZE=null;
+let ZM_MONDAY=null, ZM_SCHED={}, ZM_EMP_REG=[], ZM_EMPS=[], ZM_ORPHANS=[], ZM_EXTRA=[], ZM_DAYS=[], ZM_DAYIDX=null, ZM_REV=0, ZM_UNSUB=null, ZM_RESIZE=null;
 
 const zmMonday = d => { const x=new Date(d); const off=(x.getDay()+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; };
 const zmHours  = c => c ? `${c.start||""}${c.end?"-"+c.end:""}` : "";
@@ -2937,10 +3361,18 @@ function zmRender(){
   const reg = [...new Set((ZM_EMP_REG||[]).filter(e=>typeof e==="string" && e.trim()))];
   const schedEmps = new Set();
   Object.values(ZM_SCHED).forEach(day=>{ if(day&&typeof day==="object") Object.keys(day).forEach(e=>{ if(day[e]) schedEmps.add(e); }); });
-  // Rejestr recepcji = źródło prawdy. Starzy/usunięci pracownicy zostają w wpisach grafiku,
-  // ale nie są pokazywani jako wiersze — tylko sygnalizowani w podsumowaniu (do sprzątnięcia).
-  ZM_EMPS    = (reg.length ? reg : [...schedEmps]).sort((a,b)=>a.localeCompare(b,"pl"));
-  ZM_ORPHANS = reg.length ? [...schedEmps].filter(e=>!reg.includes(e)).sort((a,b)=>a.localeCompare(b,"pl")) : [];
+  // Wiersze = UNIA: rejestr recepcji (źródło prawdy) + osoby z grafiku + ręcznie dodane
+  // (np. menedżer, który sam dobiera sobie wolne dni i nie jest w rejestrze). Dzięki temu
+  // każdy, kto ma wpis lub został dodany, dostaje wiersz do edycji. Dopasowanie odporne na
+  // ogonki/wielkość liter (np. „Paweł"→„Pawel"); duplikaty scalamy po normalizacji, zachowując
+  // pierwszy wariant pisowni (rejestr ma pierwszeństwo). Zapis per-komórka (schedule_merge)
+  // nigdy nie kasuje istniejącego grafiku — dodanie osoby jest bezpieczne.
+  const extra = (ZM_EXTRA||[]).filter(e=>typeof e==="string" && e.trim());
+  const seen = new Set(); ZM_EMPS = [];
+  [...reg, ...schedEmps, ...extra].forEach(e=>{ const n=zmNorm(e); if(n && !seen.has(n)){ seen.add(n); ZM_EMPS.push(e); } });
+  ZM_EMPS.sort((a,b)=>a.localeCompare(b,"pl"));
+  const regNorm = new Set(reg.map(zmNorm));
+  ZM_ORPHANS = reg.length ? [...schedEmps].filter(e=>!regNorm.has(zmNorm(e))).sort((a,b)=>a.localeCompare(b,"pl")) : [];
   const todayIso = isoDate(new Date());
   const label = `${ZM_DAYS[0].slice(8)}–${ZM_DAYS[6].slice(8)}.${ZM_DAYS[0].slice(5,7)}`;
   const nav = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -2950,21 +3382,41 @@ function zmRender(){
       <span style="font-weight:800;font-size:13px;min-width:96px;text-align:center">${esc(label)}</span>
       <button class="zm-nav" onclick="zmNav(1)" aria-label="Następny tydzień">›</button>
       <button class="zm-nav" onclick="zmNav(0)" style="width:auto;padding:0 12px;font-size:12px">Dziś</button>
+      <button class="zm-nav" onclick="zmAddPerson()" style="width:auto;padding:0 12px;font-size:12px;color:var(--plum)" title="Dodaj osobę do grafiku (np. siebie)">+ Osoba</button>
     </div></div>`;
   const grid = window.matchMedia("(max-width:640px)").matches ? zmMobile(todayIso) : zmDesktop(todayIso);
   const top = activeShiftCard(ZM_SCHED);
-  if(!ZM_EMPS.length){ body(`<div id="zmRoot">${top}${nav}<div class="empty">Brak pracowników. Dodaj zmianę przez aplikację recepcji albo poczekaj na rejestr.</div></div>`); return; }
+  if(!ZM_EMPS.length){ body(`<div id="zmRoot">${top}${nav}<div class="empty">Brak pracowników. Dodaj osobę przyciskiem „+ Osoba", dodaj zmianę przez aplikację recepcji albo poczekaj na rejestr.</div></div>`); return; }
   body(`<div id="zmRoot">${top}${nav}<div class="zm-wrap">${grid}${zmSidebar()}</div>${zmLegend()}</div>`);
+}
+
+// Normalizacja imienia: bez ogonków, bez wielkości liter ("Paweł" → "pawel").
+function zmNorm(s){ return String(s==null?"":s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase(); }
+// Komórka grafiku dla osoby z rejestru — exact, a w razie braku dopasowanie po normalizacji
+// (dane zapisane pod wariantem pisowni, np. „Paweł", trafiają do wiersza rejestru „Pawel").
+function zmCellOf(dk, emp){
+  const day = ZM_SCHED[dk]; if(!day || typeof day!=="object") return null;
+  if(day[emp]) return day[emp];
+  const n = zmNorm(emp);
+  for(const k in day){ if(day[k] && zmNorm(k)===n) return day[k]; }
+  return null;
+}
+// Klucz w danym dniu zapisany pod inną pisownią niż imię z rejestru (do scalenia przy edycji).
+function zmVariantKey(dk, emp){
+  const day = ZM_SCHED[dk]; if(!day) return null;
+  const n = zmNorm(emp);
+  for(const k in day){ if(k!==emp && zmNorm(k)===n) return k; }
+  return null;
 }
 
 // Godziny komórki grafiku — z okna zmiany (obsługuje nockę i brak start/end). Zwraca liczbę godzin.
 function zmCellHours(c){ const w = shiftWindow(c||{}); return w ? Math.round((w[1]-w[0])*10)/10 : 0; }
 
-// Podsumowanie tygodnia z boku: ile zmian i ile godzin na osobę (tylko rejestr recepcji).
+// Podsumowanie tygodnia z boku: ile zmian i ile godzin na osobę (imiona z rejestru recepcji).
 function zmSidebar(){
   const rows = ZM_EMPS.map(emp=>{
     let sh=0, hrs=0;
-    ZM_DAYS.forEach(dk=>{ const c=ZM_SCHED[dk]&&ZM_SCHED[dk][emp]; if(c){ sh++; hrs+=zmCellHours(c); } });
+    ZM_DAYS.forEach(dk=>{ const c=zmCellOf(dk,emp); if(c){ sh++; hrs+=zmCellHours(c); } });
     return { emp, sh, hrs };
   });
   const tSh = rows.reduce((a,r)=>a+r.sh,0), tHrs = rows.reduce((a,r)=>a+r.hrs,0);
@@ -2987,7 +3439,7 @@ function zmDesktop(todayIso){
     ZM_DAYS.map((d,i)=>`<th style="padding:7px 6px;font-size:11px;color:${d===todayIso?"var(--plum)":"var(--muted)"}">${DOW_SH[i]}<br><span style="font-weight:400">${d.slice(8)}</span></th>`).join("");
   const rows = ZM_EMPS.map((emp,ei)=>{
     const cells = ZM_DAYS.map((dk,di)=>{
-      const c = ZM_SCHED[dk] && ZM_SCHED[dk][emp];
+      const c = zmCellOf(dk, emp);
       const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
       return `<td style="padding:4px 5px;${dk===todayIso?"background:var(--cream)":""}">
         <input id="${hid}" class="zm-h" value="${esc(zmHours(c))}" placeholder="7-15" inputmode="numeric"
@@ -3007,7 +3459,7 @@ function zmMobile(todayIso){
   const dk = ZM_DAYS[di];
   const chips = ZM_DAYS.map((d,i)=>`<button class="zm-day${i===di?" on":""}" onclick="zmSetDay(${i})">${DOW_SH[i]}<br><span style="font-weight:400;font-size:10px">${d.slice(8)}</span></button>`).join("");
   const list = ZM_EMPS.map((emp,ei)=>{
-    const c = ZM_SCHED[dk] && ZM_SCHED[dk][emp];
+    const c = zmCellOf(dk, emp);
     const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
     return `<div class="zm-row">
       <div class="zm-name">${esc(emp)}</div>
@@ -3026,6 +3478,18 @@ function zmLegend(){
 
 window.zmNav = (d)=>{ ZM_MONDAY = d===0 ? zmMonday(new Date()) : new Date(ZM_MONDAY.getTime()+d*7*86400000); ZM_DAYIDX=null; zmRender(); };
 window.zmSetDay = (i)=>{ ZM_DAYIDX=i; zmRender(); };
+// Dodaje wiersz osoby do grafiku (np. menedżera, który sam wpisuje sobie wolne dni i nie ma go
+// w rejestrze recepcji). To tylko dodaje pusty wiersz — nic nie zapisuje i nie kasuje. Dopiero
+// wpisanie godzin/zmiany trafia do bazy przez schedule_merge (per-komórka, bez nadpisywania).
+window.zmAddPerson = ()=>{
+  const name = (prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
+  if(!name) return;
+  const n = zmNorm(name);
+  if(ZM_EMPS.some(e=>zmNorm(e)===n)){ alert("Ta osoba jest już w grafiku."); return; }
+  if(!ZM_EXTRA) ZM_EXTRA=[];
+  ZM_EXTRA.push(name);
+  zmRender();
+};
 window.zmEdit = async (el)=>{
   const m = String(el.id||"").match(/^zm_[hs]_(\d+)_(\d+)$/); if(!m) return;
   const di=+m[1], ei=+m[2], dk=ZM_DAYS[di], emp=ZM_EMPS[ei];
@@ -3033,14 +3497,19 @@ window.zmEdit = async (el)=>{
   const hEl=document.getElementById(`zm_h_${di}_${ei}`), sEl=document.getElementById(`zm_s_${di}_${ei}`);
   if(!hEl||!sEl) return;
   const h=(hEl.value||"").trim(), shift=sEl.value||"";
-  const prev = ZM_SCHED[dk] && ZM_SCHED[dk][emp];
+  const prev = zmCellOf(dk, emp);
   let cell;
   if(!h && !shift){ cell=null; }
   else { const parts=h.split(/\s*[-–—]\s*/); cell={ start:parts[0]||"", end:parts[1]||"", shift:shift||null }; }
   if(JSON.stringify(cell)===JSON.stringify(prev||null)) return; // bez zmiany
   if(!ZM_SCHED[dk]) ZM_SCHED[dk]={};
+  // Zapis zawsze pod imieniem z rejestru recepcji; ewentualny wariant pisowni (np. „Paweł"
+  // przy rejestrze „Pawel") czyścimy, żeby nie zostawał duplikat w grafiku.
+  const variant = zmVariantKey(dk, emp);
   ZM_SCHED[dk][emp]=cell; // optymistycznie lokalnie
-  const ok = await zmMerge({ [dk]: { [emp]: cell } });
+  const cells = { [emp]: cell };
+  if(variant){ delete ZM_SCHED[dk][variant]; cells[variant]=null; }
+  const ok = await zmMerge({ [dk]: cells });
   if(ok){ try{ await sb.rpc("log_action",{ p_action:"grafik_edycja", p_detail:`${emp} ${dk}: ${cell?`${cell.start||""}${cell.end?"-"+cell.end:""}${cell.shift?" "+cell.shift:""}`:"—"}` }); }catch{} }
 };
 async function zmMerge(cells){
@@ -3235,8 +3704,90 @@ window.toggleKonto = async (email, makeActive) => {
   catch (e) { alert((e&&e.message)||"Błąd."); }
 };
 
+// ── Logi (admin): kto się logował i czy coś realnie zrobił ──
+const AUDIT_LABEL = {
+  logowanie:"wejście do panelu", obsada_zapis:"zapis obsady HK", zadanie_dodane:"dodał zadanie",
+  zadanie_zrobione:"oznaczył zadanie zrobione", poczta_wyslana:"wysłał pocztę", poczta_status:"zmiana statusu poczty",
+  korekta_decyzja:"decyzja o korekcie kasy", zadanie_konserwator:"zlecenie dla konserwatora",
+  plan_dodane:"wpis do planu", grafik_edycja:"edycja grafiku", grafik_utworzony:"utworzył grafik",
+  grafik_wpis:"wpis do grafiku", przypomnienie_dodane:"dodał przypomnienie",
+};
+const auditLabel = a => AUDIT_LABEL[a] || a;
+const fmtDT = ts => { const d=new Date(ts); return `${d.getDate()} ${MON[d.getMonth()]}, ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+let LOGI_DAYS = 14;
+window.setLogiDays = (n) => { LOGI_DAYS = n; loadLogi(); };
+async function loadLogi() {
+  let sessions = [], feed = [];
+  try {
+    const [{ data: s }, { data: f }] = await Promise.all([
+      sb.rpc("admin_login_sessions", { p_days: LOGI_DAYS }),
+      sb.rpc("admin_list_audit",     { p_days: LOGI_DAYS }),
+    ]);
+    sessions = s || []; feed = f || [];
+  } catch { return body('<div class="empty">Brak uprawnień lub błąd wczytywania logów.</div>'); }
+
+  // Podsumowanie per osoba: ile wejść i ile „pustych" (wszedł i nic nie zrobił).
+  const byActor = {};
+  sessions.forEach(s => {
+    const k = s.actor || "—";
+    const a = byActor[k] || (byActor[k] = { actor:k, role:s.actor_role, logins:0, empty:0, last:null });
+    a.logins++; if ((s.actions||0) === 0) a.empty++;
+    if (!a.last || s.login_at > a.last) a.last = s.login_at;
+  });
+  const summary = Object.values(byActor).sort((x,y)=> y.empty-x.empty || y.logins-x.logins);
+
+  const dayBtn = (n,lbl) => `<button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);font-weight:800;font-size:12px;cursor:pointer;background:${LOGI_DAYS===n?"var(--plum)":"var(--paper)"};color:${LOGI_DAYS===n?"#fff":"var(--plum)"}" onclick="setLogiDays(${n})">${lbl}</button>`;
+  const range = `<div style="display:flex;gap:7px;margin-bottom:12px">${dayBtn(7,"7 dni")}${dayBtn(14,"14 dni")}${dayBtn(30,"30 dni")}</div>`;
+
+  const sumCards = summary.map(a => {
+    const bad = a.empty > 0;
+    const tag = bad
+      ? `<span style="font-size:11px;font-weight:800;color:var(--bad)">${a.empty}/${a.logins} wejść bez działań</span>`
+      : `<span style="font-size:11px;font-weight:800;color:var(--ok)">${a.logins} wejść — aktywny(a)</span>`;
+    return `<div class="wcard" style="cursor:default;border-left:3px solid ${bad?"var(--bad)":"var(--ok)"}">
+      <div class="wtop"><span class="av">${esc(initials(a.actor))}</span>
+        <span class="nm">${esc(a.actor)}</span>
+        <span style="font-size:11px;color:var(--muted)">${esc(ROLE_LABEL(a.role))}</span></div>
+      <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center">
+        ${tag}<span style="font-size:11px;color:var(--muted)">ostatnio: ${a.last?esc(fmtDT(a.last)):"—"}</span></div>
+    </div>`;
+  }).join("");
+
+  const sessRows = sessions.map(s => {
+    const empty = (s.actions||0) === 0;
+    return `<div class="wcard" style="cursor:default;padding:10px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div><b>${esc(s.actor||"—")}</b> <span style="font-size:11px;color:var(--muted)">${esc(ROLE_LABEL(s.actor_role))}</span></div>
+        <span style="font-size:11px;color:var(--muted)">${esc(fmtDT(s.login_at))}</span>
+      </div>
+      <div style="margin-top:5px;font-size:12px;font-weight:800;color:${empty?"var(--bad)":"var(--ok)"}">
+        ${empty?"⚠ wszedł i nic nie zrobił":`✓ ${s.actions} ${s.actions===1?"akcja":(s.actions<5?"akcje":"akcji")}${s.last_action_at?" · ostatnia "+esc(fmtDT(s.last_action_at)):""}`}
+      </div>
+    </div>`;
+  }).join("");
+
+  const feedRows = feed.map(r => `<div class="wcard" style="cursor:default;padding:9px 12px">
+      <div style="display:flex;justify-content:space-between;gap:8px">
+        <span style="font-size:12px"><b>${esc(r.actor||"—")}</b> — ${esc(auditLabel(r.action))}</span>
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap">${esc(fmtDT(r.created_at))}</span>
+      </div>
+      ${r.detail?`<div style="margin-top:3px;font-size:11px;color:var(--muted)">${esc(r.detail)}</div>`:""}
+    </div>`).join("");
+
+  body(range
+    + `<div class="soon" style="margin-top:0">Podsumowanie wg osoby</div>`
+    + `<div class="note" style="margin-bottom:8px">Czerwone = osoba logowała się, ale nie wykonała żadnej akcji w panelu. Liczone z ostatnich ${LOGI_DAYS} dni.</div>`
+    + (sumCards || '<div class="empty">Brak zarejestrowanych wejść w tym okresie.</div>')
+    + `<div class="soon">Wejścia po kolei (${sessions.length})</div>`
+    + (sessRows || '<div class="empty">Brak wejść.</div>')
+    + `<div class="soon">Pełny dziennik akcji (${feed.length})</div>`
+    + (feedRows || '<div class="empty">Brak akcji.</div>'));
+}
+
 window.doLogout = async () => {
   stopLive();
+  try { if (MAIL_CH) sb.removeChannel(MAIL_CH); MAIL_CH = null; } catch {}
+  MAIL_UNREAD = 0; MAIL_VIEW = "inbox"; MAIL_THREAD = null;
   await sb.auth.signOut();
   showLogin();
 };
