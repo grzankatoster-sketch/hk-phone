@@ -3195,7 +3195,14 @@ window.openSchedule = async (reqId) => {
     else if (r.choice) decl[key]={off:false,txt:r.choice};
   });
   const cells = (saved && saved.cells && typeof saved.cells==="object") ? {...saved.cells} : {};
-  SCHED = { reqId, persons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
+  // Kolumny = UNIA: respondenci zbiórki + osoby już obecne w zapisanym grafiku (np. menedżer
+  // dopisany ręcznie, który sam dobiera sobie wolne dni i nie dostał linku). Dzięki temu
+  // ręcznie dodana osoba NIE znika po zapisaniu i ponownym wejściu — jej komórki są w cells.
+  const fromCells = Object.keys(cells).map(k=>k.split("|")[0]).filter(Boolean);
+  const seenP=new Set(); const allPersons=[];
+  [...persons, ...fromCells].forEach(p=>{ const n=zmNorm(p); if(n && !seenP.has(n)){ seenP.add(n); allPersons.push(p); } });
+  allPersons.sort((a,b)=>a.localeCompare(b,"pl"));
+  SCHED = { reqId, persons:allPersons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
   renderSchedule();
 };
 
@@ -3229,6 +3236,7 @@ function renderSchedule(){
     <div class="fullspan" style="overflow:auto;max-height:64vh;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
       <table class="sched-tbl"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody><tfoot>${footSum}</tfoot></table></div>
     <div class="fullspan" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--plum);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedAddPerson()" title="Dodaj osobę do grafiku, np. siebie">+ Osoba</button>
       <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedFill()">Wstaw deklaracje</button>
       <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;cursor:pointer" onclick="schedClear()">Wyczyść</button>
       <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedPrint()">🖨 Drukuj</button>
@@ -3245,6 +3253,17 @@ window.schedSetCell = (di,pi,val)=>{
   const ss=document.getElementById("ssum_"+pi); if(ss) ss.innerHTML=schedSumHtml(pi);
   const so=document.getElementById("sob_"+di); if(so) so.textContent=schedDayCount(di);
   const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:#C2410C">● Niezapisane zmiany</span>`;
+};
+// Dodaje kolumnę osoby do układanego grafiku (np. menedżera, który nie dostał linku, a sam
+// dobiera sobie wolne dni). Tylko dodaje pustą kolumnę — zapis dopiero przyciskiem „Zapisz grafik".
+window.schedAddPerson = ()=>{
+  const S=SCHED; if(!S) return;
+  const name=(prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
+  if(!name) return;
+  const n=zmNorm(name);
+  if(S.persons.some(p=>zmNorm(p)===n)){ alert("Ta osoba już jest w grafiku."); return; }
+  S.persons=[...S.persons, name].sort((a,b)=>a.localeCompare(b,"pl"));
+  renderSchedule();
 };
 window.schedFill = ()=>{
   const S=SCHED; if(!S) return;
