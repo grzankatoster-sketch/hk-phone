@@ -276,8 +276,10 @@ body{font-family:var(--ui);background:
 .empty{border-radius:14px;padding:28px 16px;line-height:1.6}
 .acct .av{box-shadow:0 5px 12px -4px rgba(90,29,74,.55),inset 0 1px 0 rgba(255,255,255,.25)}
 .side-out:active,.btn:active{transform:scale(.985)}
-.navbtn span{flex:1}
+.navbtn>span:not(.navbadge){flex:1}   /* tylko etykieta rośnie; badge NIE rozciąga się na pasek */
 .navbadge{flex:0 0 auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c2415a;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.navbtn span.navbadge{flex:0 0 auto}  /* nadpisz ewentualny flex:1 dla badge */
+.navbadge[hidden]{display:none}        /* uszanuj atrybut hidden (reguła autora > UA stylesheet) */
 .tab .navbadge{margin-left:5px}
 /* ── Dzwonek powiadomień (topbar) + dropdown ── */
 .notif-wrap{position:relative;display:inline-flex;margin-left:auto}
@@ -338,10 +340,14 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
     box-shadow:0 -6px 22px -10px rgba(58,18,48,.22);gap:2px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   /* flex:1 1 auto → przy kilku zakładkach wypełniają pasek (bez przewijania);
      przy wielu (admin) zadziała min-width + przewijanie w poziomie. */
-  .tabs.mob .tab{flex:1 1 auto;flex-direction:column;align-items:center;gap:3px;min-width:50px;max-width:110px;padding:7px 4px;font-size:9px;font-weight:700;color:var(--muted);background:transparent}
+  /* Maks. 5 pozycji (4 stałe + „Więcej") → dzielą szerokość po równo, bez przewijania w poziomie. */
+  .tabs.mob{justify-content:space-between}
+  .tabs.mob .tab{flex:1 1 0;min-width:0;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;font-size:10.5px;font-weight:700;color:var(--muted);background:transparent;border-radius:13px}
   .tabs.mob .tab span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .tabs.mob .tab svg{width:19px;height:19px}
+  .tabs.mob .tab svg{width:21px;height:21px}
   .tabs.mob .tab.on{background:rgba(90,29,74,.09);color:var(--plum);box-shadow:none}
+  .tabs.mob .tab .navbadge{position:absolute;top:3px;right:18%;min-width:16px;height:16px;font-size:10px}
+  .tabs.mob .tab{position:relative}
   .content{padding-bottom:98px}
   .topbar h1{font-size:21px}
   .wcard,.statrow,.day,.card,.panelbox{border-radius:16px}
@@ -396,6 +402,19 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
   @page{size:landscape;margin:10mm}
 }
 /* ── Zadania: kalendarz wyboru terminu (dzień/zmiana/osoba) ── */
+/* Arkusz „Więcej" — siatka schowanych zakładek (dolny pasek telefonu) */
+.more-ov{position:fixed;inset:0;z-index:70;background:rgba(45,20,34,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:560px){.more-ov{align-items:center;padding:18px}}
+.more-box{background:var(--paper);width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;border-radius:18px 18px 0 0;box-shadow:0 -8px 40px rgba(45,20,34,.28);overflow:hidden;padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(min-width:560px){.more-box{border-radius:16px;box-shadow:0 18px 50px rgba(45,20,34,.32)}}
+.more-top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);color:var(--plum)}
+.more-top strong{flex:1;font-size:15px}
+.more-grid{overflow-y:auto;padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.more-tile{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px;border:1px solid var(--line);border-radius:14px;background:var(--cream);color:var(--ink);font:700 12.5px var(--ui);cursor:pointer;text-align:center}
+.more-tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.more-tile svg{width:24px;height:24px;color:var(--plum)}
+.more-tile.on{border-color:var(--plum);background:rgba(90,29,74,.09);color:var(--plum)}
+.more-tile .navbadge{position:absolute;top:8px;right:10px}
 .zadcal-ov{position:fixed;inset:0;z-index:60;background:rgba(45,20,34,.5);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;padding:0}
 @media(min-width:560px){.zadcal-ov{align-items:center;padding:18px}}
 .zadcal-box{background:var(--paper);width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;box-shadow:0 -8px 40px rgba(45,20,34,.28);overflow:hidden}
@@ -917,6 +936,23 @@ const fmtDate = iso => { const [y,m,d]=iso.split("-").map(Number); const dt=new 
 const DONE_STATES = new Set(["czyste","done","gotowe"]);
 let hkTab = "live";
 let hkLanded = false; // pierwsze wejście po zalogowaniu ląduje na Pulpicie (jeśli rola go ma)
+let OVERFLOW_TABS = []; // klucze zakładek schowanych pod „Więcej" (dolny pasek telefonu)
+
+// Dolny pasek telefonu mieści maks. 4 stałe zakładki + „Więcej".
+// Resztę przenosimy do arkusza. Priorytet decyduje, co zostaje na pasku;
+// kolejność na pasku zachowuje naturalną kolejność z tabsFor().
+function splitMobTabs(tabs){
+  const PRIO = ["pulpit","live","zadania","kasa","poczta","wyjazdy","grafik","konserw","tablica"];
+  const keys = tabs.map(t => t[0]);
+  const chosen = [];
+  for (const k of PRIO){ if (chosen.length < 4 && keys.includes(k)) chosen.push(k); }
+  for (const k of keys){ if (chosen.length < 4 && !chosen.includes(k)) chosen.push(k); } // dopełnij, gdy rola nie ma priorytetowych
+  let primary  = tabs.filter(t => chosen.includes(t[0]));
+  let overflow = tabs.filter(t => !chosen.includes(t[0]));
+  // Gdy do schowania zostaje 0–1 zakładek, „Więcej" nie ma sensu — pokaż wszystko na pasku.
+  if (overflow.length <= 1){ primary = tabs.slice(); overflow = []; }
+  return { primary, overflow };
+}
 let liveTimer = null;
 
 function stopLive(){ if (liveTimer){ clearInterval(liveTimer); liveTimer=null; } }
@@ -967,6 +1003,7 @@ const NAV_ICON = {
   poczta:  _ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
   logi:    _ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/>'),
 };
+const MORE_ICON = _ic('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>');
 const BRAND_SVG = '<svg viewBox="0 0 80 12" width="40" height="10" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>';
 const tabTitle = (role,t) => { const f=(tabsFor(role)||[]).find(([k])=>k===t); return f?f[1]:""; };
 
@@ -982,7 +1019,14 @@ function renderHkDashboard(role, name) {
   const badge = k => notifAvailCats().some(c => NOTIF_CATS[c].tab === k)
     ? `<span class="navbadge" data-notifbadge="${k}" hidden></span>` : "";
   const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
-  const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
+  // Telefon: tylko zakładki „primary" na dolnym pasku, reszta pod przyciskiem „Więcej".
+  const { primary, overflow } = splitMobTabs(tabs);
+  OVERFLOW_TABS = overflow.map(([k]) => k);
+  let mtab = primary.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
+  if (overflow.length){
+    const moreOn = OVERFLOW_TABS.includes(hkTab) ? "on" : "";
+    mtab += `<button class="tab tab-more ${moreOn}" onclick="openMoreSheet()" aria-label="Więcej zakładek">${MORE_ICON}<span>Więcej</span><span class="navbadge" id="moreBadge" hidden></span></button>`;
+  }
   const av = esc(initials(name)), avbg = avatarBg(name);
   app.className = "dash";
   app.innerHTML = `
@@ -1017,12 +1061,36 @@ function renderHkDashboard(role, name) {
 // Lekkie przełączenie zakładki (bez przebudowy sidebara — brak migotania).
 window.setHkTab = (t) => {
   hkTab = t;
+  closeMoreSheet();
   document.querySelectorAll(".navbtn,.tab").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  const moreBtn = document.querySelector(".tab-more"); // aktywny, gdy bieżąca zakładka jest schowana
+  if (moreBtn) moreBtn.classList.toggle("on", OVERFLOW_TABS.includes(t));
   const tt = document.getElementById("pageTitle"); if (tt) tt.textContent = tabTitle(CURRENT.role, t);
   const hb = document.getElementById("hkBody"); if (hb) hb.innerHTML = '<div class="spin">Wczytywanie…</div>';
   loadHkTab();
   notifMarkTabSeen(t);   // wejście w zakładkę = oznacz jej powiadomienia jako przeczytane
 };
+
+// Arkusz „Więcej" — siatka schowanych zakładek (dolny pasek telefonu).
+window.openMoreSheet = () => {
+  if (document.getElementById("moreSheet")) return;
+  const tabs = tabsFor(CURRENT.role) || [];
+  const tiles = tabs.filter(([k]) => OVERFLOW_TABS.includes(k)).map(([k,lbl]) => {
+    const bdg = notifAvailCats().some(c => NOTIF_CATS[c].tab === k)
+      ? `<span class="navbadge" data-notifbadge="${k}" hidden></span>` : "";
+    return `<button class="more-tile ${hkTab===k?"on":""}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${bdg}</button>`;
+  }).join("");
+  const ov = document.createElement("div");
+  ov.className = "more-ov"; ov.id = "moreSheet";
+  ov.onclick = (e) => { if (e.target === ov) closeMoreSheet(); };
+  ov.innerHTML = `<div class="more-box">
+      <div class="more-top"><strong>Więcej</strong><button class="zadcal-x" onclick="closeMoreSheet()" aria-label="Zamknij">✕</button></div>
+      <div class="more-grid">${tiles}</div>
+    </div>`;
+  document.body.appendChild(ov);
+  notifPaint(); // pokaż badge na kafelkach
+};
+window.closeMoreSheet = () => { const ov = document.getElementById("moreSheet"); if (ov) ov.remove(); };
 
 async function loadHkTab() {
   stopLive();
@@ -2092,6 +2160,8 @@ function notifPaint(){
   });
   const b = document.getElementById("notifBellCount");
   if (b){ const t = notifTotal(); if (t > 0){ b.hidden = false; b.textContent = t > 99 ? "99+" : String(t); } else { b.hidden = true; b.textContent = ""; } }
+  const mb = document.getElementById("moreBadge"); // suma z zakładek schowanych pod „Więcej"
+  if (mb){ const n = OVERFLOW_TABS.reduce((s,k) => s + notifTabCount(k), 0); if (n > 0){ mb.hidden = false; mb.textContent = n > 99 ? "99+" : String(n); } else { mb.hidden = true; mb.textContent = ""; } }
   if (NOTIF_OPEN) notifRenderMenu();
 }
 
@@ -2513,12 +2583,13 @@ async function loadKasa() {
     cashHtml = days.map(dk => {
       const d = fmtDate(dk);
       const items = byDay[dk].map(r => {
-        // Kasetka (bieżąca gotówka) = live stan recepcji (cash_state.kasetka) ma pierwszeństwo
-        // przed zrzutem z raportu zmiany: zamykająca zmiana (nocna/wieczorowa) zapisuje cash_current
-        // SPRZED wpłaty do sejfu (np. 800), a po wpłacie stała wraca do 500 — panel ma pokazać 500
-        // jak recepcja i jak hero. Historyczny zrzut per zmiana zostaje w podzakładce „Raporty".
-        const rowKasetka = (cashState && cashState.kasetka != null) ? cashState.kasetka
-                         : (r.cash_current != null ? r.cash_current : r.safe_total);
+        // Kasetka (bieżąca gotówka) = WYŁĄCZNIE live stan recepcji (cash_state.kasetka). Gdy go brak
+        // (recepcja nie wypchnęła lustra), pokazujemy „— oczekuje", a NIE safe_total/cash_current —
+        // bo te to zrzuty SPRZED wpłaty do sejfu (np. 800) i myliłyby się z bieżącą kasą (500).
+        // Historyczny zrzut per zmiana zostaje w podzakładce „Raporty".
+        const rowKasetka = (cashState && cashState.kasetka != null) ? cashState.kasetka : null;
+        const kasetkaCell = rowKasetka != null ? zl(rowKasetka)
+          : `<span style="color:var(--muted);font-weight:600;font-size:12px">— oczekuje na recepcję</span>`;
         return `
         <div class="statrow" style="margin-bottom:6px">
           <div class="k">
@@ -2526,7 +2597,7 @@ async function loadKasa() {
             <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-top:2px">
               KW: ${zl(r.cash_closing)}</div>
           </div>
-          <div class="v" title="Kasetka">${zl(rowKasetka)}</div>
+          <div class="v" title="Kasetka">${kasetkaCell}</div>
         </div>`; }).join("");
       return `<div style="margin-bottom:14px"><div class="soon" style="margin-top:0">${d.dow}, ${d.txt}</div>${items}</div>`;
     }).join("");
@@ -2673,9 +2744,9 @@ window.decideCorrection = async (correctionId, decision) => {
 async function loadPulpit() {
   const today = isoDate(new Date()); const d = fmtDate(today);
   body('<div class="spin">Wczytywanie…</div>');
-  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null, cashState=null;
+  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null, cashState=null, faults=[];
   try {
-    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs] = await Promise.all([
+    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs, fa] = await Promise.all([
       sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
       sb.from("hk_roster").select("roster").eq("tenant_id",TENANT_ID).eq("date",today).maybeSingle(),
       getMirror("schedule"),
@@ -2686,6 +2757,7 @@ async function loadPulpit() {
       getMirror("reports_full"),
       sb.from("payment_correction_approvals").select("correction_id").eq("tenant_id",TENANT_ID).then(r=>r,()=>({data:[]})),
       getMirror("cash_state"),
+      sb.from("faults").select("status,priority,due_at,reported_at").eq("tenant_id",TENANT_ID).in("status",["open","in_progress"]).limit(400).then(r=>r,()=>({data:[]})),
     ]);
     plan   = (pl && pl.data) || {};
     roster = (ro && ro.data && Array.isArray(ro.data.roster)) ? ro.data.roster : [];
@@ -2697,6 +2769,7 @@ async function loadPulpit() {
     rf     = rfm;
     appr   = (ar && ar.data) || [];
     cashState = (cs && typeof cs === "object") ? cs : null;
+    faults = (fa && fa.data) || [];
   } catch { return body('<div class="empty">Nie udało się wczytać pulpitu.</div>'); }
 
   // Obsada: HK z roster + recepcja z mirrora grafiku.
@@ -2713,8 +2786,10 @@ async function loadPulpit() {
     cash.sort((a,b)=>String(b.saved_at||"").localeCompare(String(a.saved_at||"")));
   }
   const safe = cash.length ? cash[0].safe_total : null;
-  // Live stan kasy (kasetka) z lustra recepcji; fallback do safe_total z raportu.
-  const kasaLive = (cashState && cashState.kasetka != null) ? cashState.kasetka : safe;
+  // Live stan kasy (kasetka) WYŁĄCZNIE z lustra recepcji (cash_state). Brak lustra → null → „—
+  // oczekuje", a NIE safe_total (to zrzut sprzed wpłaty do sejfu, myliłby się z bieżącą kasą).
+  const kasaLive = (cashState && cashState.kasetka != null) ? cashState.kasetka : null;
+  const kasaTxt = kasaLive != null ? zl(kasaLive) : "— oczekuje na recepcję";
   const closingShift = cash.find(r => r.shift_key==="wieczorowa"||r.shift_key==="nocna");
   const kwMissing = closingShift && (closingShift.cash_closing==null || closingShift.cash_closing===0);
   const kwTxt = kwMissing ? "⚠ brak" : (closingShift ? "✓ zarejestr." : "—");
@@ -2724,12 +2799,32 @@ async function loadPulpit() {
   // Zadania otwarte / pilne.
   const openTasks = alerts.filter(a => !a.done);
   const pilne = openTasks.filter(a => a.priority==="high").length;
+  // Usterki: otwarte, po terminie SLA, zgłoszone dziś (data lokalna — zgodnie z konwencją HK).
+  const now = Date.now();
+  const overdueFaults = faults.filter(r => r.due_at && new Date(r.due_at).getTime() < now);
+  const faultsToday = faults.filter(r => r.reported_at && isoDate(new Date(r.reported_at)) === today).length;
+  const hasSla = (tabsFor(CURRENT.role) || []).some(([k]) => k === "sla");
+  // Pokrycie zmian recepcji dziś (z lustra grafiku) — tylko gdy są dane o zmianach (brak danych ≠ brak obsady).
+  const shiftSet = new Set(Object.values((sched && sched[today]) || {}).map(v => v && v.shift).filter(Boolean));
+  const covTxt = [["poranna","R"],["popoludniowa","Po"],["nocna","N"]]
+    .map(([k,a]) => shiftSet.has(k) ? a : `<span style="color:var(--bad)">${a}✗</span>`).join(" · ");
+
+  // Pasek krytycznych alertów — pokazuje wyłącznie realne, klikalne problemy dnia.
+  const flags = [];
+  if (hasSla && overdueFaults.length) flags.push({ t:`${overdueFaults.length} usterek po terminie SLA`, tab:"sla", bad:true });
+  if (kwMissing)                       flags.push({ t:"Brak KW przy zamknięciu dnia", tab:"kasa", bad:true });
+  if (pilne)                           flags.push({ t:`${pilne} pilnych zadań`, tab:"zadania", bad:true });
+  if (pendCorr)                        flags.push({ t:`${pendCorr} korekt kasy do decyzji`, tab:"kasa", bad:false });
+  const banner = flags.length ? `<div class="fullspan" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
+    + flags.map(f => { const col = f.bad ? "var(--bad)" : "var(--gold)"; const bg = f.bad ? "rgba(194,65,90,.08)" : "rgba(176,134,58,.09)";
+        return `<button onclick="setHkTab('${f.tab}')" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:800;font-size:12.5px;color:${col};background:${bg};border:1px solid ${col};border-radius:11px;padding:8px 13px"><span style="font-size:15px">${f.bad?"⚠":"●"}</span>${esc(f.t)}<span style="opacity:.7;font-weight:700">›</span></button>`; }).join("")
+    + `</div>` : "";
 
   const kpis = `<div class="kpis">
     <div class="kpi"><div class="l">Obsada dziś</div><div class="v">${hkCount + recCount}</div></div>
     <div class="kpi"><div class="l">Wyjazdy</div><div class="v gold">${fmtWP(types.w.reg, types.w.apt)}</div></div>
     <div class="kpi"><div class="l">Zadania</div><div class="v${pilne?' bad':''}">${openTasks.length}</div></div>
-    <div class="kpi"><div class="l">Kasa</div><div class="v ok">${zl(kasaLive)}</div></div>
+    <div class="kpi"><div class="l">Kasa</div><div class="v ok"${kasaLive==null?' style="font-size:13px;color:var(--muted)"':''}>${kasaTxt}</div></div>
   </div>`;
 
   const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
@@ -2740,10 +2835,11 @@ async function loadPulpit() {
     <div style="margin-top:11px">${lines}</div></div>`;
 
   const tiles = [
-    tile("kasa","💰","Kasa", line("Kasetka", zl(kasaLive)) + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
+    tile("kasa","💰","Kasa", line("Kasetka", kasaTxt, kasaLive==null?"var(--muted)":"") + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
     tile("zadania","✅","Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    hasSla ? tile("sla","🛠️","Usterki / SLA", line("Otwarte", faults.length) + line("Po terminie", overdueFaults.length, overdueFaults.length?"var(--bad)":"var(--ok)") + line("Zgłoszone dziś", faultsToday)) : "",
     tile("wyjazdy","🚪","Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
-    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
+    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount) + (shiftSet.size ? line("Zmiany dziś", covTxt) : "")),
   ].join("");
 
   const remHtml = rems.length
@@ -2751,6 +2847,7 @@ async function loadPulpit() {
     : "";
 
   body(`<div class="note fullspan" style="margin-top:0;margin-bottom:12px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
+    + banner
     + kpis
     + `<div class="fullspan" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:4px">${tiles}</div>`
     + remHtml);
@@ -3739,22 +3836,34 @@ async function zmMerge(cells){
   }catch(e){ console.error("[zmiany] merge:", e&&e.message); return false; }
 }
 
-// ── Tablica: stałe przypomnienia (standing_reminders) + ostatnie ogłoszenia (manager_alerts) ──
+// ── Tablica: stałe przypomnienia (standing_reminders) + pilne (manager_alerts) + Wiki (wiki_entries) ──
 async function loadTablica() {
-  let rem = [], alr = [];
+  let rem = [], alr = [], wik = [];
   try {
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       sb.from("standing_reminders").select("id,title,body,active,created_by,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60),
       sb.from("manager_alerts").select("title,body,priority,created_by,created_at,done").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(30),
+      sb.from("wiki_entries").select("id,topic,content,updated_at,created_by").eq("tenant_id", TENANT_ID).order("updated_at", { ascending:false }).limit(10),
     ]);
     rem = (r1.data || []).filter(r => r.active !== false);
     alr = (r2.data || []).filter(a => !a.done);
+    wik = r3.data || [];
   } catch { return body('<div class="empty">Nie udało się pobrać tablicy.</div>'); }
+  // Jeden formularz z wyborem rodzaju wpisu: Stałe / Pilne / Wiki.
   const form = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Dodaj stałe przypomnienie</div>
-    <div class="field"><label>Treść</label><input id="srTitle" class="inp" placeholder="np. Zawsze sprawdzaj depozyt przy check-in" onkeydown="if(event.key==='Enter')addReminder()"/></div>
-    <button id="srBtn" class="btn" onclick="addReminder()">Dodaj przypomnienie</button>
-    <div id="srMsg" class="msg"></div>
+    <div class="soon" style="margin-top:0">Dodaj do tablicy</div>
+    <div class="field"><label>Rodzaj wpisu</label>
+      <select id="tbKind" class="inp" onchange="tbKindChange()">
+        <option value="standing">📌 Stałe przypomnienie</option>
+        <option value="urgent">🔴 Pilne przypomnienie (alert na recepcji)</option>
+        <option value="wiki">📖 Wpis do Wiki recepcji</option>
+      </select>
+    </div>
+    <div class="field" id="tbTopicWrap" style="display:none"><label>Temat</label><input id="tbTopic" class="inp" placeholder="np. Schemat zamków"/></div>
+    <div class="field" id="tbTitleWrap"><label id="tbTitleLbl">Treść</label><input id="tbTitle" class="inp" placeholder="np. Zawsze sprawdzaj depozyt przy check-in" onkeydown="if(event.key==='Enter')tbAdd()"/></div>
+    <div class="field" id="tbBodyWrap" style="display:none"><label id="tbBodyLbl">Szczegóły (opcjonalnie)</label><textarea id="tbBody" class="inp" rows="4" placeholder="Dodatkowe informacje…"></textarea></div>
+    <button id="tbBtn" class="btn" onclick="tbAdd()">Dodaj przypomnienie</button>
+    <div id="tbMsg" class="msg"></div>
   </div>`;
   const remList = rem.length ? rem.map(r => `<div class="statrow">
       <span class="k">📌 ${esc(r.title||"")}${r.body?` — <span style="color:var(--muted);font-weight:600">${esc(r.body)}</span>`:""}</span>
@@ -3767,20 +3876,70 @@ async function loadTablica() {
       <div style="display:flex;gap:8px;width:100%;align-items:center"><span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span><span class="k" style="flex:1">${esc(a.title||"")}</span><span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span></div>
       ${a.body?`<div style="font-size:12.5px;color:var(--muted)">${esc(a.body)}</div>`:""}
     </div>`; }).join("") : '<div class="empty">Brak ogłoszeń.</div>';
-  body(form + `<div class="soon">Stałe przypomnienia</div>` + remList + `<div class="soon">Ostatnie ogłoszenia</div>` + alrList);
+  const wikList = wik.length ? wik.map(w => {
+    const when = w.updated_at ? new Date(w.updated_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+    return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:3px">
+      <div style="display:flex;gap:8px;width:100%;align-items:center"><span class="k" style="flex:1">📖 ${esc(w.topic||"")}</span><span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span></div>
+      ${w.content?`<div style="font-size:12.5px;color:var(--muted);max-height:46px;overflow:hidden">${esc(w.content)}</div>`:""}
+    </div>`; }).join("") : '<div class="empty">Brak wpisów Wiki.</div>';
+  body(form
+    + `<div class="soon">Stałe przypomnienia</div>` + remList
+    + `<div class="soon">Ostatnie ogłoszenia</div>` + alrList
+    + `<div class="soon">Wiki recepcji</div>` + wikList);
 }
-window.addReminder = async () => {
-  const t = (document.getElementById("srTitle")||{}).value || "";
-  const msg = document.getElementById("srMsg"), btn = document.getElementById("srBtn");
+// Przełączanie pól w zależności od rodzaju wpisu.
+window.tbKindChange = () => {
+  const kind = (document.getElementById("tbKind")||{}).value || "standing";
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; };
+  const setTxt = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+  show("tbTopicWrap", kind === "wiki");
+  show("tbTitleWrap", kind !== "wiki");
+  show("tbBodyWrap", kind !== "standing");
+  if (kind === "standing") setTxt("tbTitleLbl","Treść");
+  if (kind === "urgent")  { setTxt("tbTitleLbl","Treść pilnego przypomnienia"); setTxt("tbBodyLbl","Szczegóły (opcjonalnie)"); }
+  if (kind === "wiki")     setTxt("tbBodyLbl","Treść");
+  const btn = document.getElementById("tbBtn");
+  if (btn) btn.textContent = kind === "wiki" ? "Dodaj do Wiki" : (kind === "urgent" ? "Wyślij pilne" : "Dodaj przypomnienie");
+};
+window.tbAdd = async () => {
+  const kind = (document.getElementById("tbKind")||{}).value || "standing";
+  const val  = (id) => ((document.getElementById(id)||{}).value || "").trim();
+  const msg = document.getElementById("tbMsg"), btn = document.getElementById("tbBtn");
   const setM = (x,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=x||""; } };
-  if (!t.trim()) return setM("Wpisz treść.", "err");
-  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  const busy = (on, t) => { if (btn){ btn.disabled=on; if(t) btn.textContent=t; } };
   try {
-    const { error } = await sb.from("standing_reminders").insert({ tenant_id:TENANT_ID, title:t.trim(), body:"", active:true, created_by:CURRENT.name||"Panel" });
-    if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"przypomnienie_dodane", p_detail:t.trim() }); } catch {}
+    if (kind === "wiki") {
+      const topic = val("tbTopic"), content = val("tbBody");
+      if (!topic) return setM("Wpisz temat.", "err");
+      if (!content) return setM("Wpisz treść.", "err");
+      busy(true, "Dodaję…");
+      const id = (crypto.randomUUID && crypto.randomUUID()) || ("w" + Date.now());
+      const { error } = await sb.from("wiki_entries").insert({
+        id, tenant_id:TENANT_ID, topic, content, images:[],
+        created_by:CURRENT.name||"Panel", updated_at:new Date().toISOString(),
+      });
+      if (error) throw error;
+      try { await sb.rpc("log_action", { p_action:"wiki_dodane", p_detail:topic }); } catch {}
+    } else if (kind === "urgent") {
+      const title = val("tbTitle"), bodyv = val("tbBody");
+      if (!title) return setM("Wpisz treść.", "err");
+      busy(true, "Wysyłam…");
+      const { error } = await sb.from("manager_alerts").insert({
+        tenant_id:TENANT_ID, title, body:bodyv||title, priority:"high",
+        kind:"alert", created_by:CURRENT.name||"Panel",
+      });
+      if (error) throw error;
+      try { await sb.rpc("log_action", { p_action:"alert_dodany", p_detail:title }); } catch {}
+    } else {
+      const title = val("tbTitle");
+      if (!title) return setM("Wpisz treść.", "err");
+      busy(true, "Dodaję…");
+      const { error } = await sb.from("standing_reminders").insert({ tenant_id:TENANT_ID, title, body:"", active:true, created_by:CURRENT.name||"Panel" });
+      if (error) throw error;
+      try { await sb.rpc("log_action", { p_action:"przypomnienie_dodane", p_detail:title }); } catch {}
+    }
     loadTablica();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj przypomnienie"; } }
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); busy(false); window.tbKindChange(); }
 };
 window.removeReminder = async (id) => {
   try { const { error } = await sb.from("standing_reminders").update({ active:false }).eq("id", id); if (error) throw error; loadTablica(); }
@@ -3818,6 +3977,7 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     konto_reset:"Reset hasła konta", konto_haslo:"Ustawił hasło konta",
                     grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
+                    alert_dodany:"Dodał pilne przypomnienie", wiki_dodane:"Dodał wpis do Wiki",
                     konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
                     grafik_ulozony:"Ułożył grafik", grafik_opublikowany:"Opublikował grafik",
                     korekta_decyzja:"Decyzja o korekcie" };
