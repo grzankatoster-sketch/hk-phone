@@ -40,10 +40,13 @@ import AdminSidebarRail from "./components/Rail/AdminSidebarRail";
 import { useAutoUpdate } from "./hooks/useAutoUpdate";
 import { useClock } from "./hooks/useClock";
 import { useDarkMode } from "./hooks/useDarkMode";
+import { useSound } from "./hooks/useSound";
 import { getFullName } from "./lib/employees";
 import { supabase, supabaseReady } from "./lib/supabase";
 import { pushMirror } from "./lib/cloudSync";
 import { useHKAgent, markRequestHandled } from "./lib/useHKAgent";
+import { pushHkState, fetchHkState, subscribeHkState, hkStateDeviceId } from "./lib/hkState";
+import { pushSchedule, fetchSchedule, subscribeSchedule } from "./lib/scheduleSync";
 import AgentBot from "./components/HKAgent/AgentBot";
 import { askWiki, triageFault, generateBriefing, polishText, nudgeShiftEnd, llmReady } from "./lib/llm";
 import {
@@ -430,11 +433,41 @@ const ADMIN_TAB_LABELS = {
   kasa: "Kasa",
 };
 
+// Apartamenty mają typ wpisywany RĘCZNIE przez recepcję (np. "2xDBL", "D+T+SOFA")
+// i nie wolno go nadpisywać generycznym "APT" z planu mailowego. room_types to
+// jedna kolumna JSONB (upsert podmienia CAŁY obiekt), więc gdy budujemy plan z
+// danych z dysku/maila (które dla apartamentu dają "APT"), najpierw dociągamy
+// istniejący room_types i zachowujemy ręczny typ apartamentu — tak jak robi
+// automacja (scripts/hk-automation/lib/supabase-sync.cjs). Bez tego telefon
+// pokazywał „APT" zamiast wpisanego „2xDBL".
+const HK_APT_NOS = new Set(HK_ALL.filter(r=>r.apt).map(r=>r.no));
+async function preserveAptRoomTypes(date, rt){
+  if(!rt) return rt;
+  const generic = [...HK_APT_NOS].filter(no => !rt[no] || rt[no]==="APT");
+  if(!generic.length) return rt; // mamy już konkretne typy apartamentów — nic nie ruszamy
+  try{
+    const { data } = await supabase.from("hk_plan").select("room_types")
+      .eq("date",date).order("updated_at",{ascending:false}).limit(1).maybeSingle();
+    const ex = data?.room_types || {};
+    generic.forEach(no => { if(ex[no] && ex[no] !== "APT") rt[no] = ex[no]; });
+  }catch{ /* brak sieci — zostaw generyczne, nie blokuj zapisu reszty */ }
+  return rt;
+}
+
 export default function App(){
   const [customManagers,setCustomManagersState]=useState(()=>{const m=getCustomManagers();return m.length>0?m:ADMIN_MANAGERS;});
   // Promocja pracownika na kierownika = dodanie do listy kierowników (wspólne hasło admina).
   const promoteToManager=(name)=>{const n=canonicalizePersonName(name);setCustomManagersState(prev=>{const next=prev.includes(n)?prev:[...prev,n];persistCustomManagers(next);return next;});showToast(`${n} ma teraz dostęp do panelu kierownika (wspólne hasło).`,"success");};
   const demoteManager=(name)=>{setCustomManagersState(prev=>{const next=prev.filter(m=>m!==name);persistCustomManagers(next);return next;});showToast(`${name} cofnięty(a) do roli pracownika.`,"info");};
+  // ── Zegar testowy (DEV) — symulowany „teraz" przesunięty o offset w ms ───────
+  // Zdefiniowany na samej górze, by getNow() napędzał WIDOCZNY zegar oraz auto-
+  // wykrywanie zmiany (nie tylko logikę końca zmiany). offset=0 → realny czas.
+  const [testClockOffset,setTestClockOffset]=useState(()=>{
+    if(!DEV_TOOLS)return 0;
+    const v=parseInt(localStorage.getItem(TEST_CLOCK_KEY)||"0",10);return Number.isFinite(v)?v:0;
+  });
+  const getNow=useCallback(()=>new Date(Date.now()+(DEV_TOOLS?testClockOffset:0)),[testClockOffset]);
+  const applyTestClockOffset=(ms)=>{setTestClockOffset(ms);try{localStorage.setItem(TEST_CLOCK_KEY,String(ms));}catch{/* */}};
   const [tasks,setTasks]=useState(defaultTasks);
   const [employees,setEmployees]=useState(defaultEmployees);
   const [employeeName,setEmployeeName]=useState("");
@@ -484,7 +517,21 @@ export default function App(){
   const [pendingAutoStart,setPendingAutoStart]=useState(false);
   const [loginShiftSource,setLoginShiftSource]=useState("clock");
   const [schedule,setSchedule]=useState(()=>loadJson(STORAGE_KEYS.schedule,{}));
-  useEffect(()=>{saveJson(STORAGE_KEYS.schedule,schedule);pushMirror("schedule",schedule);},[schedule]);
+  // ─── Grafik: dwukierunkowy sync NA ŻYWO z panelem (panel.html) i innymi
+  // urządzeniami. Zapis idzie przez schedule_merge (migracja 0034) — per komórka,
+  // nie kasuje cudzych wpisów. Wzór 1:1 z hk_state (rev + updated_device + suppress).
+  const schedRevRef=React.useRef(0);              // ostatnia zastosowana wersja (rev)
+  const suppressSchedulePushRef=React.useRef(false); // właśnie zastosowaliśmy stan zdalny — nie odsyłaj
+  const scheduleRef=React.useRef(schedule);
+  useEffect(()=>{scheduleRef.current=schedule;},[schedule]);
+  useEffect(()=>{
+    saveJson(STORAGE_KEYS.schedule,schedule);
+    if(suppressSchedulePushRef.current){suppressSchedulePushRef.current=false;return;} // to była zmiana zdalna
+    const t=setTimeout(()=>{
+      pushSchedule(schedule).then(row=>{if(row&&typeof row.rev==="number")schedRevRef.current=Math.max(schedRevRef.current,row.rev);});
+    },700);
+    return ()=>clearTimeout(t);
+  },[schedule]);
   useEffect(()=>{pushMirror("employees",employees);},[employees]); // rejestr recepcji dla panelu menedżerskiego
   useEffect(()=>{const r=loadJson(STORAGE_KEYS.empReports,[]);if(r.length)pushMirror("employee_reports",r.slice(0,100));},[]); // notatki służbowe → panel (koordynator/kierownik)
   const [lastView,setLastView]=useState(()=>localStorage.getItem("reception-last-view")||"worker"); // worker | manager
@@ -497,8 +544,8 @@ export default function App(){
     setSchedule(currentSchedule);
     const scheduledShift=shiftFromSchedule(currentSchedule,emp);
     setLoginShiftSource(scheduledShift?"schedule":"clock");
-    return scheduledShift||autoDetectShift();
-  },[employeeName,schedule]);
+    return scheduledShift||autoDetectShift(getNow());
+  },[employeeName,schedule,getNow]);
   // Auto-set zmiany na podstawie godziny gdy login kończy się na "ready"
   useEffect(()=>{
     if(loginStep==="ready"){
@@ -524,7 +571,7 @@ export default function App(){
     const currentSchedule=loadJson(STORAGE_KEYS.schedule,schedule);
     const startMin=shiftStartMinutes(currentSchedule,empName);
     if(startMin!=null){
-      const now=new Date();
+      const now=getNow();
       const nowMin=now.getHours()*60+now.getMinutes();
       const diff=startMin-nowMin; // dodatni = pracownik loguje się przed startem
       if(diff>0&&diff<=30){
@@ -550,7 +597,7 @@ export default function App(){
       }
     }
     completeLogin(empName);
-  },[employeeName,schedule,completeLogin]);
+  },[employeeName,schedule,completeLogin,getNow]);
   // Godziny + typ zmiany wpisane przez kierownika w grafiku (zalogowana osoba, dziś).
   const scheduledEntry=useMemo(()=>{
     if(!employeeName)return{hours:"",shift:null};
@@ -657,7 +704,7 @@ export default function App(){
   const [entryWhen,setEntryWhen]=useState("next");   // next | dated | pending
   const [toasts,setToasts]=useState([]);
   const [confirmDialog,setConfirmDialog]=useState(null);
-  const { liveTime, shiftElapsed }=useClock(shiftStartTime);
+  const { liveTime, shiftElapsed }=useClock(shiftStartTime,getNow);
   const [showSearch,setShowSearch]=useState(false);
   const [paymentCorrections,setPaymentCorrections]=useState(()=>loadJson(STORAGE_KEYS.paymentCorrections,[]));
   useEffect(()=>{pushMirror("payment_corrections",paymentCorrections);},[paymentCorrections]);
@@ -821,13 +868,24 @@ export default function App(){
         room_types:rt,pm_room_types:pmRt,updated_at:new Date().toISOString(),plannedRooms
       };
     };
-    const syncPayload=payload=>{
+    const syncPayload=async payload=>{
       if(!payload)return;
       const {plannedRooms,...planRow}=payload;
-      supabase.from("hk_plan").upsert(planRow,{onConflict:"date"});
+      // NIE nadpisuj istniejących przypisań pustką. Gdy renderer nie ma osób
+      // (np. plan z maila bez przydziału recepcji), wycinamy assignments/
+      // pm_assignments z body — PostgREST (merge-duplicates) zaktualizuje tylko
+      // obecne kolumny, więc ręczny przydział w hk_plan przetrwa. Inaczej każdy
+      // sync bez osób zerował plan i telefony pokazywały „brak pokoi".
+      if(!Object.keys(planRow.assignments||{}).length)delete planRow.assignments;
+      if(!Object.keys(planRow.pm_assignments||{}).length)delete planRow.pm_assignments;
+      // Zachowaj ręczny typ apartamentu (np. 2xDBL) zamiast generycznego "APT".
+      planRow.room_types=await preserveAptRoomTypes(planRow.date,planRow.room_types);
+      supabase.from("hk_plan").upsert(planRow,{onConflict:"date"})
+        .then(({error})=>{if(error){console.error("[hk-sync] hk_plan upsert:",error.message);showToast("Błąd zapisu planu HK do bazy (sprawdź połączenie/klucz)","error");}});
       if(plannedRooms&&plannedRooms.length){
         // Nowe pokoje: wstaw bez nadpisywania statusu (ignoreDuplicates).
-        supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true});
+        supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true})
+          .then(({error})=>{if(error)console.error("[hk-sync] hk_rooms upsert:",error.message);});
         // Ręczna zmiana przydziału w planie: skoryguj kolumnę worker na ISTNIEJĄCYCH
         // pokojach (ignoreDuplicates jej nie rusza), zachowując status/vacated. Dzięki
         // temu ręczne przenoszenie działa tak samo jak agent — telefony i monitor
@@ -870,6 +928,86 @@ export default function App(){
       }catch{}
     })();
   },[hkData,hkDate]);
+
+  // ─── Wspólny stan dnia (hk_state) — synchronizacja DWUKIERUNKOWA z innymi
+  // urządzeniami (koordynator / kierownik HK). Recepcja jest właścicielem klucza
+  // "rooms" (opisy pokoi np. „2xDBL", osoba, status), pozostali — "roster"
+  // (osoby, zmiana/grafik, obecność). Patch jest mergowany płytko po stronie bazy
+  // (migracja 0032), więc nikt nie kasuje cudzego klucza. Patrz lib/hkState.js.
+  const hkStateRevRef=React.useRef(0);            // ostatnia zastosowana wersja (rev)
+  const suppressRoomsPushRef=React.useRef(false); // właśnie zastosowaliśmy stan zdalny — nie odsyłaj go z powrotem
+  // PUSH: lokalna zmiana planu pokoi → wspólny stan (debounce, by nie zalewać bazy).
+  useEffect(()=>{
+    if(!supabaseReady||!started||!hkDate)return;
+    if(suppressRoomsPushRef.current){suppressRoomsPushRef.current=false;return;} // to była zmiana zdalna
+    const t=setTimeout(()=>{
+      pushHkState(hkDate,{rooms:hkData||{}},"reception")
+        .then(row=>{if(row&&typeof row.rev==="number")hkStateRevRef.current=Math.max(hkStateRevRef.current,row.rev);});
+    },800);
+    return ()=>clearTimeout(t);
+  },[hkData,hkDate,started,supabaseReady]);
+  // SUBSCRIBE: zmiana z innego urządzenia → zastosuj u nas + DYMEK BOTA (tylko bot
+  // informuje recepcję o zmianach, żeby nie poprawiali ich ręcznie).
+  useEffect(()=>{
+    if(!supabaseReady||!started||!hkDate)return;
+    let stop=false;
+    const me=hkStateDeviceId();
+    const whoLabel=by=>by==="coordinator"?"koordynator":by==="hk_manager"?"kierownik HK":"inne urządzenie";
+    const apply=row=>{
+      if(!row||stop)return;
+      if(row.updated_device===me){hkStateRevRef.current=Math.max(hkStateRevRef.current,row.rev||0);return;} // własne echo
+      if(typeof row.rev==="number"&&row.rev<=hkStateRevRef.current)return;                                  // starsze/zastosowane
+      hkStateRevRef.current=row.rev||hkStateRevRef.current;
+      const d=row.data||{};const who=whoLabel(row.updated_by);
+      if(d.rooms&&typeof d.rooms==="object"&&JSON.stringify(d.rooms)!==JSON.stringify(hkDataRef.current||{})){
+        suppressRoomsPushRef.current=true;
+        setHkData(d.rooms);
+        setBotAttention({kind:"info",text:`🔄 Plan pokoi zmieniony (${who}) — zaktualizowano automatycznie, nie poprawiaj ręcznie`});
+        if(window.electronAPI?.notify)window.electronAPI.notify({title:"🔄 Aktualizacja planu HK",body:`Plan pokoi zmieniony (${who})`,nav:"hk-monitor"});
+      }
+      if(Array.isArray(d.roster)){
+        setHkStaff(d.roster.filter(r=>r&&r.name).map(r=>({name:r.name})));
+        setBotAttention({kind:"info",text:`🔄 Obsada/grafik zaktualizowane (${who})`});
+      }
+    };
+    // Seed rev z bieżącego wiersza (realtime nie wysyła stanu startowego). Lokalny
+    // hkData recepcji pozostaje źródłem prawdy przy starcie — nie nadpisujemy go.
+    fetchHkState(hkDate).then(row=>{if(!stop&&row)hkStateRevRef.current=Math.max(hkStateRevRef.current,row.rev||0);});
+    const unsub=subscribeHkState(hkDate,apply);
+    return ()=>{stop=true;unsub();};
+  },[hkDate,started,supabaseReady]);
+
+  // ─── Grafik — odbiór zmian z panelu / innych urządzeń (realtime + seed). ───
+  // Scalamy per-komórka, ignorujemy własne echo (updated_device) i starsze rev.
+  useEffect(()=>{
+    if(!supabaseReady)return;
+    let stop=false;
+    const me=hkStateDeviceId();
+    const applySched=row=>{
+      if(!row||stop)return;
+      if(row.updated_device===me){schedRevRef.current=Math.max(schedRevRef.current,row.rev||0);return;} // własne echo
+      if(typeof row.rev==="number"&&row.rev<=schedRevRef.current)return;                                 // starsze/zastosowane
+      schedRevRef.current=row.rev||schedRevRef.current;
+      const incoming=row.data;
+      if(!incoming||typeof incoming!=="object")return;
+      // Scal dzień→pracownik do lokalnego grafiku (mirror wygrywa per komórka).
+      let changed=false;
+      const next={...(scheduleRef.current||{})};
+      for(const dk of Object.keys(incoming)){
+        const inDay=incoming[dk]; if(!inDay||typeof inDay!=="object")continue;
+        const merged={...(next[dk]||{}),...inDay};
+        if(JSON.stringify(merged)!==JSON.stringify(next[dk]||{})){next[dk]=merged;changed=true;}
+      }
+      if(!changed)return;
+      suppressSchedulePushRef.current=true; // to zmiana zdalna — nie odsyłaj jej z powrotem
+      setSchedule(next);
+      setBotAttention({kind:"info",text:"🔄 Grafik zaktualizowany (panel) — zaktualizowano automatycznie"});
+    };
+    // Seed: pobierz bieżący dokument grafiku i scal (mirror-cells wygrywają).
+    fetchSchedule().then(row=>{if(!stop&&row)applySched(row);});
+    const unsub=subscribeSchedule(applySched);
+    return ()=>{stop=true;unsub();};
+  },[supabaseReady]);
 
   // Periodyczny sync planów z dysku do Supabase (co 5 min) — żeby raporty
   // IMAP przychodzące w trakcie działania aplikacji trafiały do hk_plan
@@ -920,7 +1058,13 @@ export default function App(){
           const payload=buildPayload(date,data);
           if(payload){
             const {plannedRooms,...planRow}=payload;
-            supabase.from("hk_plan").upsert(planRow,{onConflict:"date"});
+            // jak w syncPayload: pusty przydział nie nadpisuje istniejącego planu
+            if(!Object.keys(planRow.assignments||{}).length)delete planRow.assignments;
+            if(!Object.keys(planRow.pm_assignments||{}).length)delete planRow.pm_assignments;
+            // zachowaj ręczny typ apartamentu (2xDBL) zamiast generycznego "APT"
+            planRow.room_types=await preserveAptRoomTypes(planRow.date,planRow.room_types);
+            supabase.from("hk_plan").upsert(planRow,{onConflict:"date"})
+              .then(({error})=>{if(error)console.error("[hk-sync 5min] hk_plan upsert:",error.message);});
             if(plannedRooms&&plannedRooms.length)supabase.from("hk_rooms").upsert(plannedRooms,{onConflict:"date,room",ignoreDuplicates:true});
           }
         }
@@ -930,7 +1074,7 @@ export default function App(){
     return()=>clearInterval(id);
   },[]);
 
-  const [soundEnabled,setSoundEnabled]=useState(()=>localStorage.getItem(STORAGE_KEYS.soundEnabled)!=="false");
+  const { soundEnabled, setSoundEnabled }=useSound();
   const [lockedScreen,setLockedScreen]=useState(false);
   const lockTimerRef=useRef(null);
   const LOCK_TIMEOUT=15*60*1000;
@@ -945,15 +1089,6 @@ export default function App(){
     if(!IS_DEV_TEST||testDateOffset===0)return base;
     const d=new Date(base);d.setDate(d.getDate()+testDateOffset);return d;
   };
-  // ── Zegar testowy (DEV) — symulowany „teraz" przesunięty o offset w ms ───────
-  // Wpływa TYLKO na logikę końca zmiany (start zmiany, przypomnienie, strażnik).
-  const [testClockOffset,setTestClockOffset]=useState(()=>{
-    if(!DEV_TOOLS)return 0;
-    const v=parseInt(localStorage.getItem(TEST_CLOCK_KEY)||"0",10);return Number.isFinite(v)?v:0;
-  });
-  const getNow=useCallback(()=>new Date(Date.now()+(DEV_TOOLS?testClockOffset:0)),[testClockOffset]);
-  const applyTestClockOffset=(ms)=>{setTestClockOffset(ms);try{localStorage.setItem(TEST_CLOCK_KEY,String(ms));}catch{/* */}};
-
   // ── Stała kasowa ──────────────────────────────────────────────────────────────
   const STALA_KASOWA_KEY="reception-stala-kasowa";
   const KW_TOTAL_KEY="reception-kw-total";
@@ -990,7 +1125,6 @@ export default function App(){
   },[hkData,hkDate]);
   useEffect(()=>{localStorage.setItem(STORAGE_KEYS.messages,JSON.stringify(messages));},[messages]);
   useEffect(()=>{setUnreadMsgCount(messages.filter(m=>!m.readByAdmin).length);},[messages]);
-  useEffect(()=>{localStorage.setItem(STORAGE_KEYS.soundEnabled,soundEnabled);},[soundEnabled]);
 
   const showToast=useCallback((msg,type="info",duration=4500)=>{
     const id=crypto.randomUUID();setToasts(prev=>[...prev,{id,msg,type}]);
@@ -1140,10 +1274,27 @@ export default function App(){
       ]);
       if(ar.data)saveJson(STORAGE_KEYS.managerAlerts,ar.data);
       if(rr.data)saveJson(STORAGE_KEYS.standingReminders,rr.data);
+      setInboxVersion(v=>v+1);   // odśwież licznik Pilnych i listę zadań w zakładce „Zadania"
     };
     sync();
+    // Nowe zadanie z panelu (INSERT) → bot recepcji ogłasza je proaktywnie: dymek + toast +
+    // powiadomienie Windows (gdy okno nieaktywne). UPDATE/DELETE (np. „zrobione") nie alarmują.
+    // Realtime odpala się tylko na realnych zmianach po subskrypcji, więc nie alarmuje istniejących.
+    const onAlert=(p)=>{
+      sync();
+      if(p?.eventType!=="INSERT"||!p.new)return;
+      const a=p.new;
+      const who=a.created_by||"Kierownik";
+      const dateTxt=a.target_date&&a.target_date!==todayKey()?` · ${a.target_date}`:"";
+      const shiftTxt=(a.target_shift?` · ${SHIFT_SHORT_LABELS[a.target_shift]||a.target_shift}`:" · wszystkie zmiany")+dateTxt;
+      const text=`📋 Nowe zadanie od ${who}${shiftTxt}: ${a.title||""}`;
+      setBotAttention({kind:"task",text});
+      showToast(text,a.priority==="high"?"warning":"info",7000);
+      if((document.visibilityState!=="visible"||!document.hasFocus())&&window.electronAPI?.notify)
+        window.electronAPI.notify({title:"📋 Nowe zadanie z panelu",body:`${a.title||""}${shiftTxt}`});
+    };
     const ch=supabase.channel("app-alerts-sync")
-      .on("postgres_changes",{event:"*",schema:"public",table:"manager_alerts",filter:`tenant_id=eq.${TENANT_ID}`},sync)
+      .on("postgres_changes",{event:"*",schema:"public",table:"manager_alerts",filter:`tenant_id=eq.${TENANT_ID}`},onAlert)
       .on("postgres_changes",{event:"*",schema:"public",table:"standing_reminders",filter:`tenant_id=eq.${TENANT_ID}`},sync)
       .subscribe();
     return()=>{supabase.removeChannel(ch);};
@@ -1168,6 +1319,18 @@ export default function App(){
     });
   },[selectedShift,tasks]);
   const carryOverForCurrentShift=useMemo(()=>(selectedShift?carryOverTasks[selectedShift]||[]:[]),[selectedShift,carryOverTasks]);
+  // Zadania przekazane z panelu menedżera (manager_alerts, kind='task') na bieżącą zmianę/dzień — zakładka „Zadania".
+  const managerTasksForShift=useMemo(()=>{
+    if(!selectedShift)return[];
+    const dk=currentSessionDate||todayKey();
+    const nowMs=Date.now();
+    return loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>
+      a.kind==="task"&&!a.done&&
+      (!a.expires_at||new Date(a.expires_at).getTime()>nowMs)&&
+      (!a.target_shift||a.target_shift===selectedShift)&&
+      (!a.target_date||a.target_date===dk)
+    ).sort((a,b)=>(b.priority==="high"?1:0)-(a.priority==="high"?1:0)||new Date(b.created_at)-new Date(a.created_at));
+  },[selectedShift,currentSessionDate,inboxVersion]);
   const filteredExtraTasks=useMemo(()=>extraTasksLog.filter(item=>item.shift===selectedShift&&item.employee===employeeName&&item.sessionDate===currentSessionDate),[extraTasksLog,selectedShift,employeeName,currentSessionDate]);
   const filteredWikiEntries=useMemo(()=>{const q=wikiSearch.trim().toLowerCase();return q?wikiEntries.filter(e=>e.topic.toLowerCase().includes(q)||e.content.toLowerCase().includes(q)):wikiEntries;},[wikiEntries,wikiSearch]);
   const selectedWikiEntry=useMemo(()=>filteredWikiEntries.find(e=>e.id===selectedWikiId)||filteredWikiEntries[0]||null,[filteredWikiEntries,selectedWikiId]);
@@ -1194,7 +1357,11 @@ export default function App(){
   // Kwota w sejfie dla następnej zmiany (zapisywana do localStorage)
   const SAFE_KEY="reception-safe-amount";
 
-  // ── Agent: przypomnienie 20 min przed końcem zmiany ─────────────────────────
+  // Live stan kasy → panel menedżerski: kasetka = stała kasowa (KPI recepcji),
+  // plus aktualny sejf i suma KW. Ten sam wzorzec co inne mirrory (employees itd.).
+  useEffect(()=>{pushMirror("cash_state",{kasetka:stalaKasowa,safe:parseFloat(localStorage.getItem(SAFE_KEY))||stalaKasowa,kwTotal,updatedAt:new Date().toISOString()});},[stalaKasowa,kwTotal]);
+
+  // ── Agent: przypomnienie przed końcem zmiany (60 min sejf / 15 min reszta) ──
   // Liczby/decyzje deterministyczne (tu), LLM tylko redaguje zdanie i degraduje
   // się do tekstu sztywnego. Nocna/wieczorowa = wymagana wpłata do sejfu.
   const requiresSafeDeposit=selectedShift==="nocna"||selectedShift==="wieczorowa";
@@ -1233,8 +1400,11 @@ export default function App(){
       const end=shiftEndDate(selectedShift,shiftStartTime);
       if(!end)return;
       const msLeft=end.getTime()-getNow().getTime();
-      // Okno: od 20 min przed końcem do 5 min po (gdyby panel był uśpiony).
-      if(msLeft<=15*60*1000&&msLeft>-5*60*1000){
+      // Wyprzedzenie: 60 min dla zmian z wpłatą do sejfu (nocna/wieczorowa kończą
+      // o 7:00 → okno wpada ~6:00, jest czas na wpłatę), 15 min dla pozostałych.
+      // Dolna granica (-5 min) łapie przypadek uśpionego panelu.
+      const leadMs=(requiresSafeDeposit?60:15)*60*1000;
+      if(msLeft<=leadMs&&msLeft>-5*60*1000){
         shiftEndFiredRef.current=true;
         fireShiftEndReminder(Math.max(0,Math.round(msLeft/60000)));
       }
@@ -1242,7 +1412,7 @@ export default function App(){
     check();
     const iv=setInterval(check,30000);
     return()=>clearInterval(iv);
-  },[started,shiftStartTime,selectedShift,fireShiftEndReminder,getNow]);
+  },[started,shiftStartTime,selectedShift,requiresSafeDeposit,fireShiftEndReminder,getNow]);
 
   const overdueTasks=useMemo(()=>{
     if(!started||!shiftStartTime)return[];
@@ -1351,14 +1521,16 @@ export default function App(){
     const alerts=loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>{
       const notExp=!a.expires_at||new Date(a.expires_at).getTime()>nowMs;
       const shiftOk=!a.target_shift||!selectedShift||a.target_shift===selectedShift;
-      return notExp&&shiftOk;
+      const dateOk=!a.target_date||a.target_date===(currentSessionDate||todayKey());
+      const alertOk=a.kind!=="task"||a.priority==="high";   // zadania → zakładka Zadania; tylko pilne liczą się jako alert
+      return notExp&&shiftOk&&dateOk&&alertOk&&!a.done;
     }).length;
     const reminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false).length;
     const wikiLastSeen=parseInt(localStorage.getItem(`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`)||"0");
     const newWiki=wikiEntries.filter(w=>parsePlDateTime(w.updatedAt)>wikiLastSeen).length;
     const pending=loadJson(STORAGE_KEYS.pendingItems,[]).filter(p=>!p.resolved).length;
     return alerts+reminders+newWiki+pending;
-  },[wikiEntries,employeeName,selectedShift,started,inboxVersion]);
+  },[wikiEntries,employeeName,selectedShift,currentSessionDate,started,inboxVersion]);
 
   const futureDatedReminders=useMemo(()=>{
     const today=todayKey();
@@ -1418,22 +1590,6 @@ export default function App(){
     return newest;
   },[employeeActivityLog,handoverNoteDismissed]);
 
-  // Sound effects — defined after all computed values to avoid TDZ
-  const playBeep=useCallback((freq=660,dur=0.3)=>{
-    if(!soundEnabled)return;
-    try{
-      const ctx=new AudioContext();
-      const osc=ctx.createOscillator();
-      const gain=ctx.createGain();
-      osc.connect(gain);gain.connect(ctx.destination);
-      osc.frequency.value=freq;osc.type="sine";
-      gain.gain.setValueAtTime(0.25,ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+dur);
-      osc.start();osc.stop(ctx.currentTime+dur);
-      setTimeout(()=>ctx.close(),dur*1000+200);
-    }catch{}
-  },[soundEnabled]);
-
   // Handlers
   const handleStartShift=()=>{
     const shiftKey=normalizeToShift(selectedShift)||selectedShift;
@@ -1446,7 +1602,9 @@ export default function App(){
     const nowMs=Date.now();
     const relevantAlerts=loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>{
       const notExp=!a.expires_at||new Date(a.expires_at).getTime()>nowMs;
-      return notExp&&(!a.target_shift||a.target_shift===shiftKey);
+      const dateOk=!a.target_date||a.target_date===(dayK);
+      const alertOk=a.kind!=="task"||a.priority==="high";   // ack przed zmianą tylko dla alertów i PILNYCH zadań
+      return notExp&&(!a.target_shift||a.target_shift===shiftKey)&&dateOk&&alertOk&&!a.done;
     });
     const hasAlerts=relevantAlerts.length>0;
     // Hash po TREŚCI (tytuł+treść), nie po ID — ID są niestabilne (seed/sync Supabase
@@ -1555,6 +1713,15 @@ export default function App(){
   const toggleTask=(index,checked)=>setCompleted(prev=>({...prev,[index]:!!checked}));
   const addAdditionalTask=()=>{if(!additionalTaskInput.trim()||!employeeName||!selectedShift)return;const updated=[{id:crypto.randomUUID(),text:additionalTaskInput.trim(),shift:selectedShift,employee:employeeName,sessionDate:currentSessionDate,createdAt:fmt()},...extraTasksLog];setExtraTasksLog(updated);saveJson(STORAGE_KEYS.extra,updated);setAdditionalTaskInput("");showToast("Zadanie dodatkowe zapisane.","success");};
   const markCarryOverDone=(index)=>{if(!selectedShift)return;const updated={...carryOverTasks,[selectedShift]:(carryOverTasks[selectedShift]||[]).map((t,i)=>i===index?{...t,done:!t.done,doneBy:!t.done?employeeName:""}:t)};setCarryOverTasks(updated);saveJson(STORAGE_KEYS.carry,updated);};
+  // Odhaczenie zadania z panelu menedżera (manager_alerts). Optymistycznie lokalnie + zapis do Supabase
+  // (te same kolumny co panel.markZadanieDone) → panel widzi „zrobione" na żywo.
+  const markManagerTaskDone=async(id)=>{
+    const at=new Date().toISOString(),by=employeeName||currentManager||"recepcja";
+    const list=loadJson(STORAGE_KEYS.managerAlerts,[]).map(a=>a.id===id?{...a,done:true,done_at:at,done_by:by}:a);
+    saveJson(STORAGE_KEYS.managerAlerts,list);setInboxVersion(v=>v+1);
+    if(supabase){try{await supabase.from("manager_alerts").update({done:true,done_at:at,done_by:by}).eq("id",id);}catch{}}
+    showToast("Zadanie odhaczone.","success");
+  };
   const deleteDatedReminder=(target)=>{const updated=datedReminders.filter(r=>typeof target==="object"?r!==target:r.id!==target);setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);showToast("Przypomnienie usunięte.","info");};
   // ── Oczekujące / Do odebrania (bez terminu) — rejestr w zakładce Informacje ──
   const addPendingItem=(text)=>{
@@ -2058,6 +2225,8 @@ export default function App(){
       }
       const alerts=loadJson(STORAGE_KEYS.managerAlerts,[])
         .filter(a=>!a.expires_at||new Date(a.expires_at).getTime()>Date.now())
+        .filter(a=>!a.target_date||a.target_date===(currentSessionDate||todayKey()))
+        .filter(a=>a.kind!=="task"&&!a.done)   // zadania (kind='task') idą do sekcji zadań, nie do alertów
         .map(a=>({tytul:a.title,tresc:a.body}));
       // Wysyłamy do modelu TYLKO niepuste sekcje (po polsku) — inaczej model pisał
       // np. "Nie ma usterek, bo lista openFaults jest pusta".
@@ -2613,7 +2782,7 @@ export default function App(){
                       <span>Przegląd</span>
                     </div>
                     <h1 className="v2-dash-title">
-                      {(()=>{const h=new Date().getHours();return h<18?"Dzień dobry":"Dobry wieczór";})()}, {employeeName}
+                      {(()=>{const h=getNow().getHours();return h<18?"Dzień dobry":"Dobry wieczór";})()}, {employeeName}
                       <span className="v2-live-pill">Live · {shiftShortLabel(selectedShift)}</span>
                     </h1>
                     <div className="v2-dash-meta">
@@ -3006,6 +3175,32 @@ export default function App(){
                 </section>
               );
             })()}
+            {managerTasksForShift.length>0&&(
+              <div className="panel">
+                <div className="panel-title amber-text"><BellRing size={16}/> Zadania od menedżera (z panelu)</div>
+                <div className="stack">
+                  {managerTasksForShift.map(task=>{
+                    let body=task.body||"",people="";
+                    const mt=body.match(/^Dla(?: os[oó]b)?:\s*([^\n]+)\n?/i);
+                    if(mt){people=mt[1];body=body.slice(mt[0].length);}
+                    return(
+                      <div key={task.id} className="carry-row">
+                        <input type="checkbox" checked={false} onChange={()=>markManagerTaskDone(task.id)}/>
+                        <div className="flex-1">
+                          <div className="strong-ish" style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                            {task.priority==="high"&&<span style={{fontSize:10,padding:"1px 7px",borderRadius:999,background:"rgba(154,48,64,.2)",color:"var(--cc-danger)",fontWeight:700}}>PILNE</span>}
+                            {task.title}
+                          </div>
+                          {body&&body!==task.title&&<div className="tiny" style={{marginTop:2}}>{body}</div>}
+                          <div className="tiny muted" style={{marginTop:3}}>Od: {task.created_by||"Menedżer"}{people?` · dla: ${people}`:""}{task.target_date?` · ${task.target_date}`:""}</div>
+                        </div>
+                        <span style={{fontSize:15,fontWeight:800,color:"var(--cc-danger)",lineHeight:1,flexShrink:0}}>✕</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="panel">
               <div className="panel-title">Zadania przekazane tej zmianie — obowiązkowe</div>
               <div className="stack">
@@ -3255,9 +3450,19 @@ export default function App(){
   // przypomnienie 20 min przed końcem i strażnika sejfu (≥10 min stażu). Znika
   // z release (gate DEV_TOOLS / import.meta.env.DEV).
   const toLocalInput=(d)=>{const p=n=>String(n).padStart(2,"0");return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;};
+  // Skacze zegarem do „X minut przed realnym końcem AKTUALNEJ zmiany" — liczone z
+  // shiftEndDate(selectedShift), więc zawsze pasuje do zmiany, na której jesteś
+  // (popołudniowa, nocna…). Resetuje flagę „pokazano", by alert mógł odpalić ponownie.
+  const jumpToBeforeShiftEnd=(minBefore)=>{
+    const end=shiftEndDate(selectedShift,shiftStartTime);
+    if(!end)return;
+    shiftEndFiredRef.current=false;
+    setShiftEndReminderOpen(false);
+    applyTestClockOffset(end.getTime()-minBefore*60000-Date.now());
+  };
   const testClockWidget=DEV_TOOLS&&(
     <div style={{position:"fixed",left:12,bottom:12,zIndex:99999,background:"#1a0a2e",border:"2px dashed #7c3aed",borderRadius:10,padding:"10px 12px",width:252,boxShadow:"0 6px 24px rgba(0,0,0,.45)"}}>
-      <div style={{fontSize:10.5,fontWeight:800,color:"#c4b5fd",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6}}>🕒 Zegar testowy (tes)</div>
+      <div style={{fontSize:10.5,fontWeight:800,color:"#c4b5fd",letterSpacing:".08em",textTransform:"uppercase",marginBottom:6}}>🕒 Zegar testowy (DEV)</div>
       <div style={{fontSize:13,color:"#e9d5ff",fontWeight:700,marginBottom:6}}>{getNow().toLocaleString("pl-PL")}{testClockOffset!==0&&<span style={{color:"#a78bfa",fontWeight:500}}> ({testClockOffset>0?"+":""}{Math.round(testClockOffset/60000)} min)</span>}</div>
       <input type="datetime-local" value={toLocalInput(getNow())} onChange={e=>{const v=e.target.value;if(!v)return;const t=new Date(v).getTime();if(Number.isFinite(t))applyTestClockOffset(t-Date.now());}} style={{width:"100%",fontSize:11.5,marginBottom:6,padding:"3px 6px",borderRadius:6,border:"1px solid #4c1d95",background:"#2a1245",color:"#e9d5ff"}}/>
       <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:7}}>
@@ -3266,13 +3471,27 @@ export default function App(){
         ))}
         <button onClick={()=>applyTestClockOffset(0)} style={{padding:"3px 7px",borderRadius:5,fontSize:11,fontWeight:700,cursor:"pointer",border:"1px solid #7c3aed",background:"#5b21b6",color:"#fff"}}>Reset</button>
       </div>
-      <div style={{fontSize:9.5,color:"#8b6fc4",marginBottom:4}}>Ustaw „za 18 min koniec zmiany":</div>
-      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-        {[["Nocna/Wiecz.",6,42],["Poranna",16,42],["Popoł.",22,42],["Dzienna",18,42]].map(([lbl,h,mm])=>(
-          <button key={lbl} onClick={()=>{const d=new Date();d.setHours(h,mm,0,0);applyTestClockOffset(d.getTime()-Date.now());}} style={{padding:"3px 7px",borderRadius:5,fontSize:10.5,fontWeight:700,cursor:"pointer",border:"1px solid #4c1d95",background:"transparent",color:"#a78bfa"}}>{lbl}</button>
-        ))}
-      </div>
-      <div style={{fontSize:9.5,color:"#6E2B5C",marginTop:7,lineHeight:1.4}}>Ustaw czas PRZED logowaniem, zaloguj zmianę, potem „+10m" by przekroczyć 10 min stażu i wywołać strażnika.</div>
+      {started&&shiftStartTime&&selectedShift?(()=>{
+        const end=shiftEndDate(selectedShift,shiftStartTime);
+        const lead=requiresSafeDeposit?60:15;
+        const p=n=>String(n).padStart(2,"0");
+        return(
+          <>
+            <div style={{fontSize:9.5,color:"#8b6fc4",marginBottom:4,lineHeight:1.4}}>
+              Twoja zmiana: <b style={{color:"#c4b5fd"}}>{SHIFT_NAME_PL[selectedShift]||selectedShift}</b>
+              {end?<> · koniec <b style={{color:"#c4b5fd"}}>{p(end.getHours())}:{p(end.getMinutes())}</b> · alert {lead} min przed</>:null}
+            </div>
+            <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+              {[["⏰ Skocz do alertu",lead-1],["Koniec −1 min",1],["Po końcu (+2)",-2]].map(([lbl,mb])=>(
+                <button key={lbl} onClick={()=>jumpToBeforeShiftEnd(mb)} style={{padding:"3px 7px",borderRadius:5,fontSize:10.5,fontWeight:700,cursor:"pointer",border:"1px solid #4c1d95",background:"transparent",color:"#a78bfa"}}>{lbl}</button>
+              ))}
+            </div>
+          </>
+        );
+      })():(
+        <div style={{fontSize:9.5,color:"#8b6fc4",lineHeight:1.4}}>Zaloguj i rozpocznij zmianę — pojawią się skróty „skocz do końca zmiany" dopasowane do Twojej zmiany.</div>
+      )}
+      <div style={{fontSize:9.5,color:"#6E2B5C",marginTop:7,lineHeight:1.4}}>Strażnik sejfu: rozpocznij zmianę, potem „+10m" by przekroczyć 10 min stażu.</div>
     </div>
   );
 
@@ -3456,6 +3675,11 @@ export default function App(){
                   {deposit<=0&&(
                     <div style={{background:"#fdf3e3",border:"1px solid #e8c98a",borderLeft:"4px solid #c8a050",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,color:"#7a5a16",lineHeight:1.5}}>
                       <strong>Do sejfu wychodzi 0 zł.</strong> Sprawdź, czy w polu „Stan KW" jest <u>aktualny</u> odczyt z drukarki kasowej (musi być wyższy niż KW poprzedniej zmiany: {fmtMoney(kwTotal)}). Jeśli w nocy nie było żadnej wpłaty gotówką — to jest OK, możesz zatwierdzić.
+                    </div>
+                  )}
+                  {newS<0&&(
+                    <div style={{background:"#fdecec",border:"1px solid #e8a0a0",borderLeft:"4px solid #d04545",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,color:"#8a1c1c",lineHeight:1.5}}>
+                      <strong>Uwaga: kasa po wpłacie byłaby ujemna ({fmtMoney(newS)} zł).</strong> Wpłacasz więcej, niż jest w kasie ({fmtMoney(totalBefore)} zł). Sprawdź kwotę wpłaty i odczyt „Stan KW" przed zatwierdzeniem.
                     </div>
                   )}
                   {safeDepositKW&&(
