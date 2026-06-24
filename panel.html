@@ -279,6 +279,26 @@ body{font-family:var(--ui);background:
 .navbtn span{flex:1}
 .navbadge{flex:0 0 auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#c2415a;color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 .tab .navbadge{margin-left:5px}
+/* ── Dzwonek powiadomień (topbar) + dropdown ── */
+.notif-wrap{position:relative;display:inline-flex;margin-left:auto}
+.top-bell{position:relative;background:rgba(90,29,74,.07);border:1px solid var(--line);border-radius:10px;width:38px;height:34px;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--plum)}
+.top-bell:hover{background:rgba(90,29,74,.12)}
+.top-bell .navbadge{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;font-size:10px}
+.notif-menu{position:absolute;top:42px;right:0;z-index:1200;width:284px;max-height:72vh;overflow:auto;background:var(--paper);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 16px 48px rgba(90,29,74,.22);padding:6px}
+.notif-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 6px;font-weight:800;color:var(--plum);font-size:13px}
+.notif-gear{background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:8px;line-height:1}
+.notif-gear:hover{background:rgba(90,29,74,.06)}
+.notif-row{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;font:inherit;color:var(--ink)}
+.notif-row:hover{background:rgba(90,29,74,.05)}
+.notif-row .ni{font-size:15px;width:20px;text-align:center}
+.notif-row .nl{flex:1;font-size:13.5px;font-weight:600}
+.notif-row .nz{color:var(--muted);font-size:12px}
+.notif-set{display:flex;align-items:center;gap:10px;padding:9px 10px;cursor:pointer;border-radius:10px}
+.notif-set:hover{background:rgba(90,29,74,.05)}
+.notif-set input{width:17px;height:17px;accent-color:var(--plum);cursor:pointer}
+.notif-set .ni{font-size:15px;width:20px;text-align:center}
+.notif-set .nl{font-size:13.5px;font-weight:600}
+.notif-empty,.notif-foot{padding:11px 10px;color:var(--muted);font-size:12px;text-align:center;line-height:1.5}
 .auth-foot{text-align:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:22px;opacity:.8}
 .soon{display:flex;align-items:center;gap:8px}
 .soon::before{content:"";width:14px;height:1.5px;background:var(--gold);border-radius:2px;flex-shrink:0}
@@ -871,6 +891,7 @@ async function showPanelFromSession(fresh) {
   // Admin: pełny pulpit + Konta. Gastro: własny zestaw (Grafik/Zadania/Akcje).
   // Pozostałe role dziedziczą widok HK.
   renderHkDashboard(role, name);
+  notifInit();        // preferencje powiadomień + watcher (dzwonek/badge per kategoria)
 }
 
 function renderPlaceholder(role, name) {
@@ -956,7 +977,10 @@ function renderHkDashboard(role, name) {
   if (!hkLanded) { hkLanded = true; hkTab = tabs.some(([k]) => k==="pulpit") ? "pulpit" : (tabs[0] && tabs[0][0]) || "live"; }
   if (!tabs.some(([k]) => k===hkTab)) hkTab = tabs[0][0];
   const roleLbl = (ROLE_INFO[role]||{}).label || role;
-  const badge = k => k==="poczta" ? `<span class="navbadge" data-mailbadge ${MAIL_UNREAD?"":'hidden'}>${MAIL_UNREAD||""}</span>` : "";
+  // Badge na zakładce = suma nieprzeczytanych z włączonych kategorii powiadomień
+  // mapujących się na tę zakładkę (poczta/korekty/notatki/raporty/zadania/grafik).
+  const badge = k => notifAvailCats().some(c => NOTIF_CATS[c].tab === k)
+    ? `<span class="navbadge" data-notifbadge="${k}" hidden></span>` : "";
   const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
   const mtab = tabs.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
   const av = esc(initials(name)), avbg = avatarBg(name);
@@ -976,6 +1000,10 @@ function renderHkDashboard(role, name) {
       <main class="main">
         <header class="topbar">
           <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
+          <div class="notif-wrap">
+            <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" title="Powiadomienia">🔔<span id="notifBellCount" class="navbadge" hidden></span></button>
+            <div id="notifMenu" class="notif-menu" hidden></div>
+          </div>
           <button class="top-out" onclick="changeMyPassword()">Hasło</button>
           <button class="top-out" onclick="doLogout()">Wyloguj</button>
         </header>
@@ -993,6 +1021,7 @@ window.setHkTab = (t) => {
   const tt = document.getElementById("pageTitle"); if (tt) tt.textContent = tabTitle(CURRENT.role, t);
   const hb = document.getElementById("hkBody"); if (hb) hb.innerHTML = '<div class="spin">Wczytywanie…</div>';
   loadHkTab();
+  notifMarkTabSeen(t);   // wejście w zakładkę = oznacz jej powiadomienia jako przeczytane
 };
 
 async function loadHkTab() {
@@ -1923,7 +1952,7 @@ window.markZadanieDone = async (id) => {
 // manager_alerts (tamto celuje w zmianę recepcji). Typy: prośba / zadanie / info.
 const MAIL_KIND   = { prosba:"Prośba", zadanie:"Zadanie", info:"Info" };
 const MAIL_STATUS = { open:{l:"Otwarta",c:"#5a1d4a"}, in_progress:{l:"W toku",c:"#b5761e"}, done:{l:"Zrobione",c:"#1f7a52"}, rejected:{l:"Odrzucona",c:"#c2415a"} };
-let MAIL_VIEW = "inbox";     // inbox | sent | compose | thread
+let MAIL_VIEW = "list";      // list (karty próśb + composer na dole) | thread
 let MAIL_THREAD = null;      // id otwartego wątku
 let MAIL_ACCOUNTS = [];      // lista kont (adresaci)
 let MAIL_UNREAD = 0;
@@ -1937,10 +1966,10 @@ const mailDest   = r => r.to_email
   : ("wszyscy: " + ROLE_LABEL(r.to_role));
 
 function setMailBadge(){
-  document.querySelectorAll("[data-mailbadge]").forEach(el => {
-    if (MAIL_UNREAD > 0){ el.hidden = false; el.textContent = MAIL_UNREAD > 99 ? "99+" : String(MAIL_UNREAD); }
-    else { el.hidden = true; el.textContent = ""; }
-  });
+  // Poczta jest jedną z kategorii powiadomień — jej licznik karmi wspólny system
+  // (dzwonek + badge na zakładce). „Nieprzeczytane poczty" liczymy z read_at.
+  NOTIF_COUNTS.poczta = notifOn("poczta") ? (MAIL_UNREAD || 0) : 0;
+  notifPaint();
 }
 async function refreshMailUnread(){
   if (!CURRENT.email) return;
@@ -1958,7 +1987,191 @@ function startMailWatch(){
   try {
     MAIL_CH = sb.channel("panel-poczta")
       .on("postgres_changes", { event:"*", schema:"public", table:"manager_messages", filter:`tenant_id=eq.${TENANT_ID}` },
-        () => { refreshMailUnread(); if (hkTab==="poczta" && (MAIL_VIEW==="inbox"||MAIL_VIEW==="thread")) loadPoczta(); })
+        () => { refreshMailUnread();
+          // Odśwież widok poczty na żywo, ale nie wycieraj tekstu, gdy ktoś właśnie pisze prośbę/odpowiedź.
+          if (hkTab!=="poczta") return;
+          const ae = document.activeElement;
+          if (ae && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName||"") && /^m(To|Body|Pilne|Desk|Reply)$/.test(ae.id||"")) return;
+          loadPoczta();
+        })
+      .subscribe();
+  } catch {}
+}
+
+// ─────────────────────────── Powiadomienia panelu (per konto) ───────────────────────────
+// Każde konto wybiera, O CZYM chce powiadomień (dzwonek w topbarze + badge na zakładce).
+// Preferencje w panel_notif_prefs (mig. 0039). „Nieprzeczytane" liczymy po stronie klienta:
+//   • poczta  → manager_messages.read_at (MAIL_UNREAD),
+//   • korekty / notatki / raporty → snapshot panel_mirror, różnica id vs ostatnio widziane,
+//   • zadania → manager_alerts kind=task (otwarte), różnica id,
+//   • grafik  → zmiana snapshotu schedule (hash) vs ostatnio widziany.
+// Stan „widziane" trzymamy w localStorage (per email+kategoria) — bez zmian schematu.
+// Pierwsze wejście NIE buczy wstecznie: nieznaną kategorię inicjalizujemy bieżącym stanem.
+const NOTIF_CATS = {
+  poczta:  { label:"Poczta",           icon:"✉",  tab:"poczta"  },
+  korekty: { label:"Korekty kasy",     icon:"🧾", tab:"kasa"    },
+  notatki: { label:"Notatki służbowe", icon:"📝", tab:"kasa"    },
+  raporty: { label:"Raporty zmian",    icon:"📋", tab:"kasa"    },
+  zadania: { label:"Zadania",          icon:"✓",  tab:"zadania" },
+  grafik:  { label:"Grafik",           icon:"📅", tab:"grafik"  },
+};
+let NOTIF_PREFS = null;     // { cat:bool } z DB; null = jeszcze nie wczytane (traktuj jak „wszystko ON")
+let NOTIF_COUNTS = {};      // { cat:liczba nieprzeczytanych }
+let NOTIF_CH = null;        // kanał realtime (panel_mirror + manager_alerts)
+let NOTIF_OPEN = false;     // dropdown otwarty
+let NOTIF_SETTINGS = false; // dropdown pokazuje ustawienia
+
+// Kategoria dostępna dla roli, gdy rola ma odpowiadającą zakładkę (spójne z tabsFor).
+function notifAvail(cat){
+  const tab = NOTIF_CATS[cat] && NOTIF_CATS[cat].tab;
+  return (tabsFor(CURRENT.role) || []).some(([k]) => k === tab);
+}
+// Włączona = dostępna dla roli I nie odznaczona (brak wpisu → domyślnie ON).
+function notifOn(cat){
+  if (!notifAvail(cat)) return false;
+  if (NOTIF_PREFS && cat in NOTIF_PREFS) return !!NOTIF_PREFS[cat];
+  return true;
+}
+function notifAvailCats(){ return Object.keys(NOTIF_CATS).filter(notifAvail); }
+
+const notifSeenKey = cat => `notif_seen:${CURRENT.email}:${cat}`;
+function notifHash(s){ let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return h; }
+
+// Klucze elementów danej kategorii — do różnicy „nowe vs widziane".
+async function notifKeys(cat){
+  try {
+    if (cat === "korekty"){ const a = await getMirror("payment_corrections"); return Array.isArray(a) ? a.map(x => String(x.id || x.reservation || "")).filter(Boolean) : []; }
+    if (cat === "notatki"){ const a = await getMirror("employee_reports");   return Array.isArray(a) ? a.map(x => String(x.id || ((x.createdAt||"") + "|" + (x.author||"")))).filter(Boolean) : []; }
+    if (cat === "raporty"){ const a = await getMirror("reports_full");        return Array.isArray(a) ? a.map(x => String((x.dayKey||x.day_key||"") + "|" + (x.shiftKey||x.shift_key||"") + "|" + (x.employee||x.employeeName||""))).filter(Boolean) : []; }
+    if (cat === "grafik"){ const s = await getMirror("schedule"); return s ? ["h:" + notifHash(JSON.stringify(s))] : []; }
+    if (cat === "zadania"){
+      const { data } = await sb.from("manager_alerts").select("id,done").eq("tenant_id", TENANT_ID).eq("kind", "task");
+      return (data || []).filter(r => !r.done).map(r => String(r.id));
+    }
+  } catch {}
+  return [];
+}
+
+// Przelicz liczniki wszystkich (poza pocztą — ta z MAIL_UNREAD przez setMailBadge).
+async function notifRefresh(){
+  if (!CURRENT.email) return;
+  NOTIF_COUNTS.poczta = notifOn("poczta") ? (MAIL_UNREAD || 0) : 0;
+  await Promise.all(notifAvailCats().filter(c => c !== "poczta").map(async cat => {
+    if (!notifOn(cat)) { NOTIF_COUNTS[cat] = 0; return; }
+    const raw = localStorage.getItem(notifSeenKey(cat));
+    const keys = await notifKeys(cat);
+    if (raw == null) { try { localStorage.setItem(notifSeenKey(cat), JSON.stringify(keys)); } catch {} NOTIF_COUNTS[cat] = 0; return; }
+    let seen; try { seen = new Set(JSON.parse(raw || "[]")); } catch { seen = new Set(); }
+    NOTIF_COUNTS[cat] = keys.filter(k => !seen.has(k)).length;
+  }));
+  notifPaint();
+}
+
+// Wejście w zakładkę = oznacz jej kategorie jako przeczytane (poczta: read_at osobno).
+async function notifMarkTabSeen(tab){
+  const cats = notifAvailCats().filter(c => NOTIF_CATS[c].tab === tab && c !== "poczta");
+  if (!cats.length) return;
+  await Promise.all(cats.map(async cat => {
+    const keys = await notifKeys(cat);
+    try { localStorage.setItem(notifSeenKey(cat), JSON.stringify(keys)); } catch {}
+    NOTIF_COUNTS[cat] = 0;
+  }));
+  notifPaint();
+}
+
+function notifTabCount(tab){
+  return notifAvailCats().filter(c => NOTIF_CATS[c].tab === tab && notifOn(c)).reduce((s, c) => s + (NOTIF_COUNTS[c] || 0), 0);
+}
+function notifTotal(){ return notifAvailCats().filter(notifOn).reduce((s, c) => s + (NOTIF_COUNTS[c] || 0), 0); }
+
+function notifPaint(){
+  document.querySelectorAll("[data-notifbadge]").forEach(el => {
+    const n = notifTabCount(el.getAttribute("data-notifbadge"));
+    if (n > 0){ el.hidden = false; el.textContent = n > 99 ? "99+" : String(n); }
+    else { el.hidden = true; el.textContent = ""; }
+  });
+  const b = document.getElementById("notifBellCount");
+  if (b){ const t = notifTotal(); if (t > 0){ b.hidden = false; b.textContent = t > 99 ? "99+" : String(t); } else { b.hidden = true; b.textContent = ""; } }
+  if (NOTIF_OPEN) notifRenderMenu();
+}
+
+// ── Dropdown dzwonka ──
+window.notifToggle = () => {
+  NOTIF_OPEN = !NOTIF_OPEN; NOTIF_SETTINGS = false;
+  const m = document.getElementById("notifMenu"); if (!m) return;
+  m.hidden = !NOTIF_OPEN; if (NOTIF_OPEN) notifRenderMenu();
+};
+document.addEventListener("click", (e) => {
+  if (!NOTIF_OPEN) return;
+  if (e.target.closest(".notif-wrap")) return;   // klik w dzwonek/menu — nie zamykaj
+  NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true;
+});
+
+function notifRenderMenu(){
+  const m = document.getElementById("notifMenu"); if (!m) return;
+  if (NOTIF_SETTINGS){
+    const rows = notifAvailCats().map(c => `
+      <label class="notif-set">
+        <input type="checkbox" ${notifOn(c) ? "checked" : ""} onchange="notifSetPref('${c}', this.checked)">
+        <span class="ni">${NOTIF_CATS[c].icon}</span><span class="nl">${NOTIF_CATS[c].label}</span>
+      </label>`).join("");
+    m.innerHTML = `<div class="notif-hd"><button class="notif-gear" onclick="notifBackList()" title="Wróć">‹</button>
+        <span>Co Cię powiadamiać</span><span style="width:22px"></span></div>
+      ${rows}
+      <div class="notif-foot">Wybór zapisuje się automatycznie i działa na każdym urządzeniu.</div>`;
+    return;
+  }
+  const cats = notifAvailCats().filter(notifOn);
+  const rows = cats.map(c => {
+    const n = NOTIF_COUNTS[c] || 0;
+    return `<button class="notif-row" onclick="notifOpenCat('${c}')">
+      <span class="ni">${NOTIF_CATS[c].icon}</span>
+      <span class="nl">${NOTIF_CATS[c].label}</span>
+      ${n > 0 ? `<span class="navbadge">${n > 99 ? "99+" : n}</span>` : `<span class="nz">—</span>`}
+    </button>`;
+  }).join("");
+  m.innerHTML = `<div class="notif-hd"><span>Powiadomienia</span>
+      <button class="notif-gear" onclick="notifGoSettings()" title="Ustawienia">⚙</button></div>
+    ${rows || `<div class="notif-empty">Wszystkie powiadomienia wyłączone.<br>Włącz je w ⚙ ustawieniach.</div>`}`;
+}
+window.notifOpenCat  = (c) => { NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true; setHkTab(NOTIF_CATS[c].tab); };
+window.notifGoSettings = () => { NOTIF_SETTINGS = true; notifRenderMenu(); };
+window.notifBackList   = () => { NOTIF_SETTINGS = false; notifRenderMenu(); };
+window.notifSetPref = async (cat, on) => {
+  if (!NOTIF_PREFS) NOTIF_PREFS = {};
+  NOTIF_PREFS[cat] = !!on;
+  await notifSavePrefs();
+  await notifRefresh();
+  notifRenderMenu();
+};
+
+// ── Preferencje w DB (panel_notif_prefs) ──
+async function notifLoadPrefs(){
+  NOTIF_PREFS = {};
+  if (!CURRENT.email) return;
+  try {
+    const { data } = await sb.from("panel_notif_prefs").select("prefs")
+      .eq("tenant_id", TENANT_ID).eq("email", CURRENT.email).maybeSingle();
+    if (data && data.prefs && typeof data.prefs === "object") NOTIF_PREFS = data.prefs;
+  } catch {}
+}
+async function notifSavePrefs(){
+  if (!CURRENT.email) return;
+  try {
+    await sb.from("panel_notif_prefs").upsert(
+      { tenant_id: TENANT_ID, email: CURRENT.email, prefs: NOTIF_PREFS, updated_at: new Date().toISOString() },
+      { onConflict: "tenant_id,email" });
+  } catch {}
+}
+
+async function notifInit(){
+  await notifLoadPrefs();
+  await notifRefresh();
+  try { if (NOTIF_CH) sb.removeChannel(NOTIF_CH); } catch {}
+  try {
+    NOTIF_CH = sb.channel("panel-notif")
+      .on("postgres_changes", { event:"*", schema:"public", table:"panel_mirror",   filter:`tenant_id=eq.${TENANT_ID}` }, () => notifRefresh())
+      .on("postgres_changes", { event:"*", schema:"public", table:"manager_alerts", filter:`tenant_id=eq.${TENANT_ID}` }, () => notifRefresh())
       .subscribe();
   } catch {}
 }
@@ -1973,18 +2186,8 @@ async function loadPoczta(){
     MAIL_ACCOUNTS = (accRes.data || []).filter(a => a.active !== false);
     window._MAIL_ROWS = msgRes.data || [];
   } catch { return body('<div class="empty">Nie udało się pobrać poczty.</div>'); }
-  if (MAIL_VIEW === "compose") return mailRenderCompose();
   if (MAIL_VIEW === "thread")  return mailRenderThread();
   return mailRenderList();
-}
-
-function mailTabsBar(){
-  const tab = (v,l) => `<button class="zm-nav" style="width:auto;padding:0 14px;font-weight:800;${MAIL_VIEW===v?'background:var(--plum);color:#fff;border-color:var(--plum)':''}" onclick="mailGo('${v}')">${l}</button>`;
-  return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
-    ${tab('inbox','Odebrane')}${tab('sent','Wysłane')}
-    <span style="flex:1"></span>
-    <button class="btn" style="width:auto;padding:8px 16px" onclick="mailGo('compose')">✉ Nowa wiadomość</button>
-  </div>`;
 }
 
 function mailThreads(){
@@ -2000,87 +2203,98 @@ function mailThreads(){
   }).sort((a,b)=> new Date(b.last.created_at)-new Date(a.last.created_at));
 }
 
+// „Kto czegoś od Ciebie chce" — luźne karty próśb. Bez tematu/typu/priorytetu jako pól.
+// Komponowanie na samym DOLE listy (prosty pasek „poproś kogoś"), bez paska zakładek u góry.
+function mailReqMsg(t){ return t.list.find(r => r.kind !== "info") || t.root; }   // wiadomość prośby ze statusem
 function mailRenderList(){
-  // Odebrane: wątki z choć jedną wiadomością do mnie od kogoś innego.
-  // Wysłane: wątki, które ja rozpocząłem.
-  const threads = mailThreads().filter(t => MAIL_VIEW==="sent"
-    ? mailIsMine(t.root)
-    : t.list.some(r => mailToMe(r) && !mailIsMine(r)));
-  const rowsHtml = threads.length ? threads.map(t => {
-    const r = t.root, p = PRIO[r.priority] || PRIO.normal;
-    const counterpart = MAIL_VIEW==="sent" ? ("do: " + mailDest(r)) : ("od: " + r.from_name);
-    const st = MAIL_STATUS[t.last.status] || MAIL_STATUS.open;
-    const kindLbl = MAIL_KIND[r.kind] || r.kind;
-    return `<div class="statrow" style="align-items:flex-start;flex-direction:column;gap:5px;cursor:pointer;${t.unread?'box-shadow:inset 3px 0 0 #c2415a':''}" onclick="mailOpen('${r.thread_id}')">
-      <div style="display:flex;align-items:center;gap:8px;width:100%">
-        <span class="chip" style="color:${p.c};border-color:${p.c}55">${kindLbl}</span>
-        ${r.kind!=="info" ? `<span class="chip" style="color:${st.c};border-color:${st.c}55">${st.l}</span>` : ""}
-        <span class="k" style="flex:1;${t.unread?'font-weight:800':''}">${esc(r.subject||"(bez tematu)")}</span>
-        ${t.unread?`<span class="navbadge">${t.unread}</span>`:""}
-        <span class="tm" style="font-size:11px;color:var(--muted)">${esc(mailWhen(t.last.created_at))}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;width:100%">
-        <span style="font-size:11.5px;color:var(--muted);flex:1">${esc(counterpart)}${t.count>1?` · ${t.count} wiad.`:""}</span>
-        ${r.priority==="high"?`<span class="chip" style="color:#c2415a;border-color:#c2415a55">Pilne</span>`:""}
+  const threads = mailThreads();
+  // Do Ciebie: wątki z prośbą do mnie od kogoś innego.   Twoje prośby: które ja rozpocząłem.
+  const incoming = threads.filter(t => t.list.some(r => mailToMe(r) && !mailIsMine(r)));
+  const outgoing = threads.filter(t => mailIsMine(t.root));
+
+  const card = (t, mine) => {
+    const r = t.root, req = mailReqMsg(t);
+    const st = MAIL_STATUS[req.status] || MAIL_STATUS.open;
+    const who = mine ? mailDest(r) : r.from_name;
+    const lead = mine ? `Prosisz <b>${esc(who)}</b>:` : `<b>${esc(who)}</b> prosi Cię:`;
+    const closed = req.status === "done" || req.status === "rejected";
+    const av = esc(initials(who)), avbg = avatarBg(who);
+    const actions = (!mine && !closed)
+      ? `<button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer"
+            onclick="event.stopPropagation();mailQuickDone('${req.id}')">✓ Zrobione</button>
+         <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font-weight:800;font-size:11.5px;cursor:pointer"
+            onclick="event.stopPropagation();mailOpen('${r.thread_id}')">Odpisz</button>`
+      : `<span class="chip" style="color:${st.c};border-color:${st.c}55">${st.l}</span>`;
+    return `<div class="statrow" style="align-items:flex-start;gap:11px;cursor:pointer;${t.unread?'box-shadow:inset 3px 0 0 #c2415a':''}" onclick="mailOpen('${r.thread_id}')">
+      <span class="me-av" style="width:38px;height:38px;flex:0 0 auto;background:${avbg};font-size:13px">${av}</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="flex:1;font-size:13.5px;${t.unread?'font-weight:800':''}">${lead}${r.priority==="high"?' <span class="chip" style="color:#c2415a;border-color:#c2415a55">pilne</span>':''}</span>
+          ${t.unread?`<span class="navbadge">${t.unread}</span>`:""}
+          <span class="tm" style="font-size:11px;color:var(--muted)">${esc(mailWhen(t.last.created_at))}</span>
+        </div>
+        <div style="font-size:13px;color:var(--ink);white-space:pre-wrap">${esc(r.body||"")}${t.count>1?` <span style="color:var(--muted)">· ${t.count} wiad.</span>`:""}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:3px">${actions}</div>
       </div>
     </div>`;
-  }).join("") : `<div class="empty">${MAIL_VIEW==="sent"?"Nie wysłałeś jeszcze żadnej wiadomości.":"Brak wiadomości. 📭"}</div>`;
-  body(mailTabsBar() + rowsHtml);
+  };
+
+  const inHtml  = incoming.length ? incoming.map(t => card(t,false)).join("")
+                                  : `<div class="empty">Nikt nic od Ciebie teraz nie chce 🎉</div>`;
+  const outHtml = outgoing.length ? `<div class="soon" style="margin-top:16px">Twoje prośby</div>` + outgoing.map(t => card(t,true)).join("") : "";
+  body(`${inHtml}${outHtml}${mailComposer()}`);
 }
 
-function mailRecipientSelect(sel){
+// Pasek „poproś kogoś" — na samym DOLE listy. Krótko: do kogo + o co + (pilne) + wyślij.
+function mailComposer(){
   const me = CURRENT.email;
   const people = MAIL_ACCOUNTS.filter(a => a.email !== me)
-    .map(a => `<option value="email:${esc(a.email)}"${sel==="email:"+a.email?" selected":""}>${esc(a.name)} — ${esc(ROLE_LABEL(a.role))}</option>`).join("");
+    .map(a => `<option value="email:${esc(a.email)}">${esc(a.name)} — ${esc(ROLE_LABEL(a.role))}</option>`).join("");
   const roles = [...new Set(MAIL_ACCOUNTS.map(a=>a.role))]
-    .map(rr => `<option value="role:${rr}"${sel==="role:"+rr?" selected":""}>Wszyscy: ${esc(ROLE_LABEL(rr))}</option>`).join("");
-  return `<select id="mTo" class="inp">
-    <option value="">— wybierz adresata —</option>
-    <optgroup label="Osoby">${people}</optgroup>
-    <optgroup label="Działy / role (broadcast)">${roles}</optgroup>
-  </select>`;
-}
-
-function mailRenderCompose(){
-  body(mailTabsBar() + `
-    <div class="card">
-      <div class="soon" style="margin-top:0">Nowa wiadomość</div>
-      <div class="field"><label>Do kogo</label>${mailRecipientSelect("")}</div>
-      <div class="field"><label>Typ</label>
-        <select id="mKind" class="inp">
-          <option value="prosba">Prośba (wymaga odpowiedzi)</option>
-          <option value="zadanie">Zadanie (do odhaczenia)</option>
-          <option value="info">Info (do wiadomości)</option>
-        </select></div>
-      <div class="field"><label>Priorytet</label>
-        <select id="mPrio" class="inp"><option value="normal">Zwykły</option><option value="high">Pilne</option></select></div>
-      <div class="field"><label>Temat</label>
-        <input id="mSubject" class="inp" placeholder="np. Prośba o zmianę grafiku w piątek"/></div>
-      <div class="field"><label>Treść</label>
-        <textarea id="mBody" class="inp" rows="5" placeholder="Napisz wiadomość…"></textarea></div>
-      ${mailCanBridge() ? `<label class="remember" style="margin:2px 0 12px"><input id="mDesk" type="checkbox"/><span>📌 Pokaż też na komputerze recepcji (dyżur) — jako zadanie</span></label>` : ""}
-      <button id="mBtn" class="btn" onclick="mailSend()">Wyślij</button>
-      <div id="mMsg" class="msg"></div>
-    </div>`);
+    .map(rr => `<option value="role:${rr}">Wszyscy: ${esc(ROLE_LABEL(rr))}</option>`).join("");
+  return `<div class="card" style="margin-top:16px">
+    <div class="soon" style="margin-top:0">Poproś kogoś o coś</div>
+    <div class="field"><select id="mTo" class="inp">
+      <option value="">— do kogo? —</option>
+      <optgroup label="Osoby">${people}</optgroup>
+      <optgroup label="Działy / role">${roles}</optgroup>
+    </select></div>
+    <div class="field"><textarea id="mBody" class="inp" rows="2" placeholder="Czego potrzebujesz? np. sprawdź proszę grafik na piątek"></textarea></div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+      <label class="remember" style="margin:0"><input id="mPilne" type="checkbox"/><span>❗ pilne</span></label>
+      ${mailCanBridge() ? `<label class="remember" style="margin:0"><input id="mDesk" type="checkbox"/><span>📌 pokaż też na recepcji</span></label>` : ""}
+    </div>
+    <button id="mBtn" class="btn" onclick="mailSend()">Wyślij prośbę</button>
+    <div id="mMsg" class="msg"></div>
+  </div>`;
 }
 // Most do recepcji: tylko role, które i tak wystawiają zadania na dyżur (jak zakładka Zadania).
 function mailCanBridge(){ return CURRENT.role==="admin" || RECEPCJA_ROLES.has(CURRENT.role); }
 
+// Szybkie „Zrobione" wprost z karty (bez wchodzenia w wątek).
+window.mailQuickDone = async (id) => {
+  try {
+    const { error } = await sb.from("manager_messages")
+      .update({ status:"done", done_at:new Date().toISOString(), done_by:CURRENT.name||"Panel" }).eq("id", id);
+    if (error) throw error;
+    loadPoczta();
+  } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
+};
+
 window.mailSend = async () => {
   const to   = (document.getElementById("mTo")||{}).value || "";
-  const kind = (document.getElementById("mKind")||{}).value || "prosba";
-  const prio = (document.getElementById("mPrio")||{}).value || "normal";
-  const subj = (document.getElementById("mSubject")||{}).value || "";
   const bd   = (document.getElementById("mBody")||{}).value || "";
+  const prio = (document.getElementById("mPilne")||{}).checked ? "high" : "normal";
   const msg = document.getElementById("mMsg"), btn = document.getElementById("mBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!to)         return setM("Wybierz adresata.", "err");
-  if (!subj.trim())return setM("Wpisz temat.", "err");
-  if (!bd.trim())  return setM("Wpisz treść wiadomości.", "err");
+  if (!to)        return setM("Wybierz, kogo prosisz.", "err");
+  if (!bd.trim()) return setM("Napisz, o co prosisz.", "err");
+  // Bez osobnego pola „temat" — temat to skrót treści (kolumna subject jest NOT NULL).
+  const subj = bd.trim().split("\n")[0].slice(0, 60);
   const row = {
     tenant_id: TENANT_ID, thread_id: crypto.randomUUID(),
     from_email: CURRENT.email, from_name: CURRENT.name || "Panel", from_role: CURRENT.role,
-    subject: subj.trim(), body: bd.trim(), kind, priority: prio, status: "open",
+    subject: subj, body: bd.trim(), kind: "prosba", priority: prio, status: "open",
   };
   if (to.startsWith("email:")) row.to_email = to.slice(6);
   else if (to.startsWith("role:")) row.to_role = to.slice(5);
@@ -2093,17 +2307,17 @@ window.mailSend = async () => {
     if (toDesk){
       try {
         await sb.from("manager_alerts").insert({
-          tenant_id: TENANT_ID, title: subj.trim(), body: bd.trim(),
-          priority: prio==="high" ? "high" : "normal", created_by: CURRENT.name || "Panel",
+          tenant_id: TENANT_ID, title: subj, body: bd.trim(),
+          priority: prio, created_by: CURRENT.name || "Panel",
           target_shift: null, target_date: null, kind: "task",
         });
       } catch {}
     }
-    try { await sb.rpc("log_action", { p_action:"poczta_wyslana", p_detail: subj.trim() + (toDesk?" (+recepcja)":"") }); } catch {}
-    MAIL_VIEW = "sent"; loadPoczta();
+    try { await sb.rpc("log_action", { p_action:"poczta_wyslana", p_detail: subj + (toDesk?" (+recepcja)":"") }); } catch {}
+    loadPoczta();
   } catch (e) {
     setM((e&&e.message)||"Nie udało się wysłać.", "err");
-    if (btn){ btn.disabled=false; btn.textContent="Wyślij"; }
+    if (btn){ btn.disabled=false; btn.textContent="Wyślij prośbę"; }
   }
 };
 
@@ -2122,7 +2336,7 @@ async function mailMarkThreadRead(threadId){
 function mailRenderThread(){
   const list = (window._MAIL_ROWS || []).filter(r => r.thread_id===MAIL_THREAD)
     .sort((a,b)=> new Date(a.created_at)-new Date(b.created_at));
-  if (!list.length){ MAIL_VIEW="inbox"; return mailRenderList(); }
+  if (!list.length){ MAIL_VIEW="list"; return mailRenderList(); }
   const root = list[0];
   const reqMsg = list.find(r => r.kind!=="info");  // wiadomość prośby/zadania ze statusem
   const st = reqMsg ? (MAIL_STATUS[reqMsg.status] || MAIL_STATUS.open) : null;
@@ -2146,7 +2360,7 @@ function mailRenderThread(){
   }
   body(`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-      <button class="zm-nav" style="width:auto;padding:0 14px;font-weight:800" onclick="mailGo('${mailIsMine(root)?'sent':'inbox'}')">‹ Wróć</button>
+      <button class="zm-nav" style="width:auto;padding:0 14px;font-weight:800" onclick="mailGo('list')">‹ Wróć</button>
       <span class="k" style="flex:1;font-size:16px;font-weight:800">${esc(root.subject||"(bez tematu)")}</span>
     </div>
     <div class="card" style="margin-bottom:12px">
@@ -2299,8 +2513,12 @@ async function loadKasa() {
     cashHtml = days.map(dk => {
       const d = fmtDate(dk);
       const items = byDay[dk].map(r => {
-        // Kasetka (bieżąca gotówka): z raportu zmiany, a w jej braku z live stanu recepcji.
-        const rowKasetka = r.cash_current != null ? r.cash_current : (cashState && cashState.kasetka != null ? cashState.kasetka : r.safe_total);
+        // Kasetka (bieżąca gotówka) = live stan recepcji (cash_state.kasetka) ma pierwszeństwo
+        // przed zrzutem z raportu zmiany: zamykająca zmiana (nocna/wieczorowa) zapisuje cash_current
+        // SPRZED wpłaty do sejfu (np. 800), a po wpłacie stała wraca do 500 — panel ma pokazać 500
+        // jak recepcja i jak hero. Historyczny zrzut per zmiana zostaje w podzakładce „Raporty".
+        const rowKasetka = (cashState && cashState.kasetka != null) ? cashState.kasetka
+                         : (r.cash_current != null ? r.cash_current : r.safe_total);
         return `
         <div class="statrow" style="margin-bottom:6px">
           <div class="k">
@@ -3787,7 +4005,7 @@ async function loadLogi() {
 window.doLogout = async () => {
   stopLive();
   try { if (MAIL_CH) sb.removeChannel(MAIL_CH); MAIL_CH = null; } catch {}
-  MAIL_UNREAD = 0; MAIL_VIEW = "inbox"; MAIL_THREAD = null;
+  MAIL_UNREAD = 0; MAIL_VIEW = "list"; MAIL_THREAD = null;
   await sb.auth.signOut();
   showLogin();
 };
