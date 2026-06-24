@@ -4026,6 +4026,10 @@ export default function App(){
           </div>
           <div className="cc-login-footer">© Conrad Comfort · Panel Recepcji</div>
         </main>
+        {/* Modal potwierdzenia tożsamości — musi być też tutaj: gdy pracownik loguje się
+            0–30 min przed startem zmiany, loginStep zostaje "name" i render trafia w ten
+            wczesny return ekranu logowania (modal w głównym return byłby nieosiągalny). */}
+        {identityConfirm&&<IdentityConfirmModal {...identityConfirm} onConfirm={()=>{const n=identityConfirm.employeeName;setIdentityConfirm(null);completeLogin(n);}} onCancel={()=>setIdentityConfirm(null)}/>}
       </div>
     );
   }
