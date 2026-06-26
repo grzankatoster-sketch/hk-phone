@@ -1137,17 +1137,22 @@ async function loadZnalezione(){
     const thumbs = photos.length
       ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">`+photos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener" style="display:block;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></a>`).join("")+`</div>`
       : "";
-    return `<div class="card" style="margin-bottom:10px;border-left:3px solid ${isRet?"var(--ok)":"#d98a1f"};${isRet?"opacity:.75":""}">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-        <span style="font-size:15px;font-weight:800">${r.room?("Pokój "+esc(r.room)):"—"}</span>
-        <span class="chip" style="color:${isRet?"var(--ok)":"#d98a1f"}">${isRet?"oddane":"w depozycie"}</span>
-        <span class="chip" style="margin-left:auto;color:var(--muted)">${r.source==="hk"?"HK":"recepcja"}</span>
+    const d = (r.description||"").replace(/\s+/g," ").trim();
+    const preview = d.length>42 ? esc(d.slice(0,42))+"…" : esc(d);
+    const accent = isRet?"var(--ok)":"#d98a1f";
+    return `<details class="zn-det card" style="margin-bottom:8px;padding:10px 12px;border-left:3px solid ${accent};${isRet?"opacity:.7":""}">
+      <summary style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="font-weight:800;font-size:13px;white-space:nowrap">${r.room?("Pokój "+esc(r.room)):"—"}</span>
+        <span style="flex:1;min-width:0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview||"(bez opisu)"}</span>
+        <span class="chip" style="color:${accent};flex-shrink:0">${isRet?"oddane":"w depozycie"}</span>
+      </summary>
+      <div style="margin-top:8px">
+        <div style="font-size:14px;line-height:1.45;white-space:pre-wrap">${esc(r.description)}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">${esc(r.reported_by||"—")} · ${fmt(r.reported_at||r.created_at)} · ${r.source==="hk"?"HK":"recepcja"}${isRet&&r.returned_by?` · oddał: ${esc(r.returned_by)}${r.returned_note?` (${esc(r.returned_note)})`:""}`:""}</div>
+        ${thumbs}
+        ${isRet?"":`<button class="rost-addbtn" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:12px;cursor:pointer" onclick="markFoundReturned('${r.id}')">✓ Oznacz: oddane</button>`}
       </div>
-      <div style="font-size:14px;line-height:1.45;white-space:pre-wrap">${esc(r.description)}</div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:5px">${esc(r.reported_by||"—")} · ${fmt(r.reported_at||r.created_at)}${isRet&&r.returned_by?` · oddał: ${esc(r.returned_by)}${r.returned_note?` (${esc(r.returned_note)})`:""}`:""}</div>
-      ${thumbs}
-      ${isRet?"":`<button class="rost-addbtn" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:12px;cursor:pointer" onclick="markFoundReturned('${r.id}')">✓ Oznacz: oddane</button>`}
-    </div>`;
+    </details>`;
   };
   let html = `<div class="soon" style="margin-top:0">W depozycie · ${open.length}</div>`;
   html += open.length ? open.map(cardOf).join("") : '<div class="empty">Brak rzeczy w depozycie.</div>';
