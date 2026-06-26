@@ -743,7 +743,14 @@ async function reportFound(room) {
     tenant_id:TENANT_ID, source:"hk", room,
     description:fd.desc.trim(), reported_by:WORKER, status:"open", photos:urls
   });
-  if (error) { toast("Błąd zapisu zgłoszenia","var(--red)"); return; }
+  if (error) {
+    // Najczęstsza przyczyna: brak tabeli found_items (migracja 0042 nieuruchomiona w Supabase).
+    const m = (error.message||"").toLowerCase();
+    const hint = (m.includes("does not exist") || m.includes("schema cache") || error.code==="42P01" || error.code==="PGRST205")
+      ? "Brak tabeli w bazie — uruchom migrację 0042" : (error.message||"nieznany błąd");
+    toast("Błąd zapisu: "+hint,"var(--red)");
+    return;
+  }
   await addLog("znalezione", room, fd.desc.trim().slice(0,120));
   foundDrafts[room]={desc:"",photos:[]};
   toast("Przedmiot zgłoszony ✓","var(--green)");
