@@ -1120,6 +1120,51 @@ async function loadHkTab() {
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
 
+// ── Znalezione: rzeczy znalezione zgłoszone z telefonów HK (kto/kiedy/pokój/co/zdjęcia) ──
+async function loadZnalezione(){
+  let rows = [];
+  try {
+    const { data } = await sb.from("found_items").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false}).limit(200);
+    rows = data || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać rzeczy znalezionych.</div>'); }
+  if (!rows.length) return body('<div class="empty">Brak zgłoszonych rzeczy znalezionych.</div>');
+  const fmt = iso => { try { return new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch { return ""; } };
+  const open = rows.filter(r=>(r.status||"open")!=="returned");
+  const ret  = rows.filter(r=>(r.status||"open")==="returned");
+  const cardOf = r => {
+    const isRet = (r.status||"open")==="returned";
+    const photos = Array.isArray(r.photos)?r.photos:[];
+    const thumbs = photos.length
+      ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">`+photos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener" style="display:block;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></a>`).join("")+`</div>`
+      : "";
+    return `<div class="card" style="margin-bottom:10px;border-left:3px solid ${isRet?"var(--ok)":"#d98a1f"};${isRet?"opacity:.75":""}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="font-size:15px;font-weight:800">${r.room?("Pokój "+esc(r.room)):"—"}</span>
+        <span class="chip" style="color:${isRet?"var(--ok)":"#d98a1f"}">${isRet?"oddane":"w depozycie"}</span>
+        <span class="chip" style="margin-left:auto;color:var(--muted)">${r.source==="hk"?"HK":"recepcja"}</span>
+      </div>
+      <div style="font-size:14px;line-height:1.45;white-space:pre-wrap">${esc(r.description)}</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:5px">${esc(r.reported_by||"—")} · ${fmt(r.reported_at||r.created_at)}${isRet&&r.returned_by?` · oddał: ${esc(r.returned_by)}${r.returned_note?` (${esc(r.returned_note)})`:""}`:""}</div>
+      ${thumbs}
+      ${isRet?"":`<button class="rost-addbtn" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:12px;cursor:pointer" onclick="markFoundReturned('${r.id}')">✓ Oznacz: oddane</button>`}
+    </div>`;
+  };
+  let html = `<div class="soon" style="margin-top:0">W depozycie · ${open.length}</div>`;
+  html += open.length ? open.map(cardOf).join("") : '<div class="empty">Brak rzeczy w depozycie.</div>';
+  if (ret.length){ html += `<div class="soon">Oddane · ${ret.length}</div>` + ret.map(cardOf).join(""); }
+  body(html);
+}
+window.markFoundReturned = async (id) => {
+  const note = prompt("Komu oddano / uwaga (opcjonalnie):","");
+  if (note===null) return;
+  try {
+    const { error } = await sb.from("found_items").update({ status:"returned", returned_by:CURRENT.name||"Panel", returned_at:new Date().toISOString(), returned_note:note||null }).eq("id", id);
+    if (error) throw error;
+    try { await sb.rpc("log_action",{ p_action:"znalezione_oddane", p_detail:id }); } catch {}
+    loadZnalezione();
+  } catch (e) { alert((e&&e.message)||"Błąd."); }
+};
+
 // Tryb „Praca" — kierownik HK sprząta jak pracownik. Osadzamy istniejący widok
 // telefonu (index.html) w iframe, podając imię zalogowanej osoby jako ?w=.
 // Dzięki temu cała logika pokoi, raportów i powiadomień działa bez duplikacji.
@@ -4068,6 +4113,8 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     alert_dodany:"Dodał pilne przypomnienie", wiki_dodane:"Dodał wpis do Wiki",
                     konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
                     grafik_ulozony:"Ułożył grafik", grafik_opublikowany:"Opublikował grafik",
+                    plan_utworzony:"Utworzył plan", plan_zadanie_dodane:"Dodał zadanie do planu",
+                    znalezione_oddane:"Oznaczył rzecz znalezioną jako oddaną",
                     korekta_decyzja:"Decyzja o korekcie" };
 async function loadAkcje() {
   if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
@@ -4175,7 +4222,9 @@ const AUDIT_LABEL = {
   logowanie:"wejście do panelu", obsada_zapis:"zapis obsady HK", zadanie_dodane:"dodał zadanie",
   zadanie_zrobione:"oznaczył zadanie zrobione", poczta_wyslana:"wysłał pocztę", poczta_status:"zmiana statusu poczty",
   korekta_decyzja:"decyzja o korekcie kasy", zadanie_konserwator:"zlecenie dla konserwatora",
-  plan_dodane:"wpis do planu", grafik_edycja:"edycja grafiku", grafik_utworzony:"utworzył grafik",
+  plan_dodane:"wpis do planu", plan_utworzony:"utworzył plan", plan_zadanie_dodane:"dodał zadanie do planu",
+  znalezione_oddane:"oznaczył rzecz znalezioną jako oddaną",
+  grafik_edycja:"edycja grafiku", grafik_utworzony:"utworzył grafik",
   grafik_wpis:"wpis do grafiku", przypomnienie_dodane:"dodał przypomnienie",
 };
 const auditLabel = a => AUDIT_LABEL[a] || a;
