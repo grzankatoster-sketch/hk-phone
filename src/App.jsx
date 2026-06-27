@@ -3478,7 +3478,7 @@ export default function App(){
         )}
         {workerTab==="opinie"&&(
           <motion.div key="opinie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast} askConfirm={askConfirm}/>
+            <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
           </motion.div>
         )}
         {workerTab==="czat"&&(

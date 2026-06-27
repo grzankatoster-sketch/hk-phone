@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2, ChevronDown, ChevronUp, Sparkles, RefreshCw, Wifi, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles, RefreshCw, Wifi, ThumbsUp, ThumbsDown } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { REVIEWS_SEED } from "./reviewsSeed";
 import { analyzeReviews, llmReady } from "../../lib/llm";
@@ -124,7 +124,7 @@ function maxCount(items) {
   return items.reduce((m, it) => Math.max(m, Number(it?.count) || 0), 0) || 1;
 }
 
-function ReviewsPanel({ dark, isManager, showToast, askConfirm }) {
+function ReviewsPanel({ dark, isManager, showToast }) {
   const [reviews, setReviews] = React.useState(loadOrSeed);
   const [rangeFilter, setRangeFilter] = React.useState(REVIEW_RANGE_LAST_6_MONTHS);
   const [filter, setFilter]         = React.useState("all");
@@ -211,12 +211,8 @@ function ReviewsPanel({ dark, isManager, showToast, askConfirm }) {
 
   React.useEffect(() => { saveJson(STORAGE_KEYS.reviews, reviews); }, [reviews]);
 
-  const deleteReview = (id) => {
-    askConfirm("Usunac te opinie?", () => {
-      setReviews(prev => prev.filter(r => r.id !== id));
-      showToast && showToast("Opinia usunieta.", "info");
-    });
-  };
+  // Opinie pochodzą wyłącznie z synchronizacji Booking (Apify) — nie wprowadza się
+  // ich ręcznie, więc nie udostępniamy też usuwania (i tak wróciłyby przy mergeBookingReviews).
 
   // Lata dostepne w danych
   const availableYears = [...new Set(reviews.map(r => new Date(r.submitted_at).getFullYear()))].sort((a,b)=>b-a);
@@ -501,12 +497,6 @@ function ReviewsPanel({ dark, isManager, showToast, askConfirm }) {
                             </div>
                           </div>
                         </div>
-                        {isManager && (
-                          <button onClick={() => deleteReview(r.id)} title="Usuń opinię"
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--rose)", padding: 4, flexShrink: 0 }}>
-                            <Trash2 size={15} />
-                          </button>
-                        )}
                       </div>
                     </div>
                   );
