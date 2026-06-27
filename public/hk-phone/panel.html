@@ -472,6 +472,8 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .confirm-ok:hover{filter:brightness(1.08)}
 .confirm-ok.danger{background:var(--bad);border-color:var(--bad)}
 .confirm-ok:focus-visible{outline:2px solid var(--plum);outline-offset:2px}
+.confirm-input{width:100%;box-sizing:border-box;font-family:var(--ui);font-size:14px;padding:10px 12px;margin:-6px 0 18px;border:1px solid var(--line-strong);border-radius:10px;background:var(--cream);color:var(--ink)}
+.confirm-input:focus{outline:none;border-color:var(--plum);background:var(--paper)}
 @media (prefers-reduced-motion:reduce){.confirm-ov,.confirm-box{transition:none}}
 </style>
 </head>
@@ -757,6 +759,47 @@ function uiConfirm(message, opts) {
     document.addEventListener("keydown", onKey);
     document.body.appendChild(ov);
     requestAnimationFrame(() => { ov.classList.add("show"); const ok = ov.querySelector(".confirm-ok"); if (ok) ok.focus(); });
+  });
+}
+
+// ── uiPrompt: nieblokujące pytanie o tekst (zamiast natywnego prompt) ──
+// Zwraca Promise<string|null>. null = anulowano (Esc/tło/Anuluj). opts: { value, okLabel, type, placeholder }.
+function uiPrompt(message, opts) {
+  opts = opts || {};
+  const okLabel = opts.okLabel || "OK";
+  const type = opts.type === "password" ? "password" : "text";
+  return new Promise((resolve) => {
+    const ov = document.createElement("div");
+    ov.className = "confirm-ov";
+    let settled = false;
+    const onKey = (e) => { if (e.key === "Escape") done(null); };
+    const done = (val) => {
+      if (settled) return; settled = true;
+      document.removeEventListener("keydown", onKey);
+      ov.classList.remove("show");
+      setTimeout(() => ov.remove(), 200);
+      resolve(val);
+    };
+    ov.innerHTML = `<div class="confirm-box" role="dialog" aria-modal="true" aria-label="Wprowadź dane">
+      <div class="confirm-msg"></div>
+      <input class="confirm-input" type="${type}" />
+      <div class="confirm-actions">
+        <button type="button" class="confirm-cancel">Anuluj</button>
+        <button type="button" class="confirm-ok"></button>
+      </div></div>`;
+    ov.querySelector(".confirm-msg").textContent = String(message == null ? "" : message);
+    ov.querySelector(".confirm-ok").textContent = okLabel;
+    const input = ov.querySelector(".confirm-input");
+    input.value = opts.value != null ? String(opts.value) : "";
+    if (opts.placeholder) input.placeholder = String(opts.placeholder);
+    const submit = () => done(input.value);
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } });
+    ov.addEventListener("click", (e) => { if (e.target === ov) done(null); });
+    ov.querySelector(".confirm-cancel").addEventListener("click", () => done(null));
+    ov.querySelector(".confirm-ok").addEventListener("click", submit);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => { ov.classList.add("show"); input.focus(); input.select(); });
   });
 }
 
@@ -1278,7 +1321,7 @@ async function loadZnalezione(){
   body(html);
 }
 window.markFoundReturned = async (id) => {
-  const note = prompt("Komu oddano / uwaga (opcjonalnie):","");
+  const note = await uiPrompt("Komu oddano / uwaga (opcjonalnie):", { value:"" });
   if (note===null) return;
   try {
     const { error } = await sb.from("found_items").update({ status:"returned", returned_by:CURRENT.name||"Panel", returned_at:new Date().toISOString(), returned_note:note||null }).eq("id", id);
@@ -2642,7 +2685,7 @@ window.mailSetStatus = async (id, status) => {
 };
 
 window.mailReject = async (id) => {
-  const note = prompt("Powód odrzucenia (opcjonalnie):") || "";
+  const note = (await uiPrompt("Powód odrzucenia (opcjonalnie):")) || "";
   try {
     const { error } = await sb.from("manager_messages").update({ status:"rejected", reply_note: note.trim() || null }).eq("id", id);
     if (error) throw error;
@@ -2909,7 +2952,7 @@ async function loadKasa() {
 // Decyzja kierownika o korekcie (zatwierdź/odrzuć) — zapis do payment_correction_approvals.
 window.decideCorrection = async (correctionId, decision) => {
   if (!correctionId) return;
-  const note = decision==="rejected" ? (prompt("Powód odrzucenia (opcjonalnie):")||"") : "";
+  const note = decision==="rejected" ? ((await uiPrompt("Powód odrzucenia (opcjonalnie):"))||"") : "";
   try {
     const { error } = await sb.from("payment_correction_approvals").upsert(
       { tenant_id:TENANT_ID, correction_id:correctionId, decision, manager:CURRENT.name||"Panel", note, decided_at:new Date().toISOString() },
@@ -3437,9 +3480,9 @@ window.schedSetCell = (di,pi,val)=>{
 };
 // Dodaje kolumnę osoby do układanego grafiku (np. menedżera, który nie dostał linku, a sam
 // dobiera sobie wolne dni). Tylko dodaje pustą kolumnę — zapis dopiero przyciskiem „Zapisz grafik".
-window.schedAddPerson = ()=>{
+window.schedAddPerson = async ()=>{
   const S=SCHED; if(!S) return;
-  const name=(prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
+  const name=((await uiPrompt("Imię osoby do dodania do grafiku (np. Twoje):"))||"").trim();
   if(!name) return;
   const n=zmNorm(name);
   if(S.persons.some(p=>zmNorm(p)===n)){ toast("Ta osoba już jest w grafiku.","bad"); return; }
@@ -4061,8 +4104,8 @@ window.zmSetDay = (i)=>{ ZM_DAYIDX=i; zmRender(); };
 // Dodaje wiersz osoby do grafiku (np. menedżera, który sam wpisuje sobie wolne dni i nie ma go
 // w rejestrze recepcji). To tylko dodaje pusty wiersz — nic nie zapisuje i nie kasuje. Dopiero
 // wpisanie godzin/zmiany trafia do bazy przez schedule_merge (per-komórka, bez nadpisywania).
-window.zmAddPerson = ()=>{
-  const name = (prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
+window.zmAddPerson = async ()=>{
+  const name = ((await uiPrompt("Imię osoby do dodania do grafiku (np. Twoje):"))||"").trim();
   if(!name) return;
   const n = zmNorm(name);
   if(ZM_EMPS.some(e=>zmNorm(e)===n)){ toast("Ta osoba jest już w grafiku.","bad"); return; }
@@ -4322,13 +4365,13 @@ window.addKonto = async () => {
   } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj konto"; } }
 };
 window.renameKonto = async (email, name) => {
-  const nn = prompt(`Nowy login (imię) dla tego konta:`, name);
+  const nn = await uiPrompt(`Nowy login (imię) dla tego konta:`, { value: name });
   if (nn == null || !nn.trim()) return;
   try { const { error } = await sb.rpc("admin_set_name", { p_email: email, p_name: nn.trim() }); if (error) throw error; loadKonta(); }
   catch (e) { toast((e&&e.message)||"Błąd zmiany loginu.","bad"); }
 };
 window.resetKonto = async (email, name) => {
-  const np = prompt(`Nowe hasło dla „${name}" (min. 6 znaków) — przekaż je tej osobie:`);
+  const np = await uiPrompt(`Nowe hasło dla „${name}" (min. 6 znaków) — przekaż je tej osobie:`, { type:"password", okLabel:"Ustaw" });
   if (np == null) return;
   if (np.length < 6) return toast("Hasło musi mieć min. 6 znaków.","bad");
   try {
@@ -4443,7 +4486,7 @@ window.doLogout = async () => {
 };
 // Zmiana własnego hasła (zalogowany użytkownik).
 window.changeMyPassword = async () => {
-  const np = prompt("Podaj nowe hasło (min. 6 znaków):");
+  const np = await uiPrompt("Podaj nowe hasło (min. 6 znaków):", { type:"password", okLabel:"Zmień" });
   if (np == null) return;
   if (np.length < 6) return toast("Hasło musi mieć min. 6 znaków.","bad");
   try { const { error } = await sb.auth.updateUser({ password: np }); if (error) throw error; toast("Hasło zmienione ✓","ok"); }
