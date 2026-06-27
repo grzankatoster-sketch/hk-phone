@@ -64,7 +64,7 @@ const LINEN_FIELDS = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, isManager, employeeName }) {
+function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, askPrompt, isManager, employeeName }) {
   const date = hkDate || TODAY();
 
   // ─── Global state from Supabase ───────────────────────────────────────────
@@ -296,14 +296,14 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, i
   }, []);
 
   // Oznacz przedmiot jako oddany (komu/uwaga opcjonalnie). Zgłoszenie pozostaje niezmienne.
-  const markReturned = async (item) => {
-    const note = window.prompt("Komu oddano / uwaga (opcjonalnie):", "");
-    if (note === null) return;
-    const { error } = await supabase.from("found_items").update({
-      status: "returned", returned_by: employeeName || "Recepcja", returned_at: new Date().toISOString(), returned_note: note || null,
-    }).eq("id", item.id);
-    if (error) { showToast("Błąd: " + error.message, "error"); return; }
-    showToast("Oznaczono jako oddane", "success");
+  const markReturned = (item) => {
+    askPrompt("Komu oddano / uwaga (opcjonalnie):", async (note) => {
+      const { error } = await supabase.from("found_items").update({
+        status: "returned", returned_by: employeeName || "Recepcja", returned_at: new Date().toISOString(), returned_note: note || null,
+      }).eq("id", item.id);
+      if (error) { showToast("Błąd: " + error.message, "error"); return; }
+      showToast("Oznaczono jako oddane", "success");
+    }, { okLabel: "Oznacz" });
   };
 
   // ─── Derived stats ────────────────────────────────────────────────────────

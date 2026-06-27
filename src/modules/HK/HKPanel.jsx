@@ -349,7 +349,7 @@ const RoomRow = React.memo(function RoomRow({
   prev.setAssignModal===next.setAssignModal
 );
 
-function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,showToast,askConfirm,isManager,employeeName}){
+function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,showToast,askConfirm,askPrompt,isManager,employeeName}){
   const [hkTab,setHkTab]=React.useState("plan");
   // Agent AI: po kliknięciu powiadomienia/bannera przełącz na Monitor (HK Live).
   React.useEffect(()=>{
@@ -1171,7 +1171,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         <button onClick={()=>setHkTab("plan")} style={{padding:"6px 18px",borderRadius:7,fontSize:12.5,fontWeight:700,cursor:"pointer",border:"none",background:hkTab==="plan"?"var(--plum)":"transparent",color:hkTab==="plan"?"#0B0810":dark?"var(--dark-text-muted)":"var(--text-muted)",boxShadow:hkTab==="plan"?"var(--plum-bright-glow)":"none",transition:"all .15s",letterSpacing:".02em"}}>Plan HK</button>
         <button onClick={()=>setHkTab("live")} style={{padding:"6px 18px",borderRadius:7,fontSize:12.5,fontWeight:700,cursor:"pointer",border:"none",background:hkTab==="live"?"#34d399":"transparent",color:hkTab==="live"?"#0B0810":dark?"var(--dark-text-muted)":"var(--text-muted)",boxShadow:hkTab==="live"?"0 0 16px rgba(52,211,153,.4)":"none",transition:"all .15s",letterSpacing:".02em"}}>HK Live</button>
       </div>
-      {hkTab==="live"&&<HKLivePanel dark={dark} hkData={hkData} setHkData={setHkData} hkDate={hkDate} showToast={showToast} askConfirm={askConfirm} isManager={!!isManager} employeeName={employeeName||""}/>}
+      {hkTab==="live"&&<HKLivePanel dark={dark} hkData={hkData} setHkData={setHkData} hkDate={hkDate} showToast={showToast} askConfirm={askConfirm} askPrompt={askPrompt} isManager={!!isManager} employeeName={employeeName||""}/>}
       {hkTab==="plan"&&(<>
 
       {/* ── Assign modal ─────────────────────────────────────────────────── */}

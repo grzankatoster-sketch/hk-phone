@@ -26,6 +26,7 @@ import ParkingPanel from "./modules/Parking/ParkingPanel";
 import HistoriaWorkerPanel from "./modules/Historia/HistoriaPanel";
 import StaliGosciePanel from "./modules/StaliGoscie/StaliGosciePanel";
 import ConfirmModal from "./components/modals/ConfirmModal";
+import PromptModal from "./components/modals/PromptModal";
 import GlobalSearchModal from "./components/modals/GlobalSearchModal";
 import EmployeeReportModal from "./components/modals/EmployeeReportModal";
 import PreShiftModal from "./components/modals/PreShiftModal";
@@ -704,6 +705,7 @@ export default function App(){
   const [entryWhen,setEntryWhen]=useState("next");   // next | dated | pending
   const [toasts,setToasts]=useState([]);
   const [confirmDialog,setConfirmDialog]=useState(null);
+  const [promptDialog,setPromptDialog]=useState(null);
   const { liveTime, shiftElapsed }=useClock(shiftStartTime,getNow);
   const [showSearch,setShowSearch]=useState(false);
   const [paymentCorrections,setPaymentCorrections]=useState(()=>loadJson(STORAGE_KEYS.paymentCorrections,[]));
@@ -1134,6 +1136,7 @@ export default function App(){
   // Auto-updater Electrona — wydzielony do hooka (Faza 0).
   const { updateInfo, updateState, updateProgress, updateNoticeDismissed, setUpdateNoticeDismissed, checkForUpdates }=useAutoUpdate(showToast);
   const askConfirm=useCallback((message,onConfirm)=>setConfirmDialog({message,onConfirm}),[]);
+  const askPrompt=useCallback((message,onSubmit,opts={})=>setPromptDialog({message,onSubmit,...opts}),[]);
 
   // ─── Agent: Zastosuj/Odrzuć z globalnego bota (logika lustrzana do HKLivePanel).
   // Przydziały poranne wyliczamy z hkData (źródło prawdy desktopu); fallback: hk_plan.
@@ -3448,7 +3451,7 @@ export default function App(){
             <RestoredHKPanel dark={workerDark} hkDate={hkDate} setHkDate={setHkDate}
                      hkStaff={hkStaff} setHkStaff={setHkStaff}
                      hkData={hkData} setHkData={setHkData}
-                     showToast={showToast} askConfirm={askConfirm} isManager={canAccessManagerPanel} employeeName={employeeName}/>
+                     showToast={showToast} askConfirm={askConfirm} askPrompt={askPrompt} isManager={canAccessManagerPanel} employeeName={employeeName}/>
           </motion.div>
         )}
         {workerTab==="informacje"&&(
@@ -4208,6 +4211,7 @@ export default function App(){
       <AnimatePresence>{showAuditLog&&<AuditLogModal key="audit" onClose={()=>setShowAuditLog(false)}/>}</AnimatePresence>
       <AnimatePresence>{showEmpReport&&<EmployeeReportModal key="er" employees={employees} dark={dark} onClose={()=>setShowEmpReport(false)} currentEmployeeName={employeeName} onDownload={downloadEmployeeReportPDF}/>}</AnimatePresence>
       {confirmDialog&&<ConfirmModal message={confirmDialog.message} onConfirm={confirmDialog.onConfirm} onClose={()=>setConfirmDialog(null)}/>}
+      {promptDialog&&<PromptModal message={promptDialog.message} defaultValue={promptDialog.defaultValue} okLabel={promptDialog.okLabel} placeholder={promptDialog.placeholder} onSubmit={promptDialog.onSubmit} onClose={()=>setPromptDialog(null)}/>}
       <ToastContainer toasts={toasts} dismiss={dismissToast}/>
       {!updateNoticeDismissed&&(
         <GlobalUpdateNotice
