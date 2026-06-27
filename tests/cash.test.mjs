@@ -149,4 +149,21 @@ describe("wpłata do sejfu — kwoty graniczne", () => {
     expect(r.totalBeforeDeposit).toBe(560.15);
     expect(r.endingCash).toBe(500);
   });
+
+  it("flaga overDeposit: wpłata > gotówki → true (kasa ujemna)", () => {
+    const r = calculateSafeDeposit({ stalaKasowa: 500, kwTotal: 0, safeDepositKW: 100, safeDepositAmount: 700, postDepositKW: 0 });
+    expect(r.overDeposit).toBe(true);
+    expect(r.endingCash).toBe(-100);
+  });
+
+  it("flaga overDeposit: wpłata = gotówce → false (kasa = 0)", () => {
+    const r = calculateSafeDeposit({ stalaKasowa: 500, kwTotal: 0, safeDepositKW: 100, safeDepositAmount: 600, postDepositKW: 0 });
+    expect(r.overDeposit).toBe(false);
+    expect(r.endingCash).toBe(0);
+  });
+
+  it("flaga overDeposit: typowa wpłata = przyrost KW → false", () => {
+    const r = calculateSafeDeposit({ stalaKasowa: 680, kwTotal: 180, safeDepositKW: 260, safeDepositAmount: 80, postDepositKW: 0 });
+    expect(r.overDeposit).toBe(false);
+  });
 });

@@ -84,13 +84,21 @@ body{font-family:var(--ui);background:
 .opt.sel{box-shadow:0 6px 16px -7px rgba(90,29,74,.6)}
 .legend{gap:12px}.legend span{font-weight:600}
 .sub b,.hi{color:var(--plum)}
-.modes{display:flex;gap:6px;background:rgba(90,29,74,.06);padding:4px;border-radius:12px;margin-bottom:14px}
-.modebtn{flex:1;padding:10px;border:none;background:transparent;border-radius:9px;font-weight:800;font-size:13.5px;color:var(--muted);cursor:pointer;font-family:inherit}
-.modebtn.on{background:var(--paper);color:var(--plum);box-shadow:0 1px 3px rgba(90,29,74,.14)}
-.hsel{flex:1;min-width:0;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);font-size:14px;font-family:inherit}
+.hinp{flex:1;min-width:0;padding:13px 8px;border:1.5px solid var(--line-strong);border-radius:11px;background:var(--paper);color:var(--ink);font-size:18px;font-weight:800;font-family:inherit;text-align:center}
+.hinp:focus{outline:none;border-color:var(--plum)}
+.hinp::-webkit-outer-spin-button,.hinp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.hinp[type=number]{-moz-appearance:textfield;appearance:textfield}
 .cdbar{position:sticky;top:0;z-index:9;background:rgba(176,134,58,.12);border:1px solid rgba(176,134,58,.42);color:#8a6a1e;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;margin-bottom:13px;text-align:center}
 .cdbar.warn{background:rgba(194,65,90,.1);border-color:rgba(194,65,90,.45);color:var(--bad)}
 .cdbar b{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.prefbox{background:var(--paper);border:1.5px solid var(--line);border-radius:15px;padding:14px 14px 13px;margin-top:14px;box-shadow:0 1px 2px rgba(58,18,48,.05),0 12px 28px -18px rgba(58,18,48,.32)}
+.prefbox label{display:block;font-size:13px;font-weight:800;color:var(--plum);margin-bottom:9px}
+.prefrow{display:flex;align-items:center;gap:10px}
+.prefinp{flex:1;min-width:0;padding:13px 14px;border:1.5px solid var(--line-strong);border-radius:12px;background:var(--cream);color:var(--ink);font-size:17px;font-weight:800;font-family:inherit;text-align:center}
+.prefinp:focus{outline:none;border-color:var(--plum);background:var(--paper)}
+.prefunit{font-size:14px;font-weight:800;color:var(--muted)}
+.prefnote{font-size:11.5px;color:var(--muted);font-weight:600;margin-top:8px}
+.prefnote.ok{color:var(--ok);font-weight:700}
 </style>
 </head>
 <body>
@@ -110,15 +118,11 @@ const pad = n => n<10 ? "0"+n : ""+n;
 const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 
-const OPTS = {
-  hk:       [["dzien","Dzień"],["popoludnie","Popołudnie"],["off","Nie mogę"]],
-  recepcja: [["poranna","Poranna"],["popoludniowa","Popoł."],["nocna","Nocna"],["off","Nie mogę"]],
-};
 
-let META = null;             // { person, kind, period_type, period_start }
+let META = null;             // { person, kind, period_type, period_start, pref_hours }
 let CHOICE = {};             // { 'YYYY-MM-DD': choice }
 let MODE = "shift", HOURS = {};                 // tryb wyboru + { date: {start,end} }
-const HOPT = Array.from({length:25}, (_,i)=>i); // 0..24
+let PREF = "";               // preferowana liczba godzin na cały okres (per osoba)
 
 function toast(msg, color="#0f7a4a"){
   const e=document.createElement("div"); e.className="toast"; e.style.color=color; e.textContent=msg;
@@ -140,27 +144,27 @@ function buildDays(meta){
 async function boot(){
   if(!sb){ app.innerHTML='<div class="box"><div class="big">Błąd</div><div class="sm">Brak biblioteki — odśwież stronę.</div></div>'; return; }
   if(!TOKEN){ app.innerHTML='<div class="box"><div class="big">Brak linku</div><div class="sm">Otwórz swój indywidualny link z grafikiem.</div></div>'; return; }
-  let data=null;
-  try { const r=await sb.rpc("get_availability",{p_token:TOKEN}); data=r.data; }
-  catch { app.innerHTML='<div class="box"><div class="big">Błąd połączenia</div><div class="sm">Spróbuj ponownie za chwilę.</div></div>'; return; }
+  let data=null, rpcErr=null;
+  try { const r=await sb.rpc("get_availability",{p_token:TOKEN}); data=r.data; rpcErr=r.error; }
+  catch (e) { rpcErr=e; }
+  if(rpcErr){ app.innerHTML='<div class="box"><div class="big">Błąd serwera</div><div class="sm">Nie udało się wczytać grafiku ('+esc((rpcErr&&rpcErr.message)||'')+'). To nie jest wina linku — przekaż ten komunikat menedżerowi.</div></div>'; return; }
   if(!data){ app.innerHTML='<div class="box"><div class="big">Link nieaktywny</div><div class="sm">Ten link wygasł lub jest nieprawidłowy. Poproś menedżera o nowy.</div></div>'; return; }
   META=data; CHOICE={}; HOURS={};
+  PREF = (data.pref_hours==null) ? "" : String(data.pref_hours);
   (data.entries||[]).forEach(e=>{ CHOICE[e.date]=e.choice; if(e.start||e.end) HOURS[e.date]={start:e.start||"",end:e.end||""}; });
-  if (Object.values(CHOICE).some(c=>c==="godziny")) MODE="hours";
+  // Recepcja = wyłącznie godziny (od–do); HK = zmiany rano/popołudnie. Brak przełącznika.
+  MODE = (META.kind==="recepcja") ? "hours" : "shift";
   render();
 }
 
 function render(){
   const kind = (META.kind==="recepcja") ? "recepcja" : "hk";
-  const hoursAllowed = kind==="recepcja";        // godziny tylko dla recepcji; HK = same zmiany
-  if (!hoursAllowed) MODE = "shift";
-  const opts = OPTS[kind];
+  // Recepcja wpisuje WYŁĄCZNIE godziny (od–do) — bez kafelków zmian i bez przełącznika.
+  // HK zostaje na zmianach rano/popołudnie.
+  MODE = (kind==="recepcja") ? "hours" : "shift";
   const days = buildDays(META);
   const todayIso = iso(new Date());
   const periodLbl = META.period_type==="week" ? "tydzień" : "miesiąc";
-  const toggle = hoursAllowed ? `<div class="modes">
-    <button class="modebtn ${MODE==='shift'?'on':''}" onclick="setMode('shift')">Zmiana</button>
-    <button class="modebtn ${MODE==='hours'?'on':''}" onclick="setMode('hours')">Godziny (od–do)</button></div>` : "";
   const rows = days.map(dt=>{
     const k=iso(dt); const cur=CHOICE[k]||"";
     const wknd = (dt.getDay()===0||dt.getDay()===6) ? " weekend":"";
@@ -176,13 +180,12 @@ function render(){
         <button class="opt ${pop?"sel":""}" onclick="pickHK('${k}','pop')">Popołudnie</button>
         <button class="opt off ${isOff?"sel":""}" onclick="pickHK('${k}','off')">Nie mogę</button>
       </div>${(rano&&pop)?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę cały dzień — rano i popołudnie ✓</div>`:""}`;
-    } else if (MODE==="shift"){
-      inner = `<div class="opts">${opts.map(([v,l])=>`<button class="opt ${v==="off"?"off":""} ${cur===v?"sel":""}" onclick="pick('${k}','${v}')">${esc(l)}</button>`).join("")}</div>`;
     } else {
       const h = HOURS[k]||{}; const isOff = cur==="off";
-      const sel = (id,val,ph)=>`<select class="hsel" onchange="setH('${k}','${id}',this.value)"><option value="">${ph}</option>${HOPT.map(x=>`<option value="${x}"${String(val)===String(x)?" selected":""}>${x}:00</option>`).join("")}</select>`;
+      // Wpisywanie z klawiatury numerycznej (telefon) — godzina 0–24, bez przewijania listy.
+      const inp = (id,val,ph)=>`<input class="hinp" type="number" inputmode="numeric" min="0" max="24" step="1" placeholder="${ph}" value="${(val==null||val==="")?"":esc(String(val))}" onchange="setH('${k}','${id}',this.value)"/>`;
       inner = `<div class="opts" style="align-items:center">
-        ${sel("start",h.start,"od")}<span style="color:var(--muted);font-weight:800">–</span>${sel("end",h.end,"do")}
+        ${inp("start",h.start,"od")}<span style="color:var(--muted);font-weight:800">–</span>${inp("end",h.end,"do")}
         <button class="opt off ${isOff?"sel":""}" style="flex:0 0 auto;min-width:88px" onclick="pick('${k}','off')">Nie mogę</button>
       </div>${(cur==="godziny"&&(h.start||h.end))?`<div style="font-size:11.5px;color:var(--ok);font-weight:700;margin-top:6px">Mogę ${h.start||"?"}:00–${h.end||"?"}:00 ✓</div>`:""}`;
     }
@@ -192,17 +195,53 @@ function render(){
   }).join("");
   const filled = Object.keys(CHOICE).length;
   const cdBar = META.expires_at ? `<div id="cd" class="cdbar"></div>` : "";
+  const nextLbl = META.period_type==="week" ? "kolejny tydzień" : "kolejny miesiąc";
   app.innerHTML = `
     ${cdBar}
     <div class="hi">Cześć ${esc(META.person||"")}!</div>
-    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Wybierz gotową zmianę."} Zapisuje się automatycznie.</div>
-    ${toggle}
+    <div class="sub">Zaznacz, kiedy możesz pracować w wybrany ${periodLbl}. ${MODE==="hours"?"Wpisz własne godziny (od–do) — np. 16:00–22:00.":"Zaznacz zmiany, na które możesz przyjść."} Zapisuje się automatycznie.</div>
     ${rows}
     <div class="done-note">${filled?`Zaznaczono ${filled} ${filled===1?"dzień":"dni"} ✓`:"Jeszcze nic nie zaznaczono."}</div>
+    <div class="prefbox">
+      <label for="prefHrs">Ile godzin chcesz przepracować w ${nextLbl}?</label>
+      <div class="prefrow">
+        <input id="prefHrs" class="prefinp" type="number" inputmode="numeric" min="0" max="400" step="1"
+               placeholder="np. 160" value="${esc(PREF)}"
+               oninput="markPref()" onchange="savePref(this.value)" onblur="savePref(this.value)"/>
+        <span class="prefunit">godz.</span>
+      </div>
+      <div id="prefNote" class="prefnote">${PREF!==""?`Preferencja: <b>${esc(PREF)} godz.</b> ✓`:"Pole opcjonalne — pomaga ułożyć grafik."}</div>
+    </div>
     <button id="confirmBtn" style="width:100%;margin-top:14px;padding:14px;border:none;border-radius:12px;background:#0f7a4a;color:#fff;font-weight:800;font-size:15px;font-family:inherit;cursor:pointer" onclick="confirmAvail()">Gotowe — wyślij do kierownika</button>`;
   startCountdown();
 }
-window.setMode = (m)=>{ MODE=m; render(); };
+// ── Preferowana liczba godzin na cały okres (jedna wartość per osoba) ──
+window.markPref = ()=>{
+  const note = document.getElementById("prefNote");
+  if (note){ note.className = "prefnote"; note.textContent = "Niezapisane — kliknij gdzie indziej, by zapisać."; }
+};
+window.savePref = async (raw)=>{
+  let v = String(raw==null?"":raw).trim();
+  let hours = null;
+  if (v !== ""){
+    hours = Math.round(Number(v));
+    if (!isFinite(hours) || hours < 0) hours = 0;
+    if (hours > 400) hours = 400;
+  }
+  if (String(hours==null?"":hours) === String(PREF)) return;   // bez zmian → nie wołaj serwera
+  const note = document.getElementById("prefNote");
+  try {
+    const { error } = await sb.rpc("set_pref_hours", { p_token: TOKEN, p_hours: hours });
+    if (error) throw error;
+    PREF = (hours==null) ? "" : String(hours);
+    const inp = document.getElementById("prefHrs"); if (inp && hours!=null) inp.value = String(hours);
+    if (note){ note.className = "prefnote ok"; note.innerHTML = PREF!==""?`Preferencja: <b>${esc(PREF)} godz.</b> ✓`:"Wyczyszczono."; }
+  } catch (e){
+    console.error("set_pref_hours:", e);
+    if (note){ note.className = "prefnote"; note.textContent = "Nie zapisano — " + ((e&&e.message)||"spróbuj ponownie."); }
+    toast("Nie zapisano godzin — " + ((e&&e.message)||"spróbuj ponownie."), "#c2415a");
+  }
+};
 
 // ── Licznik: ile czasu zostało na edycję; po 0 grafik się zamyka ──
 let CD_TIMER = null;
@@ -229,17 +268,22 @@ function startCountdown(){
   CD_TIMER = setInterval(tick, 1000);
 }
 async function saveAvail(date, choice, start, end){
-  // Godziny → wersja 5-arg (wymaga migracji 0024). Zwykła zmiana → wersja 3-arg (działa zawsze).
-  const args = { p_token:TOKEN, p_date:date, p_choice:choice };
-  if (start != null || end != null) { args.p_start = start; args.p_end = end; }
+  // ZAWSZE wołamy wersję 5-arg (z p_start/p_end). W bazie istnieją dwie funkcje set_availability
+  // (stara 3-arg z 0012 + nowa 5-arg z 0024) — wysłanie 3 argumentów jest dla PostgREST
+  // niejednoznaczne (PGRST203) i zapis kafelka się wykładał. Komplet 5 nazwanych argów
+  // wybiera jednoznacznie nową funkcję. (Migracja 0030 dodatkowo usuwa starą funkcję.)
+  const args = { p_token:TOKEN, p_date:date, p_choice:choice, p_start: start ?? null, p_end: end ?? null };
   try { const { error } = await sb.rpc("set_availability", args); if(error) throw error; return true; }
-  catch { toast("Nie zapisano — spróbuj ponownie.", "#c2415a"); return false; }
+  catch (e) { console.error("set_availability:", e); toast("Nie zapisano — " + ((e&&e.message)||"spróbuj ponownie."), "#c2415a"); return false; }
 }
-window.setH = async (date, which, val)=>{
+window.setH = async (date, which, raw)=>{
+  // Wpisana godzina → liczba całkowita 0–24 (puste = nie podano).
+  let val = String(raw==null?"":raw).trim();
+  if (val !== ""){ let n = Math.round(Number(val)); if(!isFinite(n)){ n = ""; } else { if(n<0)n=0; if(n>24)n=24; } val = n===""?"":String(n); }
   const h = HOURS[date] = HOURS[date] || { start:"", end:"" };
   h[which] = val;
-  if (h.start && h.end){ CHOICE[date]="godziny"; render(); await saveAvail(date,"godziny",h.start,h.end); }
-  else render();
+  if (h.start!=="" && h.end!==""){ CHOICE[date]="godziny"; render(); await saveAvail(date,"godziny",h.start,h.end); }
+  else { if (CHOICE[date]==="godziny") delete CHOICE[date]; render(); }   // niekompletne → wpis znika lokalnie
 };
 window.confirmAvail = () => {
   const filled = Object.keys(CHOICE).length;

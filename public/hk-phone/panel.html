@@ -86,6 +86,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .msg{margin-top:12px;font-size:13px;font-weight:700;padding:10px 12px;border-radius:9px;display:none}
 .msg.err{display:block;color:var(--bad);background:rgba(194,65,90,.08);border:1px solid rgba(194,65,90,.3)}
 .msg.info{display:block;color:var(--plum);background:rgba(90,29,74,.06);border:1px solid var(--line)}
+.msg.ok{display:block;color:var(--ok);background:rgba(31,138,76,.08);border:1px solid rgba(31,138,76,.3)}
 .note{font-size:11.5px;color:var(--muted);margin-top:14px;line-height:1.5}
 .panelbox{background:var(--paper);border:1.5px solid var(--line);border-radius:14px;padding:20px 16px}
 .panelbox .role-ttl{font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:var(--plum);font-weight:400}
@@ -129,6 +130,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .bar > span{display:block;height:100%;background:var(--ok);border-radius:99px}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
 .chip{font-size:11.5px;font-weight:700;padding:4px 8px;border-radius:7px;border:1px solid var(--line);color:var(--ink);background:rgba(90,29,74,.03)}
+.zn-det>summary{list-style:none}
+.zn-det>summary::-webkit-details-marker{display:none}
+.zn-det>summary::marker{content:""}
+.zn-det>summary::after{content:"›";float:right;margin-left:6px;font-weight:800;opacity:.5;transition:transform .15s ease}
+.zn-det[open]>summary::after{transform:rotate(90deg)}
 .chip.done{color:var(--ok);border-color:rgba(15,122,74,.35);background:rgba(15,122,74,.07);text-decoration:line-through;opacity:.85}
 .statrow{display:flex;align-items:center;gap:10px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-bottom:7px}
 .statrow .k{flex:1;font-size:13.5px;font-weight:700}
@@ -441,6 +447,32 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .zadpick-clear:hover{color:var(--plum);border-color:var(--line-strong)}
 .zadcal-btn{margin-top:7px;border:1px dashed var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12.5px;padding:8px 12px;border-radius:10px;cursor:pointer;width:100%}
 .zadcal-btn:hover{background:rgba(90,29,74,.06)}
+
+/* ── Toasty (zamiast alert) ── */
+#toastWrap{position:fixed;left:0;right:0;bottom:18px;z-index:9999;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;padding:0 14px}
+.toast{pointer-events:auto;max-width:min(440px,92vw);background:var(--ink);color:#fff;font-family:var(--ui);font-size:14px;font-weight:600;line-height:1.35;padding:12px 16px;border-radius:12px;box-shadow:0 8px 28px -8px rgba(0,0,0,.5);display:flex;align-items:flex-start;gap:10px;cursor:pointer;opacity:0;transform:translateY(12px);transition:opacity .22s ease,transform .22s ease;word-break:break-word}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast::before{content:"";flex:0 0 auto;width:8px;height:8px;border-radius:50%;margin-top:6px;background:#fff}
+.toast.ok{background:var(--ok)}
+.toast.bad{background:var(--bad)}
+.toast.ok::before,.toast.bad::before{background:rgba(255,255,255,.85)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+
+/* ── Modal potwierdzenia (zamiast confirm) ── */
+.confirm-ov{position:fixed;inset:0;z-index:200;background:rgba(45,20,34,.5);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:18px;opacity:0;transition:opacity .16s ease}
+.confirm-ov.show{opacity:1}
+.confirm-box{background:var(--paper);width:100%;max-width:380px;border-radius:16px;box-shadow:0 18px 50px rgba(45,20,34,.32);padding:20px 20px 16px;transform:translateY(10px) scale(.98);transition:transform .16s ease}
+.confirm-ov.show .confirm-box{transform:none}
+.confirm-msg{font-family:var(--ui);font-size:14.5px;line-height:1.45;color:var(--ink);margin-bottom:18px}
+.confirm-actions{display:flex;gap:8px;justify-content:flex-end}
+.confirm-actions button{font-family:var(--ui);font-weight:700;font-size:13.5px;padding:9px 16px;border-radius:10px;cursor:pointer;border:1px solid var(--line-strong)}
+.confirm-cancel{background:var(--paper);color:var(--muted)}
+.confirm-cancel:hover{color:var(--plum);border-color:var(--plum)}
+.confirm-ok{background:var(--plum);color:#fff;border-color:var(--plum)}
+.confirm-ok:hover{filter:brightness(1.08)}
+.confirm-ok.danger{background:var(--bad);border-color:var(--bad)}
+.confirm-ok:focus-visible{outline:2px solid var(--plum);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.confirm-ov,.confirm-box{transition:none}}
 </style>
 </head>
 <body>
@@ -663,6 +695,93 @@ const avatarBg = (n) => {
   return `linear-gradient(135deg, hsl(${hue} 46% 46%), hsl(${hue2} 52% 38%))`;
 };
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+
+// ── Toast: nieblokujący komunikat (zamiast alert) ──
+// kind: "ok" | "bad" | "" (neutralny). Czas trwania dłuższy dla błędów.
+function toast(text, kind) {
+  text = String(text == null ? "" : text);
+  if (!text) return;
+  let wrap = document.getElementById("toastWrap");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "toastWrap";
+    document.body.appendChild(wrap);
+  }
+  const el = document.createElement("div");
+  el.className = "toast" + (kind ? " " + kind : "");
+  el.setAttribute("role", kind === "bad" ? "alert" : "status");
+  el.setAttribute("aria-live", kind === "bad" ? "assertive" : "polite");
+  el.textContent = text;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("show"));
+  let done = false;
+  const close = () => {
+    if (done) return; done = true;
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 240);
+  };
+  el.addEventListener("click", close);
+  const ms = kind === "bad" ? 6000 : 3600;
+  setTimeout(close, ms + Math.min(60, text.length) * 35);
+}
+
+// ── uiConfirm: nieblokujące potwierdzenie (zamiast natywnego confirm) ──
+// Zwraca Promise<boolean>. opts: { okLabel, danger }. Esc/tło/Anuluj = false, Enter/OK = true.
+function uiConfirm(message, opts) {
+  opts = opts || {};
+  const okLabel = opts.okLabel || "OK";
+  const danger = !!opts.danger;
+  return new Promise((resolve) => {
+    const ov = document.createElement("div");
+    ov.className = "confirm-ov";
+    const onKey = (e) => { if (e.key === "Escape") done(false); }; // Enter aktywuje sfokusowany przycisk natywnie
+    let settled = false;
+    const done = (val) => {
+      if (settled) return; settled = true;
+      document.removeEventListener("keydown", onKey);
+      ov.classList.remove("show");
+      setTimeout(() => ov.remove(), 200);
+      resolve(val);
+    };
+    ov.innerHTML = `<div class="confirm-box" role="alertdialog" aria-modal="true" aria-label="Potwierdzenie">
+      <div class="confirm-msg"></div>
+      <div class="confirm-actions">
+        <button type="button" class="confirm-cancel">Anuluj</button>
+        <button type="button" class="confirm-ok${danger ? " danger" : ""}"></button>
+      </div></div>`;
+    ov.querySelector(".confirm-msg").textContent = String(message == null ? "" : message);
+    ov.querySelector(".confirm-ok").textContent = okLabel;
+    ov.addEventListener("click", (e) => { if (e.target === ov) done(false); });
+    ov.querySelector(".confirm-cancel").addEventListener("click", () => done(false));
+    ov.querySelector(".confirm-ok").addEventListener("click", () => done(true));
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => { ov.classList.add("show"); const ok = ov.querySelector(".confirm-ok"); if (ok) ok.focus(); });
+  });
+}
+
+// ── Siatka bezpieczeństwa: żaden błąd nie znika po cichu ──
+// Łapie nieobsłużone odrzucenia Promise (np. zapytanie, które rzuciło)
+// oraz błędy runtime. Pokazuje toast + loguje do konsoli dla debugowania.
+(function installErrorNet(){
+  let last = 0;
+  const shown = (msg) => {
+    const now = Date.now();
+    if (now - last < 1500) return true; // anty-spam: nie dubluj toastów seriami
+    last = now; return false;
+  };
+  window.addEventListener("unhandledrejection", (ev) => {
+    const r = ev && ev.reason;
+    const msg = (r && (r.message || r.error_description || r.msg)) || "Coś poszło nie tak — spróbuj ponownie.";
+    console.error("[unhandledrejection]", r);
+    if (!shown(msg)) toast(msg, "bad");
+  });
+  window.addEventListener("error", (ev) => {
+    if (ev && ev.target && ev.target !== window) return; // ignoruj błędy ładowania zasobów (img/script)
+    console.error("[error]", ev && (ev.error || ev.message));
+    if (!shown("error")) toast("Wystąpił błąd aplikacji — odśwież stronę, jeśli problem się powtarza.", "bad");
+  });
+})();
 
 let accounts = [];
 
@@ -974,6 +1093,7 @@ function tabsFor(role){
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || role === "mgr_hk") t.push(["jakosc","Jakość"]); // pulpit losowych kontroli pokoi
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
+  if (A || RECEPCJA_ROLES.has(role) || role === "mgr_hk") t.push(["znalezione","Znalezione"]); // rzeczy znalezione (recepcja + HK)
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
   if (A || RECEPCJA_ROLES.has(role)) t.push(["zmiany","Zmiany"], ["zadania","Zadania"], ["kasa","Kasa"]); // Zmiany tylko recepcja
   if (A || KONSERW_ROLES.has(role))  t.push(["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"]);
@@ -996,6 +1116,7 @@ const NAV_ICON = {
   zmiany:  _ic('<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v3l2 1"/>'),
   tablica: _ic('<path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 0 1-5.8-1.6"/>'),
   plan:    _ic('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M9 11h6M9 15h4"/>'),
+  znalezione: _ic('<path d="M21 8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/>'),
   akcje:   _ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
   konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
   praca:   _ic('<path d="M19 5l-7 7M14 4l6 6M8.5 10.5l5 5M3 21l3.5-1 9-9-2.5-2.5-9 9L3 21z"/>'),
@@ -1018,11 +1139,11 @@ function renderHkDashboard(role, name) {
   // mapujących się na tę zakładkę (poczta/korekty/notatki/raporty/zadania/grafik).
   const badge = k => notifAvailCats().some(c => NOTIF_CATS[c].tab === k)
     ? `<span class="navbadge" data-notifbadge="${k}" hidden></span>` : "";
-  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
+  const nav  = tabs.map(([k,lbl]) => `<button class="navbtn ${hkTab===k?"on":""}" data-tab="${k}"${hkTab===k?' aria-current="page"':''} onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
   // Telefon: tylko zakładki „primary" na dolnym pasku, reszta pod przyciskiem „Więcej".
   const { primary, overflow } = splitMobTabs(tabs);
   OVERFLOW_TABS = overflow.map(([k]) => k);
-  let mtab = primary.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}" onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
+  let mtab = primary.map(([k,lbl]) => `<button class="tab ${hkTab===k?"on":""}" data-tab="${k}"${hkTab===k?' aria-current="page"':''} onclick="setHkTab('${k}')">${NAV_ICON[k]||""}<span>${lbl}</span>${badge(k)}</button>`).join("");
   if (overflow.length){
     const moreOn = OVERFLOW_TABS.includes(hkTab) ? "on" : "";
     mtab += `<button class="tab tab-more ${moreOn}" onclick="openMoreSheet()" aria-label="Więcej zakładek">${MORE_ICON}<span>Więcej</span><span class="navbadge" id="moreBadge" hidden></span></button>`;
@@ -1045,7 +1166,7 @@ function renderHkDashboard(role, name) {
         <header class="topbar">
           <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
           <div class="notif-wrap">
-            <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" title="Powiadomienia">🔔<span id="notifBellCount" class="navbadge" hidden></span></button>
+            <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" aria-haspopup="true" aria-expanded="false" title="Powiadomienia">🔔<span id="notifBellCount" class="navbadge" hidden></span></button>
             <div id="notifMenu" class="notif-menu" hidden></div>
           </div>
           <button class="top-out" onclick="changeMyPassword()">Hasło</button>
@@ -1062,7 +1183,7 @@ function renderHkDashboard(role, name) {
 window.setHkTab = (t) => {
   hkTab = t;
   closeMoreSheet();
-  document.querySelectorAll(".navbtn,.tab").forEach(b => b.classList.toggle("on", b.dataset.tab === t));
+  document.querySelectorAll(".navbtn,.tab").forEach(b => { const on = b.dataset.tab === t; b.classList.toggle("on", on); if (on) b.setAttribute("aria-current","page"); else b.removeAttribute("aria-current"); });
   const moreBtn = document.querySelector(".tab-more"); // aktywny, gdy bieżąca zakładka jest schowana
   if (moreBtn) moreBtn.classList.toggle("on", OVERFLOW_TABS.includes(t));
   const tt = document.getElementById("pageTitle"); if (tt) tt.textContent = tabTitle(CURRENT.role, t);
@@ -1083,7 +1204,7 @@ window.openMoreSheet = () => {
   const ov = document.createElement("div");
   ov.className = "more-ov"; ov.id = "moreSheet";
   ov.onclick = (e) => { if (e.target === ov) closeMoreSheet(); };
-  ov.innerHTML = `<div class="more-box">
+  ov.innerHTML = `<div class="more-box" role="dialog" aria-modal="true" aria-label="Więcej zakładek">
       <div class="more-top"><strong>Więcej</strong><button class="zadcal-x" onclick="closeMoreSheet()" aria-label="Zamknij">✕</button></div>
       <div class="more-grid">${tiles}</div>
     </div>`;
@@ -1106,6 +1227,7 @@ async function loadHkTab() {
   if (hkTab === "grafik")  return loadGrafik();
   if (hkTab === "zmiany")  return loadZmiany();
   if (hkTab === "konserw") return loadKonserw();
+  if (hkTab === "znalezione") return loadZnalezione();
   if (hkTab === "sla")     return loadSLA();
   if (hkTab === "plan")    return loadPlan();
   if (hkTab === "tablica") return loadTablica();
@@ -1115,6 +1237,56 @@ async function loadHkTab() {
 }
 
 function body(html){ const el=document.getElementById("hkBody"); if(el) el.innerHTML=html; }
+
+// ── Znalezione: rzeczy znalezione zgłoszone z telefonów HK (kto/kiedy/pokój/co/zdjęcia) ──
+async function loadZnalezione(){
+  let rows = [];
+  try {
+    const { data } = await sb.from("found_items").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false}).limit(200);
+    rows = data || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać rzeczy znalezionych.</div>'); }
+  if (!rows.length) return body('<div class="empty">Brak zgłoszonych rzeczy znalezionych.</div>');
+  const fmt = iso => { try { return new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); } catch { return ""; } };
+  const open = rows.filter(r=>(r.status||"open")!=="returned");
+  const ret  = rows.filter(r=>(r.status||"open")==="returned");
+  const cardOf = r => {
+    const isRet = (r.status||"open")==="returned";
+    const photos = Array.isArray(r.photos)?r.photos:[];
+    const thumbs = photos.length
+      ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">`+photos.map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener" style="display:block;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--line)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></a>`).join("")+`</div>`
+      : "";
+    const d = (r.description||"").replace(/\s+/g," ").trim();
+    const preview = d.length>42 ? esc(d.slice(0,42))+"…" : esc(d);
+    const accent = isRet?"var(--ok)":"#d98a1f";
+    return `<details class="zn-det card" style="margin-bottom:8px;padding:10px 12px;border-left:3px solid ${accent};${isRet?"opacity:.7":""}">
+      <summary style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <span style="font-weight:800;font-size:13px;white-space:nowrap">${r.room?("Pokój "+esc(r.room)):"—"}</span>
+        <span style="flex:1;min-width:0;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview||"(bez opisu)"}</span>
+        <span class="chip" style="color:${accent};flex-shrink:0">${isRet?"oddane":"w depozycie"}</span>
+      </summary>
+      <div style="margin-top:8px">
+        <div style="font-size:14px;line-height:1.45;white-space:pre-wrap">${esc(r.description)}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:5px">${esc(r.reported_by||"—")} · ${fmt(r.reported_at||r.created_at)} · ${r.source==="hk"?"HK":"recepcja"}${isRet&&r.returned_by?` · oddał: ${esc(r.returned_by)}${r.returned_note?` (${esc(r.returned_note)})`:""}`:""}</div>
+        ${thumbs}
+        ${isRet?"":`<button class="rost-addbtn" style="margin-top:8px;padding:6px 12px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:12px;cursor:pointer" onclick="markFoundReturned('${r.id}')">✓ Oznacz: oddane</button>`}
+      </div>
+    </details>`;
+  };
+  let html = `<div class="soon" style="margin-top:0">W depozycie · ${open.length}</div>`;
+  html += open.length ? open.map(cardOf).join("") : '<div class="empty">Brak rzeczy w depozycie.</div>';
+  if (ret.length){ html += `<div class="soon">Oddane · ${ret.length}</div>` + ret.map(cardOf).join(""); }
+  body(html);
+}
+window.markFoundReturned = async (id) => {
+  const note = prompt("Komu oddano / uwaga (opcjonalnie):","");
+  if (note===null) return;
+  try {
+    const { error } = await sb.from("found_items").update({ status:"returned", returned_by:CURRENT.name||"Panel", returned_at:new Date().toISOString(), returned_note:note||null }).eq("id", id);
+    if (error) throw error;
+    try { await sb.rpc("log_action",{ p_action:"znalezione_oddane", p_detail:id }); } catch {}
+    loadZnalezione();
+  } catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+};
 
 // Tryb „Praca" — kierownik HK sprząta jak pracownik. Osadzamy istniejący widok
 // telefonu (index.html) w iframe, podając imię zalogowanej osoby jako ?w=.
@@ -1302,7 +1474,7 @@ window.rosterSave = async (iso, btn) => {
     pushHkStateRoster(iso, ROSTER[iso]||[]);
     try { await sb.rpc("log_action", { p_action:"obsada_zapis", p_detail:`${iso} (${(ROSTER[iso]||[]).length} os.)` }); } catch {}
     if (btn){ btn.disabled=false; btn.textContent="Zapisano ✓"; setTimeout(()=>{ if(btn) btn.textContent="Zapisz obsadę"; }, 1600); }
-  } catch (e) { if (btn){ btn.disabled=false; btn.textContent="Zapisz obsadę"; } alert((e&&e.message)||"Błąd zapisu."); }
+  } catch (e) { if (btn){ btn.disabled=false; btn.textContent="Zapisz obsadę"; } toast((e&&e.message)||"Błąd zapisu.","bad"); }
 };
 
 // ── Na żywo: kto robi jaki pokój (hk_rooms dzisiaj) + feed zdarzeń (hk_logs) ──
@@ -1515,7 +1687,7 @@ window.addHkReminder = async () => {
 };
 window.rmHkReminder = async (id) => {
   try { const { error } = await sb.from("hk_reminders").update({ active:false }).eq("id", id); if (error) throw error; showHkReminders(); }
-  catch (e) { alert((e&&e.message)||"Błąd."); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 // Szczegóły osoby: pokoje + ile/średni czas + ile już robi bieżący pokój.
 window.showLiveWorker = async (w) => {
@@ -2012,7 +2184,7 @@ window.markZadanieDone = async (id) => {
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"zadanie_zrobione", p_detail:"oznaczono zrobione" }); } catch {}
     loadZadania();
-  } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
+  } catch (e) { toast((e&&e.message)||"Nie udało się oznaczyć.","bad"); }
 };
 
 // ─────────────────────────── Poczta wewnętrzna (panel ↔ panel) ───────────────────────────
@@ -2153,28 +2325,37 @@ function notifTabCount(tab){
 function notifTotal(){ return notifAvailCats().filter(notifOn).reduce((s, c) => s + (NOTIF_COUNTS[c] || 0), 0); }
 
 function notifPaint(){
-  document.querySelectorAll("[data-notifbadge]").forEach(el => {
-    const n = notifTabCount(el.getAttribute("data-notifbadge"));
-    if (n > 0){ el.hidden = false; el.textContent = n > 99 ? "99+" : String(n); }
-    else { el.hidden = true; el.textContent = ""; }
-  });
+  const setBadge = (el, n) => {
+    if (n > 0){ el.hidden = false; el.textContent = n > 99 ? "99+" : String(n); el.setAttribute("aria-label", `${n} nieprzeczytanych`); }
+    else { el.hidden = true; el.textContent = ""; el.removeAttribute("aria-label"); }
+  };
+  document.querySelectorAll("[data-notifbadge]").forEach(el => setBadge(el, notifTabCount(el.getAttribute("data-notifbadge"))));
   const b = document.getElementById("notifBellCount");
-  if (b){ const t = notifTotal(); if (t > 0){ b.hidden = false; b.textContent = t > 99 ? "99+" : String(t); } else { b.hidden = true; b.textContent = ""; } }
+  if (b) setBadge(b, notifTotal());
   const mb = document.getElementById("moreBadge"); // suma z zakładek schowanych pod „Więcej"
-  if (mb){ const n = OVERFLOW_TABS.reduce((s,k) => s + notifTabCount(k), 0); if (n > 0){ mb.hidden = false; mb.textContent = n > 99 ? "99+" : String(n); } else { mb.hidden = true; mb.textContent = ""; } }
+  if (mb) setBadge(mb, OVERFLOW_TABS.reduce((s,k) => s + notifTabCount(k), 0));
   if (NOTIF_OPEN) notifRenderMenu();
 }
 
 // ── Dropdown dzwonka ──
+function setBellExpanded(open){ const b = document.querySelector(".top-bell"); if (b) b.setAttribute("aria-expanded", open ? "true" : "false"); }
+function closeNotif(){ NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true; setBellExpanded(false); }
 window.notifToggle = () => {
   NOTIF_OPEN = !NOTIF_OPEN; NOTIF_SETTINGS = false;
   const m = document.getElementById("notifMenu"); if (!m) return;
-  m.hidden = !NOTIF_OPEN; if (NOTIF_OPEN) notifRenderMenu();
+  m.hidden = !NOTIF_OPEN; setBellExpanded(NOTIF_OPEN); if (NOTIF_OPEN) notifRenderMenu();
 };
 document.addEventListener("click", (e) => {
   if (!NOTIF_OPEN) return;
   if (e.target.closest(".notif-wrap")) return;   // klik w dzwonek/menu — nie zamykaj
-  NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true;
+  closeNotif();
+});
+// Escape zamyka otwarte nakładki (dropdown dzwonka / „Więcej").
+// Uwaga: zadcal ma własny handler Escape z czyszczeniem listenera — nie dublujemy.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (NOTIF_OPEN) { closeNotif(); return; }
+  if (document.getElementById("moreSheet")) { closeMoreSheet(); return; }
 });
 
 function notifRenderMenu(){
@@ -2348,7 +2529,7 @@ window.mailQuickDone = async (id) => {
       .update({ status:"done", done_at:new Date().toISOString(), done_by:CURRENT.name||"Panel" }).eq("id", id);
     if (error) throw error;
     loadPoczta();
-  } catch (e) { alert((e&&e.message)||"Nie udało się oznaczyć."); }
+  } catch (e) { toast((e&&e.message)||"Nie udało się oznaczyć.","bad"); }
 };
 
 window.mailSend = async () => {
@@ -2457,7 +2638,7 @@ window.mailSetStatus = async (id, status) => {
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"poczta_status", p_detail: status }); } catch {}
     loadPoczta();
-  } catch (e) { alert((e&&e.message)||"Nie udało się zmienić statusu."); }
+  } catch (e) { toast((e&&e.message)||"Nie udało się zmienić statusu.","bad"); }
 };
 
 window.mailReject = async (id) => {
@@ -2466,7 +2647,7 @@ window.mailReject = async (id) => {
     const { error } = await sb.from("manager_messages").update({ status:"rejected", reply_note: note.trim() || null }).eq("id", id);
     if (error) throw error;
     loadPoczta();
-  } catch (e) { alert((e&&e.message)||"Nie udało się odrzucić."); }
+  } catch (e) { toast((e&&e.message)||"Nie udało się odrzucić.","bad"); }
 };
 
 window.mailReply = async () => {
@@ -2736,7 +2917,7 @@ window.decideCorrection = async (correctionId, decision) => {
     if (error) throw error;
     try { await sb.rpc("log_action", { p_action:"korekta_decyzja", p_detail:`${decision==="rejected"?"odrzucona":"zatwierdzona"} (${correctionId})` }); } catch {}
     loadKasa();
-  } catch (e) { alert("Nie udało się zapisać decyzji" + (e&&e.message?`: ${e.message}`:".")); }
+  } catch (e) { toast("Nie udało się zapisać decyzji" + (e&&e.message?`: ${e.message}`:"."),"bad"); }
 };
 
 // ── Pulpit dnia: jeden ekran-przegląd dla koordynatora/recepcji. Agreguje dane z innych
@@ -2744,9 +2925,9 @@ window.decideCorrection = async (correctionId, decision) => {
 async function loadPulpit() {
   const today = isoDate(new Date()); const d = fmtDate(today);
   body('<div class="spin">Wczytywanie…</div>');
-  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null, cashState=null;
+  let plan={}, roster=[], sched=null, cashRows=[], corr=[], appr=[], alerts=[], rems=[], rf=null, cashState=null, faults=[];
   try {
-    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs] = await Promise.all([
+    const [pl, ro, sc, sr, mc, ma, rm, rfm, ar, cs, fa] = await Promise.all([
       sb.from("hk_plan").select("assignments,pm_room_types").eq("date",today).maybeSingle(),
       sb.from("hk_roster").select("roster").eq("tenant_id",TENANT_ID).eq("date",today).maybeSingle(),
       getMirror("schedule"),
@@ -2757,6 +2938,7 @@ async function loadPulpit() {
       getMirror("reports_full"),
       sb.from("payment_correction_approvals").select("correction_id").eq("tenant_id",TENANT_ID).then(r=>r,()=>({data:[]})),
       getMirror("cash_state"),
+      sb.from("faults").select("status,priority,due_at,reported_at").eq("tenant_id",TENANT_ID).in("status",["open","in_progress"]).limit(400).then(r=>r,()=>({data:[]})),
     ]);
     plan   = (pl && pl.data) || {};
     roster = (ro && ro.data && Array.isArray(ro.data.roster)) ? ro.data.roster : [];
@@ -2768,6 +2950,7 @@ async function loadPulpit() {
     rf     = rfm;
     appr   = (ar && ar.data) || [];
     cashState = (cs && typeof cs === "object") ? cs : null;
+    faults = (fa && fa.data) || [];
   } catch { return body('<div class="empty">Nie udało się wczytać pulpitu.</div>'); }
 
   // Obsada: HK z roster + recepcja z mirrora grafiku.
@@ -2797,6 +2980,26 @@ async function loadPulpit() {
   // Zadania otwarte / pilne.
   const openTasks = alerts.filter(a => !a.done);
   const pilne = openTasks.filter(a => a.priority==="high").length;
+  // Usterki: otwarte, po terminie SLA, zgłoszone dziś (data lokalna — zgodnie z konwencją HK).
+  const now = Date.now();
+  const overdueFaults = faults.filter(r => r.due_at && new Date(r.due_at).getTime() < now);
+  const faultsToday = faults.filter(r => r.reported_at && isoDate(new Date(r.reported_at)) === today).length;
+  const hasSla = (tabsFor(CURRENT.role) || []).some(([k]) => k === "sla");
+  // Pokrycie zmian recepcji dziś (z lustra grafiku) — tylko gdy są dane o zmianach (brak danych ≠ brak obsady).
+  const shiftSet = new Set(Object.values((sched && sched[today]) || {}).map(v => v && v.shift).filter(Boolean));
+  const covTxt = [["poranna","R"],["popoludniowa","Po"],["nocna","N"]]
+    .map(([k,a]) => shiftSet.has(k) ? a : `<span style="color:var(--bad)">${a}✗</span>`).join(" · ");
+
+  // Pasek krytycznych alertów — pokazuje wyłącznie realne, klikalne problemy dnia.
+  const flags = [];
+  if (hasSla && overdueFaults.length) flags.push({ t:`${overdueFaults.length} usterek po terminie SLA`, tab:"sla", bad:true });
+  if (kwMissing)                       flags.push({ t:"Brak KW przy zamknięciu dnia", tab:"kasa", bad:true });
+  if (pilne)                           flags.push({ t:`${pilne} pilnych zadań`, tab:"zadania", bad:true });
+  if (pendCorr)                        flags.push({ t:`${pendCorr} korekt kasy do decyzji`, tab:"kasa", bad:false });
+  const banner = flags.length ? `<div class="fullspan" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">`
+    + flags.map(f => { const col = f.bad ? "var(--bad)" : "var(--gold)"; const bg = f.bad ? "rgba(194,65,90,.08)" : "rgba(176,134,58,.09)";
+        return `<button onclick="setHkTab('${f.tab}')" style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:800;font-size:12.5px;color:${col};background:${bg};border:1px solid ${col};border-radius:11px;padding:8px 13px"><span style="font-size:15px">${f.bad?"⚠":"●"}</span>${esc(f.t)}<span style="opacity:.7;font-weight:700">›</span></button>`; }).join("")
+    + `</div>` : "";
 
   const kpis = `<div class="kpis">
     <div class="kpi"><div class="l">Obsada dziś</div><div class="v">${hkCount + recCount}</div></div>
@@ -2815,8 +3018,9 @@ async function loadPulpit() {
   const tiles = [
     tile("kasa","💰","Kasa", line("Kasetka", kasaTxt, kasaLive==null?"var(--muted)":"") + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
     tile("zadania","✅","Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    hasSla ? tile("sla","🛠️","Usterki / SLA", line("Otwarte", faults.length) + line("Po terminie", overdueFaults.length, overdueFaults.length?"var(--bad)":"var(--ok)") + line("Zgłoszone dziś", faultsToday)) : "",
     tile("wyjazdy","🚪","Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
-    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount)),
+    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount) + (shiftSet.size ? line("Zmiany dziś", covTxt) : "")),
   ].join("");
 
   const remHtml = rems.length
@@ -2824,6 +3028,7 @@ async function loadPulpit() {
     : "";
 
   body(`<div class="note fullspan" style="margin-top:0;margin-bottom:12px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
+    + banner
     + kpis
     + `<div class="fullspan" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin-top:4px">${tiles}</div>`
     + remHtml);
@@ -3037,18 +3242,18 @@ window.copyLink = (token, el) => {
   navigator.clipboard?.writeText(url).then(()=>{ if(el){ const o=el.textContent; el.textContent="Skopiowano ✓"; setTimeout(()=>el.textContent=o,1500); } }, ()=>{});
 };
 window.regenLink = async (token, reqId) => {
-  if (!confirm("Odświeżyć link? Stary przestanie działać, dostaniesz nowy kod.")) return;
+  if (!(await uiConfirm("Odświeżyć link? Stary przestanie działać, dostaniesz nowy kod.", { okLabel:"Odśwież" }))) return;
   try { const { error } = await sb.rpc("regenerate_token", { p_token: token }); if (error) throw error; openGrid(reqId); }
-  catch (e) { alert((e&&e.message)||"Nie udało się odświeżyć."); }
+  catch (e) { toast((e&&e.message)||"Nie udało się odświeżyć.","bad"); }
 };
 window.delGrafik = async (reqId, btn) => {
-  if (!confirm("Usunąć ten grafik wraz z odpowiedziami pracowników? Tej operacji nie można cofnąć.")) return;
+  if (!(await uiConfirm("Usunąć ten grafik wraz z odpowiedziami pracowników? Tej operacji nie można cofnąć.", { okLabel:"Usuń", danger:true }))) return;
   if (btn){ btn.disabled=true; btn.textContent="Usuwanie…"; }
   try {
     const { error } = await sb.rpc("delete_availability_request", { p_request_id: reqId });
     if (error) throw error;
     loadGrafik();
-  } catch (e) { if(btn){ btn.disabled=false; btn.textContent="Usuń"; } alert((e&&e.message)||"Nie udało się usunąć grafiku."); }
+  } catch (e) { if(btn){ btn.disabled=false; btn.textContent="Usuń"; } toast((e&&e.message)||"Nie udało się usunąć grafiku.","bad"); }
 };
 let GRID_ROWS = [], GRID_REQ = null, gridView = "grid";
 let REQ_META = {};            // { reqId: { period_type, period_start } } — do wyliczenia dni grafiku
@@ -3171,7 +3376,14 @@ window.openSchedule = async (reqId) => {
     else if (r.choice) decl[key]={off:false,txt:r.choice};
   });
   const cells = (saved && saved.cells && typeof saved.cells==="object") ? {...saved.cells} : {};
-  SCHED = { reqId, persons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
+  // Kolumny = UNIA: respondenci zbiórki + osoby już obecne w zapisanym grafiku (np. menedżer
+  // dopisany ręcznie, który sam dobiera sobie wolne dni i nie dostał linku). Dzięki temu
+  // ręcznie dodana osoba NIE znika po zapisaniu i ponownym wejściu — jej komórki są w cells.
+  const fromCells = Object.keys(cells).map(k=>k.split("|")[0]).filter(Boolean);
+  const seenP=new Set(); const allPersons=[];
+  [...persons, ...fromCells].forEach(p=>{ const n=zmNorm(p); if(n && !seenP.has(n)){ seenP.add(n); allPersons.push(p); } });
+  allPersons.sort((a,b)=>a.localeCompare(b,"pl"));
+  SCHED = { reqId, persons:allPersons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
   renderSchedule();
 };
 
@@ -3205,10 +3417,11 @@ function renderSchedule(){
     <div class="fullspan" style="overflow:auto;max-height:64vh;border:1px solid var(--line);border-radius:11px;background:var(--paper)">
       <table class="sched-tbl"><thead><tr>${head}</tr></thead><tbody>${bodyRows}</tbody><tfoot>${footSum}</tfoot></table></div>
     <div class="fullspan" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+      <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--plum);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedAddPerson()" title="Dodaj osobę do grafiku, np. siebie">+ Osoba</button>
       <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedFill()">Wstaw deklaracje</button>
       <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--bad);font-weight:800;cursor:pointer" onclick="schedClear()">Wyczyść</button>
       <button class="rost-addbtn" style="flex:1;min-width:120px;padding:11px;border-radius:10px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;cursor:pointer" onclick="schedPrint()">🖨 Drukuj</button>
-      <button class="btn" style="flex:2;min-width:160px;margin-top:0" onclick="schedSave(this)">Zapisz grafik</button>
+      <button class="btn" style="flex:2;min-width:180px;margin-top:0" onclick="schedSave(this)" title="Zapisuje grafik i od razu wysyła go do zakładki Zmiany oraz do aplikacji recepcji">Zapisz grafik</button>
     </div>
     <div id="schedMsg" class="msg"></div>`;
   body(html);
@@ -3222,26 +3435,102 @@ window.schedSetCell = (di,pi,val)=>{
   const so=document.getElementById("sob_"+di); if(so) so.textContent=schedDayCount(di);
   const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:#C2410C">● Niezapisane zmiany</span>`;
 };
-window.schedFill = ()=>{
+// Dodaje kolumnę osoby do układanego grafiku (np. menedżera, który nie dostał linku, a sam
+// dobiera sobie wolne dni). Tylko dodaje pustą kolumnę — zapis dopiero przyciskiem „Zapisz grafik".
+window.schedAddPerson = ()=>{
   const S=SCHED; if(!S) return;
-  if(!confirm("Wstawić deklarowane godziny pracowników do komórek? Tam, gdzie ktoś podał godziny, nadpisze obecny wpis.")) return;
+  const name=(prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
+  if(!name) return;
+  const n=zmNorm(name);
+  if(S.persons.some(p=>zmNorm(p)===n)){ toast("Ta osoba już jest w grafiku.","bad"); return; }
+  S.persons=[...S.persons, name].sort((a,b)=>a.localeCompare(b,"pl"));
+  renderSchedule();
+};
+window.schedFill = async ()=>{
+  const S=SCHED; if(!S) return;
+  if(!(await uiConfirm("Wstawić deklarowane godziny pracowników do komórek? Tam, gdzie ktoś podał godziny, nadpisze obecny wpis.", { okLabel:"Wstaw" }))) return;
   S.persons.forEach(p=> S.days.forEach(d=>{ const dc=S.decl[p+"|"+d]; if(dc&&!dc.off&&dc.txt&&dc.txt!=="godziny") S.cells[p+"|"+d]=dc.txt; }));
   S.dirty=true; renderSchedule();
 };
-window.schedClear = ()=>{ const S=SCHED; if(!S) return; if(!confirm("Wyczyścić wszystkie wpisane zmiany?")) return; S.cells={}; S.dirty=true; renderSchedule(); };
+window.schedClear = async ()=>{ const S=SCHED; if(!S) return; if(!(await uiConfirm("Wyczyścić wszystkie wpisane zmiany?", { okLabel:"Wyczyść", danger:true }))) return; S.cells={}; S.dirty=true; renderSchedule(); };
+// Zapis = ZAWSZE także wysyłka do Zmian/recepcji (most). Jeden przycisk: zapisuje ułożony grafik
+// w `schedules` (published) i od razu wypycha do panel_mirror przez schedule_merge.
 window.schedSave = async (btn)=>{
   const S=SCHED; if(!S) return;
   if(btn){ btn.disabled=true; btn.textContent="Zapisywanie…"; }
   const msg=document.getElementById("schedMsg");
   try {
-    const { error } = await sb.rpc("save_schedule", { p_request_id:S.reqId, p_cells:S.cells, p_status:"draft" });
+    // 1) zapisz/opublikuj ułożony grafik (źródło prawdy do druku/odczytu)
+    const { error } = await sb.rpc("save_schedule", { p_request_id:S.reqId, p_cells:S.cells, p_status:"published" });
     if(error) throw error;
-    S.dirty=false; S.status="draft";
-    if(msg){ msg.className="msg info"; msg.textContent="Zapisano grafik."; }
-    const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:var(--muted)">Szkic zapisany</span>`;
+    S.dirty=false; S.status="published";
+    // 2) most → Zmiany + recepcja: mapowanie imion na rejestr recepcji i wypchnięcie przez schedule_merge
+    let reg=[]; try{ reg = await getMirror("employees"); }catch{}
+    const regMap={}; (Array.isArray(reg)?reg:[]).forEach(e=>{ if(typeof e==="string"&&e.trim()) regMap[zmNorm(e)]=e.trim(); });
+    const { patch, mapped, skipped } = schedToZmPatch(S, regMap);
+    let pushed=false;
+    if(Object.keys(patch).length){
+      const { error:e2 } = await sb.rpc("schedule_merge",{ p_cells:patch, p_device:hkStateDeviceId(), p_tenant:TENANT_ID });
+      if(e2) throw e2;
+      pushed=true;
+      try{ await sb.rpc("log_action",{ p_action:"grafik_opublikowany", p_detail:`Zapis+wysyłka do Zmian/recepcji — ${mapped} zmian${skipped.length?`, pominięto ${skipped.length}`:""}` }); }catch{}
+    }
+    if(msg){ msg.className="msg ok";
+      msg.innerHTML = pushed
+        ? `✓ Zapisano i wysłano do Zmian i recepcji — <b>${mapped}</b> ${mapped===1?"zmiana":"zmian"}.`
+          + (skipped.length?`<br><span style="color:var(--bad)">Pominięto ${skipped.length} pól bez czytelnych godzin: ${skipped.slice(0,6).map(esc).join("; ")}${skipped.length>6?"…":""}</span>`:"")
+        : `✓ Zapisano grafik (brak wypełnionych komórek do wysłania).`; }
+    const nb=document.getElementById("schedNote"); if(nb) nb.innerHTML=`<span style="color:var(--ok)">✓ Zapisany — w Zmianach i na recepcji</span>`;
   } catch(e){ if(msg){ msg.className="msg err"; msg.textContent=(e&&e.message)||"Nie udało się zapisać."; } }
   if(btn){ btn.disabled=false; btn.textContent="Zapisz grafik"; }
 };
+
+// ── MOST: ułożony grafik (tabela schedules) → Zmiany + recepcja (panel_mirror/schedule_merge) ──
+// Sekcja „Grafik" trzyma komórki jako { "Osoba|YYYY-MM-DD": "8–16" }. Zakładka „Zmiany" i
+// recepcja czytają inny dokument: { "YYYY-MM-DD": { "Imię": {start,end,shift}|null } }. Te dwa
+// systemy NIE były połączone — ten most konwertuje i wypycha grafik przez schedule_merge.
+const SCHED_WORD2SHIFT = { rano:"poranna", poranek:"poranna", poranna:"poranna", przedpoludnie:"poranna",
+  popoludnie:"popoludniowa", popoludniowa:"popoludniowa", wieczor:"wieczorowa", wieczorowa:"wieczorowa",
+  noc:"nocna", nocka:"nocna", nocna:"nocna", dzien:"dzienna", dzienna:"dzienna", dyzur:"dzienna" };
+// Jeśli okno godzin dokładnie pasuje do znanej zmiany → ustaw kod zmiany (ładniejsze badge'y na recepcji).
+function schedInferShift(start,end){
+  const w = shiftWindow({start,end}); if(!w) return null;
+  for(const k of ["poranna","popoludniowa","wieczorowa","dzienna","nocna"]){
+    const ww=SHIFT_WIN[k]; if(ww && ww[0]===w[0] && ww[1]===w[1]) return k;
+  }
+  return null;
+}
+// „8–16" → {start:"8",end:"16",shift}; pojedyncza liczba → {start,end:""}; słowo (np. „nocka") → {shift}.
+// Zwraca null, gdy nic się nie da odczytać (komórka pominięta przy wysyłce).
+function schedParseCell(v){
+  const norm = String(v==null?"":v).replace(/[–—]/g,"-").trim();
+  if(!norm) return null;
+  const rng = norm.match(/^(\d{1,2}(?::\d{2})?)\s*-\s*(\d{1,2}(?::\d{2})?)$/);
+  if(rng) return { start:rng[1], end:rng[2], shift:schedInferShift(rng[1],rng[2]) };
+  if(/^\d{1,2}(?::\d{2})?$/.test(norm)) return { start:norm, end:"", shift:null };
+  const sh = SCHED_WORD2SHIFT[zmNorm(norm)]; if(sh) return { start:"", end:"", shift:sh };
+  return null;
+}
+// Patch dla schedule_merge z całej siatki grafiku (osoby × dni). Puste pole = null (czyści tę
+// zmianę), więc opublikowany grafik jest autorytatywny dla SWOICH osób i dni — bez ruszania
+// reszty. Imiona mapujemy na pisownię z rejestru recepcji (regMap), by nie tworzyć duplikatów.
+function schedToZmPatch(S, regMap){
+  regMap = regMap||{};
+  const patch = {}; let mapped=0; const skipped=[];
+  S.days.forEach(date=>{
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    S.persons.forEach(person=>{
+      const name = regMap[zmNorm(person)] || person;
+      const v = String(S.cells[person+"|"+date]||"").trim();
+      if(!patch[date]) patch[date]={};
+      if(!v){ patch[date][name]=null; return; }
+      const cell = schedParseCell(v);
+      if(!cell){ skipped.push(`${person} ${date.slice(5)}: „${v}"`); patch[date][name]=null; return; }
+      patch[date][name]=cell; mapped++;
+    });
+  });
+  return { patch, mapped, skipped };
+}
 window.schedPrint = ()=>{
   const S=SCHED; if(!S) return;
   const meta=REQ_META[S.reqId]||{};
@@ -3419,180 +3708,180 @@ window.addKonserwTask = async () => {
   }
 };
 
-// ── Plan: dzienne zadania (np. Parking) dla konserwatorów + odpowiedź/status ──
-const PLAN_TYPES = ["Parking","Sprzątanie terenu","Przegląd techniczny","Inne"];
-// Generator „Plan działania" (AI) — tylko menedżer główny/operacyjny/admin.
-const PLAN_AI_ROLES = new Set(["mgr_glowny","mgr_operacyjny","admin"]);
-// Lista WSZYSTKICH pracowników (recepcja + obsada HK + konserwatorzy), unikalna.
-async function gatherAllEmployees() {
-  const out = new Set(KONSERW_BASE);
-  try {
-    const recep = await getMirror("employees");
-    (Array.isArray(recep) ? recep : []).forEach(n => { if (typeof n === "string" && n.trim()) out.add(n.trim()); });
-  } catch {}
-  try {
-    const from = isoDate(new Date(Date.now() - 30*864e5));
-    const { data } = await sb.from("hk_roster").select("roster").eq("tenant_id", TENANT_ID).gte("date", from).limit(60);
-    (data || []).forEach(r => (Array.isArray(r.roster) ? r.roster : []).forEach(e => { const n = (e && e.name || "").trim(); if (n) out.add(n); }));
-  } catch {}
-  return [...out].sort((a,b) => a.localeCompare(b, "pl"));
-}
+// ── Plan: lista aktywnych planów konserwacji → zadania (z datą lub bez) ──
+// Model: maintenance_plans (nazwa + przypisani konserwatorzy) → panel_plan (zadania, plan_id).
+// Konserwator na każde zadanie może odpowiedzieć i dołączyć zdjęcie zmian.
+let PLAN_OPEN_ID = null;   // null = lista planów; id = otwarty plan
+let PLAN_SHOW_DONE = false; // czy pokazywać zakończone plany na liście
 async function loadPlan() {
-  let rows = [];
-  const fromKey = isoDate(new Date(Date.now() - 7*864e5));
-  try { const { data } = await sb.from("panel_plan").select("id,plan,date,task,assigned_to,response,status,created_by")
-      .eq("tenant_id", TENANT_ID).gte("date", fromKey).order("date", { ascending:false }).limit(200); rows = data || []; }
-  catch { return body('<div class="empty">Nie udało się pobrać planu.</div>'); }
-  const today = isoDate(new Date());
-  const aiCard = PLAN_AI_ROLES.has(CURRENT.role) ? `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">✨ Plan działania (AI)</div>
-    <div class="field"><label>Cel planu</label><input id="apGoal" class="inp" placeholder="np. Przygotować hotel do sezonu letniego"/></div>
-    <div class="field"><label>Zakres</label><select id="apRange" class="inp">
-      <option value="0">Lista kroków (bez podziału na dni)</option>
-      <option value="1">Jeden dzień (dziś)</option>
-      <option value="3">Harmonogram — 3 dni</option>
-      <option value="5">Harmonogram — 5 dni</option>
-      <option value="7">Harmonogram — 7 dni</option>
-    </select></div>
-    <button id="apBtn" class="btn" onclick="genActionPlan()">✨ Rozpisz plan AI</button>
-    <div id="apMsg" class="msg"></div>
-    <div id="apPreview"></div>
-  </div>` : "";
-  const form = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Dodaj zadanie do planu</div>
-    <div class="field"><label>Plan</label><select id="plKind" class="inp">${PLAN_TYPES.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>
-    <div class="field"><label>Dzień</label><input id="plDate" class="inp" type="date" value="${today}"/></div>
-    <div class="field"><label>Co wykonać</label><input id="plTask" class="inp" placeholder="np. Sprawdzić miejsca 1–20, odśnieżyć wjazd"/></div>
-    <div class="field"><label>Przypisz do</label><select id="plWho" class="inp"><option value="">— dowolny —</option>${KONSERW_BASE.map(n=>`<option>${esc(n)}</option>`).join("")}</select></div>
-    <button id="plBtn" class="btn" onclick="addPlan()">Dodaj do planu</button>
-    <div id="plMsg" class="msg"></div>
+  let plans = [], tasks = [];
+  try {
+    const [{ data:pl }, { data:tk }] = await Promise.all([
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+      sb.from("panel_plan").select("id,plan_id,plan,date,task,response,status,photos").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
+    ]);
+    plans = pl || []; tasks = tk || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać planów.</div>'); }
+
+  // Widok szczegółów wybranego planu
+  if (PLAN_OPEN_ID) {
+    const p = plans.find(x => x.id === PLAN_OPEN_ID);
+    if (!p) { PLAN_OPEN_ID = null; return loadPlan(); }
+    return renderPlanDetail(p, tasks.filter(t => t.plan_id === p.id));
+  }
+
+  // Lista aktywnych planów + tworzenie nowego
+  const create = `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">Nowy plan</div>
+    <div class="field"><label>Nazwa planu</label><input id="npName" class="inp" placeholder="np. Przygotowanie hotelu do sezonu"/></div>
+    <button id="npBtn" class="btn" onclick="createPlan()">Utwórz plan</button>
+    <div id="npMsg" class="msg"></div>
   </div>`;
-  if (!rows.length) return body(aiCard + form + '<div class="empty">Brak zadań w planie (ostatnie 7 dni).</div>');
-  const byPlan = {};
-  rows.forEach(r => { (byPlan[r.plan] = byPlan[r.plan] || {})[r.date] = (byPlan[r.plan][r.date] || []); byPlan[r.plan][r.date].push(r); });
-  const sections = Object.keys(byPlan).sort().map(pl => {
-    const blocks = Object.keys(byPlan[pl]).sort().reverse().map(dk => {
-      const d = fmtDate(dk);
-      const items = byPlan[pl][dk].map(r => planRow(r)).join("");
-      return `<div style="margin-bottom:8px"><div style="font-size:11.5px;font-weight:800;color:var(--muted);margin:2px 0">${d.dow}, ${d.txt}</div>${items}</div>`;
-    }).join("");
-    return `<div class="soon">📋 ${esc(pl)}</div>${blocks}`;
-  }).join("");
-  body(aiCard + form + sections);
+  const active = plans.filter(p => p.status !== "done");
+  const done   = plans.filter(p => p.status === "done");
+  const list   = PLAN_SHOW_DONE ? plans : active;
+  const counts = id => { const t = tasks.filter(x => x.plan_id === id); return { total:t.length, done:t.filter(x => x.status === "done").length }; };
+  const card = p => {
+    const c = counts(p.id);
+    const who = (p.assigned_to || "").trim();
+    const whoChips = who
+      ? who.split(/\s*,\s*/).filter(Boolean).map(n => `<span class="chip">${esc(n)}</span>`).join("")
+      : `<span class="chip" style="color:var(--muted)">nieprzypisany</span>`;
+    const isDone = p.status === "done";
+    return `<div class="card" style="margin-bottom:10px;cursor:pointer;${isDone?"opacity:.7":""}" onclick="openPlan('${p.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:15px;font-weight:800;flex:1">📋 ${esc(p.name)}</span>
+        <span class="chip" style="color:${c.total&&c.done===c.total?"var(--ok)":"var(--muted)"}">${c.done}/${c.total}</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${whoChips}${isDone?`<span class="chip" style="color:var(--ok)">zakończony</span>`:""}</div>
+    </div>`;
+  };
+  const listHtml = list.length ? list.map(card).join("") : '<div class="empty">Brak aktywnych planów — utwórz pierwszy powyżej.</div>';
+  const toggle = done.length
+    ? `<button class="rost-addbtn" style="margin:2px 0 10px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="togglePlanDone()">${PLAN_SHOW_DONE?"Ukryj zakończone":`Pokaż zakończone (${done.length})`}</button>`
+    : "";
+  body(create + `<div class="soon">Aktywne plany</div>` + toggle + listHtml);
 }
-function planRow(r) {
+window.openPlan      = (id) => { PLAN_OPEN_ID = id; loadPlan(); };
+window.backToPlans   = ()   => { PLAN_OPEN_ID = null; loadPlan(); };
+window.togglePlanDone= ()   => { PLAN_SHOW_DONE = !PLAN_SHOW_DONE; loadPlan(); };
+
+window.createPlan = async () => {
+  const name = ((document.getElementById("npName")||{}).value || "").trim();
+  const msg = document.getElementById("npMsg"), btn = document.getElementById("npBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!name) return setM("Wpisz nazwę planu.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Tworzę…"; }
+  try {
+    const { data, error } = await sb.from("maintenance_plans")
+      .insert({ tenant_id:TENANT_ID, name, status:"active", created_by:CURRENT.name||"Panel" })
+      .select("id").single();
+    if (error) throw error;
+    try { await sb.rpc("log_action", { p_action:"plan_utworzony", p_detail:name }); } catch {}
+    PLAN_OPEN_ID = (data && data.id) || null;   // od razu wchodzimy w plan, by przypisać i dodać zadania
+    loadPlan();
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Utwórz plan"; } }
+};
+
+// Szczegóły planu: przypisanie konserwatorów + lista zadań (z datą lub bez)
+function renderPlanDetail(p, items) {
+  const who = new Set((p.assigned_to||"").split(/\s*,\s*/).map(s=>s.trim()).filter(Boolean));
+  const assignBtns = KONSERW_BASE.map(n => {
+    const on = who.has(n);
+    return `<button class="rost-addbtn" style="padding:7px 13px;border-radius:999px;border:1px solid ${on?"var(--plum)":"var(--line-strong)"};background:${on?"var(--plum)":"var(--paper)"};color:${on?"#fff":"var(--plum)"};font-weight:800;font-size:12px;cursor:pointer" onclick="togglePlanAssign('${p.id}','${esc(n)}')">${on?"✓ ":""}${esc(n)}</button>`;
+  }).join("");
+  const bothOn = KONSERW_BASE.length && KONSERW_BASE.every(n => who.has(n));
+  const bothBtn = `<button class="rost-addbtn" style="padding:7px 13px;border-radius:999px;border:1px solid ${bothOn?"var(--plum)":"var(--line-strong)"};background:${bothOn?"rgba(90,29,74,.08)":"var(--paper)"};color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="assignBoth('${p.id}')">👥 Obaj</button>`;
+  const head = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="backToPlans()">← Plany</button>
+    <span style="font-size:16px;font-weight:800;flex:1">📋 ${esc(p.name)}</span>
+  </div>`;
+  const assignCard = `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">Przypisani konserwatorzy</div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap">${assignBtns}${bothBtn}</div>
+  </div>`;
+  const addCard = `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">Dodaj zadanie</div>
+    <div class="field"><label>Co wykonać</label><input id="ptTask" class="inp" placeholder="np. Sprawdzić oświetlenie parkingu"/></div>
+    <div class="field"><label>Termin (opcjonalnie)</label><input id="ptDate" class="inp" type="date"/></div>
+    <button id="ptBtn" class="btn" onclick="addPlanTask('${p.id}')">Dodaj zadanie</button>
+    <div id="ptMsg" class="msg"></div>
+  </div>`;
+  // Zadania: z terminem wg dnia (rosnąco), bez terminu na końcu.
+  const sorted = items.slice().sort((a,b) => {
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1; if (!b.date) return -1;
+    return String(a.date).localeCompare(String(b.date));
+  });
+  const tasksHtml = sorted.length ? sorted.map(planTaskRow).join("") : '<div class="empty">Brak zadań — dodaj pierwsze powyżej.</div>';
+  const isDone = p.status === "done";
+  const finishBtn = `<button class="rost-addbtn" style="margin-top:6px;padding:8px 13px;border-radius:8px;border:1px solid ${isDone?"var(--line-strong)":"rgba(31,122,82,.4)"};background:${isDone?"var(--paper)":"rgba(31,122,82,.08)"};color:${isDone?"var(--muted)":"var(--ok)"};font-weight:800;font-size:12px;cursor:pointer" onclick="setPlanStatus('${p.id}','${isDone?"active":"done"}')">${isDone?"↩ Wznów plan":"✓ Zakończ plan"}</button>`;
+  body(head + assignCard + addCard + `<div class="soon">Zadania</div>` + tasksHtml + finishBtn);
+}
+function planTaskRow(r) {
   const done = r.status === "done";
+  const photos = Array.isArray(r.photos) ? r.photos : [];
+  const thumbs = photos.length
+    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px">` + photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener" style="display:block;width:54px;height:54px;border-radius:7px;overflow:hidden;border:1px solid var(--line)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></a>`).join("") + `</div>`
+    : "";
   return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:5px;${done?"opacity:.7":""}">
     <div style="display:flex;align-items:center;gap:8px">
       <span class="k" style="flex:1;${done?"text-decoration:line-through":""}">${esc(r.task||"")}</span>
-      ${r.assigned_to?`<span class="chip">${esc(r.assigned_to)}</span>`:""}
+      ${r.date?`<span class="chip">📅 ${esc(r.date)}</span>`:`<span class="chip" style="color:var(--muted)">bez terminu</span>`}
       <span class="chip" style="color:${done?"var(--ok)":"var(--muted)"}">${done?"wykonane":"do zrobienia"}</span>
     </div>
     ${r.response?`<div style="font-size:12.5px;color:var(--ink);background:rgba(31,122,82,.06);border:1px solid rgba(31,122,82,.25);border-radius:8px;padding:7px 9px">💬 ${esc(r.response)}</div>`:""}
+    ${thumbs}
     <div style="display:flex;gap:7px">
-      <button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="planRespond('${r.id}')">Odpowiedź</button>
-      ${done?`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11.5px;cursor:pointer" onclick="planStatus('${r.id}','open')">Cofnij</button>`
-            :`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer" onclick="planStatus('${r.id}','done')">✓ Wykonane</button>`}
+      ${done?`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11.5px;cursor:pointer" onclick="setTaskStatus('${r.id}','open')">Cofnij</button>`
+            :`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer" onclick="setTaskStatus('${r.id}','done')">✓ Wykonane</button>`}
+      <button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:#b3261e;font-weight:800;font-size:11.5px;cursor:pointer" onclick="delPlanTask('${r.id}')">Usuń</button>
     </div>
   </div>`;
 }
-window.addPlan = async () => {
-  const plan = (document.getElementById("plKind")||{}).value || "Inne";
-  const date = (document.getElementById("plDate")||{}).value || isoDate(new Date());
-  const task = (document.getElementById("plTask")||{}).value || "";
-  const who  = (document.getElementById("plWho")||{}).value || "";
-  const msg = document.getElementById("plMsg"), btn = document.getElementById("plBtn");
+window.togglePlanAssign = async (planId, name) => {
+  try {
+    const { data } = await sb.from("maintenance_plans").select("assigned_to").eq("id", planId).single();
+    const set = new Set((data&&data.assigned_to||"").split(/\s*,\s*/).map(s=>s.trim()).filter(Boolean));
+    if (set.has(name)) set.delete(name); else set.add(name);
+    const val = [...set].join(", ");
+    const { error } = await sb.from("maintenance_plans").update({ assigned_to:val||null, updated_at:new Date().toISOString() }).eq("id", planId);
+    if (error) throw error;
+    loadPlan();
+  } catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+};
+window.assignBoth = async (planId) => {
+  try { const { error } = await sb.from("maintenance_plans").update({ assigned_to:KONSERW_BASE.join(", "), updated_at:new Date().toISOString() }).eq("id", planId); if (error) throw error; loadPlan(); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+};
+window.addPlanTask = async (planId) => {
+  const task = ((document.getElementById("ptTask")||{}).value || "").trim();
+  const date = (document.getElementById("ptDate")||{}).value || null;
+  const msg = document.getElementById("ptMsg"), btn = document.getElementById("ptBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!task.trim()) return setM("Wpisz, co wykonać.", "err");
+  if (!task) return setM("Wpisz treść zadania.", "err");
   if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
   try {
-    const { error } = await sb.from("panel_plan").insert({ tenant_id:TENANT_ID, plan, date, task:task.trim(), assigned_to:who||null, status:"open", created_by:CURRENT.name||"Panel" });
+    const { data:pl } = await sb.from("maintenance_plans").select("name").eq("id", planId).single();
+    const { error } = await sb.from("panel_plan").insert({ tenant_id:TENANT_ID, plan_id:planId, plan:(pl&&pl.name)||"Plan", date, task, status:"open", created_by:CURRENT.name||"Panel" });
     if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"plan_dodane", p_detail:`${plan} ${date}: ${task.trim()}` }); } catch {}
+    try { await sb.rpc("log_action", { p_action:"plan_zadanie_dodane", p_detail:`${(pl&&pl.name)||""}: ${task}` }); } catch {}
+    const ti=document.getElementById("ptTask"); if(ti) ti.value=""; const di=document.getElementById("ptDate"); if(di) di.value="";
     loadPlan();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj do planu"; } }
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj zadanie"; } }
 };
-window.planRespond = async (id) => {
-  const r = prompt("Odpowiedź / uwaga wykonawcy:");
-  if (r == null) return;
-  try { const { error } = await sb.from("panel_plan").update({ response:r, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadPlan(); }
-  catch (e) { alert((e&&e.message)||"Błąd."); }
-};
-window.planStatus = async (id, st) => {
+window.setTaskStatus = async (id, st) => {
   try { const { error } = await sb.from("panel_plan").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadPlan(); }
-  catch (e) { alert((e&&e.message)||"Błąd."); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
-
-// ── Plan działania (AI): cel → kroki (lub harmonogram) z przydziałem osób ──
-// LLM rozpisuje plan; menedżer poprawia podgląd i zapisuje kroki jako zadania w panel_plan.
-window.AP_EMPLOYEES = [];
-window.genActionPlan = async () => {
-  const goal   = ((document.getElementById("apGoal")||{}).value || "").trim();
-  const rangeN = parseInt((document.getElementById("apRange")||{}).value || "0", 10) || 0;
-  const msg = document.getElementById("apMsg"), btn = document.getElementById("apBtn"), prev = document.getElementById("apPreview");
-  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!goal) return setM("Wpisz cel planu.", "err");
-  setM(""); if (prev) prev.innerHTML="";
-  if (btn){ btn.disabled=true; btn.textContent="Rozpisuję…"; }
-  try {
-    const employees = await gatherAllEmployees();
-    AP_EMPLOYEES = employees;
-    const days = [];
-    if (rangeN >= 1) { const t=new Date(); t.setHours(0,0,0,0); for (let i=0;i<rangeN;i++) days.push(isoDate(new Date(t.getTime()+i*86400000))); }
-    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"plan", tenant_id:TENANT_ID, payload:{ goal, days, employees } } });
-    if (error) throw error;
-    const plan = data && data.data;
-    if (!plan || !Array.isArray(plan.steps) || !plan.steps.length)
-      return setM("AI nie zwróciło kroków — sformułuj cel inaczej albo dodaj kroki ręcznie poniżej.", "err");
-    renderActionPlanPreview(plan, employees);
-  } catch (e) {
-    setM("AI niedostępne ("+((e&&e.message)||"błąd")+"). Dodaj kroki ręcznie poniżej.", "err");
-  } finally {
-    if (btn){ btn.disabled=false; btn.textContent="✨ Rozpisz plan AI"; }
-  }
+window.delPlanTask = async (id) => {
+  if (!(await uiConfirm("Usunąć zadanie?", { okLabel:"Usuń", danger:true }))) return;
+  try { const { error } = await sb.from("panel_plan").delete().eq("id", id); if (error) throw error; loadPlan(); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
-function renderActionPlanPreview(plan, employees) {
-  const prev = document.getElementById("apPreview");
-  if (!prev) return;
-  const opts = who => `<option value="">— zespół / dowolny —</option>` +
-    employees.map(n=>`<option${n===who?" selected":""}>${esc(n)}</option>`).join("");
-  const rows = plan.steps.map(s => `
-    <div class="ap-row" style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:7px;display:flex;flex-direction:column;gap:6px">
-      <input class="inp ap-task" value="${esc(s.task||"")}" placeholder="Co wykonać"/>
-      <div style="display:flex;gap:6px">
-        <input class="inp ap-day" type="date" value="${esc(s.day||"")}" style="flex:0 0 46%"/>
-        <select class="inp ap-who" style="flex:1">${opts(s.assigned_to||"")}</select>
-      </div>
-      <button class="rost-addbtn" style="align-self:flex-end;padding:4px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11px;cursor:pointer" onclick="this.closest('.ap-row').remove()">Usuń</button>
-    </div>`).join("");
-  prev.innerHTML = `
-    <div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">
-      <div class="field"><label>Tytuł planu</label><input id="apTitle" class="inp" value="${esc(plan.title||"Plan działania")}"/></div>
-      ${plan.note?`<div class="msg info" style="display:block;margin:4px 0 8px">💡 ${esc(plan.note)}</div>`:""}
-      <div id="apSteps">${rows}</div>
-      <button class="btn" onclick="saveActionPlan()">Zapisz plan do zadań</button>
-      <div id="apSaveMsg" class="msg"></div>
-    </div>`;
-}
-window.saveActionPlan = async () => {
-  const title = (((document.getElementById("apTitle")||{}).value || "").trim()) || "Plan działania";
-  const msg = document.getElementById("apSaveMsg");
-  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  const today = isoDate(new Date());
-  const rows = [...document.querySelectorAll("#apSteps .ap-row")].map(el => ({
-    task: ((el.querySelector(".ap-task")||{}).value || "").trim(),
-    date: (el.querySelector(".ap-day")||{}).value || today,
-    who:  (el.querySelector(".ap-who")||{}).value || null,
-  })).filter(r => r.task);
-  if (!rows.length) return setM("Brak kroków do zapisania.", "err");
-  setM("Zapisuję…", "info");
-  try {
-    const payload = rows.map(r => ({ tenant_id:TENANT_ID, plan:title, date:r.date, task:r.task, assigned_to:r.who, status:"open", created_by:CURRENT.name||"Panel" }));
-    const { error } = await sb.from("panel_plan").insert(payload);
-    if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"plan_ai_zapisany", p_detail:`${title}: ${rows.length} kroków` }); } catch {}
-    loadPlan();
-  } catch (e) { setM((e&&e.message)||"Nie udało się zapisać.", "err"); }
+window.setPlanStatus = async (id, st) => {
+  try { const { error } = await sb.from("maintenance_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadPlan(); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
 // ── Zmiany: grafik EDYTOWALNY z dwukierunkowym sync NA ŻYWO do recepcji ──
@@ -3776,7 +4065,7 @@ window.zmAddPerson = ()=>{
   const name = (prompt("Imię osoby do dodania do grafiku (np. Twoje):")||"").trim();
   if(!name) return;
   const n = zmNorm(name);
-  if(ZM_EMPS.some(e=>zmNorm(e)===n)){ alert("Ta osoba jest już w grafiku."); return; }
+  if(ZM_EMPS.some(e=>zmNorm(e)===n)){ toast("Ta osoba jest już w grafiku.","bad"); return; }
   if(!ZM_EXTRA) ZM_EXTRA=[];
   ZM_EXTRA.push(name);
   zmRender();
@@ -3812,22 +4101,34 @@ async function zmMerge(cells){
   }catch(e){ console.error("[zmiany] merge:", e&&e.message); return false; }
 }
 
-// ── Tablica: stałe przypomnienia (standing_reminders) + ostatnie ogłoszenia (manager_alerts) ──
+// ── Tablica: stałe przypomnienia (standing_reminders) + pilne (manager_alerts) + Wiki (wiki_entries) ──
 async function loadTablica() {
-  let rem = [], alr = [];
+  let rem = [], alr = [], wik = [];
   try {
-    const [r1, r2] = await Promise.all([
+    const [r1, r2, r3] = await Promise.all([
       sb.from("standing_reminders").select("id,title,body,active,created_by,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(60),
       sb.from("manager_alerts").select("title,body,priority,created_by,created_at,done").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(30),
+      sb.from("wiki_entries").select("id,topic,content,updated_at,created_by").eq("tenant_id", TENANT_ID).order("updated_at", { ascending:false }).limit(10),
     ]);
     rem = (r1.data || []).filter(r => r.active !== false);
     alr = (r2.data || []).filter(a => !a.done);
+    wik = r3.data || [];
   } catch { return body('<div class="empty">Nie udało się pobrać tablicy.</div>'); }
+  // Jeden formularz z wyborem rodzaju wpisu: Stałe / Pilne / Wiki.
   const form = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Dodaj stałe przypomnienie</div>
-    <div class="field"><label>Treść</label><input id="srTitle" class="inp" placeholder="np. Zawsze sprawdzaj depozyt przy check-in" onkeydown="if(event.key==='Enter')addReminder()"/></div>
-    <button id="srBtn" class="btn" onclick="addReminder()">Dodaj przypomnienie</button>
-    <div id="srMsg" class="msg"></div>
+    <div class="soon" style="margin-top:0">Dodaj do tablicy</div>
+    <div class="field"><label>Rodzaj wpisu</label>
+      <select id="tbKind" class="inp" onchange="tbKindChange()">
+        <option value="standing">📌 Stałe przypomnienie</option>
+        <option value="urgent">🔴 Pilne przypomnienie (alert na recepcji)</option>
+        <option value="wiki">📖 Wpis do Wiki recepcji</option>
+      </select>
+    </div>
+    <div class="field" id="tbTopicWrap" style="display:none"><label>Temat</label><input id="tbTopic" class="inp" placeholder="np. Schemat zamków"/></div>
+    <div class="field" id="tbTitleWrap"><label id="tbTitleLbl">Treść</label><input id="tbTitle" class="inp" placeholder="np. Zawsze sprawdzaj depozyt przy check-in" onkeydown="if(event.key==='Enter')tbAdd()"/></div>
+    <div class="field" id="tbBodyWrap" style="display:none"><label id="tbBodyLbl">Szczegóły (opcjonalnie)</label><textarea id="tbBody" class="inp" rows="4" placeholder="Dodatkowe informacje…"></textarea></div>
+    <button id="tbBtn" class="btn" onclick="tbAdd()">Dodaj przypomnienie</button>
+    <div id="tbMsg" class="msg"></div>
   </div>`;
   const remList = rem.length ? rem.map(r => `<div class="statrow">
       <span class="k">📌 ${esc(r.title||"")}${r.body?` — <span style="color:var(--muted);font-weight:600">${esc(r.body)}</span>`:""}</span>
@@ -3840,24 +4141,74 @@ async function loadTablica() {
       <div style="display:flex;gap:8px;width:100%;align-items:center"><span class="chip" style="color:${p.c};border-color:${p.c}55">${p.l}</span><span class="k" style="flex:1">${esc(a.title||"")}</span><span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span></div>
       ${a.body?`<div style="font-size:12.5px;color:var(--muted)">${esc(a.body)}</div>`:""}
     </div>`; }).join("") : '<div class="empty">Brak ogłoszeń.</div>';
-  body(form + `<div class="soon">Stałe przypomnienia</div>` + remList + `<div class="soon">Ostatnie ogłoszenia</div>` + alrList);
+  const wikList = wik.length ? wik.map(w => {
+    const when = w.updated_at ? new Date(w.updated_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+    return `<div class="statrow" style="flex-direction:column;align-items:flex-start;gap:3px">
+      <div style="display:flex;gap:8px;width:100%;align-items:center"><span class="k" style="flex:1">📖 ${esc(w.topic||"")}</span><span class="tm" style="font-size:11px;color:var(--muted)">${esc(when)}</span></div>
+      ${w.content?`<div style="font-size:12.5px;color:var(--muted);max-height:46px;overflow:hidden">${esc(w.content)}</div>`:""}
+    </div>`; }).join("") : '<div class="empty">Brak wpisów Wiki.</div>';
+  body(form
+    + `<div class="soon">Stałe przypomnienia</div>` + remList
+    + `<div class="soon">Ostatnie ogłoszenia</div>` + alrList
+    + `<div class="soon">Wiki recepcji</div>` + wikList);
 }
-window.addReminder = async () => {
-  const t = (document.getElementById("srTitle")||{}).value || "";
-  const msg = document.getElementById("srMsg"), btn = document.getElementById("srBtn");
+// Przełączanie pól w zależności od rodzaju wpisu.
+window.tbKindChange = () => {
+  const kind = (document.getElementById("tbKind")||{}).value || "standing";
+  const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? "" : "none"; };
+  const setTxt = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+  show("tbTopicWrap", kind === "wiki");
+  show("tbTitleWrap", kind !== "wiki");
+  show("tbBodyWrap", kind !== "standing");
+  if (kind === "standing") setTxt("tbTitleLbl","Treść");
+  if (kind === "urgent")  { setTxt("tbTitleLbl","Treść pilnego przypomnienia"); setTxt("tbBodyLbl","Szczegóły (opcjonalnie)"); }
+  if (kind === "wiki")     setTxt("tbBodyLbl","Treść");
+  const btn = document.getElementById("tbBtn");
+  if (btn) btn.textContent = kind === "wiki" ? "Dodaj do Wiki" : (kind === "urgent" ? "Wyślij pilne" : "Dodaj przypomnienie");
+};
+window.tbAdd = async () => {
+  const kind = (document.getElementById("tbKind")||{}).value || "standing";
+  const val  = (id) => ((document.getElementById(id)||{}).value || "").trim();
+  const msg = document.getElementById("tbMsg"), btn = document.getElementById("tbBtn");
   const setM = (x,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=x||""; } };
-  if (!t.trim()) return setM("Wpisz treść.", "err");
-  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  const busy = (on, t) => { if (btn){ btn.disabled=on; if(t) btn.textContent=t; } };
   try {
-    const { error } = await sb.from("standing_reminders").insert({ tenant_id:TENANT_ID, title:t.trim(), body:"", active:true, created_by:CURRENT.name||"Panel" });
-    if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"przypomnienie_dodane", p_detail:t.trim() }); } catch {}
+    if (kind === "wiki") {
+      const topic = val("tbTopic"), content = val("tbBody");
+      if (!topic) return setM("Wpisz temat.", "err");
+      if (!content) return setM("Wpisz treść.", "err");
+      busy(true, "Dodaję…");
+      const id = (crypto.randomUUID && crypto.randomUUID()) || ("w" + Date.now());
+      const { error } = await sb.from("wiki_entries").insert({
+        id, tenant_id:TENANT_ID, topic, content, images:[],
+        created_by:CURRENT.name||"Panel", updated_at:new Date().toISOString(),
+      });
+      if (error) throw error;
+      try { await sb.rpc("log_action", { p_action:"wiki_dodane", p_detail:topic }); } catch {}
+    } else if (kind === "urgent") {
+      const title = val("tbTitle"), bodyv = val("tbBody");
+      if (!title) return setM("Wpisz treść.", "err");
+      busy(true, "Wysyłam…");
+      const { error } = await sb.from("manager_alerts").insert({
+        tenant_id:TENANT_ID, title, body:bodyv||title, priority:"high",
+        kind:"alert", created_by:CURRENT.name||"Panel",
+      });
+      if (error) throw error;
+      try { await sb.rpc("log_action", { p_action:"alert_dodany", p_detail:title }); } catch {}
+    } else {
+      const title = val("tbTitle");
+      if (!title) return setM("Wpisz treść.", "err");
+      busy(true, "Dodaję…");
+      const { error } = await sb.from("standing_reminders").insert({ tenant_id:TENANT_ID, title, body:"", active:true, created_by:CURRENT.name||"Panel" });
+      if (error) throw error;
+      try { await sb.rpc("log_action", { p_action:"przypomnienie_dodane", p_detail:title }); } catch {}
+    }
     loadTablica();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj przypomnienie"; } }
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); busy(false); window.tbKindChange(); }
 };
 window.removeReminder = async (id) => {
   try { const { error } = await sb.from("standing_reminders").update({ active:false }).eq("id", id); if (error) throw error; loadTablica(); }
-  catch (e) { alert((e&&e.message)||"Błąd."); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
 // ── Akcje HK: operacyjny feed działu HK (hk_logs + zgłoszone usterki) ──
@@ -3891,8 +4242,11 @@ const AUDIT_LBL = { grafik_utworzony:"Wysłał grafik", grafik_wpis:"Wpis w graf
                     konto_reset:"Reset hasła konta", konto_haslo:"Ustawił hasło konta",
                     grafik_link_reset:"Odświeżył link grafiku", obsada_zapis:"Zapis obsady",
                     przypomnienie_dodane:"Dodał przypomnienie", plan_dodane:"Dodał zadanie do planu",
+                    alert_dodany:"Dodał pilne przypomnienie", wiki_dodane:"Dodał wpis do Wiki",
                     konto_login:"Zmienił login", grafik_wyslany:"Wysłał grafik do aplikacji",
                     grafik_ulozony:"Ułożył grafik", grafik_opublikowany:"Opublikował grafik",
+                    plan_utworzony:"Utworzył plan", plan_zadanie_dodane:"Dodał zadanie do planu",
+                    znalezione_oddane:"Oznaczył rzecz znalezioną jako oddaną",
                     korekta_decyzja:"Decyzja o korekcie" };
 async function loadAkcje() {
   if (CURRENT.role === "mgr_hk") return loadAkcjeHK();
@@ -3971,28 +4325,28 @@ window.renameKonto = async (email, name) => {
   const nn = prompt(`Nowy login (imię) dla tego konta:`, name);
   if (nn == null || !nn.trim()) return;
   try { const { error } = await sb.rpc("admin_set_name", { p_email: email, p_name: nn.trim() }); if (error) throw error; loadKonta(); }
-  catch (e) { alert((e&&e.message)||"Błąd zmiany loginu."); }
+  catch (e) { toast((e&&e.message)||"Błąd zmiany loginu.","bad"); }
 };
 window.resetKonto = async (email, name) => {
   const np = prompt(`Nowe hasło dla „${name}" (min. 6 znaków) — przekaż je tej osobie:`);
   if (np == null) return;
-  if (np.length < 6) return alert("Hasło musi mieć min. 6 znaków.");
+  if (np.length < 6) return toast("Hasło musi mieć min. 6 znaków.","bad");
   try {
     const { data, error } = await sb.rpc("admin_set_password", { p_email: email, p_password: np });
     if (error) throw error;
-    if (data === false) alert(`„${name}" nie logował(a) się jeszcze ani razu — ustawi hasło sam(a) przy pierwszym wejściu.`);
-    else alert(`Hasło ustawione ✓ Przekaż „${name}": ${np}`);
+    if (data === false) toast(`„${name}" nie logował(a) się jeszcze ani razu — ustawi hasło sam(a) przy pierwszym wejściu.`,"ok");
+    else toast(`Hasło ustawione ✓ Przekaż „${name}": ${np}`,"ok");
     loadKonta();
-  } catch (e) { alert((e&&e.message)||"Błąd resetu."); }
+  } catch (e) { toast((e&&e.message)||"Błąd resetu.","bad"); }
 };
 window.saveKontoRole = async (email) => {
   const role = (document.getElementById("role_"+email)||{}).value;
   try { const { error } = await sb.rpc("admin_set_role", { p_email: email, p_role: role }); if (error) throw error; loadKonta(); }
-  catch (e) { alert((e&&e.message)||"Błąd zmiany roli."); }
+  catch (e) { toast((e&&e.message)||"Błąd zmiany roli.","bad"); }
 };
 window.toggleKonto = async (email, makeActive) => {
   try { const { error } = await sb.rpc("admin_set_active", { p_email: email, p_active: makeActive }); if (error) throw error; loadKonta(); }
-  catch (e) { alert((e&&e.message)||"Błąd."); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
 // ── Logi (admin): kto się logował i czy coś realnie zrobił ──
@@ -4000,7 +4354,9 @@ const AUDIT_LABEL = {
   logowanie:"wejście do panelu", obsada_zapis:"zapis obsady HK", zadanie_dodane:"dodał zadanie",
   zadanie_zrobione:"oznaczył zadanie zrobione", poczta_wyslana:"wysłał pocztę", poczta_status:"zmiana statusu poczty",
   korekta_decyzja:"decyzja o korekcie kasy", zadanie_konserwator:"zlecenie dla konserwatora",
-  plan_dodane:"wpis do planu", grafik_edycja:"edycja grafiku", grafik_utworzony:"utworzył grafik",
+  plan_dodane:"wpis do planu", plan_utworzony:"utworzył plan", plan_zadanie_dodane:"dodał zadanie do planu",
+  znalezione_oddane:"oznaczył rzecz znalezioną jako oddaną",
+  grafik_edycja:"edycja grafiku", grafik_utworzony:"utworzył grafik",
   grafik_wpis:"wpis do grafiku", przypomnienie_dodane:"dodał przypomnienie",
 };
 const auditLabel = a => AUDIT_LABEL[a] || a;
@@ -4077,7 +4433,10 @@ async function loadLogi() {
 
 window.doLogout = async () => {
   stopLive();
+  // Zwolnij WSZYSTKIE kanały realtime, żeby nie przeżyły między sesjami.
   try { if (MAIL_CH) sb.removeChannel(MAIL_CH); MAIL_CH = null; } catch {}
+  try { if (NOTIF_CH) sb.removeChannel(NOTIF_CH); NOTIF_CH = null; } catch {}
+  try { if (ZM_UNSUB) { ZM_UNSUB(); ZM_UNSUB = null; } } catch {}
   MAIL_UNREAD = 0; MAIL_VIEW = "list"; MAIL_THREAD = null;
   await sb.auth.signOut();
   showLogin();
@@ -4086,9 +4445,9 @@ window.doLogout = async () => {
 window.changeMyPassword = async () => {
   const np = prompt("Podaj nowe hasło (min. 6 znaków):");
   if (np == null) return;
-  if (np.length < 6) return alert("Hasło musi mieć min. 6 znaków.");
-  try { const { error } = await sb.auth.updateUser({ password: np }); if (error) throw error; alert("Hasło zmienione ✓"); }
-  catch (e) { alert((e&&e.message) || "Nie udało się zmienić hasła."); }
+  if (np.length < 6) return toast("Hasło musi mieć min. 6 znaków.","bad");
+  try { const { error } = await sb.auth.updateUser({ password: np }); if (error) throw error; toast("Hasło zmienione ✓","ok"); }
+  catch (e) { toast((e&&e.message) || "Nie udało się zmienić hasła.","bad"); }
 };
 
 boot();

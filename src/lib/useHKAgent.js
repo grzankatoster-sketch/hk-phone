@@ -27,9 +27,6 @@ const truncate = (s, n = 80) => {
   return t.length > n ? t.slice(0, n - 1) + "…" : t;
 };
 
-// Czy pokój jest PILNY = wyjazd (W / WP) wg planu recepcji (hkData).
-const isCheckout = (meta) => !!meta && (meta.status === "W" || meta.status === "WP");
-
 // Osoby obecne dziś = unia: przydziały (rano+PM) ∪ grafik (roster) ∪ autorzy logów
 // HK. Dzięki temu idle pracownik bez pokoi, ale obecny, trafia do puli agenta.
 // Z logów liczą się TYLKO akcje sprzątających (HK_WORKER_ACTIONS) — akcje recepcji
@@ -150,7 +147,6 @@ export function useHKAgent(date, enabled = true, roomMetaRef = null) {
         const roomStates = {};
         (rData || []).forEach(r => { roomStates[r.room] = r; });
         const presentWorkers = buildPresentWorkers(assignments, rosterRow?.roster, lData);
-        const meta = roomMetaRef?.current || {};
         // Zmiana popołudniowa obsługuje tylko pobyty (PG/PGZ) + BR/ZS, nie wyjazdy —
         // nie może być odbiorcą rannego balansowania (inaczej idle popołudniówka wygląda
         // na „wolną" i agent proponuje zrzucenie jej wyjazdów przeciążonej osoby).
@@ -180,17 +176,27 @@ export function useHKAgent(date, enabled = true, roomMetaRef = null) {
             text: `🔧 Usterka${where ? ` (${where})` : ""}: ${truncate(f.description)}${f.reported_by ? ` — ${f.reported_by}` : ""}`,
           });
         });
+        // Pokoje, które recepcja JAWNIE oznaczyła jako pilne (przycisk „Pilne /
+        // pierwsza kolejność" → log action:"priority", odwołanie: "priority_off").
+        // Tylko dla nich agent ogłasza „pilny pokój". Sam wyjazd (W/WP) bez tego
+        // przycisku NIE jest pilny — recepcja go nie zgłosiła. (lData rosnąco po czasie.)
+        const priorityRooms = new Set();
+        (lData || []).forEach(l => {
+          if (!l.room) return;
+          if (l.action === "priority") priorityRooms.add(l.room);
+          else if (l.action === "priority_off") priorityRooms.delete(l.room);
+        });
         (lData || []).forEach(l => {
           if ((l.action !== "start" && l.action !== "done") || !l.room) return;
-          if (!isCheckout(meta[l.room])) return;
+          if (!priorityRooms.has(l.room)) return;
           const id = `urg:${l.action}:${l.id}`;
           if (dismissedNoticesRef.current.has(id)) return;
           noticeItems.push({
             id, kind: l.action === "start" ? "urgent_start" : "urgent_done",
             ts: l.created_at || `${date}T${l.log_time || ""}`,
             text: l.action === "start"
-              ? `🔴 ${l.worker || "HK"} zaczyna pilny pokój ${l.room} (wyjazd)`
-              : `✅ ${l.worker || "HK"} skończył(a) pilny pokój ${l.room} (wyjazd)`,
+              ? `🔴 ${l.worker || "HK"} zaczyna pilny pokój ${l.room} (priorytet recepcji)`
+              : `✅ ${l.worker || "HK"} skończył(a) pilny pokój ${l.room} (priorytet recepcji)`,
           });
         });
         // Odpowiedzi pracownic na pytanie recepcji o status pokoju ("Zapytaj o status").

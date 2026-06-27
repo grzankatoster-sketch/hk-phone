@@ -41,5 +41,7 @@ export function calculateSafeDeposit({ stalaKasowa, kwTotal, safeDepositKW, safe
     totalBeforeDeposit: shiftCash.endingCash,
     endingCash,
     nextKwTotal: postDeposit,
+    // Czerwona flaga: wpłacono więcej niż było w kasie → kasa schodzi poniżej zera.
+    overDeposit: deposit > shiftCash.endingCash,
   };
 }

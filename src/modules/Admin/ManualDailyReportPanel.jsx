@@ -6,7 +6,7 @@ import { fmtMoney } from "../../lib/format";
 import { SHIFT_SHORT_LABELS, SHIFT_LABELS_PL } from "../../lib/constants";
 import { downloadDailyReportPDF } from "../../lib/pdf-daily";
 
-function ManualDailyReportPanel({showToast}){
+function ManualDailyReportPanel({showToast,askConfirm}){
   const [selDayKey,setSelDayKey]=React.useState(()=>todayKey());
   const [excluded,setExcluded]=React.useState({});
 
@@ -36,13 +36,14 @@ function ManualDailyReportPanel({showToast}){
   },[selDayKey,getDayReports]);
 
   const deleteReport=(id)=>{
-    if(!window.confirm("Usunac te zmiane z historii? Tej operacji nie mozna cofnac."))return;
-    const allFull=loadJson(STORAGE_KEYS.reportsFull,[]);
-    saveJson(STORAGE_KEYS.reportsFull,allFull.filter(r=>r.id!==id));
-    const allRep=loadJson(STORAGE_KEYS.reports,[]);
-    saveJson(STORAGE_KEYS.reports,allRep.filter(r=>r.id!==id));
-    setDayReports(prev=>prev.filter(r=>r.id!==id));
-    showToast("Zmiana usunieta z historii.","info");
+    askConfirm("Usunac te zmiane z historii? Tej operacji nie mozna cofnac.",()=>{
+      const allFull=loadJson(STORAGE_KEYS.reportsFull,[]);
+      saveJson(STORAGE_KEYS.reportsFull,allFull.filter(r=>r.id!==id));
+      const allRep=loadJson(STORAGE_KEYS.reports,[]);
+      saveJson(STORAGE_KEYS.reports,allRep.filter(r=>r.id!==id));
+      setDayReports(prev=>prev.filter(r=>r.id!==id));
+      showToast("Zmiana usunieta z historii.","info");
+    });
   };
 
   const generate=()=>{

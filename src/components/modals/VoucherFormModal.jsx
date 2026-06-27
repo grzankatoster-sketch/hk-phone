@@ -12,11 +12,13 @@ export default function VoucherFormModal({ onClose, onSave, employeeName }) {
   const [kwNo, setKwNo] = React.useState("");
   const [expiresAt, setExpiresAt] = React.useState("");
   const [note, setNote] = React.useState("");
+  const [err, setErr] = React.useState("");
 
   const handleSave = () => {
-    if (!code.trim()) { alert("Wpisz numer vouchera."); return; }
-    if (!guestName.trim()) { alert("Wpisz imie i nazwisko goscia."); return; }
-    if (!value || isNaN(Number(value)) || Number(value) <= 0) { alert("Wpisz prawidlowa kwote."); return; }
+    setErr("");
+    if (!code.trim()) { setErr("Wpisz numer vouchera."); return; }
+    if (!guestName.trim()) { setErr("Wpisz imie i nazwisko goscia."); return; }
+    if (!value || isNaN(Number(value)) || Number(value) <= 0) { setErr("Wpisz prawidlowa kwote."); return; }
     onSave({
       id: crypto.randomUUID(),
       code: code.trim().toUpperCase(),
@@ -116,6 +118,7 @@ export default function VoucherFormModal({ onClose, onSave, employeeName }) {
           </div>
         </div>
 
+        {err && <div role="alert" style={{ margin: "0 20px", padding: "9px 12px", borderRadius: 8, background: "rgba(194,65,90,.1)", color: "#c2415a", fontSize: 12.5, fontWeight: 600 }}>{err}</div>}
         <div className="cc-preshift-footer">
           <div style={{ fontSize: 11, color: "var(--text-muted)" }}>* — pola wymagane</div>
           <div style={{ display: "flex", gap: 8 }}>

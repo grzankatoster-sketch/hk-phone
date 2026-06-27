@@ -19,6 +19,8 @@ export default function PreShiftModal({ employeeName, selectedShift, shiftLabel,
   const alerts = loadJson(STORAGE_KEYS.managerAlerts, [])
     .filter(a => !a.expires_at || new Date(a.expires_at).getTime() > Date.now())
     .filter(a => !a.target_shift || a.target_shift === selectedShift)
+    .filter(a => !a.target_date || a.target_date === dayKey)
+    .filter(a => (a.kind !== "task" || a.priority === "high") && !a.done)   // zadania → zakładka „Zadania"; ack tylko alerty i PILNE zadania
     .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.created_at) - new Date(a.created_at));
 
   const reminders = loadJson(STORAGE_KEYS.standingReminders, []).filter(r => r.active !== false);

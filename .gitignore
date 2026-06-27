@@ -7,3 +7,8 @@ release/
 scripts/hk-automation/config.local.json
 scripts/hk-automation/.out/
 recepcja-mail-setup/
+
+# Robocze / tymczasowe artefakty (nie wersjonować)
+tmp-*/
+*.backup.json
+schedule-backup-*.json

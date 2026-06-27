@@ -14,11 +14,13 @@ export default function ReviewFormModal({ onClose, onSave, employeeName }) {
   const [title, setTitle] = React.useState("");
   const [positives, setPositives] = React.useState("");
   const [negatives, setNegatives] = React.useState("");
+  const [err, setErr] = React.useState("");
 
   const handleSave = () => {
+    setErr("");
     const s = parseFloat(score);
-    if (!guestName.trim()) { alert("Podaj imie goscia."); return; }
-    if (isNaN(s) || s < 1 || s > 10) { alert("Ocena musi byc od 1 do 10."); return; }
+    if (!guestName.trim()) { setErr("Podaj imie goscia."); return; }
+    if (isNaN(s) || s < 1 || s > 10) { setErr("Ocena musi byc od 1 do 10."); return; }
     onSave({
       id: crypto.randomUUID(),
       platform: "booking.com",
@@ -97,6 +99,7 @@ export default function ReviewFormModal({ onClose, onSave, employeeName }) {
             <textarea className="input" rows={2} value={negatives} onChange={e => setNegatives(e.target.value)} placeholder="Tresc negatywna opinii (jezeli brak — zostaw puste)..." />
           </div>
         </div>
+        {err && <div role="alert" style={{ margin: "0 20px", padding: "9px 12px", borderRadius: 8, background: "rgba(194,65,90,.1)", color: "#c2415a", fontSize: 12.5, fontWeight: 600 }}>{err}</div>}
         <div className="cc-preshift-footer">
           <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>Dodaje: <strong>{employeeName || "Recepcja"}</strong></div>
           <div style={{ display: "flex", gap: 8 }}>

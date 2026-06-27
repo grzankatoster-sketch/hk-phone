@@ -1,7 +1,7 @@
 import React from "react";
 import { BellRing, Pin, Clock, Plus, Check, Trash2 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
-import { parsePlDateTime } from "../lib/dates";
+import { parsePlDateTime, todayKey } from "../lib/dates";
 
 function EmptyState({icon,title,sub,action}){
   return(
@@ -92,6 +92,8 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
   const alerts=loadJson(STORAGE_KEYS.managerAlerts,[])
     .filter(a=>!a.expires_at||new Date(a.expires_at).getTime()>Date.now())
     .filter(a=>!a.target_shift||!selectedShift||a.target_shift===selectedShift)
+    .filter(a=>!a.target_date||a.target_date===todayKey())
+    .filter(a=>(a.kind!=="task"||a.priority==="high")&&!a.done)   // zadania → zakładka „Zadania"; tu tylko alerty i PILNE zadania
     .sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||new Date(b.created_at)-new Date(a.created_at));
   const reminders=loadJson(STORAGE_KEYS.standingReminders,[]).filter(r=>r.active!==false);
   const wikiLastSeenKey=`${STORAGE_KEYS.wikiLastSeen}-${employeeName}`;

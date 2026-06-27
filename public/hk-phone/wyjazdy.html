@@ -134,6 +134,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
 const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
 const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+// Wspólny stan dnia (hk_state, migracja 0032) — żeby zmiana obsady/grafiku z tego
+// urządzenia trafiła NA ŻYWO na recepcję (z dymkiem bota) i do panelu kierownika HK.
+function hkStateDeviceId(){
+  try{ let id=localStorage.getItem("hk-state-device-id");
+    if(!id){ id=(crypto&&crypto.randomUUID?crypto.randomUUID():"dev-"+Date.now()+"-"+Math.random().toString(16).slice(2)); localStorage.setItem("hk-state-device-id",id); }
+    return id; }catch(e){ return "dev-"+Math.random().toString(16).slice(2); }
+}
+async function pushHkStateRoster(iso, roster){
+  if(!sb||!iso) return;
+  try{ await sb.rpc("hk_state_merge",{ p_date:iso, p_patch:{ roster:roster||[] }, p_by:"coordinator", p_device:hkStateDeviceId(), p_tenant:TENANT_ID }); }
+  catch(e){ /* hk_roster i tak zapisany — hk_state to warstwa live/bota */ }
+}
 const TENANT_ID = "00000000-0000-0000-0000-000000000001"; // = VITE_TENANT_ID recepcji
 const DAYS = 3;
 const APT_ROOMS = ["106","206","218","306","318"];
@@ -320,7 +333,7 @@ window.sendRoster = async (iso)=>{
       { tenant_id:TENANT_ID, date:iso, roster, updated_at:new Date().toISOString() },
       { onConflict:"tenant_id,date" }
     );
-    if (!error) toast("Obsada wysłana do recepcji ✓");
+    if (!error){ toast("Obsada wysłana do recepcji ✓"); pushHkStateRoster(iso, roster); }
     else toast("Błąd: "+error.message, "#f59ea6");
   }catch(e){ toast("Błąd: "+(e&&e.message||e), "#f59ea6"); }
 };

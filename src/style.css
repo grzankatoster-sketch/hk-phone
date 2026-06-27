@@ -7136,6 +7136,21 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
 .cc-flow-pick-summary:hover {
   background: color-mix(in srgb, var(--cc-brand) 18%, transparent);
 }
+
+/* Rzeczy znalezione — rozwijalna lista bez dużego natywnego trójkąta;
+   subtelny chevron „›" obracany przy rozwinięciu. */
+.cc-found-det > summary { list-style: none; }
+.cc-found-det > summary::-webkit-details-marker { display: none; }
+.cc-found-det > summary::marker { content: ""; }
+.cc-found-det > summary::after {
+  content: "›";
+  float: right;
+  margin-left: 6px;
+  font-weight: 800;
+  opacity: .5;
+  transition: transform .15s ease;
+}
+.cc-found-det[open] > summary::after { transform: rotate(90deg); }
 .cc-flow-pick-menu {
   position: absolute;
   top: calc(100% + 4px);

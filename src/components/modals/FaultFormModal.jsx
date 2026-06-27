@@ -16,12 +16,13 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
   const [photo,setPhoto]=React.useState(null);
   const [aiBusy,setAiBusy]=React.useState(false);
   const [aiNote,setAiNote]=React.useState("");
+  const [err,setErr]=React.useState("");
   const fl=floors.find(f=>f.key===floor);
   const items=fl.key==="parter"?fl.spaces:fl.rooms||[];
   const handlePhoto=(e)=>{
     const file=e.target.files?.[0];
     if(!file)return;
-    if(file.size>2*1024*1024){alert("Zdjęcie większe niż 2MB — wybierz mniejsze.");return;}
+    if(file.size>2*1024*1024){setErr("Zdjęcie większe niż 2MB — wybierz mniejsze.");return;}
     const reader=new FileReader();
     reader.onload=()=>setPhoto(reader.result);
     reader.readAsDataURL(file);
@@ -44,7 +45,8 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
     }finally{setAiBusy(false);}
   };
   const handleSave=()=>{
-    if(!spaceId||!description.trim()){alert("Wybierz pomieszczenie i opisz usterkę.");return;}
+    setErr("");
+    if(!spaceId||!description.trim()){setErr("Wybierz pomieszczenie i opisz usterkę.");return;}
     onSave({
       id:crypto.randomUUID(),
       floor, space_id:spaceId,
@@ -135,6 +137,7 @@ export default function FaultFormModal({onClose,onSave,employeeName,floors,initi
             {photo&&<img src={photo} alt="podgląd" style={{marginTop:8,maxWidth:"100%",maxHeight:120,borderRadius:8,border:"1px solid var(--border-light)"}}/>}
           </div>
         </div>
+        {err&&<div role="alert" style={{margin:"0 20px",padding:"9px 12px",borderRadius:8,background:"rgba(194,65,90,.1)",color:"#c2415a",fontSize:12.5,fontWeight:600}}>{err}</div>}
         <div className="cc-preshift-footer">
           <div style={{fontSize:11.5,color:"var(--text-muted)"}}>Zgłasza: <strong>{employeeName||"Recepcja"}</strong></div>
           <div style={{display:"flex",gap:8}}>

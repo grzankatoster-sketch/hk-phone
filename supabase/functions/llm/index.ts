@@ -37,6 +37,7 @@ const MODELS = {
   reviews: "llama-3.3-70b-versatile",
   worker: "llama-3.3-70b-versatile",
   grafik: "llama-3.3-70b-versatile",
+  plan: "llama-3.3-70b-versatile",
 } as const;
 
 const CORS = {
@@ -141,6 +142,35 @@ function buildPrompt(task: string, payload: any): { system: string; user: string
         "rozkładaj obciążenie sprawiedliwie. " + shiftDef + " " +
         "Pole shift użyj zgodnie z nazwą zmiany. W 'note' (1 zdanie po polsku) napisz, czego zabrakło lub na co uważać.",
       user: `OKRES: ${p.period_type ?? "tydzien"} od ${p.period_start ?? "?"}\nDNI: ${days}\nOSOBY:\n${persons || "(brak)"}`,
+    };
+  }
+  if (task === "plan") {
+    // Plan działania dla menedżera głównego: cel → kroki (lub kroki na każdy dzień),
+    // z przydziałem osób z podanej listy WSZYSTKICH pracowników. Zwraca WYŁĄCZNIE JSON.
+    const p = payload || {};
+    const days = Array.isArray(p.days) ? p.days : [];
+    const daysLine = days.length
+      ? `Rozpisz zadania na konkretne dni i przypisz każdemu krokowi pole "day" z tej listy: ${days.join(", ")}. ` +
+        "Rozłóż pracę sensownie po dniach (nie wszystko na jeden dzień)."
+      : "Nie przypisuj dni — w każdym kroku pole \"day\" ustaw na null. Uporządkuj kroki w logicznej kolejności wykonania.";
+    const workers = (Array.isArray(p.employees) ? p.employees : []).join(", ");
+    return {
+      system:
+        "Jesteś asystentem menedżera hotelu. Na podstawie podanego CELU rozpisujesz konkretny, " +
+        "wykonalny plan działania. Zwracasz WYŁĄCZNIE poprawny JSON, bez komentarza, w formacie: " +
+        "{\"title\": string, \"steps\": [{\"day\": \"RRRR-MM-DD\"|null, \"task\": string, " +
+        "\"assigned_to\": string|null}], \"note\": string}. " +
+        "Pole title to krótki tytuł planu (po polsku). Każdy krok (task) to jedno konkretne zadanie " +
+        "po polsku — czasownik na początku, treściwie, bez lania wody. Daj od 3 do 12 kroków. " +
+        daysLine + " " +
+        `Pole assigned_to MUSI pochodzić z listy pracowników: [${workers || "brak"}] albo być null, ` +
+        "gdy krok dotyczy całego zespołu lub nie wiadomo kto. Nie wymyślaj osób spoza listy. " +
+        "Rozkładaj zadania między różne osoby sprawiedliwie. W \"note\" (1 zdanie po polsku) napisz, " +
+        "na co menedżer powinien zwrócić uwagę przy realizacji.",
+      user:
+        `CEL PLANU: ${p.goal ?? "—"}\n` +
+        `DNI: ${days.length ? days.join(", ") : "(bez podziału na dni)"}\n` +
+        `PRACOWNICY: ${workers || "(brak listy)"}`,
     };
   }
   if (task === "triage") {
@@ -377,10 +407,10 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model,
-        max_tokens: task === "weekly" ? 2000 : task === "briefing" ? 700 : 500,
+        max_tokens: task === "weekly" ? 2000 : task === "plan" ? 1200 : task === "briefing" ? 700 : 500,
         temperature: task === "triage" ? 0 : 0.3,
         // Tryb JSON dla zadań zwracających strukturę (triage, route, schedule).
-        ...(task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" ? { response_format: { type: "json_object" } } : {}),
+        ...(task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" ? { response_format: { type: "json_object" } } : {}),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -412,7 +442,7 @@ Deno.serve(async (req) => {
   });
 
   // triage/route/schedule: oczekujemy JSON — parsujemy, a gdy się nie uda, klient ma fallback.
-  if (task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik") {
+  if (task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan") {
     let parsed: unknown = null;
     try {
       const m = text.match(/\{[\s\S]*\}/);

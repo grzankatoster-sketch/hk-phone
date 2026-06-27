@@ -3,8 +3,7 @@ import {
   BarChart2, Users, Cog, MessageSquare, FileText, Settings, ShieldCheck,
   Search, RefreshCw, Sun, Moon, LogOut, Bell, History, CheckSquare,
   ArrowLeftRight, AlertTriangle, AlertCircle, BellRing, BookOpen,
-  Calendar, Star,
-  Car,
+  Calendar,
 } from "lucide-react";
 import Logo from "../../ui/Logo";
 
@@ -12,14 +11,14 @@ export default function AdminSidebarRail({
   activeTab, setActiveTab, setShowWiki, setShowAuditLog, handleAdminLogout, setShowSearch,
   adminDark, setAdminDark, onCheckUpdate, currentManager, unreadMsgCount=0,
   updateState, updateInfo, updateProgress, onDownloadUpdate, onInstallUpdate,
-  pendingCorrections=0, faultsCount=0, voucherCount=0, chatCount=0, showToast,
+  pendingCorrections=0, faultsCount=0, chatCount=0, showToast,
 }){
   const tabToGroup={
     wiadomosci:"dashboard", statystyki:"dashboard",
     pracownicy:"zespol", ewidencja:"zespol", historia:"zespol", grafik:"zespol",
-    usterki:"pokoje", goscie:"pokoje", parking:"pokoje", opinie:"pokoje",
+    usterki:"pokoje",
     alerty:"komunikacja", przypomnienia:"komunikacja", czat:"komunikacja",
-    korekty:"finanse", kasa:"finanse", vouchery:"finanse",
+    korekty:"finanse", kasa:"finanse",
     zadania:"konfig", wiki:"konfig",
     ustawienia:"system",
   };
@@ -31,7 +30,7 @@ export default function AdminSidebarRail({
     dashboard: unreadMsgCount,
     pokoje: faultsCount,
     komunikacja: chatCount,
-    finanse: pendingCorrections + voucherCount,
+    finanse: pendingCorrections,
   };
   const groups=[
     {id:"dashboard", label:"Dashboard",  icon:<BarChart2 size={22}/>},
@@ -135,9 +134,6 @@ export default function AdminSidebarRail({
           </>}
           {activeGroup==="pokoje"&&<>
             {nb("usterki",<AlertTriangle size={14}/>,"Usterki",faultsCount)}
-            {nb("goscie",<Users size={14}/>,"Stali goście")}
-            {nb("parking",<Car size={14}/>,"Parking")}
-            {nb("opinie",<Star size={14}/>,"Opinie gosci")}
           </>}
           {activeGroup==="komunikacja"&&<>
             {/* Czat między działami — tymczasowo ukryty (kod pozostaje, można przywrócić). */}
@@ -148,7 +144,6 @@ export default function AdminSidebarRail({
           {activeGroup==="finanse"&&<>
             {nb("korekty",<FileText size={14}/>,"Korekty płatności",pendingCorrections)}
             {nb("kasa",<Settings size={14}/>,"Kasa")}
-            {nb("vouchery",<FileText size={14}/>,"Vouchery",voucherCount)}
           </>}
           {activeGroup==="konfig"&&<>
             {nb("zadania",<CheckSquare size={14}/>,"Zadania zmian")}

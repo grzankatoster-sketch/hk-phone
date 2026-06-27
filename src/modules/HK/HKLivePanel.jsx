@@ -64,7 +64,7 @@ const LINEN_FIELDS = [
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
-function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, employeeName }) {
+function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, isManager, employeeName }) {
   const date = hkDate || TODAY();
 
   // ─── Global state from Supabase ───────────────────────────────────────────
@@ -271,6 +271,41 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     return () => supabase.removeChannel(channel);
   }, [date]);
 
+  // ─── Rzeczy znalezione (zgłoszenia z telefonów HK; nie są kluczowane po dniu) ──
+  const [foundItems, setFoundItems] = React.useState([]);
+  React.useEffect(() => {
+    let active = true;
+    const fetchFound = async () => {
+      const { data } = await supabase.from("found_items").select("*").eq("tenant_id", TENANT_ID).order("reported_at", { ascending: false }).limit(200);
+      if (active && data) setFoundItems(data);
+    };
+    fetchFound();
+    const channel = supabase.channel("hk-found-items")
+      .on("postgres_changes", { event: "*", schema: "public", table: "found_items", filter: `tenant_id=eq.${TENANT_ID}` }, ({ eventType, new: row, old }) => {
+        setFoundItems(prev => {
+          if (eventType === "INSERT") return [row, ...prev.filter(i => i.id !== row.id)];
+          if (eventType === "UPDATE") return prev.map(i => i.id === row.id ? row : i);
+          if (eventType === "DELETE") return prev.filter(i => i.id !== old.id);
+          return prev;
+        });
+        if (eventType === "INSERT") showToast(`Nowy znaleziony przedmiot${row.room ? " · pokój " + row.room : ""}`, "info");
+      })
+      .subscribe();
+    const poll = setInterval(fetchFound, 15000);
+    return () => { active = false; supabase.removeChannel(channel); clearInterval(poll); };
+  }, []);
+
+  // Oznacz przedmiot jako oddany (komu/uwaga opcjonalnie). Zgłoszenie pozostaje niezmienne.
+  const markReturned = async (item) => {
+    const note = window.prompt("Komu oddano / uwaga (opcjonalnie):", "");
+    if (note === null) return;
+    const { error } = await supabase.from("found_items").update({
+      status: "returned", returned_by: employeeName || "Recepcja", returned_at: new Date().toISOString(), returned_note: note || null,
+    }).eq("id", item.id);
+    if (error) { showToast("Błąd: " + error.message, "error"); return; }
+    showToast("Oznaczono jako oddane", "success");
+  };
+
   // ─── Derived stats ────────────────────────────────────────────────────────
   const roomVals = Object.values(rooms);
   const stats = {
@@ -402,10 +437,11 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     showToast(`Dodano: ${name}`, "success");
   };
 
-  const removeWorker = async (name) => {
-    if (!window.confirm(`Usunąć ${name} z listy pracowników HK?`)) return;
-    await supabase.from("hk_workers").delete().eq("name", name);
-    showToast(`Usunięto: ${name}`, "info");
+  const removeWorker = (name) => {
+    askConfirm(`Usunąć ${name} z listy pracowników HK?`, async () => {
+      await supabase.from("hk_workers").delete().eq("name", name);
+      showToast(`Usunięto: ${name}`, "info");
+    });
   };
 
   const getQr = React.useCallback(async (name, force = false) => {
@@ -481,6 +517,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     { id: "zadania",     label: "Zadania",    icon: "✅" },
     { id: "pranie",      label: "Pranie",     icon: "🧺" },
     { id: "pracownicy",  label: "Pracownicy", icon: "👥" },
+    { id: "znalezione",  label: "Znalezione", icon: "📦" },
     { id: "historia",    label: "Historia",   icon: "📋" },
   ];
 
@@ -921,6 +958,72 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
     );
   };
 
+  // ─── Tab: Znalezione (rzeczy znalezione zgłoszone z telefonów HK) ─────────
+  const renderZnalezione = () => {
+    const fmt = (iso) => { try { return new Date(iso).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
+    const open     = foundItems.filter(i => (i.status || "open") !== "returned");
+    const returned = foundItems.filter(i => (i.status || "open") === "returned");
+    const itemCard = (i) => {
+      const isRet = (i.status || "open") === "returned";
+      const photos = Array.isArray(i.photos) ? i.photos : [];
+      const accent = isRet ? "#34d399" : "#f59e0b";
+      const d = (i.description || "").replace(/\s+/g, " ").trim();
+      const preview = d.length > 42 ? d.slice(0, 42) + "…" : d;
+      return (
+        <details key={i.id} className="cc-found-det" style={{ ...card, padding: "9px 12px", borderLeft: `3px solid ${accent}`, opacity: isRet ? 0.75 : 1 }}>
+          <summary style={{ cursor: "pointer" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "calc(100% - 22px)", verticalAlign: "middle" }}>
+              <span style={{ fontSize: 14, fontWeight: 900, color: text, whiteSpace: "nowrap" }}>{i.room ? `Pokój ${i.room}` : "—"}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{preview || "(bez opisu)"}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase", letterSpacing: ".04em", flexShrink: 0,
+                background: isRet ? "rgba(52,211,153,.12)" : "rgba(245,158,11,.12)", color: accent }}>
+                {isRet ? "Oddane" : "W depozycie"}
+              </span>
+            </span>
+          </summary>
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 14, color: text, lineHeight: 1.45, marginBottom: 6, whiteSpace: "pre-wrap" }}>{i.description}</div>
+            <div style={{ fontSize: 11.5, color: muted, marginBottom: photos.length ? 8 : 0 }}>
+              {(i.reported_by || "—")} · {fmt(i.reported_at || i.created_at)} · {i.source === "hk" ? "HK" : "recepcja"}
+              {isRet && i.returned_by ? ` · oddał: ${i.returned_by}${i.returned_note ? ` (${i.returned_note})` : ""}` : ""}
+            </div>
+            {photos.length > 0 && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: isRet ? 0 : 8 }}>
+                {photos.map((u, k) => (
+                  <a key={k} href={u} target="_blank" rel="noopener noreferrer" style={{ display: "block", width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}` }}>
+                    <img src={u} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </a>
+                ))}
+              </div>
+            )}
+            {!isRet && (
+              <button onClick={() => markReturned(i)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 7, border: "1px solid rgba(52,211,153,.4)", background: "rgba(52,211,153,.1)", color: "#34d399", cursor: "pointer", fontWeight: 800 }}>
+                ✓ Oznacz: oddane
+              </button>
+            )}
+          </div>
+        </details>
+      );
+    };
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".06em" }}>W depozycie · {open.length}</div>
+        {open.length ? open.map(itemCard) : (
+          <div style={{ textAlign: "center", padding: "30px 20px", color: muted }}>
+            <div style={{ fontSize: 34, marginBottom: 8 }}>📦</div>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Brak rzeczy w depozycie.</div>
+          </div>
+        )}
+        {returned.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".06em", marginTop: 6 }}>Oddane · {returned.length}</div>
+            {returned.map(itemCard)}
+          </>
+        )}
+      </div>
+    );
+  };
+
   // ─── Tab: Pranie ─────────────────────────────────────────────────────────
   const renderPranie = () => {
     // Collect rooms with linen reports, grouped by worker
@@ -1321,7 +1424,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
                   <span style={{ color: muted, fontSize: 12, marginLeft: 6 }}>skończył/a</span>
                 </div>
                 <button
-                  onClick={() => { if (window.confirm(`Przenieść ${s.count} wolnych pokoi od ${s.from} do ${s.to}?`)) doTransfer(s.from, s.to); }}
+                  onClick={() => askConfirm(`Przenieść ${s.count} wolnych pokoi od ${s.from} do ${s.to}?`, () => doTransfer(s.from, s.to))}
                   style={{ padding: "7px 14px", borderRadius: 8, border: "none", background: "#B065A0", color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer", flexShrink: 0 }}>
                   ⇄ Przenieś
                 </button>
@@ -1374,7 +1477,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {workerList.filter(dst => dst.name !== src.name).map(dst => (
                     <button key={dst.name}
-                      onClick={() => { if (window.confirm(`Przenieść ${src.waiting} wolnych pokoi od ${src.name} do ${dst.name}?`)) doTransfer(src.name, dst.name); }}
+                      onClick={() => askConfirm(`Przenieść ${src.waiting} wolnych pokoi od ${src.name} do ${dst.name}?`, () => doTransfer(src.name, dst.name))}
                       style={{ padding: "6px 12px", borderRadius: 7, border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, background: dark ? "#161b22" : "#f8fafc", color: text, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                       → {dst.name}
                     </button>
@@ -1637,7 +1740,8 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
               ? HK_ALL.filter(r => (hkData?.[r.no]?.status === "W" || hkData?.[r.no]?.status === "WP") && !rooms[r.no]?.vacated).length
               : 0;
             const openTasks = tab.id === "zadania" ? tasks.filter(t => t.status === "open").length : 0;
-            const badge = pendingCheckouts > 0 ? pendingCheckouts : openTasks > 0 ? openTasks : 0;
+            const openFound = tab.id === "znalezione" ? foundItems.filter(i => (i.status || "open") !== "returned").length : 0;
+            const badge = pendingCheckouts > 0 ? pendingCheckouts : openTasks > 0 ? openTasks : openFound > 0 ? openFound : 0;
             const badgeVariant = tab.id === "monitor" ? "warning" : "brand";
             const isActive = activeTab === tab.id;
             return (
@@ -1664,6 +1768,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, isManager, em
           {activeTab === "zadania"    && renderZadania()}
           {activeTab === "pranie"     && renderPranie()}
           {activeTab === "pracownicy" && renderPracownicy()}
+          {activeTab === "znalezione" && renderZnalezione()}
           {activeTab === "historia"   && renderHistoria()}
         </div>
       </div>

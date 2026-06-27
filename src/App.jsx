@@ -1300,6 +1300,44 @@ export default function App(){
     return()=>{supabase.removeChannel(ch);};
   },[]);
 
+  // Supabase sync: Wiki recepcji ⇄ baza (tabela wiki_entries, migracja 0040). Menedżer z panelu
+  // (Tablica → „Wpis do Wiki") dopisuje wprost do Wiki, recepcja widzi wpisy NA ŻYWO. updatedAt
+  // mapujemy do formatu lokalnego (fmt = toLocaleString pl-PL), żeby licznik „nowości w Wiki" działał.
+  // Bootstrap: jeśli baza jest pusta, wypychamy bieżące lokalne wpisy (nie tracimy seedów/treści).
+  useEffect(()=>{
+    if(!supabase)return;
+    const dbToWiki=(r)=>({id:r.id,topic:r.topic||"",content:r.content||"",images:Array.isArray(r.images)?r.images:[],updatedAt:r.updated_at?new Date(r.updated_at).toLocaleString("pl-PL"):""});
+    const sync=async()=>{
+      const {data}=await supabase.from("wiki_entries").select("*").eq("tenant_id",TENANT_ID).order("updated_at",{ascending:false});
+      if(!data)return;
+      if(data.length){
+        const mapped=data.map(dbToWiki);
+        saveJson(STORAGE_KEYS.wiki,mapped);
+        setWikiEntries(mapped);
+        setSelectedWikiId(prev=>mapped.some(e=>e.id===prev)?prev:(mapped[0]?.id||null));
+        setInboxVersion(v=>v+1);   // odśwież licznik „nowości w Wiki" w Informacjach
+      }else{
+        const local=loadJson(STORAGE_KEYS.wiki,null);
+        if(local&&local.length){
+          await supabase.from("wiki_entries").upsert(local.map(e=>({
+            id:e.id,tenant_id:TENANT_ID,topic:e.topic,content:e.content||"",
+            images:e.images||[],updated_at:new Date().toISOString(),
+          })));
+        }
+      }
+    };
+    sync();
+    const ch=supabase.channel("app-wiki-sync")
+      .on("postgres_changes",{event:"*",schema:"public",table:"wiki_entries",filter:`tenant_id=eq.${TENANT_ID}`},sync)
+      .subscribe();
+    return()=>{supabase.removeChannel(ch);};
+  },[]);
+
+  // Wersja skrzynki — bumpowana przy każdej zmianie alertów/zadań/wiki, żeby useMemo
+  // niżej (managerTasksForShift, inboxCount) przeliczały się na żywo. MUSI być
+  // zadeklarowana przed pierwszym użyciem w tablicy zależności (inaczej TDZ przy renderze).
+  const [inboxVersion,setInboxVersion]=useState(0);
+
   // Computed values
   const currentTasks=useMemo(()=>{
     if(!selectedShift)return[];
@@ -1494,8 +1532,6 @@ export default function App(){
     return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);};
   },[]);
 
-  const [inboxVersion,setInboxVersion]=useState(0);
-
   // Licznik nieprzeczytanych wiadomosci czatu zespolowego (B5)
   const [chatTick,setChatTick]=useState(0);
   const chatUnread=useMemo(()=>{
@@ -1684,17 +1720,30 @@ export default function App(){
 
   const removeWikiImage=(imgId)=>setWikiImages(prev=>prev.filter(i=>i.id!==imgId));
 
+  // Wypchnięcie pojedynczego wpisu Wiki do bazy (wiki_entries, migracja 0040) → panel/inne urządzenia
+  // widzą zmianę na żywo. Realtime odeśle echo, ale sync jest idempotentny (brak pętli).
+  const pushWikiEntry=(entry)=>{
+    if(!supabase||!entry)return;
+    supabase.from("wiki_entries").upsert({
+      id:entry.id,tenant_id:TENANT_ID,topic:entry.topic,content:entry.content||"",
+      images:entry.images||[],created_by:currentManager||"Recepcja",updated_at:new Date().toISOString(),
+    }).then(()=>{}).catch(()=>{});
+  };
+
   const saveWikiEntry=()=>{
     if(!wikiTopic.trim()||!wikiContent.trim())return;
+    let saved;
     if(editingWikiId){
-      const updated=wikiEntries.map(e=>e.id===editingWikiId?{...e,topic:wikiTopic.trim(),content:wikiContent.trim(),images:wikiImages,updatedAt:fmt()}:e);
+      saved={...(wikiEntries.find(e=>e.id===editingWikiId)||{}),id:editingWikiId,topic:wikiTopic.trim(),content:wikiContent.trim(),images:wikiImages,updatedAt:fmt()};
+      const updated=wikiEntries.map(e=>e.id===editingWikiId?saved:e);
       saveWikiEntries(updated);setSelectedWikiId(editingWikiId);
       addAudit(currentManager,`Edytowanie tematu wiki: "${wikiTopic.trim()}"`);
     }else{
-      const ne={id:crypto.randomUUID(),topic:wikiTopic.trim(),content:wikiContent.trim(),images:wikiImages,updatedAt:fmt()};
-      saveWikiEntries([ne,...wikiEntries]);setSelectedWikiId(ne.id);
+      saved={id:crypto.randomUUID(),topic:wikiTopic.trim(),content:wikiContent.trim(),images:wikiImages,updatedAt:fmt()};
+      saveWikiEntries([saved,...wikiEntries]);setSelectedWikiId(saved.id);
       addAudit(currentManager,`Dodanie tematu wiki: "${wikiTopic.trim()}"`);
     }
+    pushWikiEntry(saved);
     clearWikiForm();showToast("Temat wiki zapisany.","success");
   };
 
@@ -1703,6 +1752,7 @@ export default function App(){
     saveWikiEntries(wikiEntries.filter(e=>e.id!==id));
     if(editingWikiId===id)clearWikiForm();
     if(selectedWikiId===id)setSelectedWikiId(wikiEntries.filter(e=>e.id!==id)[0]?.id||null);
+    if(supabase){supabase.from("wiki_entries").delete().eq("id",id).then(()=>{}).catch(()=>{});}
     addAudit(currentManager,`Usuniecie tematu wiki: "${entry?.topic||id}"`);
     showToast("Temat usunięty.","info");
   };
@@ -3398,7 +3448,7 @@ export default function App(){
             <RestoredHKPanel dark={workerDark} hkDate={hkDate} setHkDate={setHkDate}
                      hkStaff={hkStaff} setHkStaff={setHkStaff}
                      hkData={hkData} setHkData={setHkData}
-                     showToast={showToast} isManager={canAccessManagerPanel} employeeName={employeeName}/>
+                     showToast={showToast} askConfirm={askConfirm} isManager={canAccessManagerPanel} employeeName={employeeName}/>
           </motion.div>
         )}
         {workerTab==="informacje"&&(
@@ -3423,12 +3473,12 @@ export default function App(){
         )}
         {workerTab==="vouchery"&&(
           <motion.div key="vouchery" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <VouchersPanel employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
+            <VouchersPanel employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast} askConfirm={askConfirm}/>
           </motion.div>
         )}
         {workerTab==="opinie"&&(
           <motion.div key="opinie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
-            <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
+            <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast} askConfirm={askConfirm}/>
           </motion.div>
         )}
         {workerTab==="czat"&&(

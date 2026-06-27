@@ -7,5 +7,10 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.{js,mjs}'],
     reporters: 'default',
+    // Pula 'forks' (procesy potomne) zamiast domyślnej 'threads' — eliminuje
+    // przejściowy wyścig inicjalizacji workerów na Windows ("Cannot read
+    // properties of undefined (reading 'config')"), który losowo wywalał cały
+    // przebieg. Suite jest mały, więc narzut forków jest nieistotny.
+    pool: 'forks',
   },
 });

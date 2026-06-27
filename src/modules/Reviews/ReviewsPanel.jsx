@@ -124,7 +124,7 @@ function maxCount(items) {
   return items.reduce((m, it) => Math.max(m, Number(it?.count) || 0), 0) || 1;
 }
 
-function ReviewsPanel({ dark, isManager, showToast }) {
+function ReviewsPanel({ dark, isManager, showToast, askConfirm }) {
   const [reviews, setReviews] = React.useState(loadOrSeed);
   const [rangeFilter, setRangeFilter] = React.useState(REVIEW_RANGE_LAST_6_MONTHS);
   const [filter, setFilter]         = React.useState("all");
@@ -212,9 +212,10 @@ function ReviewsPanel({ dark, isManager, showToast }) {
   React.useEffect(() => { saveJson(STORAGE_KEYS.reviews, reviews); }, [reviews]);
 
   const deleteReview = (id) => {
-    if (!confirm("Usunac te opinie?")) return;
-    setReviews(prev => prev.filter(r => r.id !== id));
-    showToast && showToast("Opinia usunieta.", "info");
+    askConfirm("Usunac te opinie?", () => {
+      setReviews(prev => prev.filter(r => r.id !== id));
+      showToast && showToast("Opinia usunieta.", "info");
+    });
   };
 
   // Lata dostepne w danych

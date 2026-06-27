@@ -10,7 +10,7 @@ import { downloadVoucherPDF } from "../../lib/pdf-voucher";
 const STATUS_LABELS = { issued: "Aktywny", used: "Zrealizowany", expired: "Wygasły" };
 const TABLE = "vouchers";
 
-function VouchersPanel({ employeeName, isManager, showToast }) {
+function VouchersPanel({ employeeName, isManager, showToast, askConfirm }) {
   const [vouchers, setVouchers] = React.useState(() => loadJson(STORAGE_KEYS.vouchers, []));
   const [showForm, setShowForm] = React.useState(false);
   const [filter, setFilter] = React.useState("issued");
@@ -55,14 +55,15 @@ function VouchersPanel({ employeeName, isManager, showToast }) {
     }
   };
 
-  const deleteVoucher = async (id) => {
-    if (!confirm("Usunąć ten voucher?")) return;
-    setVouchers(prev => prev.filter(v => v.id !== id));
-    showToast?.("Voucher usunięty.", "info");
-    if (supabase) {
-      const { error } = await supabase.from(TABLE).delete().eq("id", id);
-      if (error) showToast?.("Blad Supabase: " + error.message, "warning");
-    }
+  const deleteVoucher = (id) => {
+    askConfirm("Usunąć ten voucher?", async () => {
+      setVouchers(prev => prev.filter(v => v.id !== id));
+      showToast?.("Voucher usunięty.", "info");
+      if (supabase) {
+        const { error } = await supabase.from(TABLE).delete().eq("id", id);
+        if (error) showToast?.("Blad Supabase: " + error.message, "warning");
+      }
+    });
   };
 
   const visibleVouchers = isManager ? vouchers : vouchers.filter(v => v.issued_by === employeeName);

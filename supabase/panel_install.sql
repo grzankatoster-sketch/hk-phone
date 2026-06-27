@@ -754,3 +754,100 @@ insert into public.app_accounts (tenant_id, name, email, role) values
   ('00000000-0000-0000-0000-000000000001', 'Menedżer gastronomii', 'gastro@conrad-panel.com',     'mgr_gastro')
 on conflict (email) do nothing;
 
+
+
+-- ========== 0041_maintenance_plans.sql ==========
+-- Plany konserwacji: lista aktywnych planów (nazwa) → przypisani konserwatorzy → zadania (panel_plan.plan_id).
+create table if not exists public.maintenance_plans (
+  id          uuid primary key default gen_random_uuid(),
+  tenant_id   uuid not null,
+  name        text not null,
+  assigned_to text,
+  status      text not null default 'active',
+  created_by  text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists maintenance_plans_tenant_idx
+  on public.maintenance_plans(tenant_id, status, created_at desc);
+alter table public.maintenance_plans enable row level security;
+drop policy if exists "maintenance_plans_anon" on public.maintenance_plans;
+create policy "maintenance_plans_anon" on public.maintenance_plans for all to anon using (true) with check (true);
+drop policy if exists "maintenance_plans_auth" on public.maintenance_plans;
+create policy "maintenance_plans_auth" on public.maintenance_plans for all to authenticated using (true) with check (true);
+
+alter table public.panel_plan add column if not exists plan_id uuid;
+alter table public.panel_plan add column if not exists photos  jsonb not null default '[]'::jsonb;
+alter table public.panel_plan alter column date drop not null;
+create index if not exists panel_plan_plan_id_idx on public.panel_plan(plan_id);
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='maintenance_plans') then
+    alter publication supabase_realtime add table public.maintenance_plans;
+  end if;
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='panel_plan') then
+    alter publication supabase_realtime add table public.panel_plan;
+  end if;
+end $$;
+
+
+-- ========== 0042_found_items.sql ==========
+-- „Rzeczy znalezione" — działa jak usterki: zgłoszenie z telefonu HK (kto/kiedy/pokój/co+zdjęcia),
+-- widoczne na recepcji (HK Live) i w panelu. Zdjęcia w buckecie hk-faults.
+create table if not exists public.found_items (
+  id          uuid primary key default gen_random_uuid(),
+  tenant_id   uuid not null,
+  room        text,
+  description text not null,
+  photos      text[] not null default '{}',
+  reported_by text,
+  source      text not null default 'hk',
+  status      text not null default 'open',
+  returned_by   text,
+  returned_at   timestamptz,
+  returned_note text,
+  reported_at timestamptz not null default now(),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists found_items_tenant_idx on public.found_items(tenant_id, reported_at desc);
+alter table public.found_items enable row level security;
+drop policy if exists "found_items_anon_read"   on public.found_items;
+drop policy if exists "found_items_anon_insert" on public.found_items;
+drop policy if exists "found_items_anon_update" on public.found_items;
+create policy "found_items_anon_read"   on public.found_items for select to anon using (true);
+create policy "found_items_anon_insert" on public.found_items for insert to anon with check (true);
+create policy "found_items_anon_update" on public.found_items for update to anon using (true) with check (true);
+drop policy if exists "found_items_auth_all" on public.found_items;
+create policy "found_items_auth_all" on public.found_items for all to authenticated using (true) with check (true);
+
+create or replace function public.found_items_block_immutable()
+returns trigger language plpgsql as $$
+begin
+  if NEW.id <> OLD.id
+     or NEW.tenant_id   is distinct from OLD.tenant_id
+     or NEW.reported_at <> OLD.reported_at
+     or NEW.source      is distinct from OLD.source
+     or NEW.room        is distinct from OLD.room
+     or NEW.description is distinct from OLD.description
+     or NEW.photos      is distinct from OLD.photos
+     or NEW.reported_by is distinct from OLD.reported_by then
+    raise exception 'Rzeczy znalezione są niezmienne.';
+  end if;
+  if NEW.status not in ('open','returned') then
+    raise exception 'Nieprawidłowy status: %', NEW.status;
+  end if;
+  NEW.updated_at := now();
+  return NEW;
+end $$;
+drop trigger if exists found_items_immutable on public.found_items;
+create trigger found_items_immutable before update on public.found_items
+  for each row execute function public.found_items_block_immutable();
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='found_items') then
+    alter publication supabase_realtime add table public.found_items;
+  end if;
+end $$;

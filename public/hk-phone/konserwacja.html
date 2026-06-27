@@ -63,6 +63,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .tabs{display:flex;gap:6px;padding:10px 12px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:60px;z-index:9;overflow-x:auto}
 .tab-btn{padding:7px 14px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font-size:12px;font-weight:700;border-radius:999px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .tab-btn.active{background:var(--plum);border-color:var(--plum);color:#fff}
+.tab-btn.sec{font-weight:800}
+.tab-btn.sec.active{box-shadow:0 0 0 2px rgba(90,29,74,.2)}
+.tab-sep{flex:0 0 auto;width:1px;align-self:stretch;background:var(--line-strong);margin:2px 5px}
 .list{padding:12px 12px 60px}
 .card{background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;border-left-width:4px;box-shadow:0 1px 2px rgba(90,29,74,.04)}
 .card.open{border-left-color:var(--red)}
@@ -137,15 +140,38 @@ const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
 const sb = supabase.createClient(SB_URL, "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb");
 
 let faults = [];
-let filter = "open";
+let plan = [];            // zadania (panel_plan z plan_id)
+let mplans = [];          // plany (maintenance_plans)
+let section = "faults";   // faults | plan
+let filter = "open";      // sub-filtr usterek
+let planFilter = "open";  // sub-filtr zadań w otwartym planie
+let planOpenId = null;    // null = lista planów; id = otwarty plan
 const app = document.getElementById("app");
 
 const STATUS = { open:"Otwarta", in_progress:"W toku", done:"Naprawiona" };
 const FILTERS = [["open","Otwarte"],["in_progress","W toku"],["done","Naprawione"],["all","Wszystkie"]];
+const PLAN_FILTERS = [["open","Do zrobienia"],["done","Wykonane"],["all","Wszystkie"]];
+
+// Czy ten plan dotyczy zalogowanej osoby: przypisany do niej lub jeszcze nieprzypisany (widzą obaj).
+function planForMe(p){
+  const a = (p.assigned_to||"").trim();
+  if (!a) return true;
+  if (!KNOWN) return true;
+  return a.toLowerCase().split(/\s*,\s*/).includes(WHO.toLowerCase());
+}
+// Aktywne plany widoczne dla tej osoby.
+function visiblePlans(){ return mplans.filter(p => p.status!=="done" && planForMe(p)); }
+function tasksOf(id){ return plan.filter(t => t.plan_id===id); }
+// Liczba niezakończonych zadań w moich planach (badge na zakładce Plan).
+function myOpenTaskCount(){
+  const ids = new Set(visiblePlans().map(p=>p.id));
+  return plan.filter(t => ids.has(t.plan_id) && (t.status||"open")!=="done").length;
+}
 
 function toast(msg,color="var(--green)"){ const e=document.createElement("div");e.className="toast";e.style.color=color;e.textContent=msg;document.body.appendChild(e);setTimeout(()=>{e.style.opacity="0";setTimeout(()=>e.remove(),300);},2000); }
 function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function fmtDate(iso){ try{ return new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }catch{ return ""; } }
+function fmtDay(iso){ try{ return new Date(iso+"T00:00:00").toLocaleDateString("pl-PL",{weekday:"short",day:"2-digit",month:"2-digit"}); }catch{ return String(iso||""); } }
 function openImg(url){ document.getElementById("lightbox-img").src=url; document.getElementById("lightbox").classList.add("open"); }
 function photosOf(f){ const a=[...(f.photos||[])]; if(f.photo_url&&!a.includes(f.photo_url)) a.unshift(f.photo_url); return a; }
 function locOf(f){ return f.room || f.space_id || "—"; }
@@ -159,15 +185,36 @@ function assignChip(f){
 }
 
 function renderTabs(){
-  document.getElementById("tabs").innerHTML = FILTERS.map(([k,l])=>{
-    const n = k==="all" ? faults.length : faults.filter(f=>(f.status||"open")===k).length;
-    return `<button class="tab-btn${filter===k?" active":""}" onclick="setFilter('${k}')">${l}${n?` (${n})`:""}</button>`;
+  // Górny poziom: sekcja (Usterki / Plan) z licznikiem niezakończonych.
+  const secBtns = [["faults","🔧 Usterki"],["plan","📋 Plan"]].map(([k,l])=>{
+    const n = k==="faults"
+      ? faults.filter(f=>(f.status||"open")!=="done").length
+      : myOpenTaskCount();
+    return `<button class="tab-btn sec${section===k?" active":""}" onclick="setSection('${k}')">${l}${n?` (${n})`:""}</button>`;
   }).join("");
+  // Dolny poziom: filtry statusu. W sekcji Plan tylko wewnątrz otwartego planu.
+  let subBtns = "";
+  if (section==="faults"){
+    subBtns = FILTERS.map(([k,l])=>{
+      const n = k==="all" ? faults.length : faults.filter(f=>(f.status||"open")===k).length;
+      return `<button class="tab-btn${filter===k?" active":""}" onclick="setFilter('${k}')">${l}${n?` (${n})`:""}</button>`;
+    }).join("");
+  } else if (planOpenId){
+    const mine = tasksOf(planOpenId);
+    subBtns = PLAN_FILTERS.map(([k,l])=>{
+      const n = k==="all" ? mine.length : mine.filter(p=>(p.status||"open")===k).length;
+      return `<button class="tab-btn${planFilter===k?" active":""}" onclick="setPlanFilter('${k}')">${l}${n?` (${n})`:""}</button>`;
+    }).join("");
+  }
+  document.getElementById("tabs").innerHTML = secBtns + `<span class="tab-sep"></span>` + subBtns;
 }
+function setSection(k){ section=k; render(); }
 function setFilter(k){ filter=k; render(); }
+function setPlanFilter(k){ planFilter=k; render(); }
 
 function render(){
   renderTabs();
+  if (section==="plan") return renderPlan();
   const list = filter==="all" ? faults : faults.filter(f=>(f.status||"open")===filter);
   if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div>Brak usterek w tej kategorii.</div></div>`; return; }
   let html = `<div class="list">`;
@@ -205,12 +252,123 @@ async function setStatus(id, status){
   render();
 }
 
-// Fallback do Realtime — co 12 s dociąga usterki, by nowe pojawiały się bez
-// ręcznego odświeżania, nawet gdy websocket nie dostarczy zdarzenia.
+// ── Plan: lista moich planów → zadania (odpowiedź + zdjęcie zmian) ──
+function renderPlan(){
+  if (!planOpenId) return renderPlanList();
+  const p = mplans.find(x=>x.id===planOpenId);
+  if (!p){ planOpenId=null; return renderPlanList(); }
+  let list = tasksOf(p.id);
+  if (planFilter!=="all") list = list.filter(t=>(t.status||"open")===planFilter);
+  // Niezakończone na górze; w obrębie statusu — z terminem wg dnia, bez terminu na końcu.
+  list = list.slice().sort((a,b)=>{
+    const ad=(a.status==="done"), bd=(b.status==="done");
+    if (ad!==bd) return ad?1:-1;
+    if (!a.date && !b.date) return 0;
+    if (!a.date) return 1; if (!b.date) return -1;
+    return String(a.date).localeCompare(String(b.date));
+  });
+  const head = `<div style="padding:10px 12px 0"><button class="tab-btn" onclick="backPlan()">← Plany</button>
+    <div style="font-size:17px;font-weight:900;margin:8px 2px 2px">📋 ${esc(p.name)}</div></div>`;
+  const body = list.length ? `<div class="list">`+list.map(planTaskCard).join("")+`</div>`
+    : `<div class="empty"><div class="empty-icon">📋</div><div>Brak zadań w tej kategorii.</div></div>`;
+  app.innerHTML = head + body;
+}
+function renderPlanList(){
+  const list = visiblePlans();
+  if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>Brak planów dla Ciebie.</div></div>`; return; }
+  let html = `<div class="list">`;
+  list.forEach(p=>{
+    const ts = tasksOf(p.id);
+    const open = ts.filter(t=>(t.status||"open")!=="done").length;
+    html += `<div class="card open" style="cursor:pointer" onclick="openPlanK('${p.id}')">
+      <div class="card-top">
+        <div class="room" style="font-size:16px;flex:1">${esc(p.name)}</div>
+        <span class="badge ${open?'open':'done'}">${open?open+" do zrobienia":"wszystko gotowe"}</span>
+      </div>
+      <div class="assign-row">${assignChip(p)}<span class="cat-chip">${ts.length} zadań</span></div>
+    </div>`;
+  });
+  html += `</div>`;
+  app.innerHTML = html;
+}
+function planTaskCard(t){
+  const done = (t.status||"open")==="done";
+  const photos = Array.isArray(t.photos)?t.photos:[];
+  return `<div class="card ${done?"done":"open"}">
+    <div class="card-top">
+      <div class="desc" style="flex:1;margin:0;font-weight:700;${done?"text-decoration:line-through":""}">${esc(t.task)}</div>
+      <span class="badge ${done?"done":"open"}">${done?"Wykonane":"Do zrobienia"}</span>
+    </div>
+    <div class="assign-row"><span class="cat-chip">${t.date?"📅 "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
+    ${t.response?`<div class="desc" style="background:rgba(15,122,74,.06);border:1px solid rgba(15,122,74,.25);border-radius:8px;padding:8px 10px;font-size:13px">💬 ${esc(t.response)}</div>`:""}
+    ${photos.length?`<div class="thumbs">`+photos.map(u=>`<div class="thumb" onclick="openImg('${esc(u)}')"><img src="${esc(u)}" loading="lazy"/></div>`).join("")+`</div>`:""}
+    <div class="actions">
+      ${done?`<button class="act" style="background:var(--tint);color:var(--muted)" onclick="planUndo('${t.id}')">↩ Cofnij</button>`
+            :`<button class="act act-done" onclick="planDone('${t.id}')">✓ Wykonane</button>`}
+      <button class="act act-toku" onclick="planPhoto('${t.id}')">📷 Zdjęcie</button>
+      <button class="act" style="background:var(--tint);color:var(--plum)" onclick="planRespond('${t.id}')">💬 Odpowiedź</button>
+    </div>
+  </div>`;
+}
+function openPlanK(id){ planOpenId=id; planFilter="open"; render(); }
+function backPlan(){ planOpenId=null; render(); }
+
+window.planDone = async (id)=>{
+  const { error } = await sb.from("panel_plan").update({ status:"done", updated_at:new Date().toISOString() }).eq("id", id);
+  if (error){ toast("Błąd: "+error.message,"var(--red)"); return; }
+  const t = plan.find(x=>x.id===id); if (t) t.status="done";
+  toast("Zadanie wykonane ✓"); render();
+};
+window.planUndo = async (id)=>{
+  const { error } = await sb.from("panel_plan").update({ status:"open", updated_at:new Date().toISOString() }).eq("id", id);
+  if (error){ toast("Błąd: "+error.message,"var(--red)"); return; }
+  const t = plan.find(x=>x.id===id); if (t) t.status="open";
+  render();
+};
+window.planRespond = async (id)=>{
+  const r = prompt("Odpowiedź / uwaga dla menedżera:");
+  if (r==null) return;
+  const { error } = await sb.from("panel_plan").update({ response:r, updated_at:new Date().toISOString() }).eq("id", id);
+  if (error){ toast("Błąd: "+error.message,"var(--red)"); return; }
+  const t = plan.find(x=>x.id===id); if (t) t.response=r;
+  toast("Wysłano odpowiedź ✓"); render();
+};
+// Zdjęcie zmian — do bucketu hk-faults (anon insert), URL dopisany do panel_plan.photos.
+window.planPhoto = (id)=>{
+  const inp = document.createElement("input");
+  inp.type = "file"; inp.accept = "image/*"; inp.capture = "environment";
+  inp.onchange = async ()=>{
+    const file = inp.files && inp.files[0]; if (!file) return;
+    toast("Wysyłam zdjęcie…","var(--plum)");
+    try{
+      const path = `plan/${id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`;
+      const { error:upErr } = await sb.storage.from("hk-faults").upload(path, file, { contentType:file.type||"image/jpeg", upsert:false });
+      if (upErr) throw upErr;
+      const url = sb.storage.from("hk-faults").getPublicUrl(path).data.publicUrl;
+      const t = plan.find(x=>x.id===id);
+      const next = [...(Array.isArray(t&&t.photos)?t.photos:[]), url];
+      const { error } = await sb.from("panel_plan").update({ photos:next, updated_at:new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+      if (t) t.photos = next;
+      toast("Zdjęcie dodane ✓"); render();
+    }catch(e){ toast("Błąd zdjęcia: "+((e&&e.message)||""),"var(--red)"); }
+  };
+  inp.click();
+};
+
+// Fallback do Realtime — co 12 s dociąga usterki, plany i zadania, by nowe pojawiały się
+// bez ręcznego odświeżania, nawet gdy websocket nie dostarczy zdarzenia.
 async function refreshFaults(){
   try{
-    const { data } = await sb.from("faults").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false});
-    if (data){ faults = data; const y=window.scrollY; render(); window.scrollTo(0,y); }
+    const [{ data:fx }, { data:mp }, { data:pl }] = await Promise.all([
+      sb.from("faults").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false}),
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at",{ascending:false}),
+      sb.from("panel_plan").select("*").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
+    ]);
+    if (fx) faults = fx;
+    if (mp) mplans = mp;
+    if (pl) plan = pl;
+    if (fx||mp||pl){ const y=window.scrollY; render(); window.scrollTo(0,y); }
   }catch(e){ /* sieć padła — spróbujemy za 12 s */ }
 }
 
@@ -218,12 +376,40 @@ async function load(){
   const { data, error } = await sb.from("faults").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false});
   if (error){ app.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div>Błąd: ${esc(error.message)}</div></div>`; return; }
   faults = data||[];
+  try {
+    const [{ data:mp }, { data:pl }] = await Promise.all([
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at",{ascending:false}),
+      sb.from("panel_plan").select("*").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
+    ]);
+    mplans = mp||[]; plan = pl||[];
+  } catch {}
   render();
   sb.channel("faults-konserwacja")
     .on("postgres_changes",{event:"*",schema:"public",table:"faults",filter:`tenant_id=eq.${TENANT_ID}`}, ({eventType,new:row,old})=>{
       if (eventType==="INSERT"){ faults=[row,...faults]; toast("Nowa usterka: "+(row.room||row.space_id||"—"),"var(--red)"); }
       else if (eventType==="UPDATE"){ faults=faults.map(f=>f.id===row.id?row:f); }
       else if (eventType==="DELETE"){ faults=faults.filter(f=>f.id!==old.id); }
+      render();
+    })
+    .subscribe();
+  sb.channel("plan-konserwacja")
+    .on("postgres_changes",{event:"*",schema:"public",table:"panel_plan",filter:`tenant_id=eq.${TENANT_ID}`}, ({eventType,new:row,old})=>{
+      if (eventType==="INSERT"){
+        if (!row.plan_id) return;          // tylko zadania planów konserwacji
+        plan=[row,...plan];
+        const mp = mplans.find(x=>x.id===row.plan_id);
+        if (mp && planForMe(mp)) toast("Nowe zadanie: "+(row.task||row.plan||"—"),"var(--plum)");
+      }
+      else if (eventType==="UPDATE"){ plan=plan.map(p=>p.id===row.id?row:p); }
+      else if (eventType==="DELETE"){ plan=plan.filter(p=>p.id!==(old&&old.id)); }
+      render();
+    })
+    .subscribe();
+  sb.channel("mplans-konserwacja")
+    .on("postgres_changes",{event:"*",schema:"public",table:"maintenance_plans",filter:`tenant_id=eq.${TENANT_ID}`}, ({eventType,new:row,old})=>{
+      if (eventType==="INSERT"){ mplans=[row,...mplans]; if (planForMe(row)) toast("Nowy plan: "+(row.name||"—"),"var(--plum)"); }
+      else if (eventType==="UPDATE"){ mplans=mplans.map(p=>p.id===row.id?row:p); }
+      else if (eventType==="DELETE"){ mplans=mplans.filter(p=>p.id!==(old&&old.id)); }
       render();
     })
     .subscribe();

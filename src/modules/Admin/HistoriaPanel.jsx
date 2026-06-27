@@ -49,7 +49,7 @@ export default function HistoriaPanel({
         <div style={{fontSize:12.5,color:"#948e85",marginBottom:14,lineHeight:1.6}}>
           Raport dobowy generuje się automatycznie po zakończeniu zmiany wieczorowej lub nocnej. Możesz też wygenerować go ręcznie dla dowolnego dnia — zbiera wszystkie raporty zmian z wybranej daty.
         </div>
-        <ManualDailyReportPanel showToast={showToast}/>
+        <ManualDailyReportPanel showToast={showToast} askConfirm={askConfirm}/>
       </div>
 
       {/* Niezakończone zmiany */}
