@@ -185,11 +185,14 @@ function ReviewsPanel({ dark, isManager, showToast }) {
       } else {
         setSyncState("local");
         setSyncMessage("Pokazuję zapisane opinie — automatyczne odświeżanie co 5 min.");
+        if (manual) showToast && showToast("Booking.com niedostępny — pokazuję zapisane opinie.", "warning");
       }
     } catch (err) {
+      console.error("[booking-sync]", err);
       applyLocalRefresh();
       setSyncState("local");
       setSyncMessage("Pokazuję zapisane opinie — automatyczne odświeżanie co 5 min.");
+      if (manual) showToast && showToast("Nie udało się odświeżyć z Booking — pokazuję zapisane opinie.", "warning");
     } finally {
       syncInFlight.current = false;
     }
