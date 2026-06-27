@@ -1,29 +1,32 @@
 ﻿// Copyright © 2026 Conrad Comfort. All rights reserved. UNLICENSED.
-import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import UpdateBanner from "./UpdateBanner";
 import Logo from "./ui/Logo";
-import ScheduleAdminPanel from "./modules/ScheduleAdmin/ScheduleAdminPanel";
-import VouchersPanel from "./modules/Vouchers/VouchersPanel";
-import TeamChat from "./modules/Chat/TeamChat";
-import ReviewsPanel from "./modules/Reviews/ReviewsPanel";
-import AlertsAdminPanel from "./modules/Admin/AlertsAdminPanel";
-import StandingRemindersPanel from "./modules/Admin/StandingRemindersPanel";
-import RestoredHKPanel from "./modules/HK/HKPanel";
-import FaultsPanel from "./modules/Faults/FaultsPanel";
-import EwidencjaPanel from "./modules/Admin/EwidencjaPanel";
-import ZadaniaPanel from "./modules/Admin/ZadaniaPanel";
-import PracownicyPanel from "./modules/Admin/PracownicyPanel";
-import StatystykiPanel from "./modules/Admin/StatystykiPanel";
-import UstawieniaPanel from "./modules/Admin/UstawieniaPanel";
-import KorektyPanel from "./modules/Admin/KorektyPanel";
-import HistoriaPanel from "./modules/Admin/HistoriaPanel";
-import WikiAdminPanel from "./modules/Admin/WikiAdminPanel";
-import KasaAdminPanel from "./modules/Admin/KasaAdminPanel";
-import WiadomosciPanel from "./modules/Admin/WiadomosciPanel";
-import ParkingPanel from "./modules/Parking/ParkingPanel";
-import HistoriaWorkerPanel from "./modules/Historia/HistoriaPanel";
-import StaliGosciePanel from "./modules/StaliGoscie/StaliGosciePanel";
+// Panele zakładek ładowane leniwie (code-splitting) — każdy trafia do osobnego
+// chunku i jest pobierany dopiero przy pierwszym wejściu w daną zakładkę.
+// Renderowane warunkowo wewnątrz <Suspense> (regiony admin + pracownik).
+const ScheduleAdminPanel = lazy(() => import("./modules/ScheduleAdmin/ScheduleAdminPanel"));
+const VouchersPanel = lazy(() => import("./modules/Vouchers/VouchersPanel"));
+const TeamChat = lazy(() => import("./modules/Chat/TeamChat"));
+const ReviewsPanel = lazy(() => import("./modules/Reviews/ReviewsPanel"));
+const AlertsAdminPanel = lazy(() => import("./modules/Admin/AlertsAdminPanel"));
+const StandingRemindersPanel = lazy(() => import("./modules/Admin/StandingRemindersPanel"));
+const RestoredHKPanel = lazy(() => import("./modules/HK/HKPanel"));
+const FaultsPanel = lazy(() => import("./modules/Faults/FaultsPanel"));
+const EwidencjaPanel = lazy(() => import("./modules/Admin/EwidencjaPanel"));
+const ZadaniaPanel = lazy(() => import("./modules/Admin/ZadaniaPanel"));
+const PracownicyPanel = lazy(() => import("./modules/Admin/PracownicyPanel"));
+const StatystykiPanel = lazy(() => import("./modules/Admin/StatystykiPanel"));
+const UstawieniaPanel = lazy(() => import("./modules/Admin/UstawieniaPanel"));
+const KorektyPanel = lazy(() => import("./modules/Admin/KorektyPanel"));
+const HistoriaPanel = lazy(() => import("./modules/Admin/HistoriaPanel"));
+const WikiAdminPanel = lazy(() => import("./modules/Admin/WikiAdminPanel"));
+const KasaAdminPanel = lazy(() => import("./modules/Admin/KasaAdminPanel"));
+const WiadomosciPanel = lazy(() => import("./modules/Admin/WiadomosciPanel"));
+const ParkingPanel = lazy(() => import("./modules/Parking/ParkingPanel"));
+const HistoriaWorkerPanel = lazy(() => import("./modules/Historia/HistoriaPanel"));
+const StaliGosciePanel = lazy(() => import("./modules/StaliGoscie/StaliGosciePanel"));
 import ConfirmModal from "./components/modals/ConfirmModal";
 import PromptModal from "./components/modals/PromptModal";
 import GlobalSearchModal from "./components/modals/GlobalSearchModal";
@@ -106,6 +109,17 @@ async function preserveAptRoomTypes(date, rt){
     generic.forEach(no => { if(ex[no] && ex[no] !== "APT") rt[no] = ex[no]; });
   }catch{ /* brak sieci — zostaw generyczne, nie blokuj zapisu reszty */ }
   return rt;
+}
+
+// Fallback podczas pobierania chunku leniwie ładowanego panelu zakładki.
+function PanelFallback(){
+  return (
+    <div className="cc-panel-loading" role="status" aria-live="polite"
+      style={{display:"flex",alignItems:"center",justifyContent:"center",padding:"48px 16px",opacity:.7,gap:10}}>
+      <RefreshCw size={18} className="cc-spin" aria-hidden="true"/>
+      <span>Ładowanie…</span>
+    </div>
+  );
 }
 
 export default function App(){
@@ -2166,6 +2180,7 @@ export default function App(){
               <div className="cc-kpi-sub">{unreadMsgCount===0?"Wszystko przeczytane":"Nieprzeczytane →"}</div>
             </div>
           </div>
+      <Suspense fallback={<PanelFallback/>}>
       <AnimatePresence>
         {adminTab==="ewidencja"&&(
           <EwidencjaPanel
@@ -2321,6 +2336,7 @@ export default function App(){
           </motion.div>
         )}
       </AnimatePresence>
+      </Suspense>
       </div>{/* end admin-content-full */}
     </div>
   );
@@ -2328,6 +2344,7 @@ export default function App(){
   // ── Worker view ───────────────────────────────────────────────────────────────
   const workerView=(
     <div>
+      <Suspense fallback={<PanelFallback/>}>
       <AnimatePresence>
         {workerTab==="zmiana"&&(
           <motion.div key="zm" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
@@ -3148,6 +3165,7 @@ export default function App(){
           </motion.div>
         )}
       </AnimatePresence>
+      </Suspense>
     </div>
   );
 
