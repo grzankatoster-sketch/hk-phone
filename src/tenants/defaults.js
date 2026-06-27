@@ -14,6 +14,21 @@ export const DEFAULTS = {
   // Pracownicy działu konserwacji / technicznego
   maintainers: ["Grzegorz", "Kamil"],
 
+  // ── Moduły licencjonowalne (SaaS) ──────────────────────────────────────────
+  // Każda flaga = osobna sekcja, którą można włączyć/wyłączyć per tenant.
+  // Domyślnie WSZYSTKIE true (Conrad = pełna licencja). Inny hotel ogranicza
+  // zakres przez VITE_MODULES w .env (whitelist włączonych). Rdzeń przekazania
+  // zmiany (zmiana/przekazanie/informacje/usterki/historia) jest zawsze włączony
+  // i NIE figuruje tutaj — patrz src/lib/modules.js (core:true).
+  modules: {
+    hk:       true,  // Housekeeping
+    parking:  true,  // Parking
+    goscie:   true,  // Stali goście
+    vouchery: true,  // Vouchery
+    opinie:   true,  // Opinie gości
+    zadania:  true,  // Zadania zmian (panel kierownika)
+  },
+
   // Pomieszczenia parteru (dla modułu Usterki)
   parter: [
     { id: "recepcja",       label: "Recepcja" },

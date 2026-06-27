@@ -7,6 +7,7 @@ import {
   Car, History, MessageSquare,
 } from "lucide-react";
 import { SHIFT_SHORT_LABELS } from "../../lib/constants";
+import { isModuleEnabled } from "../../lib/modules";
 import Logo from "../../ui/Logo";
 import { fmt } from "../../lib/dates";
 
@@ -98,15 +99,19 @@ export default function WorkerSidebar({
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Pokoje</div>
-        {nb("hk",     <Home size={16} />,          "Housekeeping", 0, false, "4")}
+        {isModuleEnabled("hk") && nb("hk", <Home size={16} />, "Housekeeping", 0, false, "4")}
         {nb("usterki",<AlertTriangle size={16} />,  "Usterki", faultsCount, false, "5")}
 
-        <div className="nsb-divider" />
-        <div className="nsb-section-label">Obsługa</div>
-        {nb("parking", <Car size={16} />, "Parking", 0, false, "6")}
-        {nb("goscie",  <Users size={16} />,         "Stali goście", 0, false, "7")}
-        {nb("vouchery",<FileText size={16} />,       "Vouchery", 0, false, "8")}
-        {nb("opinie",  <Star size={16} />,           "Opinie gości", 0, false, "9")}
+        {(isModuleEnabled("parking") || isModuleEnabled("goscie") || isModuleEnabled("vouchery") || isModuleEnabled("opinie")) && (
+          <>
+            <div className="nsb-divider" />
+            <div className="nsb-section-label">Obsługa</div>
+          </>
+        )}
+        {isModuleEnabled("parking")  && nb("parking", <Car size={16} />,      "Parking", 0, false, "6")}
+        {isModuleEnabled("goscie")   && nb("goscie",  <Users size={16} />,    "Stali goście", 0, false, "7")}
+        {isModuleEnabled("vouchery") && nb("vouchery",<FileText size={16} />, "Vouchery", 0, false, "8")}
+        {isModuleEnabled("opinie")   && nb("opinie",  <Star size={16} />,     "Opinie gości", 0, false, "9")}
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Narzędzia</div>

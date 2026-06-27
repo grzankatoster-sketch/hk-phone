@@ -6,6 +6,7 @@ import {
   Calendar,
 } from "lucide-react";
 import Logo from "../../ui/Logo";
+import { isModuleEnabled } from "../../lib/modules";
 
 export default function AdminSidebarRail({
   activeTab, setActiveTab, setShowWiki, setShowAuditLog, handleAdminLogout, setShowSearch,
@@ -146,7 +147,7 @@ export default function AdminSidebarRail({
             {nb("kasa",<Settings size={14}/>,"Kasa")}
           </>}
           {activeGroup==="konfig"&&<>
-            {nb("zadania",<CheckSquare size={14}/>,"Zadania zmian")}
+            {isModuleEnabled("zadania")&&nb("zadania",<CheckSquare size={14}/>,"Zadania zmian")}
             <button className="wsb-item" onClick={()=>setShowWiki(true)}><span className="wsb-icon"><BookOpen size={14}/></span><span className="wsb-label">Wiki</span></button>
             <button className="wsb-item" onClick={()=>setShowAuditLog(true)}><span className="wsb-icon"><History size={14}/></span><span className="wsb-label">Log audytowy</span></button>
           </>}

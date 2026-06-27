@@ -64,6 +64,7 @@ import {
   Eye, EyeOff, Maximize2, Minimize2, Sparkles, Clock,
 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers, setCustomManagers as persistCustomManagers } from "./lib/storage";
+import { isModuleEnabled } from "./lib/modules";
 import { verifyOrCreateAdminPassword, hasAdminPassword, verifyBootstrapPassword, createManagerPassword } from "./lib/adminAuth";
 import {
   ADMIN_MANAGERS, SHIFT_OPTIONS,
@@ -357,7 +358,12 @@ export default function App(){
     if(employeeName&&started)saveJson(dismissStoreKey(employeeName),dismissedReminderKeys);
   },[dismissedReminderKeys,employeeName,started,dismissStoreKey]);
   const [workerTab,setWorkerTab]=useState("zmiana");
+  // Licencja SaaS: jeśli aktywna zakładka wskazuje na moduł wyłączony w tej
+  // licencji (np. po zmianie VITE_MODULES), wróć na rdzeniowy „Przegląd zmiany".
+  useEffect(()=>{ if(!isModuleEnabled(workerTab)) setWorkerTab("zmiana"); },[workerTab]);
   const [adminTab,setAdminTab]=useState("ewidencja");
+  // Licencja SaaS: wyłączona zakładka admina (np. zadania) → wróć na „ewidencja".
+  useEffect(()=>{ if(!isModuleEnabled(adminTab)) setAdminTab("ewidencja"); },[adminTab]);
   const [evidenceMonth,setEvidenceMonth]=useState(monthKey());
   const [activityDay,setActivityDay]=useState(todayKey());
   const [showAuditLog,setShowAuditLog]=useState(false);
@@ -2192,7 +2198,7 @@ export default function App(){
             resetAllEvidence={resetAllEvidence}
           />
         )}
-        {adminTab==="zadania"&&(
+        {isModuleEnabled("zadania")&&adminTab==="zadania"&&(
           <ZadaniaPanel
             tasks={tasks}
             taskShiftTarget={taskShiftTarget} setTaskShiftTarget={setTaskShiftTarget}
@@ -3116,7 +3122,7 @@ export default function App(){
 
           </motion.div>
         )}
-        {workerTab==="hk"&&(
+        {isModuleEnabled("hk")&&workerTab==="hk"&&(
           <motion.div key="hk" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <RestoredHKPanel dark={workerDark} hkDate={hkDate} setHkDate={setHkDate}
                      hkStaff={hkStaff} setHkStaff={setHkStaff}
@@ -3134,22 +3140,22 @@ export default function App(){
             <FaultsPanel dark={workerDark} employeeName={employeeName} showToast={showToast} floors1={HK_FLOOR1} floors2={HK_FLOOR2} floors3={HK_FLOOR3} isManager={canAccessManagerPanel}/>
           </motion.div>
         )}
-        {workerTab==="parking"&&(
+        {isModuleEnabled("parking")&&workerTab==="parking"&&(
           <motion.div key="parking" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <ParkingPanel dark={workerDark} isAdmin={canAccessManagerPanel} showToast={showToast} employees={employees} employeeName={employeeName}/>
           </motion.div>
         )}
-        {workerTab==="goscie"&&(
+        {isModuleEnabled("goscie")&&workerTab==="goscie"&&(
           <motion.div key="goscie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <StaliGosciePanel dark={workerDark} isAdmin={canAccessManagerPanel} currentManager={canAccessManagerPanel?currentManager:""} addAudit={addAudit}/>
           </motion.div>
         )}
-        {workerTab==="vouchery"&&(
+        {isModuleEnabled("vouchery")&&workerTab==="vouchery"&&(
           <motion.div key="vouchery" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <VouchersPanel employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast} askConfirm={askConfirm}/>
           </motion.div>
         )}
-        {workerTab==="opinie"&&(
+        {isModuleEnabled("opinie")&&workerTab==="opinie"&&(
           <motion.div key="opinie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
           </motion.div>

@@ -30,6 +30,19 @@ function parseJson(envKey, fallback) {
   try { return JSON.parse(v); } catch { return fallback; }
 }
 
+// Licencja SaaS: VITE_MODULES = whitelist włączonych modułów (np. "hk,parking,opinie").
+// Brak zmiennej → wszystkie moduły z DEFAULTS.modules włączone (pełna licencja).
+// Dzięki temu jeden hotel płaci za pełen zakres, inny za wybrane sekcje — bez zmian w kodzie.
+function parseModules() {
+  const all = DEFAULTS.modules;
+  const v = import.meta.env.VITE_MODULES;
+  if (!v) return { ...all };
+  const on = new Set(v.split(",").map(s => s.trim()).filter(Boolean));
+  const out = {};
+  Object.keys(all).forEach(k => { out[k] = on.has(k); });
+  return out;
+}
+
 const hk = {
   floor1:           parseJson("VITE_HK_FLOOR1_JSON",   DEFAULTS.hk.floor1),
   floor2:           parseJson("VITE_HK_FLOOR2_JSON",   DEFAULTS.hk.floor2),
@@ -48,4 +61,5 @@ export const tenantConfig = {
   maintainers: parseList("VITE_MAINTAINERS", DEFAULTS.maintainers),
   parter:      parseJson("VITE_PARTER_JSON", DEFAULTS.parter),
   hk,
+  modules:     parseModules(),
 };
