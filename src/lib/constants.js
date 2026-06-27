@@ -70,3 +70,25 @@ export const DEFAULT_ADHOC_THRESHOLDS = Object.freeze({ weekday: 10, weekend: 12
 // ─── Vouchery ─────────────────────────────────────────────────────────────────
 export const VOUCHER_TYPES       = Object.freeze(["voucher","cashback"]);
 export const VOUCHER_TYPE_LABELS = Object.freeze({voucher:"Voucher",cashback:"Cashback"});
+
+// ─── Etykiety zakładek (nagłówek aktywnej sekcji) ─────────────────────────────
+export const WORKER_TAB_LABELS = Object.freeze({
+  zmiana: "Przegląd zmiany",
+  zadania: "Zadania",
+  przekazanie: "Przekaż zmianę",
+  hk: "Housekeeping",
+  informacje: "Informacje",
+  usterki: "Usterki",
+  parking: "Parking",
+  goscie: "Stali goście",
+  vouchery: "Vouchery",
+  opinie: "Opinie gości",
+});
+export const ADMIN_TAB_LABELS = Object.freeze({
+  ewidencja: "Ewidencja", zadania: "Zadania", pracownicy: "Pracownicy",
+  grafik: "Grafik", statystyki: "Statystyki", ustawienia: "Ustawienia",
+  korekty: "Korekty", usterki: "Usterki",
+  wiadomosci: "Wiadomości", alerty: "Alerty",
+  przypomnienia: "Przypomnienia", historia: "Historia", wiki: "Wiki",
+  kasa: "Kasa",
+});

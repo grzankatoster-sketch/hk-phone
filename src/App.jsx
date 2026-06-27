@@ -67,6 +67,7 @@ import {
   SHIFT_LABELS, SHIFT_LABELS_PL, SHIFT_SHORT_LABELS, SHIFT_NAME_PL, NEXT_SHIFT,
   defaultEmployees, defaultTasks, getDefaultWikiEntries, emptyCarryOver,
   HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_ALL, TENANT_ID,
+  WORKER_TAB_LABELS, ADMIN_TAB_LABELS,
 } from "./lib/constants";
 import { fmt, fmtA, todayKey, monthKey, parsePlDateTime, autoDetectShift, shiftFromSchedule, shiftStartMinutes, shiftEndDate, getScheduleDayEntry } from "./lib/dates";
 import { normalizeToShift } from "./lib/excel";
@@ -89,33 +90,8 @@ const IS_DEV_TEST = typeof localStorage !== 'undefined' && localStorage.getItem(
 const DEV_TOOLS = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
 const TEST_CLOCK_KEY = 'reception-test-clock-offset';
 
-// ── Page-title labels for shell topbar (sekcja 2 redesign) ────────────────────
-const WORKER_TAB_LABELS = {
-  zmiana: "Przegląd zmiany",
-  zadania: "Zadania",
-  przekazanie: "Przekaż zmianę",
-  hk: "Housekeeping",
-  informacje: "Informacje",
-  usterki: "Usterki",
-  parking: "Parking",
-  goscie: "Stali goście",
-  vouchery: "Vouchery",
-  opinie: "Opinie gości",
-};
-const ADMIN_TAB_LABELS = {
-  ewidencja: "Ewidencja", zadania: "Zadania", pracownicy: "Pracownicy",
-  grafik: "Grafik", statystyki: "Statystyki", ustawienia: "Ustawienia",
-  korekty: "Korekty", usterki: "Usterki",
-  wiadomosci: "Wiadomości", alerty: "Alerty",
-  przypomnienia: "Przypomnienia", historia: "Historia", wiki: "Wiki",
-  kasa: "Kasa",
-};
-
 // Apartamenty mają typ wpisywany RĘCZNIE przez recepcję (np. "2xDBL", "D+T+SOFA")
 // i nie wolno go nadpisywać generycznym "APT" z planu mailowego. room_types to
-// jedna kolumna JSONB (upsert podmienia CAŁY obiekt), więc gdy budujemy plan z
-// danych z dysku/maila (które dla apartamentu dają "APT"), najpierw dociągamy
-// istniejący room_types i zachowujemy ręczny typ apartamentu — tak jak robi
 // automacja (scripts/hk-automation/lib/supabase-sync.cjs). Bez tego telefon
 // pokazywał „APT" zamiast wpisanego „2xDBL".
 const HK_APT_NOS = new Set(HK_ALL.filter(r=>r.apt).map(r=>r.no));
