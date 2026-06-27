@@ -14,6 +14,19 @@ const BOOKING_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 const BCOM_SCORE = 8.7;
 const BCOM_TOTAL = 2746;
 
+// Nazwy kategorii ocen z Booking (hotelRatingScores) → polskie etykiety.
+const CATEGORY_LABELS = {
+  "Staff": "Personel",
+  "Facilities": "Udogodnienia",
+  "Cleanliness": "Czystość",
+  "Comfort": "Komfort",
+  "Value for money": "Stosunek jakości do ceny",
+  "Location": "Lokalizacja",
+  "Free WiFi": "WiFi",
+  "WiFi": "WiFi",
+};
+const categoryLabel = (name) => CATEGORY_LABELS[name] || name;
+
 function scoreColor(s) {
   if (s >= 8)  return { bg: "#D1FAE5", color: "#065F46", border: "#6EE7B7" };
   if (s >= 6)  return { bg: "#FEF3C7", color: "#92400E", border: "#FCD34D" };
@@ -170,6 +183,8 @@ function ReviewsPanel({ dark, isManager, showToast }) {
       const meta = {
         officialScore: res?.officialScore || bookingMeta?.officialScore || null,
         officialTotal: res?.officialTotal || bookingMeta?.officialTotal || null,
+        categoryScores: (Array.isArray(res?.categoryScores) && res.categoryScores.length)
+          ? res.categoryScores : (bookingMeta?.categoryScores || []),
         fetchedAt: res?.fetchedAt || new Date().toISOString(),
         cutoff: res?.cutoff || null,
         pagesRead: res?.pagesRead || 0,
@@ -340,6 +355,34 @@ function ReviewsPanel({ dark, isManager, showToast }) {
           </select>
         </div>
       </div>
+
+      {/* ═══ Oceny per kategoria (z Booking) ═══ */}
+      {Array.isArray(bookingMeta?.categoryScores) && bookingMeta.categoryScores.length > 0 && (
+        <div className="panel" style={{ padding: "16px 18px" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>
+            Oceny gości wg kategorii <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-muted)" }}>· oficjalne z Booking.com</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px 22px" }}>
+            {bookingMeta.categoryScores.map(c => {
+              const val = Number(c.score);
+              const pct = Math.max(0, Math.min(100, (val / 10) * 100));
+              return (
+                <div key={c.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                      <span style={{ color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{categoryLabel(c.name)}</span>
+                      <b style={{ color: "var(--text-primary)", marginLeft: 8 }}>{val.toFixed(1)}</b>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 999, background: "var(--border-light, rgba(0,0,0,.08))", overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: "var(--plum)" }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ═══ Analiza AI: czego oczekują goście ═══ */}
       <div className="panel" style={{ padding: "16px 18px" }}>
