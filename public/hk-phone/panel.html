@@ -534,12 +534,12 @@ function makeMockClient(){
       {date:today,action:"skip",worker:"Anna",room:"118",log_time:"09:50"},
     ],
     faults: [
-      {id:"1",description:"Cieknący kran w 312",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"312",room:"312",source:"reception",reported_at:today+"T09:00:00",reported_by:"Recepcja"},
+      {id:"1",description:"Cieknący kran w 312",assigned_to:"Grzegorz",status:"open",priority:"urgent",space_id:"312",room:"312",source:"reception",reported_at:today+"T09:00:00",reported_by:"Recepcja"},
       {id:"2",description:"Przepalona żarówka na korytarzu",assigned_to:"Kamil",status:"in_progress",priority:"normal",space_id:"koryt. 2p",source:"hk",reported_at:today+"T08:10:00",reported_by:"Anna"},
       {id:"3",description:"Klimatyzacja nie chłodzi",assigned_to:null,status:"open",priority:"normal",space_id:"restauracja",source:"reception",reported_at:today+"T07:30:00",reported_by:"Recepcja"},
-      {id:"4",description:"Zacięty zamek w 210 (po terminie)",assigned_to:"Grzegorz",status:"open",priority:"high",space_id:"210",room:"210",source:"reception",reported_at:plus(-2)+"T12:00:00",due_at:plus(-1)+"T12:00:00",reported_by:"Recepcja"},
+      {id:"4",description:"Zacięty zamek w 210 (po terminie)",assigned_to:"Grzegorz",status:"open",priority:"urgent",space_id:"210",room:"210",source:"reception",reported_at:plus(-2)+"T12:00:00",due_at:plus(-1)+"T12:00:00",reported_by:"Recepcja"},
       {id:"5",description:"Wymiana baterii w 305",assigned_to:"Kamil",status:"done",priority:"normal",space_id:"305",room:"305",source:"hk",reported_at:plus(-1)+"T09:00:00",started_at:plus(-1)+"T11:00:00",completed_at:plus(-1)+"T13:30:00",reported_by:"Marta"},
-      {id:"6",description:"Niedrożny odpływ 118",assigned_to:"Grzegorz",status:"done",priority:"high",space_id:"118",room:"118",source:"reception",reported_at:today+"T07:00:00",started_at:today+"T07:40:00",completed_at:today+"T09:10:00",reported_by:"Recepcja"},
+      {id:"6",description:"Niedrożny odpływ 118",assigned_to:"Grzegorz",status:"done",priority:"urgent",space_id:"118",room:"118",source:"reception",reported_at:today+"T07:00:00",started_at:today+"T07:40:00",completed_at:today+"T09:10:00",reported_by:"Recepcja"},
     ],
     shift_reports: [
       {day_key:today,shift_key:"poranna",employee:"Kasia",cash_closing:1240.5,safe_total:5300,cash_current:820,saved_at:today+"T14:00:00",tasks_done:4},
@@ -1980,7 +1980,7 @@ function activeShiftCard(sched){
 }
 
 // ── Zadania: przekazane na komputer recepcji (manager_alerts) + dodawanie z telefonu ──
-const PRIO = { high:{l:"Pilne",c:"#c2415a"}, normal:{l:"Zwykłe",c:"#5a1d4a"}, low:{l:"Info",c:"#8a6a7e"} };
+const PRIO = { urgent:{l:"Pilne",c:"#c2415a"}, high:{l:"Pilne",c:"#c2415a"}, normal:{l:"Zwykłe",c:"#5a1d4a"}, low:{l:"Info",c:"#8a6a7e"} };
 // Selektor zmiany w Zadaniach: cel (zmiana + osoby) jest dla wszystkich ról oprócz menedżera HK i gastronomii.
 const SHIFT_PICKER_OFF = new Set(["mgr_hk","mgr_gastro"]);
 let ZAD_SCHED = null;   // lustro „schedule" wczytane na czas renderu Zadań (do selektora osób)
@@ -3697,7 +3697,7 @@ async function loadKonserw() {
       <div class="field"><label>Przypisz do</label><select id="kWho" class="inp">${opts}</select></div>
       <div class="field"><label>Miejsce (opcjonalnie)</label><input id="kLoc" class="inp" placeholder="np. 312 / parter / recepcja"/></div>
       <div class="field"><label>Priorytet</label>
-        <select id="kPrio" class="inp"><option value="normal">Zwykły</option><option value="high">Pilny</option><option value="low">Niski</option></select></div>
+        <select id="kPrio" class="inp"><option value="normal">Zwykły</option><option value="urgent">Pilny</option><option value="low">Niski</option></select></div>
       <button id="kBtn" class="btn" onclick="addKonserwTask()">Dodaj zadanie</button>
       <div id="kMsg" class="msg"></div>
     </div>`;

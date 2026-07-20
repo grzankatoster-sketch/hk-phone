@@ -199,9 +199,25 @@ Deno.serve(async (req) => {
     // worker z wiersza, a gdy pusty — dociągnij z planu dnia (kto ma ten pokój).
     worker = rec.worker || await findWorkerForRoom(rec.date, rec.room);
   } else if (table === "faults") {
-    role = "konserwacja"; title = "Nowa usterka";
-    message = `${rec.room || rec.space_id || ""} — ${rec.description || ""}`.trim().replace(/^—\s*/, "");
-    url = "./konserwacja.html";
+    role = "konserwacja"; url = "./konserwacja.html";
+    const evt = body?.type ?? body?.payload?.type ?? "";
+    const loc = rec.room || rec.space_id || "";
+    const descr = rec.description || "";
+    if (evt === "UPDATE") {
+      // Eskalacja SLA: escalated_at DOPIERO co ustawione (usterka po terminie). Powiadom
+      // całą konserwację (po terminie = ważne, ma dotrzeć). Inne update'y (status itp.) pomijamy.
+      if (rec.escalated_at && !old?.escalated_at) {
+        title = "⏰ Usterka po terminie";
+        message = `${loc} — ${descr}`.trim().replace(/^—\s*/, "") || "Usterka przekroczyła termin naprawy";
+        body.tag = "sla-" + (rec.id || loc);   // tag per usterka — nie nadpisuje innych powiadomień
+      } else {
+        return new Response(JSON.stringify({ skip: true }), { headers: { "content-type": "application/json" } });
+      }
+    } else {
+      // INSERT — nowa usterka (dotychczasowe zachowanie: cała konserwacja).
+      title = "Nowa usterka";
+      message = `${loc} — ${descr}`.trim().replace(/^—\s*/, "");
+    }
   } else if (table === "hk_plan") {
     role = "hk"; title = "Zmiana przypisania";
     message = "Recepcja zaktualizowała plan sprzątania"; url = "./index.html";

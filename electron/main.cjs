@@ -49,6 +49,7 @@ autoUpdater.logger              = require("electron-log");
 autoUpdater.logger.transports.file.level = "info";
 
 let mainWindow = null;
+let isQuitting = false;
 let updateDownloadInProgress = false;
 let updateDownloaded = false;
 
@@ -113,6 +114,27 @@ function createWindow() {
 
   mainWindow.webContents.on("did-fail-load", (_e, code, desc, url) => {
     autoUpdater.logger.error(`did-fail-load [${code}] ${desc} — ${url}`);
+  });
+  // Zabezpieczenie przed omyłkowym zamknięciem (kliknięcie X / Alt+F4).
+  // Pytamy o potwierdzenie — domyślnie zaznaczone "Anuluj", więc przypadkowy
+  // Enter nie zamknie aplikacji i nie przerwie serwera HK / automatyzacji.
+  mainWindow.on("close", (e) => {
+    if (isQuitting) return;
+    e.preventDefault();
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: "question",
+      buttons: ["Anuluj", "Zamknij aplikację"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      title: "Zamknąć Panel Recepcji?",
+      message: "Czy na pewno chcesz zamknąć aplikację?",
+      detail: "Trwające procesy (serwer HK, automatyzacja poczty) zostaną przerwane.",
+    });
+    if (choice === 1) {
+      isQuitting = true;
+      mainWindow.close();
+    }
   });
   mainWindow.on("closed", () => { mainWindow = null; });
 }
@@ -367,5 +389,7 @@ app.whenReady().then(() => {
   if (!isDev) setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 5000);
 });
 
+// Programowe zamknięcia (auto-update quitAndInstall, app.quit) pomijają dialog.
+app.on("before-quit", () => { isQuitting = true; });
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
 app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
