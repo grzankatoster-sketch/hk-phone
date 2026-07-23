@@ -59,6 +59,7 @@ import { pushMirror } from "./lib/cloudSync";
 import { computeSafeDeposit } from "./lib/cash.mjs";
 import { initSyncQueueListener } from "./lib/syncQueue";
 import { useHKAgent, markRequestHandled } from "./lib/useHKAgent";
+import { logError } from "./lib/errorLog"; // DEBUG TYMCZASOWY (zadania z godziną) — usunąć po znalezieniu przyczyny
 import { pushHkState, fetchHkState, subscribeHkState, hkStateDeviceId } from "./lib/hkState";
 import { pushSchedule, fetchSchedule, subscribeSchedule } from "./lib/scheduleSync";
 import AgentBot from "./components/HKAgent/AgentBot";
@@ -1192,7 +1193,13 @@ export default function App(){
       if(dismissedReminderKeys.includes(`${tk}-${selectedShift}-${task.id}-${task.scheduledTime}`))return false;
       const[h,m]=task.scheduledTime.split(":").map(Number);
       const sd=new Date(now);sd.setHours(h||0,m||0,0,0);
-      return now>=sd&&sd>=shiftStartTime;
+      const due=now>=sd&&sd>=shiftStartTime;
+      // DEBUG TYMCZASOWY (błąd zgłoszony 23.07.2026 — zadanie z godziną wywołuje
+      // dymek przed czasem). Usunąć po znalezieniu przyczyny. User nie ma dostępu
+      // do DevTools → logujemy do Supabase (error_logs), nie do konsoli, żeby dało
+      // się to podejrzeć z poziomu SQL Editora.
+      if(due)logError("debug-zadanie-due",{severity:"info",source:"task-reminder-debug",context:{taskText:task.text,scheduledTime:task.scheduledTime,now:now.toISOString(),sd:sd.toISOString(),shiftStartTime:shiftStartTime?.toISOString?.(),selectedShift}});
+      return due;
     });
   },[started,shiftStartTime,currentTasks,completed,dismissedReminderKeys,selectedShift]);
 
@@ -1221,6 +1228,7 @@ export default function App(){
     if(seenTaskRemRef.current===null){seenTaskRemRef.current=keys;return;}
     const fresh=taskReminderNotices.find(n=>!seenTaskRemRef.current.has(n.id));
     seenTaskRemRef.current=new Set([...seenTaskRemRef.current,...keys]);
+    if(fresh)logError("debug-dymek-odpalony",{severity:"info",source:"task-reminder-debug",context:{fresh,nowRealTime:new Date().toISOString(),shiftStartTime:shiftStartTime?.toISOString?.(),selectedShift}}); // DEBUG TYMCZASOWY, patrz wyżej
     if(fresh){
       setBotAttention({kind:"task",text:fresh.text});
       if((document.visibilityState!=="visible"||!document.hasFocus())&&window.electronAPI?.notify)
@@ -2062,12 +2070,22 @@ export default function App(){
         }catch{return null;}
       };
       const weekAgo=Date.now()-7*24*60*60*1000;
-      const within7d=(createdAt)=>{const d=parseNoteDate(createdAt);return !d||d.getTime()>=weekAgo;};
+      // Fail CLOSED, nie fail open: niesparsowalna data ≠ "świeże" — inaczej wpisy
+      // ze starą/inną ścieżką zapisu (nie fmtA()) zostawały w briefingu na zawsze,
+      // niezależnie od wieku ("pokazuje strasznie stare rzeczy"). recentNotes kawałek
+      // niżej już robił to poprawnie (d&&...) — within7d był jedynym wyjątkiem.
+      const within7d=(createdAt)=>{const d=parseNoteDate(createdAt);return !!d&&d.getTime()>=weekAgo;};
       // Zadania przeniesione: niezrobione I dodane w ostatnich 7 dniach (stare odpadają).
       const carry=(carryOverTasks[selectedShift]||[]).filter(t=>!t.done&&within7d(t.createdAt)).map(t=>t.text);
       // Przypomnienia z ostatnich 7 dni (datą docelową) do dziś — nie tylko na dziś.
       const weekAgoKey=todayKey(new Date(Date.now()-7*24*60*60*1000));
-      const todayDateKey=currentSessionDate||todayKey();
+      // LIVE, nie zamrożone currentSessionDate (ustalane raz przy logowaniu) — to
+      // trafia do AI jako "dataDzisiaj", punkt odniesienia dla WSZYSTKICH słów
+      // względnych w notatkach ("jutro", "w środę", "za 2 dni"). Zamrożona data przy
+      // dłużej otwartej sesji sprawiała, że model liczył względem tego samego,
+      // nieaktualnego "dziś" za każdym razem — stąd te same przeliczone dni tygodnia
+      // przy kolejnych regeneracjach w różne realne dni.
+      const todayDateKey=todayKey();
       const reminders=datedReminders
         .filter(r=>!r.confirmedAt&&r.targetDate>=weekAgoKey&&r.targetDate<=todayDateKey&&(!r.targetShift||r.targetShift===selectedShift)&&!dismissedReminderKeys.includes(`dated-${r.id}`))
         .sort((a,b)=>(a.targetDate||"").localeCompare(b.targetDate||""))

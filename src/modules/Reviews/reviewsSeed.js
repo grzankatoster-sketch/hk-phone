@@ -1,8 +1,15 @@
 // Prawdziwe opinie z Booking.com — Hotel Conrad Comfort, Krakow
 // Pobrane automatycznie: ostatnie ~2 lata (2024-07 – 2026-04)
 // zrodlo: booking.com/reviews/pl/hotel/conrad-comfort.html
+//
+// Seed tylko dla tenanta domyślnego (ten hotel) — nowy klient SaaS z innym
+// VITE_TENANT_ID nie dziedziczy cudzych opinii gości. Patrz TENANT_ID w lib/constants.js.
 
-export const REVIEWS_SEED = [
+import { TENANT_ID } from "../../lib/constants";
+
+const CONRAD_COMFORT_TENANT_ID = "00000000-0000-0000-0000-000000000001";
+
+const CONRAD_COMFORT_REVIEWS_SEED = [
   // ── 2026 ──────────────────────────────────────────────────────────────────
   { id:"bcom-001", platform:"booking.com", guest_name:"Hlavka",       country:"Czechy",        score:9.0, stay_date:"2026-04-01", submitted_at:"2026-04-09T12:00:00.000Z", room_type:"Double/Twin",         positives:"Sniadanie bylo niesamowite.", negatives:"Informacje o dostepie tylko po polsku.", title:null, response_text:"", responded_at:null, responded_by:null, added_by:"import", added_at:"2026-04-09T12:00:00.000Z" },
   { id:"bcom-002", platform:"booking.com", guest_name:"Mihaela",      country:"Rumunia",       score:10,  stay_date:"2026-02-01", submitted_at:"2026-03-24T12:00:00.000Z", room_type:"Budget Double",       positives:"Komfortowy i czysty, zyczliwy personel, darmowy parking podziemny.", negatives:null, title:null, response_text:"", responded_at:null, responded_by:null, added_by:"import", added_at:"2026-03-24T12:00:00.000Z" },
@@ -109,3 +116,5 @@ export const REVIEWS_SEED = [
   { id:"bcom-099", platform:"booking.com", guest_name:"David",        country:"Izrael",        score:8.0, stay_date:"2024-03-01", submitted_at:"2024-03-21T12:00:00.000Z", room_type:"Budget Double",        positives:"Good value for the price. Clean room, helpful staff, easy to find.", negatives:"The single room felt a bit compact.", title:null, response_text:"", responded_at:null, responded_by:null, added_by:"import", added_at:"2024-03-21T12:00:00.000Z" },
   { id:"bcom-100", platform:"booking.com", guest_name:"Agnieszka",    country:"Polska",        score:10,  stay_date:"2024-03-01", submitted_at:"2024-03-14T12:00:00.000Z", room_type:"Superior Apartment",  positives:"Przeszklozone okna wychodza na spokojny dziedziiniec. Pelna kuchnia, komfortowe lozka. Polecam każdemu!", negatives:null, title:null, response_text:"", responded_at:null, responded_by:null, added_by:"import", added_at:"2024-03-14T12:00:00.000Z" },
 ];
+
+export const REVIEWS_SEED = TENANT_ID === CONRAD_COMFORT_TENANT_ID ? CONRAD_COMFORT_REVIEWS_SEED : [];

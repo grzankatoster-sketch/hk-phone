@@ -6865,6 +6865,29 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
   background: color-mix(in srgb, var(--cc-warning) 12%, transparent);
 }
 
+/* Late checkout — gość z późnym wymeldowaniem właśnie wyjechał, alarm do HK */
+.cc-hk-lateout-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--cc-info);
+  background: color-mix(in srgb, var(--cc-info) 14%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--cc-info) 55%, transparent);
+  padding: 0;
+  transition: all 100ms cubic-bezier(.4,0,.2,1);
+}
+.cc-hk-lateout-btn:hover { transform: scale(1.15); }
+.cc-hk-lateout-btn:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; }
+
 /* Apartment note input (mini inline editor w apt-room card) */
 .cc-hk-apt-note {
   flex: 1;

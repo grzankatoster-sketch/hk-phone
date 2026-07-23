@@ -35,7 +35,7 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 - [ ] 0.5 [ICE 60] Domknięcie RLS: koniec `anon FOR ALL` na hk_* i panel_mirror
 - [ ] 0.6 [ICE 32] Token w QR zamiast imienia w URL dla telefonów LAN (x-secret realnie sprawdzany)
 
-## ETAP 1 — PORZĄDKI (zero ryzyka) — 14 pozycji
+## ETAP 1 — PORZĄDKI (zero ryzyka) — 18 pozycji
 - [ ] 1.1 [ICE 75] Higiena repo: usunąć open-design/ (156 MB), scripts/broker/, release/ (3,9 GB) do .gitignore, tmp-*, test_results.txt, .mcp.json.backup*
 - [ ] 1.2 [ICE 75] Naprawa zdublowanych numerów migracji (0013/0030/0036 ×2) + kontrola unikalności w CI
 - [ ] 1.3 [ICE 60] Wszystkie klucze localStorage przez STORAGE_KEYS (~20 luzem) + reguła lint
@@ -44,33 +44,33 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 - [ ] 1.6 [ICE 40] Jeden normalizator diakrytyków (names.js) zamiast 8 kopii
 - [ ] 1.7 [ICE 50] Helper `pushHandoverLog()` zamiast 5× `slice(0,300)` w App.jsx
 - [ ] 1.8 [ICE 32] Wspólny helper nagłówka/stopki dla 5 generatorów PDF
-- [ ] 1.9 🔧 SEC adminAuth: SHA-256 bez soli → PBKDF2/argon2 lub auth serwerowy (NIE kosmetyka — priorytet blisko Etapu 0; docelowo zastąpione całkiem przez 2.17, to jest łatka na już)
-- [ ] 1.10 Stała kasowa 500 zł jako nazwana stała → docelowo app_settings per tenant
-- [ ] 1.11 Usunięcie martwego klucza `openaiKey` (storage.js:30)
-- [ ] 1.12 Usunięcie domyślnego TENANT_ID (constants.js:7) — hardcode tenanta
-- [ ] 1.13 Poprawka komentarza llm.js:1 („proxy Claude" → faktycznie Groq/Llama)
-- [ ] 1.14 Aktualizacja przestarzałego NEXT_SESSION.md (opisuje nieistniejący już martwy kod A1–A4)
-- [ ] 1.15 Ekran logowania panel.html: nadmierne centrowanie (nazwa hotelu+nagłówek+podtytuł+stopka wszystko wyśrodkowane) → podtytuł i stopkę do lewej
-- [ ] 1.16 [widoczność: wysoka] 4 kafelki dashboardu panel.html (💰🛠️🚪👥) → ikony SVG zamiast emoji — to pierwszy ekran, jaki widzi kierownik
-- [ ] 1.17 Maskotka 🤖 zduplikowana 6× w AgentWidget.jsx i AgentBot.jsx → jedna wspólna ikona SVG (duplikacja + estetyka naraz)
-- [ ] 1.18 Reszta dekoracyjnych emoji w panel.html (~90 wystąpień 24 piktogramów: 🔔🎉📌📅📖⚙🧾📝📋) → SVG przy okazji edycji danego widoku, niski priorytet samodzielny
+- [ ] 1.9 [ICE 80] 🔧 SEC adminAuth: SHA-256 bez soli → PBKDF2/argon2 lub auth serwerowy (NIE kosmetyka — priorytet blisko Etapu 0; docelowo zastąpione całkiem przez 2.17, to jest łatka na już)
+- [ ] 1.10 [ICE 20] Stała kasowa 500 zł jako nazwana stała → docelowo app_settings per tenant
+- [ ] 1.11 [ICE 15] Usunięcie martwego klucza `openaiKey` (storage.js:30)
+- [ ] 1.12 [ICE 25] Usunięcie domyślnego TENANT_ID (constants.js:7) — hardcode tenanta
+- [ ] 1.13 [ICE 10] Poprawka komentarza llm.js:1 („proxy Claude" → faktycznie Groq/Llama)
+- [ ] 1.14 [ICE 10] Aktualizacja przestarzałego NEXT_SESSION.md (opisuje nieistniejący już martwy kod A1–A4)
+- [ ] 1.15 [ICE 20] Ekran logowania panel.html: nadmierne centrowanie (nazwa hotelu+nagłówek+podtytuł+stopka wszystko wyśrodkowane) → podtytuł i stopkę do lewej
+- [ ] 1.16 [ICE 40, widoczność: wysoka] 4 kafelki dashboardu panel.html (💰🛠️🚪👥) → ikony SVG zamiast emoji — to pierwszy ekran, jaki widzi kierownik
+- [ ] 1.17 [ICE 25] Maskotka 🤖 zduplikowana 6× w AgentWidget.jsx i AgentBot.jsx → jedna wspólna ikona SVG (duplikacja + estetyka naraz)
+- [ ] 1.18 [ICE 15] Reszta dekoracyjnych emoji w panel.html (~90 wystąpień 24 piktogramów: 🔔🎉📌📅📖⚙🧾📝📋) → SVG przy okazji edycji danego widoku, niski priorytet samodzielny
 
-## ETAP 2 — FUNDAMENT SAAS — 12 pozycji
+## ETAP 2 — FUNDAMENT SAAS — 19 pozycji
 - [ ] 2.1 [ICE 40] Tabele `tenants` + `tenant_features` w DB (R6)
-- [ ] 2.2 Egzekwowanie server-side zamiast tylko client-side (VITE_MODULES dziś omijalne)
-- [ ] 2.3 Polityka deny-by-default zamiast dziś permisywnej (nieznany moduł = włączony)
-- [ ] 2.4 Rozszerzenie MODULE_REGISTRY o funkcje „zawsze dostępne" (kasa, grafik, statystyki) — inaczej nie ma czym różnicować tierów
+- [ ] 2.2 [ICE 60] Egzekwowanie server-side zamiast tylko client-side (VITE_MODULES dziś omijalne)
+- [ ] 2.3 [ICE 55] Polityka deny-by-default zamiast dziś permisywnej (nieznany moduł = włączony)
+- [ ] 2.4 [ICE 45] Rozszerzenie MODULE_REGISTRY o funkcje „zawsze dostępne" (kasa, grafik, statystyki) — inaczej nie ma czym różnicować tierów
 - [ ] 2.5 [ICE 75] De-hardcode brandu: „Conrad Comfort" (~14 miejsc) → tenantConfig (R3)
-- [ ] 2.6 Rozbicie style.css (8354 linii) na warstwy core/theme
-- [ ] 2.7 Fabryka wersji: jeden neutralny build „GuestSage Panel" + manifest tenanta z DB w runtime (odrzucone: build per hotel z .env)
-- [ ] 2.8 URL-e GitHub Pages (4 miejsca) → konfiguracja zamiast hardcode
+- [ ] 2.6 [ICE 35] Rozbicie style.css (8354 linii) na warstwy core/theme
+- [ ] 2.7 [ICE 70] Fabryka wersji: jeden neutralny build „GuestSage Panel" + manifest tenanta z DB w runtime (odrzucone: build per hotel z .env)
+- [ ] 2.8 [ICE 25] URL-e GitHub Pages (4 miejsca) → konfiguracja zamiast hardcode
 - [ ] 2.9 [ICE 15] Migracja danych core z localStorage do Supabase z tenant_id (R7)
 - [ ] 2.10 [ICE 48] Jeden wzorzec konfliktów (merge+rev jak hk_state_merge) dla wszystkich danych dwustronnych (R18)
 - [ ] 2.11 [ICE 80] Świeżość danych u kierownika: heartbeat + banner „recepcja offline od X min" (R17)
 - [ ] 2.12 [ICE 48] Wydzielenie domeny kasy z App.jsx do lib/cash.mjs z testami (R8)
-- [ ] 2.13 Jednolity model ról w bazie: właściciel / kierownik / recepcja / pokojówka (dziś tylko panel kierownika ma konta+role; desktop i telefony nie mają tożsamości)
-- [ ] 2.14 Token urządzenia dla desktopu nadawany przy aktywacji licencji (zastępuje goły klucz publiczny bez tożsamości) — RLS sprawdza tenant_id + rolę zamiast wpuszczać wszystkich
-- [ ] 2.15 Migracja RLS z „każdy może wszystko" na reguły wg roli i przynależności do hotelu, spójnie dla wszystkich tabel (uzupełnia 0.5/R16 pełnym modelem docelowym)
+- [ ] 2.13 [ICE 55] Jednolity model ról w bazie: właściciel / kierownik / recepcja / pokojówka (dziś tylko panel kierownika ma konta+role; desktop i telefony nie mają tożsamości)
+- [ ] 2.14 [ICE 50] Token urządzenia dla desktopu nadawany przy aktywacji licencji (zastępuje goły klucz publiczny bez tożsamości) — RLS sprawdza tenant_id + rolę zamiast wpuszczać wszystkich
+- [ ] 2.15 [ICE 60] Migracja RLS z „każdy może wszystko" na reguły wg roli i przynależności do hotelu, spójnie dla wszystkich tabel (uzupełnia 0.5/R16 pełnym modelem docelowym)
 - [ ] 2.16 [ICE 48] Osobna aplikacja „GuestSage Kierownik": cienki natywny shell wrapujący istniejący panel kierownika, własny instalator, ta sama fabryka wersji co recepcja
 - [ ] 2.17 [ICE 30] Wspólne logowanie kontem (Supabase Auth) zamiast lokalnego hasła — to samo konto działa w aplikacji kierownika i jako podniesienie uprawnień na recepcji przy zastępstwie
 - [ ] 2.18 [ICE 36] Wspólne źródło ról dla obu aplikacji (jedna funkcja sprawdzająca rolę zamiast dwóch osobnych mechanizmów)
@@ -78,17 +78,17 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 
 ## ETAP 3 — INFRASTRUKTURA MULTI-TENANT — 10 pozycji
 - [ ] 3.1 [ICE 32] Automat IMAP z laptopa recepcji → Supabase cron+Edge (likwidacja SPOF, R19)
-- [ ] 3.2 Link kierownika per tenant: app.guestsage.pl/t/{hotel}/panel (jeden deploy)
-- [ ] 3.3 Maile raportowe per tenant: centralny inbound raporty+{hotel}@guestsage.pl + routing
+- [ ] 3.2 [ICE 30] Link kierownika per tenant: app.guestsage.pl/t/{hotel}/panel (jeden deploy)
+- [ ] 3.3 [ICE 30] Maile raportowe per tenant: centralny inbound raporty+{hotel}@guestsage.pl + routing
 - [ ] 3.4 [ICE 24] Interfejs PmsConnector — KWHotel jako pierwsza wtyczka + import CSV jako MVP (R14)
 - [ ] 3.5 [ICE 36] hkserver: strony LAN jako pliki statyczne + SSE zamiast pollingu 1s/4s/5s (R9)
 - [ ] 3.6 [ICE 36] Polling → zdarzenia w usterkach/czacie/agencie/HKLive (R11)
 - [ ] 3.7 [ICE 18] panel.html (4588 linii) do pipeline'u Vite ze wspólnymi modułami (R15)
-- [ ] 3.8 Konsolidacja dwóch systemów web-push (VAPID hkservera + Edge push-send) w jeden
-- [ ] 3.9 hk_plan w Supabase jako jedyne źródło planów HK (dysk tylko jako cache)
-- [ ] 3.10 Baza: pozostać przy jednym projekcie Supabase multi-tenant, region EU + DPA per hotel + retencja pg_cron
+- [ ] 3.8 [ICE 25] Konsolidacja dwóch systemów web-push (VAPID hkservera + Edge push-send) w jeden
+- [ ] 3.9 [ICE 25] hk_plan w Supabase jako jedyne źródło planów HK (dysk tylko jako cache)
+- [ ] 3.10 [ICE 20] Baza: pozostać przy jednym projekcie Supabase multi-tenant, region EU + DPA per hotel + retencja pg_cron
 
-## ETAP 4 — NOWE FUNKCJE — teraz 25 pozycje
+## ETAP 4 — NOWE FUNKCJE — 23 pozycje
 - [ ] 4.1 [ICE 48, START] Wpłaty/wypłaty do sejfu — rozszerzenie strefy zamrożonej, pełne testy (S5a)
 - [ ] 4.2 [ICE 36, add-on/STANDARD] Sklepik recepcji — osobna linia utargu w raporcie (S5b)
 - [ ] 4.3 [ICE 64, STANDARD] Dashboard przyjazdów/wyjazdów dnia (F1 — backend już gotowy)
@@ -117,18 +117,22 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 - [x] 4.26 [ICE 40, platforma] Kokpit operatora SaaS „Hotele" — lista hoteli, status/opłacone-do, kill-switch, numer WhatsApp per hotel (F17 — brainstorming 22-23.07.2026; domyka „panel super-admin" z SAAS_PLAN) — KOD GOTOWY
 
 ## ETAP 5 — KOMERCJA — 4 pozycje
-- [ ] 5.1 Tiery cenowe: START 149 / STANDARD 299 / PRO 499 / PREMIUM 749 PLN/msc + add-ony 29–99
-- [ ] 5.2 Płatności i licencje: Paddle/Stripe + klucze licencyjne + kill-switch
-- [ ] 5.3 Prawne: umowa SaaS + DPA per hotel + polityka retencji (dział LEG)
-- [ ] 5.4 Pilot: hotel #2 na wersji neutralnej — dowód, że fabryka wersji działa
+- [ ] 5.1 [ICE 40] Tiery cenowe: START 149 / STANDARD 299 / PRO 499 / PREMIUM 749 PLN/msc + add-ony 29–99. ⚠️ Nazewnictwo tieru PREMIUM jako „AI/BI” myli: silnik cen (4.20) to jawny wzór wagowy, ZERO wywołań modelu językowego (potwierdzone testem działu AI) — opisywać jako „inteligentne rekomendacje”, nie „AI”, żeby nie wprowadzać klienta w błąd
+- [ ] 5.2 [ICE 45] Płatności i licencje: Paddle/Stripe + klucze licencyjne + kill-switch
+- [ ] 5.3 [ICE 35] Prawne: umowa SaaS + DPA per hotel + polityka retencji (dział LEG)
+- [ ] 5.4 [ICE 25] Pilot: hotel #2 na wersji neutralnej — dowód, że fabryka wersji działa; zależny od ukończenia Etapów 0-3, dlatego niski Ease mimo wysokiego Impact
 
 ---
-**Suma: 83 pozycje** (20.07.2026: +3 autoryzacja, +6 opinie/ceny, +4 aplikacja
-kierownika, +1 konfigurowalność, +4 audyt design/emoji, +1 rozbicie cen na
-bezpieczną wersję bez konkurencji; 22-23.07.2026: +3 z brainstormingu — bot
-WhatsApp do grafiku, onboarding pracownika, kokpit „Hotele" operatora SaaS).
-Pozycja 4.23 (jedyna z ryzykiem prawnym) jest teraz opcjonalnym dodatkiem
+**Suma: 83 pozycje** (80 planowanych + 3 zrobione: 4.24-4.26). Wszystkie 80
+niezrobionych mają teraz wycenę ICE (test działu DATA 23.07.2026 wykrył
+28 brakujących + błędne liczby w nagłówkach etapów — poprawione).
+Pozycja 4.23 (jedyna z ryzykiem prawnym) jest opcjonalnym dodatkiem
 wyłączonym domyślnie, nie blokerem.
+✅ POTWIERDZONE 23.07.2026: realizacja poszła naprzód w równoległej sesji wg
+WYKONANIE.md (git log: commity 71be53e…c676641, testy 45→88 zielonych).
+Etapy 0-4 częściowo/w większości zaimplementowane w kodzie — status
+checkboxów `[ ]` w tym pliku NIE jest już aktualny dla wielu pozycji,
+wymaga przeglądu (patrz git log projektu, nie tylko ten plik).
 ⚠️ Migracje bazy przy 0045 (audyt bazował na 0001–0037) — skoordynować
 z równoległą pracą PRZED Etapem 0. Kolejność: Etap 0 zawsze pierwszy.
 Etap 1 równolegle z Etapem 2. Etap 3 kończy się przed przyjęciem hotelu #2.

@@ -105,6 +105,10 @@ begin
 end $$;
 
 -- ─── Menedżer: lista próśb + zbiorcza siatka odpowiedzi ───────────────────────
+-- drop: gdy ten plik jest ponownie uruchamiany na bazie, która przeszła już
+-- przez 0028/0048 (szersza sygnatura), samo "create or replace" nie wystarczy —
+-- Postgres nie pozwala zwęzić kolumn OUT bez jawnego DROP FUNCTION najpierw.
+drop function if exists public.list_availability_requests();
 create or replace function public.list_availability_requests()
 returns table(id uuid, period_type text, period_start date, created_by text,
               created_at timestamptz, persons bigint, answered bigint)
@@ -118,6 +122,8 @@ language sql stable security definer set search_path = public as $$
   order by r.created_at desc limit 50;
 $$;
 
+-- drop: ten sam powód co wyżej — 0024/0031 poszerzają kolumny OUT.
+drop function if exists public.get_request_grid(uuid);
 create or replace function public.get_request_grid(p_request_id uuid)
 returns table(person text, token text, kind text, date date, choice text)
 language sql stable security definer set search_path = public as $$

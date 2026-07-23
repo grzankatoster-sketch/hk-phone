@@ -115,7 +115,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .add-extra{background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:7px 14px;color:var(--plum);font-size:12px;cursor:pointer;font-family:inherit}
 .num-input{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:8px 6px;color:var(--ink);font-size:16px;font-weight:800;text-align:center;font-family:inherit}
 .num-input:focus{outline:none;border-color:var(--plum)}
-.fault-box{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.mini-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:10px 12px;margin-top:8px;border:1px solid var(--line);border-radius:10px;background:var(--tint);font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;text-align:left}
+.mini-toggle svg{flex-shrink:0}
+.mini-toggle.fault-toggle{color:var(--red)}
+.mini-toggle.found-toggle{color:var(--green)}
+.mini-toggle .chevron{margin-left:auto;transition:transform .15s}
+.mini-toggle.open .chevron{transform:rotate(180deg)}
+.fault-box{display:none;margin-top:8px;border-top:1px solid var(--line);padding-top:12px}
+.fault-box.open{display:block}
 .fault-title{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .fault-box textarea{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
 .fault-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
@@ -433,8 +440,9 @@ function renderTeamHtml() {
     priority_off:     l => `Recepcja: anulowano priorytet pok. ${escHtml(l.room)}`,
     info_request:     l => `Recepcja pyta o pok. ${escHtml(l.room)}`,
     info_reply:       l => `pok. ${escHtml(l.room)} · ${escHtml(l.worker)}: ${escHtml(l.extra||"")}`,
+    late_checkout_left: l => l.extra ? escHtml(l.extra) : `Recepcja: gość wyjechał — pok. ${escHtml(l.room)} do sprzątania teraz`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -492,6 +500,12 @@ function priorityFor(no) {
     else if (l.action === "priority_off") on = false;
   }
   return on;
+}
+
+// Czy recepcja właśnie zaalarmowała, że gość z late checkout wyjechał (zdarzenie jednorazowe,
+// pokazujemy dopóki pokój czeka na sprzątanie — po starcie/zakończeniu komunikat jest już nieaktualny).
+function lateCheckoutFor(no) {
+  return allLogs.some(l => l.room === no && l.action === "late_checkout_left");
 }
 
 // Czy recepcja czeka na odpowiedź o tym pokoju? (info_request bez późniejszego info_reply)
@@ -554,6 +568,8 @@ function roomCard(no, status) {
   const pendingAsk = pendingAskFor(no);
   const isPriority  = priorityFor(no);
   const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
+  const isLateCheckout = status==="W" && lateCheckoutFor(no);
+  const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
   // Przycisk odpowiedzi (z gotowcami) pokazujemy TYLKO gdy recepcja faktycznie
   // pyta o status pokoju. Bez pytania pracownik widzi sam "Zaczynam sprzątać".
@@ -578,7 +594,7 @@ function roomCard(no, status) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
-  buttons = prioBanner + askBanner + buttons + replyUI;
+  buttons = prioBanner + lateBanner + askBanner + buttons + replyUI;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
@@ -634,8 +650,13 @@ function renderReportPanel(room) {
   html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
   html += `<button class="btn btn-green" onclick="doneRoom('${room}')">✓ Gotowe — zatwierdź raport</button>`;
 
-  // ── Usterka (na dole pokoju) ──
-  html += `<div class="fault-box">
+  // ── Usterka (zwinięta domyślnie — kafel + rozwijana treść) ──
+  html += `<button class="mini-toggle fault-toggle" onclick="toggleMiniBox(this)">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+    <span>Zgłoś usterkę</span>
+    <svg class="chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+  <div class="fault-box">
     <div class="fault-title">⚠ Zgłoś usterkę</div>
     <textarea placeholder="Co się stało? Opisz usterkę…" oninput="getFaultDraft('${room}').desc=this.value">${escHtml(fd.desc)}</textarea>
     <div class="fault-thumbs">`;
@@ -649,9 +670,14 @@ function renderReportPanel(room) {
     <button class="btn btn-fault" onclick="reportFault('${room}')">⚠ Wyślij zgłoszenie usterki</button>
   </div>`;
 
-  // ── Znaleziony przedmiot (na dole pokoju, działa jak usterka) ──
+  // ── Znaleziony przedmiot (zwinięty domyślnie — kafel + rozwijana treść) ──
   const found = getFoundDraft(room);
-  html += `<div class="fault-box">
+  html += `<button class="mini-toggle found-toggle" onclick="toggleMiniBox(this)">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.29 7 12 12l8.71-5"/><path d="M12 22V12"/></svg>
+    <span>Znaleziony przedmiot</span>
+    <svg class="chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+  <div class="fault-box">
     <div class="found-title">📦 Znaleziony przedmiot</div>
     <textarea placeholder="Co znalazłaś? Opisz przedmiot…" oninput="getFoundDraft('${room}').desc=this.value">${escHtml(found.desc)}</textarea>
     <div class="fault-thumbs">`;
@@ -666,6 +692,12 @@ function renderReportPanel(room) {
   </div>`;
 
   panel.innerHTML = html;
+}
+
+function toggleMiniBox(btn) {
+  btn.classList.toggle("open");
+  const box = btn.nextElementSibling;
+  if (box) box.classList.toggle("open");
 }
 
 // ─── Usterki (zdjęcia → Supabase Storage, wpis → tabela faults) ─────────────────

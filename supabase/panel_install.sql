@@ -1,5 +1,5 @@
 -- PANEL MENEDŻERSKI + APLIKACJA — INSTALATOR PEŁNY (wklej CAŁOŚĆ do Supabase SQL Editor → Run)
--- Wygenerowany automatycznie ze wszystkich plików supabase/migrations/ (0001-0056) + seed_app_accounts.sql.
+-- Wygenerowany automatycznie ze wszystkich plików supabase/migrations/ (0001-0057) + seed_app_accounts.sql.
 -- Każda migracja jest idempotentna (create...if not exists / drop...if exists+create) — bezpiecznie
 -- uruchomić ten plik w CAŁOŚCI nawet jeśli część z nich była już wcześniej wklejona osobno.
 -- NIE zawiera kroków spoza SQL (Auth Confirm-email OFF, pg_cron extension, Database Webhooks,
@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.hk_workers (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_workers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_workers" ON public.hk_workers;
 CREATE POLICY "anon_read_hk_workers" ON public.hk_workers
   FOR SELECT TO anon USING (true);
 
@@ -35,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.hk_rooms (
   UNIQUE (tenant_id, room_no)
 );
 ALTER TABLE public.hk_rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_rooms" ON public.hk_rooms;
 CREATE POLICY "anon_read_hk_rooms" ON public.hk_rooms
   FOR SELECT TO anon USING (true);
 
@@ -55,6 +57,7 @@ CREATE TABLE IF NOT EXISTS public.hk_tasks (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_tasks" ON public.hk_tasks;
 CREATE POLICY "anon_read_hk_tasks" ON public.hk_tasks
   FOR SELECT TO anon USING (true);
 
@@ -70,6 +73,7 @@ CREATE TABLE IF NOT EXISTS public.hk_logs (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_logs" ON public.hk_logs;
 CREATE POLICY "anon_read_hk_logs" ON public.hk_logs
   FOR SELECT TO anon USING (true);
 
@@ -86,6 +90,7 @@ CREATE TABLE IF NOT EXISTS public.hk_plan (
   UNIQUE (tenant_id, date_key, source)
 );
 ALTER TABLE public.hk_plan ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_plan" ON public.hk_plan;
 CREATE POLICY "anon_read_hk_plan" ON public.hk_plan
   FOR SELECT TO anon USING (true);
 
@@ -107,7 +112,9 @@ CREATE TABLE IF NOT EXISTS public.rooms (
   UNIQUE (tenant_id, room_no)
 );
 ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_rooms" ON public.rooms;
 CREATE POLICY "anon_read_rooms" ON public.rooms FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_rooms" ON public.rooms;
 CREATE POLICY "anon_write_rooms" ON public.rooms FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── managers ─────────────────────────────────────────────────────────────────
@@ -121,7 +128,9 @@ CREATE TABLE IF NOT EXISTS public.managers (
   UNIQUE (tenant_id, name)
 );
 ALTER TABLE public.managers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_managers" ON public.managers;
 CREATE POLICY "anon_read_managers" ON public.managers FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_managers" ON public.managers;
 CREATE POLICY "anon_write_managers" ON public.managers FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── app_settings ─────────────────────────────────────────────────────────────
@@ -135,7 +144,9 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   UNIQUE (tenant_id, key)
 );
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_app_settings" ON public.app_settings;
 CREATE POLICY "anon_read_app_settings" ON public.app_settings FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_app_settings" ON public.app_settings;
 CREATE POLICY "anon_write_app_settings" ON public.app_settings FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── default_tasks ────────────────────────────────────────────────────────────
@@ -149,7 +160,9 @@ CREATE TABLE IF NOT EXISTS public.default_tasks (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.default_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_default_tasks" ON public.default_tasks;
 CREATE POLICY "anon_read_default_tasks" ON public.default_tasks FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_default_tasks" ON public.default_tasks;
 CREATE POLICY "anon_write_default_tasks" ON public.default_tasks FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── manager_alerts ───────────────────────────────────────────────────────────
@@ -166,7 +179,9 @@ CREATE TABLE IF NOT EXISTS public.manager_alerts (
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.manager_alerts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_manager_alerts" ON public.manager_alerts;
 CREATE POLICY "anon_read_manager_alerts" ON public.manager_alerts FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_manager_alerts" ON public.manager_alerts;
 CREATE POLICY "anon_write_manager_alerts" ON public.manager_alerts FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── standing_reminders ───────────────────────────────────────────────────────
@@ -180,7 +195,9 @@ CREATE TABLE IF NOT EXISTS public.standing_reminders (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.standing_reminders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_standing_reminders" ON public.standing_reminders;
 CREATE POLICY "anon_read_standing_reminders" ON public.standing_reminders FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_standing_reminders" ON public.standing_reminders;
 CREATE POLICY "anon_write_standing_reminders" ON public.standing_reminders FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── faults ───────────────────────────────────────────────────────────────────
@@ -202,7 +219,9 @@ CREATE TABLE IF NOT EXISTS public.faults (
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.faults ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_faults" ON public.faults;
 CREATE POLICY "anon_read_faults" ON public.faults FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_faults" ON public.faults;
 CREATE POLICY "anon_write_faults" ON public.faults FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── messages ─────────────────────────────────────────────────────────────────
@@ -221,7 +240,9 @@ CREATE TABLE IF NOT EXISTS public.messages (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_messages" ON public.messages;
 CREATE POLICY "anon_read_messages" ON public.messages FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_messages" ON public.messages;
 CREATE POLICY "anon_write_messages" ON public.messages FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── vouchers ─────────────────────────────────────────────────────────────────
@@ -241,7 +262,9 @@ CREATE TABLE IF NOT EXISTS public.vouchers (
   created_at     timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.vouchers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_vouchers" ON public.vouchers;
 CREATE POLICY "anon_read_vouchers" ON public.vouchers FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_vouchers" ON public.vouchers;
 CREATE POLICY "anon_write_vouchers" ON public.vouchers FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── booking_reviews ──────────────────────────────────────────────────────────
@@ -261,7 +284,9 @@ CREATE TABLE IF NOT EXISTS public.booking_reviews (
   UNIQUE (tenant_id, source_id)
 );
 ALTER TABLE public.booking_reviews ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_booking_reviews" ON public.booking_reviews;
 CREATE POLICY "anon_read_booking_reviews" ON public.booking_reviews FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_booking_reviews" ON public.booking_reviews;
 CREATE POLICY "anon_write_booking_reviews" ON public.booking_reviews FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── schedule ─────────────────────────────────────────────────────────────────
@@ -277,7 +302,9 @@ CREATE TABLE IF NOT EXISTS public.schedule (
   UNIQUE (tenant_id, date_key, employee)
 );
 ALTER TABLE public.schedule ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_schedule" ON public.schedule;
 CREATE POLICY "anon_read_schedule" ON public.schedule FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_schedule" ON public.schedule;
 CREATE POLICY "anon_write_schedule" ON public.schedule FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── shift_reports ────────────────────────────────────────────────────────────
@@ -291,7 +318,9 @@ CREATE TABLE IF NOT EXISTS public.shift_reports (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.shift_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_shift_reports" ON public.shift_reports;
 CREATE POLICY "anon_read_shift_reports" ON public.shift_reports FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_shift_reports" ON public.shift_reports;
 CREATE POLICY "anon_write_shift_reports" ON public.shift_reports FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── daily_reports ────────────────────────────────────────────────────────────
@@ -304,7 +333,9 @@ CREATE TABLE IF NOT EXISTS public.daily_reports (
   UNIQUE (tenant_id, date_key)
 );
 ALTER TABLE public.daily_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_daily_reports" ON public.daily_reports;
 CREATE POLICY "anon_read_daily_reports" ON public.daily_reports FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_daily_reports" ON public.daily_reports;
 CREATE POLICY "anon_write_daily_reports" ON public.daily_reports FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── payment_corrections ──────────────────────────────────────────────────────
@@ -319,7 +350,9 @@ CREATE TABLE IF NOT EXISTS public.payment_corrections (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.payment_corrections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_payment_corrections" ON public.payment_corrections;
 CREATE POLICY "anon_read_payment_corrections" ON public.payment_corrections FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_payment_corrections" ON public.payment_corrections;
 CREATE POLICY "anon_write_payment_corrections" ON public.payment_corrections FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── hk_adhoc_tasks ───────────────────────────────────────────────────────────
@@ -338,7 +371,9 @@ CREATE TABLE IF NOT EXISTS public.hk_adhoc_tasks (
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_adhoc_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_adhoc_tasks" ON public.hk_adhoc_tasks;
 CREATE POLICY "anon_read_hk_adhoc_tasks" ON public.hk_adhoc_tasks FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_hk_adhoc_tasks" ON public.hk_adhoc_tasks;
 CREATE POLICY "anon_write_hk_adhoc_tasks" ON public.hk_adhoc_tasks FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── caretaker_tokens ─────────────────────────────────────────────────────────
@@ -352,7 +387,9 @@ CREATE TABLE IF NOT EXISTS public.caretaker_tokens (
   UNIQUE (tenant_id, token)
 );
 ALTER TABLE public.caretaker_tokens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_caretaker_tokens" ON public.caretaker_tokens;
 CREATE POLICY "anon_read_caretaker_tokens" ON public.caretaker_tokens FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_caretaker_tokens" ON public.caretaker_tokens;
 CREATE POLICY "anon_write_caretaker_tokens" ON public.caretaker_tokens FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── push_subscriptions ───────────────────────────────────────────────────────
@@ -367,25 +404,32 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   UNIQUE (tenant_id, endpoint)
 );
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_push_subscriptions" ON public.push_subscriptions;
 CREATE POLICY "anon_read_push_subscriptions" ON public.push_subscriptions FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_push_subscriptions" ON public.push_subscriptions;
 CREATE POLICY "anon_write_push_subscriptions" ON public.push_subscriptions FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ========== 0003_hk_write_policies.sql ==========
 -- Dodanie polityk zapisu (INSERT/UPDATE/DELETE) dla tabel HK
 -- Analogicznie do anon_write_* w 0002_app_tables.sql
 
+DROP POLICY IF EXISTS "anon_write_hk_workers" ON public.hk_workers;
 CREATE POLICY "anon_write_hk_workers" ON public.hk_workers
   FOR ALL TO anon USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "anon_write_hk_rooms" ON public.hk_rooms;
 CREATE POLICY "anon_write_hk_rooms" ON public.hk_rooms
   FOR ALL TO anon USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "anon_write_hk_tasks" ON public.hk_tasks;
 CREATE POLICY "anon_write_hk_tasks" ON public.hk_tasks
   FOR ALL TO anon USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "anon_write_hk_logs" ON public.hk_logs;
 CREATE POLICY "anon_write_hk_logs" ON public.hk_logs
   FOR ALL TO anon USING (true) WITH CHECK (true);
 
+DROP POLICY IF EXISTS "anon_write_hk_plan" ON public.hk_plan;
 CREATE POLICY "anon_write_hk_plan" ON public.hk_plan
   FOR ALL TO anon USING (true) WITH CHECK (true);
 
@@ -821,6 +865,10 @@ begin
 end $$;
 
 -- ─── Menedżer: lista próśb + zbiorcza siatka odpowiedzi ───────────────────────
+-- drop: gdy ten plik jest ponownie uruchamiany na bazie, która przeszła już
+-- przez 0028/0048 (szersza sygnatura), samo "create or replace" nie wystarczy —
+-- Postgres nie pozwala zwęzić kolumn OUT bez jawnego DROP FUNCTION najpierw.
+drop function if exists public.list_availability_requests();
 create or replace function public.list_availability_requests()
 returns table(id uuid, period_type text, period_start date, created_by text,
               created_at timestamptz, persons bigint, answered bigint)
@@ -834,6 +882,8 @@ language sql stable security definer set search_path = public as $$
   order by r.created_at desc limit 50;
 $$;
 
+-- drop: ten sam powód co wyżej — 0024/0031 poszerzają kolumny OUT.
+drop function if exists public.get_request_grid(uuid);
 create or replace function public.get_request_grid(p_request_id uuid)
 returns table(person text, token text, kind text, date date, choice text)
 language sql stable security definer set search_path = public as $$
@@ -2801,7 +2851,10 @@ grant execute on function public.mark_onboarded() to authenticated;
 --
 -- Idempotentne.
 
-create extension if not exists pgcrypto;
+-- Supabase instaluje pgcrypto domyślnie do schematu `extensions`, nie `public` —
+-- funkcje poniżej muszą mieć `extensions` w search_path, inaczej pgp_sym_encrypt/
+-- pgp_sym_decrypt "nie istnieją" mimo że rozszerzenie jest włączone.
+create extension if not exists pgcrypto with schema extensions;
 
 -- ─── Kontakty pracowników (numer telefonu WhatsApp, per tenant+imię) ──────────
 create table if not exists public.employee_contacts (
@@ -2818,7 +2871,7 @@ alter table public.employee_contacts enable row level security;
 
 -- Manager wpisuje/aktualizuje numer pracownika. Nie zwraca numeru z powrotem.
 create or replace function public.set_employee_phone(p_tenant_id uuid, p_name text, p_phone text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if public.current_app_role() is null then raise exception 'Brak uprawnień.'; end if;
   if coalesce(trim(p_name),'') = '' then raise exception 'Brak imienia.'; end if;
@@ -2847,7 +2900,7 @@ grant execute on function public.list_employee_phone_status(uuid) to authenticat
 -- nie mógł tego wywołać, nawet gdyby ktoś zgadł nazwę funkcji.
 create or replace function public.decrypt_employee_phones(p_tenant_id uuid)
 returns table(name text, phone text)
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = public, extensions as $$
   select name, pgp_sym_decrypt(phone_enc, current_setting('app.whatsapp_key'))
   from public.employee_contacts
   where tenant_id = p_tenant_id and phone_enc is not null;
@@ -3034,6 +3087,18 @@ begin
   return v_id;
 end $$;
 grant execute on function public.superadmin_create_tenant(text, text, text) to authenticated;
+
+-- ========== 0057_schedules_rls.sql ==========
+-- 0057_schedules_rls.sql
+-- `public.schedules` (0033_grafik_schedule.sql) powstała bez RLS — złapane przez
+-- linter Supabase przy wklejaniu panel_install.sql: "Clients using anon or
+-- authenticated keys may be able to access public.schedules". Cały kod appki
+-- czyta/pisze ten grafik WYŁĄCZNIE przez get_schedule/save_schedule (SECURITY
+-- DEFINER) — brak jakiegokolwiek bezpośredniego `.from("schedules")` w src/panel.
+-- Włączenie RLS bez żadnej polityki (jak availability_requests/whatsapp_send_queue)
+-- jest więc bezpieczne i niczego nie zrywa. Idempotentne.
+
+alter table public.schedules enable row level security;
 
 -- ========== seed_app_accounts.sql ==========
 -- seed_app_accounts.sql

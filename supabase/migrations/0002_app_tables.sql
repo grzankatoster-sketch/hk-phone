@@ -15,7 +15,9 @@ CREATE TABLE IF NOT EXISTS public.rooms (
   UNIQUE (tenant_id, room_no)
 );
 ALTER TABLE public.rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_rooms" ON public.rooms;
 CREATE POLICY "anon_read_rooms" ON public.rooms FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_rooms" ON public.rooms;
 CREATE POLICY "anon_write_rooms" ON public.rooms FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── managers ─────────────────────────────────────────────────────────────────
@@ -29,7 +31,9 @@ CREATE TABLE IF NOT EXISTS public.managers (
   UNIQUE (tenant_id, name)
 );
 ALTER TABLE public.managers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_managers" ON public.managers;
 CREATE POLICY "anon_read_managers" ON public.managers FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_managers" ON public.managers;
 CREATE POLICY "anon_write_managers" ON public.managers FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── app_settings ─────────────────────────────────────────────────────────────
@@ -43,7 +47,9 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   UNIQUE (tenant_id, key)
 );
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_app_settings" ON public.app_settings;
 CREATE POLICY "anon_read_app_settings" ON public.app_settings FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_app_settings" ON public.app_settings;
 CREATE POLICY "anon_write_app_settings" ON public.app_settings FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── default_tasks ────────────────────────────────────────────────────────────
@@ -57,7 +63,9 @@ CREATE TABLE IF NOT EXISTS public.default_tasks (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.default_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_default_tasks" ON public.default_tasks;
 CREATE POLICY "anon_read_default_tasks" ON public.default_tasks FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_default_tasks" ON public.default_tasks;
 CREATE POLICY "anon_write_default_tasks" ON public.default_tasks FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── manager_alerts ───────────────────────────────────────────────────────────
@@ -74,7 +82,9 @@ CREATE TABLE IF NOT EXISTS public.manager_alerts (
   created_at   timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.manager_alerts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_manager_alerts" ON public.manager_alerts;
 CREATE POLICY "anon_read_manager_alerts" ON public.manager_alerts FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_manager_alerts" ON public.manager_alerts;
 CREATE POLICY "anon_write_manager_alerts" ON public.manager_alerts FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── standing_reminders ───────────────────────────────────────────────────────
@@ -88,7 +98,9 @@ CREATE TABLE IF NOT EXISTS public.standing_reminders (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.standing_reminders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_standing_reminders" ON public.standing_reminders;
 CREATE POLICY "anon_read_standing_reminders" ON public.standing_reminders FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_standing_reminders" ON public.standing_reminders;
 CREATE POLICY "anon_write_standing_reminders" ON public.standing_reminders FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── faults ───────────────────────────────────────────────────────────────────
@@ -110,7 +122,9 @@ CREATE TABLE IF NOT EXISTS public.faults (
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.faults ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_faults" ON public.faults;
 CREATE POLICY "anon_read_faults" ON public.faults FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_faults" ON public.faults;
 CREATE POLICY "anon_write_faults" ON public.faults FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── messages ─────────────────────────────────────────────────────────────────
@@ -129,7 +143,9 @@ CREATE TABLE IF NOT EXISTS public.messages (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_messages" ON public.messages;
 CREATE POLICY "anon_read_messages" ON public.messages FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_messages" ON public.messages;
 CREATE POLICY "anon_write_messages" ON public.messages FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── vouchers ─────────────────────────────────────────────────────────────────
@@ -149,7 +165,9 @@ CREATE TABLE IF NOT EXISTS public.vouchers (
   created_at     timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.vouchers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_vouchers" ON public.vouchers;
 CREATE POLICY "anon_read_vouchers" ON public.vouchers FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_vouchers" ON public.vouchers;
 CREATE POLICY "anon_write_vouchers" ON public.vouchers FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── booking_reviews ──────────────────────────────────────────────────────────
@@ -169,7 +187,9 @@ CREATE TABLE IF NOT EXISTS public.booking_reviews (
   UNIQUE (tenant_id, source_id)
 );
 ALTER TABLE public.booking_reviews ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_booking_reviews" ON public.booking_reviews;
 CREATE POLICY "anon_read_booking_reviews" ON public.booking_reviews FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_booking_reviews" ON public.booking_reviews;
 CREATE POLICY "anon_write_booking_reviews" ON public.booking_reviews FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── schedule ─────────────────────────────────────────────────────────────────
@@ -185,7 +205,9 @@ CREATE TABLE IF NOT EXISTS public.schedule (
   UNIQUE (tenant_id, date_key, employee)
 );
 ALTER TABLE public.schedule ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_schedule" ON public.schedule;
 CREATE POLICY "anon_read_schedule" ON public.schedule FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_schedule" ON public.schedule;
 CREATE POLICY "anon_write_schedule" ON public.schedule FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── shift_reports ────────────────────────────────────────────────────────────
@@ -199,7 +221,9 @@ CREATE TABLE IF NOT EXISTS public.shift_reports (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.shift_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_shift_reports" ON public.shift_reports;
 CREATE POLICY "anon_read_shift_reports" ON public.shift_reports FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_shift_reports" ON public.shift_reports;
 CREATE POLICY "anon_write_shift_reports" ON public.shift_reports FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── daily_reports ────────────────────────────────────────────────────────────
@@ -212,7 +236,9 @@ CREATE TABLE IF NOT EXISTS public.daily_reports (
   UNIQUE (tenant_id, date_key)
 );
 ALTER TABLE public.daily_reports ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_daily_reports" ON public.daily_reports;
 CREATE POLICY "anon_read_daily_reports" ON public.daily_reports FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_daily_reports" ON public.daily_reports;
 CREATE POLICY "anon_write_daily_reports" ON public.daily_reports FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── payment_corrections ──────────────────────────────────────────────────────
@@ -227,7 +253,9 @@ CREATE TABLE IF NOT EXISTS public.payment_corrections (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.payment_corrections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_payment_corrections" ON public.payment_corrections;
 CREATE POLICY "anon_read_payment_corrections" ON public.payment_corrections FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_payment_corrections" ON public.payment_corrections;
 CREATE POLICY "anon_write_payment_corrections" ON public.payment_corrections FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── hk_adhoc_tasks ───────────────────────────────────────────────────────────
@@ -246,7 +274,9 @@ CREATE TABLE IF NOT EXISTS public.hk_adhoc_tasks (
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_adhoc_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_adhoc_tasks" ON public.hk_adhoc_tasks;
 CREATE POLICY "anon_read_hk_adhoc_tasks" ON public.hk_adhoc_tasks FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_hk_adhoc_tasks" ON public.hk_adhoc_tasks;
 CREATE POLICY "anon_write_hk_adhoc_tasks" ON public.hk_adhoc_tasks FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── caretaker_tokens ─────────────────────────────────────────────────────────
@@ -260,7 +290,9 @@ CREATE TABLE IF NOT EXISTS public.caretaker_tokens (
   UNIQUE (tenant_id, token)
 );
 ALTER TABLE public.caretaker_tokens ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_caretaker_tokens" ON public.caretaker_tokens;
 CREATE POLICY "anon_read_caretaker_tokens" ON public.caretaker_tokens FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_caretaker_tokens" ON public.caretaker_tokens;
 CREATE POLICY "anon_write_caretaker_tokens" ON public.caretaker_tokens FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ─── push_subscriptions ───────────────────────────────────────────────────────
@@ -275,5 +307,7 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   UNIQUE (tenant_id, endpoint)
 );
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_push_subscriptions" ON public.push_subscriptions;
 CREATE POLICY "anon_read_push_subscriptions" ON public.push_subscriptions FOR SELECT TO anon USING (true);
+DROP POLICY IF EXISTS "anon_write_push_subscriptions" ON public.push_subscriptions;
 CREATE POLICY "anon_write_push_subscriptions" ON public.push_subscriptions FOR ALL TO anon USING (true) WITH CHECK (true);

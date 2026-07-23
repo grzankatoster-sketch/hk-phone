@@ -1,8 +1,8 @@
 import React from "react";
 import { tenantConfig } from "../tenants/config";
 
-// Conrad Comfort logo SVG
-// Wzor: 4 kropki nad napisem CONRAD + COMFORT
+// Logo tenanta (SVG) — nazwa czytana z tenantConfig.hotelName/hotelShort, nie zaszyta na sztywno
+// Wzor: 4 kropki nad nazwa hotelu (linia 1 = pierwsze slowo, linia 2 = reszta)
 // Kolory: plum (tlo) + biel (tekst), albo plum (tekst) + przezroczysty
 //
 // Warianty:
@@ -62,6 +62,7 @@ function DotsOnly({ tone, width, height, className, ariaLabel, style }) {
 function IconLogo({ tone, width, height, className, ariaLabel, style }) {
   const { bg, fg } = colors(tone);
   const showBg = bg !== "transparent";
+  const monogram = (tenantConfig.hotelShort || "").toUpperCase();
   const dots = [
     { cx: 28, delay: "0s"   },
     { cx: 36, delay: "0.7s" },
@@ -79,7 +80,7 @@ function IconLogo({ tone, width, height, className, ariaLabel, style }) {
         </circle>
       ))}
       <text x="40" y="56" fontFamily="'DM Serif Display', serif" fontSize="26"
-            fontWeight="400" textAnchor="middle" fill={fg} letterSpacing="0.06em">CC</text>
+            fontWeight="400" textAnchor="middle" fill={fg} letterSpacing="0.06em">{monogram}</text>
     </svg>
   );
 }
@@ -87,6 +88,11 @@ function IconLogo({ tone, width, height, className, ariaLabel, style }) {
 function FullLogo({ tone, width, height, className, ariaLabel, style }) {
   const { bg, fg } = colors(tone);
   const showBg = bg !== "transparent";
+  // Nazwa hotelu na dwie linie: pierwsze słowo duże (serif), reszta mała (sans, szeroki tracking) —
+  // wzorem oryginalnego układu CONRAD/COMFORT, ale z tenantConfig.hotelName zamiast literału.
+  const nameWords = (tenantConfig.hotelName || "").trim().split(/\s+/).filter(Boolean);
+  const line1 = (nameWords[0] || "").toUpperCase();
+  const line2 = nameWords.slice(1).join(" ").toUpperCase();
   // Staggered breathing: each dot peaks at a different phase of the 4s cycle
   const dots = [
     { cx: 92,  delay: "0s"    },
@@ -105,14 +111,14 @@ function FullLogo({ tone, width, height, className, ariaLabel, style }) {
           <animate attributeName="opacity" values="0.75;1;0.75" dur="4s" begin={delay} repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/>
         </circle>
       ))}
-      {/* CONRAD */}
       <text x="110" y="62" fontFamily="'DM Serif Display', serif"
             fontSize="22" fontWeight="400" letterSpacing="0.18em"
-            textAnchor="middle" fill={fg}>CONRAD</text>
-      {/* COMFORT */}
-      <text x="110" y="86" fontFamily="'Inter', sans-serif"
-            fontSize="11" fontWeight="500" letterSpacing="0.55em"
-            textAnchor="middle" fill={fg}>COMFORT</text>
+            textAnchor="middle" fill={fg}>{line1}</text>
+      {line2 && (
+        <text x="110" y="86" fontFamily="'Inter', sans-serif"
+              fontSize="11" fontWeight="500" letterSpacing="0.55em"
+              textAnchor="middle" fill={fg}>{line2}</text>
+      )}
     </svg>
   );
 }

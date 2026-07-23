@@ -31,7 +31,10 @@ const hkAutomation = require("./hkAutomation.cjs");
 const { fetchBookingReviews } = require("./bookingReviews.cjs");
 
 const APP_CREATOR = "grzankatoster-sketch";
-const APP_COPYRIGHT = "Copyright © 2026 Conrad Comfort. Wszelkie prawa zastrzeżone.";
+// Nazwa hotelu w brandingu Electrona (tytuł okna, copyright) — konfigurowalna przez
+// VITE_HOTEL_NAME (ta sama zmienna co src/tenants/config.js), fallback Conrad Comfort.
+const HOTEL_NAME = process.env.VITE_HOTEL_NAME || "Conrad Comfort";
+const APP_COPYRIGHT = `Copyright © 2026 ${HOTEL_NAME}. Wszelkie prawa zastrzeżone.`;
 
 function sanitizePdfFilename(filename) {
   const base    = path.basename(String(filename || "raport.pdf"));
@@ -87,7 +90,7 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     width: 1280, height: 800, minWidth: 900, minHeight: 600,
-    title: "Panel Recepcji — Conrad Comfort",
+    title: `Panel Recepcji — ${HOTEL_NAME}`,
     autoHideMenuBar: true,
     ...(iconExists ? { icon: iconPath } : {}),
     webPreferences: {

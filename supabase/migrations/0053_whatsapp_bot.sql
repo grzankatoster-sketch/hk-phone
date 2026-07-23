@@ -14,7 +14,10 @@
 --
 -- Idempotentne.
 
-create extension if not exists pgcrypto;
+-- Supabase instaluje pgcrypto domyślnie do schematu `extensions`, nie `public` —
+-- funkcje poniżej muszą mieć `extensions` w search_path, inaczej pgp_sym_encrypt/
+-- pgp_sym_decrypt "nie istnieją" mimo że rozszerzenie jest włączone.
+create extension if not exists pgcrypto with schema extensions;
 
 -- ─── Kontakty pracowników (numer telefonu WhatsApp, per tenant+imię) ──────────
 create table if not exists public.employee_contacts (
@@ -31,7 +34,7 @@ alter table public.employee_contacts enable row level security;
 
 -- Manager wpisuje/aktualizuje numer pracownika. Nie zwraca numeru z powrotem.
 create or replace function public.set_employee_phone(p_tenant_id uuid, p_name text, p_phone text)
-returns void language plpgsql security definer set search_path = public as $$
+returns void language plpgsql security definer set search_path = public, extensions as $$
 begin
   if public.current_app_role() is null then raise exception 'Brak uprawnień.'; end if;
   if coalesce(trim(p_name),'') = '' then raise exception 'Brak imienia.'; end if;
@@ -60,7 +63,7 @@ grant execute on function public.list_employee_phone_status(uuid) to authenticat
 -- nie mógł tego wywołać, nawet gdyby ktoś zgadł nazwę funkcji.
 create or replace function public.decrypt_employee_phones(p_tenant_id uuid)
 returns table(name text, phone text)
-language sql stable security definer set search_path = public as $$
+language sql stable security definer set search_path = public, extensions as $$
   select name, pgp_sym_decrypt(phone_enc, current_setting('app.whatsapp_key'))
   from public.employee_contacts
   where tenant_id = p_tenant_id and phone_enc is not null;

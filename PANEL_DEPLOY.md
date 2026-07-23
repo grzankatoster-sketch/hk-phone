@@ -59,6 +59,23 @@ Bez tego zapisywanie/wysyłka numerów telefonów pracowników (zakładka Grafik
 „📱 Numery WhatsApp") zwróci błąd. Sam serwis bota: `npm run whatsapp:bot`
 (wymaga dedykowanego numeru telefonu — patrz opis w README bota/rozmowie wdrożeniowej).
 
+## 5d) Twój własny kokpit „Hotele" (superadmin.html — OSOBNA strona, nie panel.html)
+To narzędzie tylko dla Ciebie jako operatora SaaS (lista hoteli, opłacone-do,
+wyłącznik awaryjny, numer WhatsApp per hotel) — celowo osobny plik/adres, nie
+zakładka w produkcie sprzedawanym hotelom. Konta z rolą `superadmin` NIE da
+się utworzyć przez UI (zakładka Konta) — to świadome ograniczenie. Załóż
+pierwsze (i jedyne) konto raz, ręcznie w Supabase SQL Editor:
+```sql
+insert into public.app_accounts (tenant_id, name, email, role, claimed)
+values ('00000000-0000-0000-0000-000000000001', 'Operator', 'operator@saas-admin.local', 'superadmin', false)
+on conflict (email) do nothing;
+```
+(`tenant_id` to tylko wymagana kolumna techniczna — konto operatora i tak
+działa poza pojedynczym hotelem). Potem wejdź na
+`https://grzankatoster-sketch.github.io/hk-phone/superadmin.html`, zaloguj się
+loginem „Operator" i dowolnym hasłem (min. 6 znaków) — pierwsze logowanie samo
+je ustawi, jak w panel.html.
+
 ## 6) Publikacja stron
 W projekcie:
 ```bash

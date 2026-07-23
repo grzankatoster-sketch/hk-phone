@@ -530,6 +530,27 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     showToast(`Pokój ${roomNo} — wysłano pytanie o status${worker?` (${worker.split(" ")[0]})`:""}`,"info");
   },[hkDate,hkData,showToast]);
 
+  // Gość z późnym wymeldowaniem (pokój oznaczony jako pobytowy: P/PG/PGZ) właśnie
+  // wyjechał — recepcja przełącza pokój na "do sprzątania" i alarmuje HK natychmiast,
+  // żeby nie weszli za wcześnie (gość jeszcze jest) ani nie dowiedzieli się za późno.
+  const markLateCheckoutLeft=React.useCallback((roomNo)=>{
+    const worker=hkData[roomNo]?.person||null;
+    setRoom(roomNo,"status","W");
+    supabase.functions.invoke("push-send",{body:{role:"hk",worker,tag:`priority-${roomNo}`,title:`🕐 Pokój ${roomNo} — gość wyjechał`,body:`Late checkout: pokój ${roomNo} do sprzątania teraz`,url:"./index.html"}}).then(()=>{},()=>{});
+    fetch("http://localhost:3737/push/priority",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({room:roomNo,workers:worker?[worker]:[]}),
+    }).catch(()=>{});
+    supabase.from("hk_logs").insert({
+      date:hkDate,
+      log_time:new Date().toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"}),
+      worker:worker||"HK",action:"late_checkout_left",room:roomNo,
+      extra:`Recepcja: gość z late checkout wyjechał — pokój ${roomNo} do sprzątania teraz`,
+    }).then(()=>{},()=>{});
+    showToast(`Pokój ${roomNo} — gość wyjechał, HK zaalarmowane${worker?` (${worker.split(" ")[0]})`:""}`,"success");
+  },[hkDate,hkData,setRoom,showToast]);
+
   // Zamknij menu „!" po kliknięciu poza nim
   React.useEffect(()=>{
     if(!priorityMenu)return;
@@ -1109,6 +1130,14 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
               </div>
             )}
           </>
+        ):(rd.status==="P"||rd.status==="PG"||rd.status==="PGZ")?(
+          <button
+            type="button"
+            className="cc-hk-lateout-btn"
+            title="Gość z late checkout wyjechał — zaalarmuj HK"
+            aria-label="Gość wyjechał — pokój do sprzątania teraz"
+            onClick={e=>{e.stopPropagation();markLateCheckoutLeft(room.no);}}
+          >🕐</button>
         ):(
           <div className={`room-status-dot ${cls}`}/>
         )}
@@ -1128,7 +1157,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         </div>
       </div>
     );
-  },[hkData,vacatedRooms,priorityRooms,priorityMenu,priorityMenuSide,liveStatus,handleRoomCardClick,setRoom,requestPriority,askStatus,hkStaff]);
+  },[hkData,vacatedRooms,priorityRooms,priorityMenu,priorityMenuSide,liveStatus,handleRoomCardClick,setRoom,requestPriority,askStatus,markLateCheckoutLeft,hkStaff]);
   const renderFloorCards=React.useCallback((rooms,label,range)=>(
     <div className="floor-section" key={label}>
       <div className="floor-label">

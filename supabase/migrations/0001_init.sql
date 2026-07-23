@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.hk_workers (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_workers ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_workers" ON public.hk_workers;
 CREATE POLICY "anon_read_hk_workers" ON public.hk_workers
   FOR SELECT TO anon USING (true);
 
@@ -26,6 +27,7 @@ CREATE TABLE IF NOT EXISTS public.hk_rooms (
   UNIQUE (tenant_id, room_no)
 );
 ALTER TABLE public.hk_rooms ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_rooms" ON public.hk_rooms;
 CREATE POLICY "anon_read_hk_rooms" ON public.hk_rooms
   FOR SELECT TO anon USING (true);
 
@@ -46,6 +48,7 @@ CREATE TABLE IF NOT EXISTS public.hk_tasks (
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_tasks ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_tasks" ON public.hk_tasks;
 CREATE POLICY "anon_read_hk_tasks" ON public.hk_tasks
   FOR SELECT TO anon USING (true);
 
@@ -61,6 +64,7 @@ CREATE TABLE IF NOT EXISTS public.hk_logs (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.hk_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_logs" ON public.hk_logs;
 CREATE POLICY "anon_read_hk_logs" ON public.hk_logs
   FOR SELECT TO anon USING (true);
 
@@ -77,5 +81,6 @@ CREATE TABLE IF NOT EXISTS public.hk_plan (
   UNIQUE (tenant_id, date_key, source)
 );
 ALTER TABLE public.hk_plan ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "anon_read_hk_plan" ON public.hk_plan;
 CREATE POLICY "anon_read_hk_plan" ON public.hk_plan
   FOR SELECT TO anon USING (true);

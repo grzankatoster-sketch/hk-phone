@@ -2,8 +2,12 @@ import React, { useState, useEffect } from "react";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { pl, displayValue } from "../../lib/format";
+import { TENANT_ID } from "../../lib/constants";
 
-const DEFAULT_PARKING = [
+// Realne dane abonamentowe Conrad Comfort — seed tylko dla tenanta domyślnego (ten hotel),
+// żeby build/demo dla nowego klienta SaaS nie odziedziczył cudzych danych osobowych.
+const CONRAD_COMFORT_TENANT_ID = "00000000-0000-0000-0000-000000000001";
+const CONRAD_COMFORT_PARKING_SEED = [
   // Pracownicy hotelu
   {id:"p-1",plate:"RT55807",name:"Natalia Szymańska",phone:"",type:"pracownik",status:"Conrad",paidTo:"",paidOn:"",docNr:"",note:"Recepcjonistka",active:true},
   {id:"p-2",plate:"KK7283C",name:"Tetiana Tymoshenko",phone:"795 009 296",type:"pracownik",status:"Housekeeping",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
@@ -27,6 +31,7 @@ const DEFAULT_PARKING = [
   {id:"p-17",plate:"AH5009IE",name:"Sokolova Mariya",phone:"+380 93 656 1025",type:"abonament",status:"Klient zewnętrzny",paidTo:"2025-09-11",paidOn:"2025-08-30",docNr:"PA 495/08/2025",note:"12 x 50 zł = 600 PLN",active:false},
   {id:"p-18",plate:"KA7867IT",name:"Aleksey Lukashenko",phone:"38067977288",type:"krotki",status:"Os. prywatna",paidTo:"2025-07-12",paidOn:"2025-07-01",docNr:"PA 5/07/2025",note:"600 zł",active:false},
 ];
+const DEFAULT_PARKING = TENANT_ID === CONRAD_COMFORT_TENANT_ID ? CONRAD_COMFORT_PARKING_SEED : [];
 
 export default function ParkingPanel({dark, isAdmin, showToast, employees, employeeName}) {
   const [records, setRecords] = React.useState(() => loadJson(STORAGE_KEYS.parking, DEFAULT_PARKING));
