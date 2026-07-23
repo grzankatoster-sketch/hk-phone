@@ -76,6 +76,40 @@ export default function PricingPanel({ showToast }) {
   return (
     <motion.div key="ceny" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="stack">
       <div className="panel glass dark-panel">
+        <div className="panel-title"><TrendingUp size={16} /> Przegląd tygodnia — ceny wywoławcze</div>
+        <div className="tiny muted-light" style={{ marginTop: -6, marginBottom: 10 }}>Ceny startowe (sufit) na 7 dni, wszystkie kategorie. ★ = święto / długi weekend. Szczegóły i zaniżanie — w tabeli niżej.</div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5, color: "var(--dark-text)" }}>
+            <thead>
+              <tr style={{ color: "var(--dark-text-muted)", fontSize: 11 }}>
+                <th style={{ padding: "6px 8px", textAlign: "left" }}>Kategoria</th>
+                {dates.slice(0, 7).map((d) => (
+                  <th key={d} style={{ padding: "6px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
+                    {DOW[new Date(d + "T12:00:00").getDay()]} {d.slice(8, 10)}.{d.slice(5, 7)}
+                    {holidayFactor(d).label && <span style={{ color: "#f59e0b" }}> ★</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {CATEGORIES.map((c) => {
+                const cc = config[c] || DEFAULT_CONFIG[c];
+                return (
+                  <tr key={c} style={{ borderTop: "1px solid var(--dark-border)" }}>
+                    <td style={{ padding: "6px 8px", fontWeight: 700, whiteSpace: "nowrap" }}>{c}</td>
+                    {dates.slice(0, 7).map((d) => {
+                      const r = yieldPrice({ category: c, stayDate: d, today, occupancy: null, minPrice: Number(cc.min) || null, maxPrice: Number(cc.max) || null, avgLeadDays: Number(cc.avgLeadDays) || 1 });
+                      return <td key={d} style={{ padding: "6px 8px", textAlign: "right", cursor: "pointer" }} onClick={() => setCat(c)}>{r ? fmtMoney(r.price) : "—"}</td>;
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="panel glass dark-panel">
         <div className="panel-title"><TrendingUp size={16} /> Ceny — pulpit</div>
         <div className="tiny muted-light" style={{ marginTop: -6, marginBottom: 12 }}>
           Model: start od ceny wywoławczej (sufit), zaniżanie bliżej terminu, gdy pokoje stoją. Widełki twarde —
