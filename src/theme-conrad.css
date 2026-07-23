@@ -1,0 +1,143 @@
+/* theme-conrad.css — WARSTWA MOTYWU (WYKONANIE 2.6, faza 1).
+   Tokeny marki Conrad Comfort: paleta jasna + aliasy wsteczne + cienie/tranzycje,
+   wydzielone ze style.css. Zmiana wygladu marki = edycja TEGO pliku; style.css
+   zostaje jako struktura/komponenty (core). Import PRZED style.css (main.jsx).
+   Faza 2 (do zrobienia): przeniesc tu tez tokeny dark (~html.theme-dark) i aliasy
+   semantyczne (blok :root okolo konca pliku), by pelny re-skin byl w jednym pliku. */
+
+:root,
+html.theme-light {
+  color-scheme: light;
+
+  /* ── Brand (plum z loga Conrad Comfort) ── */
+  --cc-brand:            #5a1d4a;
+  --cc-brand-hover:      #6e2658;
+  --cc-brand-deep:       #3d1232;
+  --cc-brand-soft:       #f0e4ec;
+
+  /* ── Powierzchnie i tła ── */
+  --cc-bg:               #faf8f5;
+  --cc-bg-elevated:      #f1ecea;
+  --cc-surface:          #ffffff;
+  --cc-surface-elevated: #fbf9f7;
+  --cc-border:           #e8dde3;
+  --cc-border-strong:    #d3c4cd;
+
+  /* ── Typografia (kolory tekstu) ── */
+  --cc-text:             #2a1a24;
+  --cc-text-secondary:   #5a4350;
+  --cc-text-muted:       #7a6972;
+  --cc-text-faint:       #c9bbc4;
+  --cc-text-on-brand:    #ffffff;
+
+  /* ── Akcenty semantyczne ── */
+  --cc-accent-gold:      #c99950;
+  --cc-success:          #2d6a4f;
+  --cc-warning:          #b97a1f;
+  --cc-danger:           #a63e3e;
+  --cc-info:             #5a1d4a;            /* w light = plum (sky/violet kompat) */
+  --cc-focus:            #5a1d4a;
+
+  /* ── Cienie ── */
+  --cc-shadow-sm:        0 1px 2px rgba(45,16,84,.06), 0 1px 4px rgba(45,16,84,.04);
+  --cc-shadow-md:        0 6px 18px rgba(45,16,84,.10);
+  --cc-shadow-lg:        0 12px 32px rgba(45,16,84,.14);
+
+  /* ── Promienie ── */
+  --cc-radius-sm: 6px;
+  --cc-radius-md: 10px;
+  --cc-radius-lg: 14px;
+  --cc-radius-xl: 20px;
+
+  /* ── Czcionki (Conrad Comfort v2 stack) ── */
+  --cc-font-display: 'Sora', 'DM Sans', system-ui, sans-serif;
+  --cc-font-body:    'DM Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  --cc-font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+}
+
+:root {
+  /* ── Conrad Comfort light palette ─── */
+  /* Stare nazwy → aliasy na --cc-* (wartości identyczne; w dark mode cascade automatyczny) */
+  --bg-primary:    var(--cc-bg);              /* #faf8f5 */
+  --bg-secondary:  var(--cc-bg-elevated);     /* #f1ecea */
+  --bg-card:       var(--cc-surface);         /* #ffffff */
+  --bg-elevated:   var(--cc-surface-elevated);/* #fbf9f7 */
+  --bg-input:      var(--cc-surface);         /* #ffffff */
+  --border-light:  var(--cc-border);          /* #e8dde3 */
+  --border-medium: var(--cc-border-strong);   /* #d3c4cd */
+  --text-primary:  var(--cc-text);            /* #2a1a24 */
+  --text-secondary:var(--cc-text-secondary);  /* #5a4350 */
+  --text-muted:    var(--cc-text-muted);      /* #7a6972 — WCAG AA ~5:1 on #faf8f5 */
+  --text-faint:    var(--cc-text-faint);      /* #c9bbc4 */
+
+  /* ── Conrad Comfort accent (plum z loga) ─── */
+  --plum:          var(--cc-brand);           /* #5a1d4a — primary */
+  --plum-hover:    var(--cc-brand-hover);     /* #6e2658 */
+  --plum-deep:     var(--cc-brand-deep);      /* #3d1232 */
+  --plum-soft:     var(--cc-brand-soft);      /* #f0e4ec */
+  --plum-bg:       #f7eef3;
+  --plum-border:   #e4ccd9;
+
+  /* ── Pomocnicze (zachowane nazwy dla kompatybilnosci) ─── */
+  --gold:          var(--cc-accent-gold);     /* #c99950 */
+  --gold-light:    #d8aa61;
+  --gold-bg:       #f5eadc;
+  --gold-border:   #e9d4ad;
+  --rose:          var(--cc-danger);          /* light: #a63e3e */
+  --rose-light:    #f3dcdc;
+  --rose-border:   #d9a4a4;
+  --emerald:       var(--cc-success);         /* light: #2d6a4f */
+  --emerald-light: #dceeec;
+  --emerald-border:#9bc8b8;
+  --sky:           var(--cc-info);            /* light: #5a1d4a (= plum). COMPAT-ALIAS — NOT blue. */
+  --sky-light:     #f0e4ec;
+  --sky-border:    #d3a8c4;
+  --violet:        var(--cc-info);            /* light: #5a1d4a (= plum). COMPAT-ALIAS — NOT violet. */
+  --violet-light:  #f0e4ec;
+  --violet-border: #d3a8c4;
+  --amber:         var(--cc-warning);         /* light: #b97a1f */
+
+  /* ── Admin dark palette (Conrad Comfort dark) ─── */
+  --dark-bg:       #0B0810;     /* v2: deep aubergine-black */
+  --dark-bg2:      #110D17;
+  --dark-card:     #17131F;
+  --dark-card-hover:#221C2C;
+  --dark-card-elev:#1F1626;
+  --dark-border:   #2A2334;
+  --dark-border-hover:#3A3144;
+  --dark-text:     #F0E8DC;       /* cream z loga */
+  --dark-text-secondary:#A89DAE;
+  --dark-text-muted:#766A7E;      /* WCAG AA on #0B0810 */
+  --dark-text-faint:#4A3F52;
+
+  /* ── v2 Brand accents na dark bg (jaśniejszy aubergine z loga) ── */
+  --plum-bright:        #B065A0;            /* widoczny akcent na dark */
+  --plum-bright-soft:   #C988B7;
+  --plum-bright-bg:     rgba(176,101,160,.10);
+  --plum-bright-border: rgba(176,101,160,.30);
+  --plum-bright-glow:   0 0 22px rgba(176,101,160,.25);
+  --cream:              #F5EDE0;            /* tekst loga */
+  --gold-bright:        #C8A269;            /* premium akcent */
+  --teal-bright:        #2BD4A0;            /* success */
+  --rose-bright:        #FF5471;            /* urgent */
+  --amber-bright:       #F4C055;            /* warn */
+  --sky-bright:         #5BA8E8;            /* in-progress */
+  --violet-bright:      #B49AFF;            /* AI/extras */
+
+  /* ── Sidebar ─── */
+  --sb-width: 78px;
+  --sb-bg-light: #ffffff;
+  --sb-bg-dark:  #110D17;
+  --sb-border:   #e5e7eb;
+  --sb-dark-border: #2A2334;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04),0 1px 4px rgba(0,0,0,.03);
+  --shadow-md: 0 4px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04);
+  --shadow-lg: 0 10px 24px rgba(0,0,0,.1),0 4px 8px rgba(0,0,0,.06);
+  --shadow-xl: 0 24px 48px rgba(0,0,0,.14),0 8px 16px rgba(0,0,0,.08);
+  --transition: 0.15s cubic-bezier(.4,0,.2,1);
+}

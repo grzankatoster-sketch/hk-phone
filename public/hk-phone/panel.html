@@ -2176,8 +2176,17 @@ function zadSyncPickUI(){
     }
     if (sel){ sel.disabled = true; sel.style.opacity = ".5"; }
   } else {
-    if (box){ box.style.display = "none"; box.innerHTML = ""; }
     if (sel){ sel.disabled = false; sel.style.opacity = ""; }
+    // Pokaż wprost, na jaką zmianę faktycznie trafi zadanie przy "Aktualna zmiana
+    // (auto)" — dotąd kierownik nie widział wyniku zgadywania (grafik + zegar),
+    // a mogło ono nie zgadzać się ze zmianą, na którą faktycznie zalogowany jest
+    // pracownik przy komputerze recepcji.
+    if (box){
+      const key = (typeof zadTargetShiftKey === "function") ? zadTargetShiftKey() : null;
+      const lbl = key ? (SHIFT_LBL[key]||key) : "wszystkie zmiany";
+      box.style.display = "";
+      box.innerHTML = `<div class="zadpick"><span class="chip" style="color:var(--muted);border-color:var(--line)">→ trafi na: ${esc(lbl)}</span></div>`;
+    }
   }
 }
 window.zadClearPick = () => { ZAD_PICK = null; zadSyncPickUI(); zadRenderPeople(); };
