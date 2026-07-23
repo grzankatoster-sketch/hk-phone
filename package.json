@@ -24,6 +24,7 @@
     "hk:auto": "node scripts/hk-automation/service.cjs",
     "hk:auto:once": "node scripts/hk-automation/service.cjs --once",
     "hk:auto:test": "node scripts/hk-automation/test-parser.cjs",
+    "whatsapp:bot": "node scripts/whatsapp-bot/bot.mjs",
     "build": "vite build",
     "electron:dev": "concurrently -k \"vite --force\" \"wait-on http://localhost:5173 && cross-env ELECTRON_IS_DEV=true electron .\"",
     "electron:dev\\": "npm run electron:dev",
@@ -36,6 +37,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
+    "@whiskeysockets/baileys": "^6.7.23",
     "dotenv": "^16.4.7",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.8.3",

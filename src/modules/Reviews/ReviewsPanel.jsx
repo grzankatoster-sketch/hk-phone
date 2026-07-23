@@ -2,7 +2,7 @@ import React from "react";
 import { ChevronDown, ChevronUp, Sparkles, RefreshCw, Wifi, ThumbsUp, ThumbsDown } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { REVIEWS_SEED } from "./reviewsSeed";
-import { analyzeReviews, llmReady } from "../../lib/llm";
+import { analyzeReviews, llmReady, generateReviewReply } from "../../lib/llm";
 import { stripDiacritics } from "../../lib/names";
 
 const THIS_YEAR = new Date().getFullYear();
@@ -27,6 +27,38 @@ const CATEGORY_LABELS = {
   "WiFi": "WiFi",
 };
 const categoryLabel = (name) => CATEGORY_LABELS[name] || name;
+
+// Draft AI odpowiedzi na pojedynczą opinię (WYKONANIE 4.4). Human-in-the-loop:
+// generuje edytowalny tekst do ręcznego wklejenia na Booking (brak API do publikacji).
+function ReviewReplyDraft({ review }) {
+  const [draft, setDraft] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  if (!llmReady) return null;
+  const lang = (review.country && !/pol/i.test(review.country)) ? "en" : "pl";
+  const gen = async () => {
+    setLoading(true);
+    try {
+      const text = await generateReviewReply({ score: review.score, positives: review.positives, negatives: review.negatives, guest_name: review.guest_name, language: lang });
+      setDraft(text || "(pusty draft)"); setOpen(true);
+    } catch (e) { setDraft("Nie udało się wygenerować odpowiedzi: " + (e.message || "błąd")); setOpen(true); }
+    finally { setLoading(false); }
+  };
+  const btn = { fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-light)", background: "var(--bg-card)", color: "var(--text-secondary)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5, fontWeight: 600 };
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button style={btn} onClick={gen} disabled={loading}><Sparkles size={12} /> {loading ? "Generuję…" : draft ? "Przegeneruj" : "Wygeneruj odpowiedź"}</button>
+        {open && draft && <button style={btn} onClick={() => navigator.clipboard?.writeText(draft)}>Kopiuj</button>}
+      </div>
+      {open && (
+        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4}
+          style={{ marginTop: 6, width: "100%", fontSize: 12.5, padding: 8, borderRadius: 8, border: "1px solid var(--border-light)", resize: "vertical", fontFamily: "inherit", color: "var(--text-primary)", background: "var(--bg-input)" }}
+          placeholder="Draft odpowiedzi — sprawdź i wklej na Booking." />
+      )}
+    </div>
+  );
+}
 
 function scoreColor(s) {
   if (s >= 8)  return { bg: "#D1FAE5", color: "#065F46", border: "#6EE7B7" };
@@ -541,6 +573,7 @@ function ReviewsPanel({ dark, isManager, showToast }) {
                                 : <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>Nic negatywnego</span>}
                             </div>
                           </div>
+                          <ReviewReplyDraft review={r} />
                         </div>
                       </div>
                     </div>

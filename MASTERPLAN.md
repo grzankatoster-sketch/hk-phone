@@ -112,7 +112,7 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 - [ ] 4.21 [ICE 40, PREMIUM] Modyfikator „coś się dzieje w mieście": wydarzenia przez darmowe API (Ticketmaster) + ręczne dodawanie lokalnych wydarzeń (małe miasta słabo pokryte przez API) → dopisany procent do ceny z uzasadnieniem
 - [ ] 4.22 [ICE 20, PREMIUM] Modyfikator pogodowy (darmowe Open-Meteo, mała waga, głównie w sezonie) — dokładany po sprawdzeniu 4.20/4.21 w praktyce
 - [ ] 4.23 ⚠️ [ICE 12, PREMIUM add-on, WYŁĄCZONY DOMYŚLNIE] Opcjonalne rozszerzenie: śledzenie cen konkurencji z Booking — RYZYKO PRAWNE (narusza regulamin), tylko za świadomą zgodą i limitem częstotliwości; rozważyć płatne API rate-shopperów zamiast własnego scrapingu zamiast tej pozycji
-- [ ] 4.24 [ICE 36, add-on/STANDARD] Bot WhatsApp: wysyłka linku do grafiku (F15 — brainstorming 22.07.2026)
+- [x] 4.24 [ICE 36, add-on/STANDARD] Bot WhatsApp: wysyłka linku do grafiku (F15 — brainstorming 22.07.2026) — KOD GOTOWY, czeka na dedykowany numer telefonu + `supabase db push` + ręczny `alter database ... set app.whatsapp_key`
 - [x] 4.25 [ICE 40, platforma] Onboarding pracownika: tura pierwszego logowania (F16 — brainstorming 22.07.2026) — KOD GOTOWY, migracja 0052 czeka na `supabase db push`
 
 ## ETAP 5 — KOMERCJA — 4 pozycje

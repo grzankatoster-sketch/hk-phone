@@ -148,6 +148,11 @@ export default function App(){
   const [employees,setEmployees]=useState(defaultEmployees);
   const [employeeName,setEmployeeName]=useState("");
   const [selectedShift,setSelectedShift]=useState("");
+  // Ref na selectedShift/currentSessionDate — czytane wewnątrz stałego (deps=[])
+  // subskrybenta realtime manager_alerts, żeby nie łapać zamkniętej (stale) wartości
+  // sprzed zalogowania i nie przesubskrybowywać kanału przy każdej zmianie zmiany.
+  const selectedShiftRef=useRef("");
+  const currentSessionDateRef=useRef("");
   // Auto-wykrywanie zmiany na podstawie godziny przy przejsciu do "ready"
   // (refleks na zmiane loginStep — gdy ready i pusty shift, ustaw auto)
   const [cashOpeningAmount,setCashOpeningAmount]=useState("");
@@ -156,6 +161,8 @@ export default function App(){
   const [started,setStarted]=useState(false);
   const [completed,setCompleted]=useState({});
   const [currentSessionDate,setCurrentSessionDate]=useState("");
+  useEffect(()=>{selectedShiftRef.current=selectedShift;},[selectedShift]);
+  useEffect(()=>{currentSessionDateRef.current=currentSessionDate;},[currentSessionDate]);
   const [additionalTaskInput,setAdditionalTaskInput]=useState("");
   const [shiftNoteInput,setShiftNoteInput]=useState("");
   const [handoverNote,setHandoverNote]=useState("");
@@ -968,8 +975,12 @@ export default function App(){
         supabase.from("manager_alerts").select("*").eq("tenant_id",TENANT_ID).order("created_at",{ascending:false}),
         supabase.from("standing_reminders").select("*").eq("tenant_id",TENANT_ID).order("created_at",{ascending:false}),
       ]);
-      if(ar.data)saveJson(STORAGE_KEYS.managerAlerts,ar.data);
-      if(rr.data)saveJson(STORAGE_KEYS.standingReminders,rr.data);
+      // .length, nie sam truthy check — pusta tablica z Supabase (świeży tenant, nic
+      // jeszcze nie wysłano) jest też "truthy" i nadpisywała lokalny seed (powitalny
+      // alert/przypomnienia) pustką przy każdym starcie aplikacji, zanim ktokolwiek
+      // zdążył go zobaczyć.
+      if(ar.data&&ar.data.length)saveJson(STORAGE_KEYS.managerAlerts,ar.data);
+      if(rr.data&&rr.data.length)saveJson(STORAGE_KEYS.standingReminders,rr.data);
       setInboxVersion(v=>v+1);   // odśwież licznik Pilnych i listę zadań w zakładce „Zadania"
     };
     sync();
@@ -980,9 +991,18 @@ export default function App(){
       sync();
       if(p?.eventType!=="INSERT"||!p.new)return;
       const a=p.new;
+      // Nie alarmuj dymkiem/toastem/powiadomieniem Windows, gdy wpis realnie NIE
+      // dotyczy tej zmiany dziś (np. wpis testowy z target_date w przyszłości, albo
+      // zadanie wystawione na inną zmianę niż ta, na którą zalogowany jest pracownik
+      // przy tym komputerze) — dotąd strzelało dla KAŻDEGO insertu bez wyjątku.
+      // Bez zalogowania (selectedShiftRef puste) zmianę pomijamy fail-open (nie wiemy
+      // lepiej), ale data zawsze musi się zgadzać z dzisiejszą.
+      const shiftMatch=!a.target_shift||!selectedShiftRef.current||a.target_shift===selectedShiftRef.current;
+      const dateMatch=!a.target_date||a.target_date===todayKey();
+      if(!shiftMatch||!dateMatch)return;
       const who=a.created_by||"Kierownik";
-      const dateTxt=a.target_date&&a.target_date!==todayKey()?` · ${a.target_date}`:"";
-      const shiftTxt=(a.target_shift?` · ${SHIFT_SHORT_LABELS[a.target_shift]||a.target_shift}`:" · wszystkie zmiany")+dateTxt;
+      // dateMatch już zapewnił, że target_date (jeśli ustawiony) to dziś — nic do dopisania.
+      const shiftTxt=a.target_shift?` · ${SHIFT_SHORT_LABELS[a.target_shift]||a.target_shift}`:" · wszystkie zmiany";
       const text=`📋 Nowe zadanie od ${who}${shiftTxt}: ${a.title||""}`;
       setBotAttention({kind:"task",text});
       showToast(text,a.priority==="high"?"warning":"info",7000);
@@ -1063,13 +1083,23 @@ export default function App(){
     void nowTick;
     const dk=todayKey();
     const nowMs=Date.now();
-    return loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>
-      a.kind==="task"&&!a.done&&
-      (!a.expires_at||new Date(a.expires_at).getTime()>nowMs)&&
-      (!a.target_shift||a.target_shift===selectedShift)&&
-      (!a.target_date||a.target_date===dk)
-    ).sort((a,b)=>(b.priority==="high"?1:0)-(a.priority==="high"?1:0)||new Date(b.created_at)-new Date(a.created_at));
-  },[selectedShift,inboxVersion,nowTick]);
+    const firstNameLc=s=>String(s||"").trim().toLowerCase().split(/\s+/)[0];
+    return loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>{
+      if(a.kind!=="task"||a.done)return false;
+      if(a.expires_at&&new Date(a.expires_at).getTime()<=nowMs)return false;
+      if(a.target_shift&&a.target_shift!==selectedShift)return false;
+      if(a.target_date&&a.target_date!==dk)return false;
+      // Zawężenie do osób: prefiks "Dla osób: X, Y" w treści (panel.html dopisuje go
+      // przy wysyłce, gdy kierownik odznaczy część grafiku — zadTargetPeople). Dotąd
+      // był tylko tekstem w treści; teraz kto inny na tej samej zmianie go nie widzi.
+      const m=String(a.body||"").match(/^Dla(?: os[oó]b)?:\s*([^\n]+)\n?/i);
+      if(m){
+        const people=m[1].split(",").map(firstNameLc);
+        if(!people.includes(firstNameLc(employeeName)))return false;
+      }
+      return true;
+    }).sort((a,b)=>(b.priority==="high"?1:0)-(a.priority==="high"?1:0)||new Date(b.created_at)-new Date(a.created_at));
+  },[selectedShift,inboxVersion,nowTick,employeeName]);
   const filteredExtraTasks=useMemo(()=>extraTasksLog.filter(item=>item.shift===selectedShift&&item.employee===employeeName&&item.sessionDate===currentSessionDate),[extraTasksLog,selectedShift,employeeName,currentSessionDate]);
   const filteredWikiEntries=useMemo(()=>{const q=wikiSearch.trim().toLowerCase();return q?wikiEntries.filter(e=>e.topic.toLowerCase().includes(q)||e.content.toLowerCase().includes(q)):wikiEntries;},[wikiEntries,wikiSearch]);
   const selectedWikiEntry=useMemo(()=>filteredWikiEntries.find(e=>e.id===selectedWikiId)||filteredWikiEntries[0]||null,[filteredWikiEntries,selectedWikiId]);

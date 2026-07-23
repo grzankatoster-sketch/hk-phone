@@ -8,6 +8,7 @@ release-manager/
 scripts/hk-automation/config.local.json
 scripts/hk-automation/.out/
 recepcja-mail-setup/
+scripts/whatsapp-bot/.auth/
 
 # Robocze / tymczasowe artefakty (nie wersjonować)
 tmp-*/

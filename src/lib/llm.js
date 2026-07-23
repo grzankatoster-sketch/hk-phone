@@ -121,6 +121,13 @@ export async function parseScheduleWithAI(grid) {
 // (puste nic nie wnoszą do tematów) i ostatnie MAX_ANALYZE wg kolejności wejścia
 // (panel podaje je posortowane malejąco po dacie).
 const MAX_ANALYZE_REVIEWS = 150;
+// Draft odpowiedzi na pojedynczą opinię (WYKONANIE 4.4). Publikacja pozostaje ręczna
+// (Booking nie ma publicznego API do auto-odpowiedzi) — recepcja wkleja draft.
+export async function generateReviewReply({ score, positives = "", negatives = "", guest_name = "", language = "pl" } = {}) {
+  const { text } = await callLLM("reply", { score, positives, negatives, guest_name, language });
+  return String(text || "").trim();
+}
+
 export async function analyzeReviews(reviews) {
   const compact = (Array.isArray(reviews) ? reviews : [])
     .filter((r) => String(r.positives || "").trim() || String(r.negatives || "").trim())

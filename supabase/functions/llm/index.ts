@@ -35,6 +35,7 @@ const MODELS = {
   search: "llama-3.3-70b-versatile",
   nudge: "llama-3.3-70b-versatile",
   reviews: "llama-3.3-70b-versatile",
+  reply: "llama-3.3-70b-versatile",
   worker: "llama-3.3-70b-versatile",
   grafik: "llama-3.3-70b-versatile",
   plan: "llama-3.3-70b-versatile",
@@ -277,6 +278,23 @@ function buildPrompt(task: string, payload: any): { system: string; user: string
         "Używaj WYŁĄCZNIE podanych liczb i numerów pokoi — nie wymyślaj. Jeśli obciążenie jest " +
         "zrównoważone (brak sugestii), napisz krótko, że nie ma potrzeby zmian.",
       user: `STAN SPRZĄTANIA:\n${ctx}`,
+    };
+  }
+  if (task === "reply") {
+    // Draft odpowiedzi na opinię Booking (WYKONANIE 4.4). Zwraca zwykły tekst.
+    const p = payload || {};
+    const lang = String(p.language || "pl").toLowerCase().startsWith("en") ? "English" : "polski";
+    const scoreTxt = p.score != null ? `Ocena gościa: ${p.score}/10. ` : "";
+    return {
+      system:
+        "Jesteś menedżerem hotelu odpowiadającym publicznie na opinię gościa z Booking.com. " +
+        "Napisz UPRZEJMĄ, spersonalizowaną odpowiedź (3–5 zdań) w języku: " + lang + ". Podziękuj " +
+        "za opinię, odnieś się KONKRETNIE do wskazanych plusów i minusów; przy krytyce przeproś " +
+        "i wskaż działanie naprawcze; zaproś do ponownej wizyty. Ton profesjonalny i ciepły, bez " +
+        "frazesów, BEZ wymyślania faktów spoza opinii. Zwróć TYLKO treść odpowiedzi (bez nagłówków).",
+      user:
+        `${scoreTxt}GOŚĆ: ${p.guest_name || "Gość"}\nPLUSY: ${p.positives || "(brak)"}\n` +
+        `MINUSY: ${p.negatives || "(brak)"}`,
     };
   }
   if (task === "history") {
