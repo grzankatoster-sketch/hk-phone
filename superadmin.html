@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Operator — Hotele</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{ --bg:#12141a; --panel:#1b1e27; --line:#2a2e3a; --ink:#e8eaf0; --muted:#9095a6;
+    --accent:#5b8cff; --ok:#3ec27a; --bad:#e5566b; }
+  *{ box-sizing:border-box }
+  body{ margin:0; background:var(--bg); color:var(--ink); font:500 14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; min-height:100vh; }
+  .wrap{ max-width:720px; margin:0 auto; padding:28px 16px 60px; }
+  h1{ font-size:18px; font-weight:800; margin:0 0 4px }
+  .sub{ color:var(--muted); font-size:12.5px; margin:0 0 20px }
+  .card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px }
+  .field{ margin-bottom:12px }
+  label{ display:block; font-size:12px; font-weight:700; color:var(--muted); margin-bottom:5px }
+  .inp{ width:100%; padding:10px 12px; border-radius:9px; border:1px solid var(--line); background:#10121a; color:var(--ink); font-size:14px }
+  .btn{ width:100%; padding:11px; border:none; border-radius:9px; background:var(--accent); color:#fff; font-weight:800; font-size:14px; cursor:pointer }
+  .btn.small{ width:auto; padding:8px 11px; font-size:12px }
+  .btn.ghost{ background:transparent; border:1px solid var(--line); color:var(--ink) }
+  .btn.danger{ background:var(--bad) }
+  .btn.ok{ background:var(--ok) }
+  .msg{ font-size:12.5px; margin-top:8px; min-height:1em }
+  .msg.err{ color:var(--bad) }
+  .msg.info{ color:var(--ok) }
+  .row{ display:flex; gap:7px; align-items:center; flex-wrap:wrap; margin-top:10px }
+  .hotel{ border-bottom:1px solid var(--line); padding:14px 0 }
+  .hotel:last-child{ border-bottom:none }
+  .hname{ font-weight:800; font-size:14.5px }
+  .hmeta{ color:var(--muted); font-size:12px; margin-top:2px }
+  .status{ font-weight:800; font-size:11px; padding:2px 8px; border-radius:99px; display:inline-block }
+  .status.trial{ background:#2a2e3a; color:var(--muted) }
+  .status.active{ background:rgba(62,194,122,.15); color:var(--ok) }
+  .status.suspended{ background:rgba(229,86,107,.18); color:var(--bad) }
+  .empty{ color:var(--muted); text-align:center; padding:20px }
+  a.logout{ color:var(--muted); font-size:12px; float:right; cursor:pointer }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="msg">Ładowanie…</div></div>
+<script>
+// Panel operatora SaaS — OSOBNE okno od panel.html (produkt hotelowy).
+// Wyłącznie rola 'superadmin' w app_accounts (patrz migracja 0056). Konto
+// zakłada się WYŁĄCZNIE ręcznie przez SQL (patrz PANEL_DEPLOY.md) — żaden
+// hotelowy 'admin' nie może sam sobie nadać tej roli.
+const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
+const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+const app = document.getElementById("app");
+const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const STATUS_LBL = { trial:"próba", active:"opłacony", suspended:"WYŁĄCZONY" };
+
+function showLogin(msg) {
+  app.innerHTML = `
+    <h1>Operator — Hotele</h1>
+    <div class="sub">Panel oddzielny od produktu hotelowego. Tylko dla konta z rolą superadmin.</div>
+    <div class="card">
+      <div class="field"><label>Login (imię konta superadmin)</label><input id="lname" class="inp" autofocus/></div>
+      <div class="field"><label>Hasło</label><input id="lpw" class="inp" type="password"/></div>
+      <button class="btn" onclick="doLogin()">Zaloguj</button>
+      <div id="lmsg" class="msg ${msg?'err':''}">${esc(msg||"")}</div>
+    </div>`;
+}
+window.doLogin = async () => {
+  const name = (document.getElementById("lname")||{}).value || "";
+  const pw = (document.getElementById("lpw")||{}).value || "";
+  const msgEl = document.getElementById("lmsg");
+  const setM = (t) => { if (msgEl) { msgEl.className = "msg err"; msgEl.textContent = t; } };
+  if (!name.trim() || !pw) return setM("Wpisz login i hasło.");
+  if (pw.length < 6) return setM("Hasło musi mieć min. 6 znaków.");
+  const { data: acc } = await sb.from("app_accounts").select("email,claimed").eq("name", name.trim()).maybeSingle();
+  if (!acc) return setM("Nie znam takiego konta — załóż je najpierw przez SQL (patrz PANEL_DEPLOY.md).");
+  if (acc.claimed) {
+    const { error } = await sb.auth.signInWithPassword({ email: acc.email, password: pw });
+    if (error) return setM("Błędne hasło.");
+  } else {
+    // Pierwsze logowanie — ustawia hasło i przejmuje konto (jak panel.html).
+    const { error: su } = await sb.auth.signUp({ email: acc.email, password: pw });
+    if (su) return setM("Nie udało się założyć hasła: " + su.message);
+    const { error: cl } = await sb.rpc("claim_account", { p_email: acc.email, p_code: "" });
+    if (cl) return setM("Konto założone, ale nie udało się je przejąć: " + cl.message);
+  }
+  await afterLogin();
+};
+async function afterLogin() {
+  const { data: role } = await sb.rpc("current_app_role");
+  if (role !== "superadmin") {
+    await sb.auth.signOut();
+    return showLogin("To konto nie ma dostępu do tego panelu (wymagana rola superadmin).");
+  }
+  loadHotele();
+}
+(async () => {
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) return afterLogin();
+  showLogin();
+})();
+
+// ── Widok „Hotele" ─────────────────────────────────────────────────────────
+async function loadHotele() {
+  const { data: rows, error } = await sb.rpc("superadmin_list_tenants");
+  if (error) { app.innerHTML = `<div class="msg err">Błąd: ${esc(error.message)}</div>`; return; }
+  const fmtD = iso => { if (!iso) return "—"; const d = new Date(iso); const p = n => n<10?"0"+n:""+n; return `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()}`; };
+  const list = (rows||[]).map(r => {
+    const susp = r.status === "suspended";
+    return `<div class="hotel">
+      <a class="logout" onclick="doLogout()" style="display:none"></a>
+      <div class="hname">${esc(r.name)} <span class="status ${esc(r.status)}">${esc(STATUS_LBL[r.status]||r.status)}</span></div>
+      <div class="hmeta">slug: ${esc(r.slug)} · plan: ${esc(r.plan)} · opłacone/próba do: ${fmtD(r.trial_ends_at)}</div>
+      <div class="row">
+        <input class="inp th-wa" data-id="${r.id}" value="${esc(r.whatsapp_number||"")}" placeholder="numer WhatsApp bota tego hotelu" style="max-width:220px"/>
+        <button class="btn small" onclick="saveWa('${r.id}')">Zapisz numer</button>
+        <button class="btn small ghost" onclick="setTrialEnds('${r.id}','${esc(r.name)}')">Zmień datę</button>
+        <button class="btn small ${susp?'ok':'danger'}" onclick="toggleKill('${r.id}','${esc(r.name)}', ${susp})">${susp?"Włącz z powrotem":"Wyłącz teraz"}</button>
+      </div>
+    </div>`;
+  }).join("") || '<div class="empty">Brak hoteli.</div>';
+  app.innerHTML = `
+    <h1>Operator — Hotele <a class="logout" style="display:inline" onclick="doLogout()">wyloguj</a></h1>
+    <div class="sub">Kokpit właściciela SaaS — poza produktem hotelowym.</div>
+    <div class="card">
+      <label>Dodaj hotel</label>
+      <div class="row" style="margin-top:8px">
+        <input id="thName" class="inp" placeholder="Nazwa (np. Hotel Górski)" style="flex:1;min-width:160px"/>
+        <input id="thSlug" class="inp" placeholder="slug (np. hotel-gorski)" style="flex:1;min-width:160px"/>
+        <button class="btn small" onclick="addHotel()">Dodaj (7 dni próby)</button>
+      </div>
+      <div id="thMsg" class="msg"></div>
+    </div>
+    <div class="card">${list}</div>`;
+}
+window.doLogout = async () => { await sb.auth.signOut(); showLogin(); };
+window.addHotel = async () => {
+  const name = (document.getElementById("thName")||{}).value || "";
+  const slug = (document.getElementById("thSlug")||{}).value || "";
+  const msgEl = document.getElementById("thMsg");
+  if (!name.trim() || !slug.trim()) { if (msgEl){ msgEl.className="msg err"; msgEl.textContent="Podaj nazwę i slug."; } return; }
+  const { error } = await sb.rpc("superadmin_create_tenant", { p_name: name.trim(), p_slug: slug.trim() });
+  if (error) { if (msgEl){ msgEl.className="msg err"; msgEl.textContent = error.message; } return; }
+  loadHotele();
+};
+window.saveWa = async (tenantId) => {
+  const input = document.querySelector(`.th-wa[data-id="${tenantId}"]`);
+  const number = (input?.value || "").trim();
+  const { error } = await sb.rpc("superadmin_set_tenant_whatsapp", { p_tenant_id: tenantId, p_number: number });
+  if (error) alert("Błąd zapisu numeru: " + error.message);
+};
+window.setTrialEnds = async (tenantId, name) => {
+  const v = prompt(`Data opłacone/próba do dla „${name}" (RRRR-MM-DD):`);
+  if (!v) return;
+  const { error } = await sb.rpc("superadmin_set_tenant_trial_ends", { p_tenant_id: tenantId, p_trial_ends_at: v.trim() + "T23:59:59" });
+  if (error) return alert("Zła data lub błąd: " + error.message);
+  loadHotele();
+};
+window.toggleKill = async (tenantId, name, isSuspended) => {
+  const next = isSuspended ? "active" : "suspended";
+  const ok = confirm(isSuspended ? `Włączyć z powrotem „${name}"?` : `WYŁĄCZYĆ „${name}" natychmiast? Stracą dostęp do aplikacji.`);
+  if (!ok) return;
+  const { error } = await sb.rpc("superadmin_set_tenant_status", { p_tenant_id: tenantId, p_status: next });
+  if (error) return alert("Błąd: " + error.message);
+  loadHotele();
+};
+</script>
+</body>
+</html>
