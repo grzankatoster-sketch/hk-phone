@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
-const SKIP_DIRS = new Set([".git", "node_modules", "dist", "release", "open-design"]);
+const SKIP_DIRS = new Set([".git", ".claude", "node_modules", "dist", "release", "open-design"]);
 const FILE_RE = /\.(js|jsx|cjs|mjs|ts|tsx|json|css|html|md)$/i;
 
 const rules = [

@@ -4,6 +4,7 @@
 // BARIERKĘ dla warstwy AI (lib/llm.generatePriceSuggestion), która rozumuje w tych granicach.
 // NIGDY nie zmienia cen sama; kierownik zatwierdza/edytuje/odrzuca propozycję.
 import { holidayFactor } from "./holidays.js";
+import { anchorFor } from "./pricing-calibration.js";
 
 // Mnożnik dnia tygodnia (0=niedziela … 6=sobota). Weekend drożej, środek tygodnia taniej.
 export const DOW_FACTORS = Object.freeze({ 0: 0.95, 1: 0.92, 2: 0.92, 3: 0.95, 4: 1.05, 5: 1.15, 6: 1.12 });
@@ -55,4 +56,32 @@ export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost
     .join(" · ");
 
   return { suggested, base, dow, factors, reason, clamped };
+}
+
+// Model hotelu (yield last-minute): START od SUFITU (cena wywoławcza = kotwica × święto),
+// ZANIŻANIE bliżej terminu, gdy pokoje stoją; podłoga = minPrice. Wysokie obłożenie / daleko
+// od terminu → trzymaj sufit. occupancy = zajętość danej daty (0..1) lub null (nieznana → trzymaj).
+// today/stayDate: "YYYY-MM-DD". avgLeadDays: typowy wyprzedzenie rezerwacji (hotel last-minute → 1).
+export function yieldPrice({ category = null, stayDate, today = null, occupancy = null, minPrice = null, maxPrice = null, avgLeadDays = 1, anchor = null, maxDiscount = 0.30 } = {}) {
+  const rawAnchor = anchor != null ? Number(anchor) : anchorFor(category, stayDate);
+  if (!rawAnchor || !stayDate) return null;
+  const holF = holidayFactor(stayDate).factor;
+  const ceilRaw = Math.round(rawAnchor * holF);
+  const ceil = maxPrice != null ? Math.min(Number(maxPrice), ceilRaw) : ceilRaw;   // sufit (twarde MAX)
+  const floor = minPrice != null ? Math.min(Number(minPrice), ceil) : Math.round(ceil * 0.7); // podłoga (twarde MIN)
+
+  const t = today ? new Date(today + "T12:00:00") : new Date();
+  const s = new Date(stayDate + "T12:00:00");
+  const daysOut = Math.round((s - t) / 86400000);
+
+  const window = Math.max(3, (Number(avgLeadDays) || 1) + 2);   // od kiedy zaczynamy schodzić
+  let discount = 0;
+  if (occupancy != null && daysOut >= 0 && daysOut <= window && Number(occupancy) < 0.85) {
+    const emptiness = 1 - Math.max(0, Math.min(1, Number(occupancy)));       // ile stoi wolne
+    const urgency = Math.max(0, Math.min(1, (window - daysOut) / window));    // im bliżej, tym mocniej
+    discount = emptiness * urgency * maxDiscount;                             // maks. −30%
+  }
+  let price = Math.round(ceil * (1 - discount));
+  price = Math.max(floor, Math.min(ceil, price));
+  return { price, ceil, floor, anchor: rawAnchor, daysOut, discount: Math.round(discount * 100) / 100, holidayFactor: holF, hold: discount < 0.005 };
 }
