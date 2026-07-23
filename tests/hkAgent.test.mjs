@@ -84,6 +84,23 @@ describe("suggestReassignments", () => {
     expect(out[0]).toMatchObject({ to: "Ola" }); // odbiorcą zostaje ranna obsada
   });
 
+  it("excludeFrom — popołudniówka nie jest dawcą (rewers buga Kamil/Viktoria)", () => {
+    // Kamil ma dużo czekających (zaległość PG/PGZ z popołudnia), Ola trochę mniej —
+    // bez wykluczenia agent uznaje Kamila za "przeciążonego" i zrzuca jego pokoje
+    // na Olę, choć to inny rodzaj pracy niż poranne wyjazdy (bug: rano dostawało
+    // zamiany dotyczące pokoi realnie sprzątanych po południu).
+    const base = {
+      assignments: { Kamil: [1, 2, 3, 4, 5, 6, 7, 8], Ola: [9, 10, 11, 12] },
+      roomStates: { 9: { status: "czyste" }, 10: { status: "czyste" } },
+    };
+    const withoutExclude = suggestReassignments({ ...base });
+    expect(withoutExclude.some(s => s.from === "Kamil")).toBe(true); // bez wykluczenia Kamil trafia jako dawca
+
+    const out = suggestReassignments({ ...base, excludeFrom: ["Kamil"] });
+    expect(out.every(s => s.from !== "Kamil")).toBe(true); // popołudniówka pominięta jako dawca
+    expect(out).toEqual([]); // jedyny pozostały kandydat (Ola) poniżej progu minBusy — brak sugestii
+  });
+
   it("nie dubluje pokoi między kolejnymi sugestiami", () => {
     const out = suggestReassignments({
       assignments: {

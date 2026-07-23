@@ -10,6 +10,7 @@ const rules = [
     name: "no-dangerously-set-inner-html",
     re: /dangerouslySetInnerHTML/,
     message: "Use safe React rendering instead of dangerouslySetInnerHTML.",
+    skipExts: [".md", ".txt"],
   },
   {
     name: "no-hardcoded-admin-password",
@@ -40,6 +41,20 @@ const rules = [
     skipExts: [".md", ".txt"],
     skipRel: ["public/hk-phone/"],
   },
+  {
+    name: "no-hardcoded-supabase-key",
+    re: /["'`]sb_(?:publishable|secret)_[A-Za-z0-9_-]{10,}/,
+    message: "Hardcoded Supabase key detected — move to env vars.",
+    skipExts: [".md", ".txt"],
+    skipRel: ["public/hk-phone/"],
+  },
+  {
+    name: "no-raw-storage-key",
+    re: /["'`]reception-/,
+    message: "Use STORAGE_KEYS from src/lib/storage.js instead of a raw \"reception-*\" literal.",
+    onlyRel: ["src/"],
+    skipRel: ["src/lib/storage.js"],
+  },
 ];
 
 function walk(dir, out = []) {
@@ -60,6 +75,7 @@ for (const file of walk(ROOT)) {
   const text = fs.readFileSync(file, "utf8");
   for (const rule of rules) {
     if (rule.skipExts && rule.skipExts.includes(ext)) continue;
+    if (rule.onlyRel && !rule.onlyRel.some(p => rel.startsWith(p))) continue;
     if (rule.skipRel && rule.skipRel.some(p => rel.startsWith(p))) continue;
     const match = rule.re.exec(text);
     if (match) {

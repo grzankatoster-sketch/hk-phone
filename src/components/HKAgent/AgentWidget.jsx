@@ -3,6 +3,7 @@
 // w popoverze konkretne sugestie z przyciskami Zastosuj/Odrzuć. Agent NIGDY nie
 // przenosi sam — zawsze pyta recepcję o zgodę.
 import React from "react";
+import AgentIcon from "./AgentIcon";
 
 const sugKey = (s) => `${s.from}->${s.to}:${s.rooms.join(",")}`;
 
@@ -34,7 +35,7 @@ export default function AgentWidget({
       {open && hasItems && (
         <div className="cc-agent-pop" role="dialog" aria-label="Agent AI — propozycje">
           <div className="cc-agent-pop-head">
-            <span className="cc-agent-pop-title">🤖 Agent AI</span>
+            <span className="cc-agent-pop-title"><AgentIcon size={15} style={{verticalAlign:"-2px"}} /> Agent AI</span>
             <button className="cc-agent-pop-close" onClick={() => setOpen(false)} aria-label="Zamknij">✕</button>
           </div>
 
@@ -87,7 +88,7 @@ export default function AgentWidget({
         aria-label={hasItems ? `Agent AI — ${actionable} propozycji` : "Agent AI"}
         title={hasItems ? "Agent ma propozycje" : "Agent AI — czuwa"}
       >
-        <span className="cc-agent-fab-icon" aria-hidden="true">🤖</span>
+        <span className="cc-agent-fab-icon" aria-hidden="true"><AgentIcon size={22} /></span>
         {actionable > 0 && <span className="cc-agent-badge">{actionable}</span>}
       </button>
     </div>

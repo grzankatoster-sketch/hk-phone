@@ -6,6 +6,7 @@ import { emptyCarryOver, SHIFT_OPTIONS, SHIFT_SHORT_LABELS, TENANT_ID } from "..
 import { searchRecords, llmReady } from "../../lib/llm";
 import { supabase } from "../../lib/supabase";
 import { todayKey } from "../../lib/dates";
+import { stripDiacritics } from "../../lib/names";
 
 // Wyszukiwarka AI „gdzie to znajdę / kto / co / kiedy". Po otwarciu: puste pole —
 // wpisujesz pytanie, AI przeszukuje WIEDZĘ (Wikirecepcja — instrukcje, procedury,
@@ -96,7 +97,7 @@ export default function GlobalSearchModal({ onClose, dark, wikiEntries = [], onO
     setSearched(true); setAiAnswer(""); setAiHits([]);
     // Prefiltr po słowach kluczowych liczymy ZAWSZE — nawet bez AI pokazujemy źródła
     // (wiki + historia), żeby ktoś, kto nie wie gdzie szukać, od razu trafił na temat.
-    const strip = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ł/g, "l");
+    const strip = stripDiacritics;
     const qWords = [...new Set(strip(query).split(/[^a-z0-9]+/).filter(w => w.length > 2))];
     const scored = aiCorpus.map(r => { const hay = strip(`${r.kto} ${r.typ} ${r.tresc}`); const score = qWords.reduce((n, w) => n + (hay.includes(w) || hay.includes(w.slice(0, 4)) ? 1 : 0), 0); return { r, score }; });
     // Wiki dostaje lekki bonus — to baza wiedzy, najczęściej szukana „gdzie to jest".

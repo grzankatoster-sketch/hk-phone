@@ -4,9 +4,9 @@ import {
   Home, Sun as SunIcon, AlertTriangle, FileText,
   Users, Star, BookOpen,
   LogOut, FileDown,
-  Car, History, MessageSquare,
+  Car, History, MessageSquare, KeyRound, Package,
 } from "lucide-react";
-import { SHIFT_SHORT_LABELS } from "../../lib/constants";
+import { SHIFT_SHORT_LABELS, HOTEL_NAME } from "../../lib/constants";
 import { isModuleEnabled } from "../../lib/modules";
 import Logo from "../../ui/Logo";
 import { fmt } from "../../lib/dates";
@@ -55,7 +55,7 @@ export default function WorkerSidebar({
           <span className="nsb-logo-mark-txt">CC</span>
         </div>
         <div className="nsb-logo-text">
-          <div className="nsb-logo-name">Conrad Comfort</div>
+          <div className="nsb-logo-name">{HOTEL_NAME}</div>
           <div className="nsb-logo-sub">Panel Recepcji</div>
         </div>
       </div>
@@ -112,6 +112,8 @@ export default function WorkerSidebar({
         {isModuleEnabled("goscie")   && nb("goscie",  <Users size={16} />,    "Stali goście", 0, false, "7")}
         {isModuleEnabled("vouchery") && nb("vouchery",<FileText size={16} />, "Vouchery", 0, false, "8")}
         {isModuleEnabled("opinie")   && nb("opinie",  <Star size={16} />,     "Opinie gości", 0, false, "9")}
+        {isModuleEnabled("klucze")   && nb("klucze",  <KeyRound size={16} />, "Klucze / karty")}
+        {isModuleEnabled("depozyty") && nb("depozyty",<Package size={16} />,  "Depozyty")}
 
         <div className="nsb-divider" />
         <div className="nsb-section-label">Narzędzia</div>

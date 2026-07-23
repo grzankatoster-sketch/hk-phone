@@ -1,9 +1,9 @@
 // Dynamiczna lista konserwatorów (edytowalna przez kierownika) z fallbackiem na
 // stałą KONSERWATOR_WORKERS z konfiguracji tenanta.
-import { loadJson, saveJson } from "./storage";
+import { loadJson, saveJson, STORAGE_KEYS } from "./storage";
 import { KONSERWATOR_WORKERS } from "./constants";
 
-const KEY = "reception-konserwatorzy";
+const KEY = STORAGE_KEYS.konserwatorzy;
 
 export const getKonserwatorzy = () => {
   const custom = loadJson(KEY, null);

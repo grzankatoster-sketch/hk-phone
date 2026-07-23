@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import Logo from "../../ui/Logo";
 import { isModuleEnabled } from "../../lib/modules";
+import { HOTEL_NAME } from "../../lib/constants";
 
 export default function AdminSidebarRail({
   activeTab, setActiveTab, setShowWiki, setShowAuditLog, handleAdminLogout, setShowSearch,
@@ -73,7 +74,7 @@ export default function AdminSidebarRail({
   return(
     <aside className={`worker-sidebar-rail${adminDark?" worker-sidebar-dark":""}`} aria-label="Panel kierownictwa — nawigacja">
       <div className="wsb-rail">
-        <div className="wsb-rail-logo" title="Conrad Comfort — panel kierownictwa" aria-hidden="true"><Logo variant="icon" tone="dark"/></div>
+        <div className="wsb-rail-logo" title={`${HOTEL_NAME} — panel kierownictwa`} aria-hidden="true"><Logo variant="icon" tone="dark"/></div>
         <div className="wsb-rail-groups" role="tablist" aria-label="Grupy paneli">
           {groups.map(g=>(
             <button key={g.id}

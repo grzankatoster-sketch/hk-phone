@@ -321,7 +321,9 @@ ipcMain.handle("hk-get-konserwator-qr", async (_, name, faults) => {
   hkserver.setKonserwatorFaults(safeName, faults);
   // QR prowadzi na wdrożoną stronę konserwacji (Supabase/GitHub Pages), nie na
   // lokalny serwer LAN — dzięki temu działa z każdego telefonu, nie tylko z sieci hotelu.
-  const KONS_BASE = process.env.VITE_KONSERWACJA_URL || "https://grzankatoster-sketch.github.io/hk-phone/konserwacja.html";
+  // Baza URL stron telefonów — konfigurowalna przez VITE_PHONE_BASE_URL (WYKONANIE 2.8).
+  const PHONE_BASE = process.env.VITE_PHONE_BASE_URL || "https://grzankatoster-sketch.github.io/hk-phone";
+  const KONS_BASE = process.env.VITE_KONSERWACJA_URL || `${PHONE_BASE}/konserwacja.html`;
   const url = `${KONS_BASE}?k=${encodeURIComponent(safeName)}`;
   try {
     const dataURL = await QRCode.toDataURL(url, { width: 280, margin: 2, color: { dark: "#000000", light: "#ffffff" } });

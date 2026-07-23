@@ -10,8 +10,12 @@ import { config } from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
 
-const SB_URL = process.env.VITE_SUPABASE_URL || "https://pjgcaujndvjvicqsdcns.supabase.co";
-const SB_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_KEY || "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const SB_URL = process.env.VITE_SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_KEY;
+if (!SB_URL || !SB_KEY) {
+  console.error("Brak VITE_SUPABASE_URL / klucza Supabase w .env (SUPABASE_SERVICE_KEY lub VITE_SUPABASE_KEY).");
+  process.exit(1);
+}
 const PLANS_DIR = process.env.HK_AUTOMATION_DIR
   ? join(process.env.HK_AUTOMATION_DIR, "plans")
   : "C:\\zmiany i raporty\\hk-automation\\plans";

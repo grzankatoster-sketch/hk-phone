@@ -1,0 +1,45 @@
+{
+  "appId": "pl.guestsage.manager",
+  "productName": "GuestSage Kierownik",
+  "copyright": "Copyright © 2026 GuestSage. Wszelkie prawa zastrzeżone.",
+  "extraMetadata": {
+    "main": "electron-manager/main.cjs",
+    "name": "guestsage-manager"
+  },
+  "asar": true,
+  "directories": {
+    "output": "release-manager"
+  },
+  "files": [
+    "electron-manager/**/*"
+  ],
+  "win": {
+    "icon": "public/icon.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "artifactName": "GuestSage-Kierownik-Setup-${version}.${ext}",
+    "installerIcon": "public/icon.ico",
+    "uninstallerIcon": "public/icon.ico",
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "GuestSage Kierownik"
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "grzankatoster-sketch",
+    "repo": "guestsage-manager-releases",
+    "private": false,
+    "releaseType": "release"
+  }
+}

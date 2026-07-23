@@ -272,6 +272,25 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
   }, [date]);
 
   // ─── Rzeczy znalezione (zgłoszenia z telefonów HK; nie są kluczowane po dniu) ──
+  // Kontrole jakości pokoi (WYKONANIE 4.11) — read-only podgląd dla koordynatora.
+  // Tworzone przez push-send po sprzątaniu (losowo), wypełniane przez pracownice na
+  // telefonach; tu desktop tylko MONITORUJE wyniki (kto, pokój, checklista, status).
+  const [qualityChecks, setQualityChecks] = React.useState([]);
+  React.useEffect(() => {
+    let active = true;
+    const today = TODAY();
+    const fetchQC = async () => {
+      const { data } = await supabase.from("hk_quality_checks").select("*").eq("tenant_id", TENANT_ID).eq("date", today).order("created_at", { ascending: false });
+      if (active && data) setQualityChecks(data);
+    };
+    fetchQC();
+    const channel = supabase.channel("hk-quality-checks")
+      .on("postgres_changes", { event: "*", schema: "public", table: "hk_quality_checks", filter: `date=eq.${today}` }, () => fetchQC())
+      .subscribe();
+    const poll = setInterval(fetchQC, 60000); // realtime pokrywa zmiany; poll = siatka bezpieczeństwa
+    return () => { active = false; supabase.removeChannel(channel); clearInterval(poll); };
+  }, []);
+
   const [foundItems, setFoundItems] = React.useState([]);
   React.useEffect(() => {
     let active = true;
@@ -291,9 +310,24 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
         if (eventType === "INSERT") showToast(`Nowy znaleziony przedmiot${row.room ? " · pokój " + row.room : ""}`, "info");
       })
       .subscribe();
-    const poll = setInterval(fetchFound, 15000);
+    const poll = setInterval(fetchFound, 60000); // realtime pokrywa zmiany; poll = rzadka siatka bezpieczeństwa (WYKONANIE 3.6)
     return () => { active = false; supabase.removeChannel(channel); clearInterval(poll); };
   }, []);
+
+  // Dodanie znalezionego przedmiotu Z RECEPCJI (source 'recepcja') — gdy gość zostawi
+  // coś przy ladzie / zadzwoni o zgubie. HK dodaje z telefonu; to domyka pętlę. WYKONANIE 4.5.
+  const [newFoundDesc, setNewFoundDesc] = React.useState("");
+  const [newFoundRoom, setNewFoundRoom] = React.useState("");
+  const addFoundItem = async () => {
+    if (!newFoundDesc.trim()) { showToast("Podaj opis przedmiotu.", "error"); return; }
+    const { error } = await supabase.from("found_items").insert({
+      tenant_id: TENANT_ID, source: "recepcja", room: newFoundRoom.trim() || null,
+      description: newFoundDesc.trim(), reported_by: employeeName || "Recepcja", status: "open", photos: [],
+    });
+    if (error) { showToast("Błąd: " + error.message, "error"); return; }
+    setNewFoundDesc(""); setNewFoundRoom("");
+    showToast("Dodano znaleziony przedmiot.", "success"); // realtime doda go do listy
+  };
 
   // Oznacz przedmiot jako oddany (komu/uwaga opcjonalnie). Zgłoszenie pozostaje niezmienne.
   const markReturned = (item) => {
@@ -518,6 +552,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
     { id: "pranie",      label: "Pranie",     icon: "🧺" },
     { id: "pracownicy",  label: "Pracownicy", icon: "👥" },
     { id: "znalezione",  label: "Znalezione", icon: "📦" },
+    { id: "kontrole",    label: "Kontrole",   icon: "🔍" },
     { id: "historia",    label: "Historia",   icon: "📋" },
   ];
 
@@ -958,6 +993,48 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
     );
   };
 
+  // ─── Tab: Kontrole (jakości pokoi — read-only podgląd wyników) ────────────
+  const renderKontrole = () => {
+    const pending = qualityChecks.filter(c => (c.status || "pending") !== "done");
+    const done = qualityChecks.filter(c => (c.status || "pending") === "done");
+    const checkCard = (c) => {
+      const isDone = (c.status || "pending") === "done";
+      const items = Array.isArray(c.items) ? c.items : [];
+      const okCount = items.filter(i => i.checked).length;
+      const accent = isDone ? "#34d399" : "#f59e0b";
+      return (
+        <details key={c.id} className="cc-found-det" style={{ ...card, padding: "9px 12px", borderLeft: `3px solid ${accent}`, opacity: isDone ? 0.9 : 1 }}>
+          <summary style={{ cursor: "pointer" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "calc(100% - 22px)", verticalAlign: "middle" }}>
+              <span style={{ fontSize: 14, fontWeight: 900, color: text, whiteSpace: "nowrap" }}>Pokój {c.room}</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>kontroluje: {c.target_worker || "—"}{c.cleaned_by ? ` · sprzątał/a: ${c.cleaned_by}` : ""}</span>
+              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase", letterSpacing: ".04em", flexShrink: 0, background: isDone ? "rgba(52,211,153,.12)" : "rgba(245,158,11,.12)", color: accent }}>{isDone ? `Sprawdzone ${okCount}/${items.length}` : "Oczekuje"}</span>
+            </span>
+          </summary>
+          {items.length > 0 && (
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+              {items.map((it, k) => (
+                <div key={k} style={{ fontSize: 12.5, color: it.checked ? text : muted, display: "flex", gap: 8 }}><span>{it.checked ? "✓" : "○"}</span><span>{it.q}</span></div>
+              ))}
+            </div>
+          )}
+        </details>
+      );
+    };
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".06em" }}>Oczekuje · {pending.length}</div>
+        {pending.length ? pending.map(checkCard) : <div style={{ textAlign: "center", padding: "20px", color: muted, fontSize: 13 }}>Brak kontroli oczekujących na dziś.</div>}
+        {done.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".06em", marginTop: 6 }}>Sprawdzone · {done.length}</div>
+            {done.map(checkCard)}
+          </>
+        )}
+      </div>
+    );
+  };
+
   // ─── Tab: Znalezione (rzeczy znalezione zgłoszone z telefonów HK) ─────────
   const renderZnalezione = () => {
     const fmt = (iso) => { try { return new Date(iso).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return ""; } };
@@ -1007,6 +1084,13 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
     };
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ ...card, padding: "10px 12px", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <input value={newFoundRoom} onChange={e => setNewFoundRoom(e.target.value)} placeholder="Pokój"
+            style={{ width: 80, padding: "7px 10px", borderRadius: 7, border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, background: dark ? "#0d1117" : "#fff", color: text, fontSize: 13 }} />
+          <input value={newFoundDesc} onChange={e => setNewFoundDesc(e.target.value)} onKeyDown={e => e.key === "Enter" && addFoundItem()} placeholder="Co znaleziono (np. czarny parasol przy ladzie)"
+            style={{ flex: 1, minWidth: 160, padding: "7px 10px", borderRadius: 7, border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, background: dark ? "#0d1117" : "#fff", color: text, fontSize: 13 }} />
+          <button onClick={addFoundItem} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, border: "1px solid rgba(245,158,11,.4)", background: "rgba(245,158,11,.12)", color: "#f59e0b", cursor: "pointer", fontWeight: 800 }}>+ Dodaj</button>
+        </div>
         <div style={{ fontSize: 11, fontWeight: 800, color: muted, textTransform: "uppercase", letterSpacing: ".06em" }}>W depozycie · {open.length}</div>
         {open.length ? open.map(itemCard) : (
           <div style={{ textAlign: "center", padding: "30px 20px", color: muted }}>
@@ -1769,6 +1853,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
           {activeTab === "pranie"     && renderPranie()}
           {activeTab === "pracownicy" && renderPracownicy()}
           {activeTab === "znalezione" && renderZnalezione()}
+          {activeTab === "kontrole"   && renderKontrole()}
           {activeTab === "historia"   && renderHistoria()}
         </div>
       </div>

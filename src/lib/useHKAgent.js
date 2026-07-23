@@ -143,18 +143,32 @@ export function useHKAgent(date, enabled = true, roomMetaRef = null) {
         if (res.some(r => r?.error)) return;
         const [{ data: plan }, { data: rData }, { data: lData }, { data: rosterRow }, { data: fData }] = res;
 
-        const assignments = { ...(plan?.assignments || {}), ...(plan?.pm_assignments || {}) };
+        // Scalenie planu porannego i popołudniowego BEZ nadpisywania: ta sama osoba
+        // może mieć wpis w obu (np. dyżurna robiąca rano wyjazdy, po południu pobyty)
+        // — spread obiektów nadpisywałby jej listę zamiast sumować, gubiąc zaległość
+        // z jednej ze zmian w statystykach obciążenia.
+        const amPlan = plan?.assignments || {};
+        const pmPlan = plan?.pm_assignments || {};
+        const assignments = {};
+        Object.entries(amPlan).forEach(([w, rms]) => { assignments[w] = [...(Array.isArray(rms) ? rms : [])]; });
+        Object.entries(pmPlan).forEach(([w, rms]) => { assignments[w] = [...(assignments[w] || []), ...(Array.isArray(rms) ? rms : [])]; });
         const roomStates = {};
         (rData || []).forEach(r => { roomStates[r.room] = r; });
         const presentWorkers = buildPresentWorkers(assignments, rosterRow?.roster, lData);
-        // Zmiana popołudniowa obsługuje tylko pobyty (PG/PGZ) + BR/ZS, nie wyjazdy —
-        // nie może być odbiorcą rannego balansowania (inaczej idle popołudniówka wygląda
-        // na „wolną" i agent proponuje zrzucenie jej wyjazdów przeciążonej osoby).
+        // Zmiana popołudniowa obsługuje tylko pobyty (PG/PGZ) + BR/ZS, nie wyjazdy — nie
+        // może być ani odbiorcą, ani DAWCĄ w rannym balansowaniu (inaczej idle popołudniówka
+        // wygląda na „wolną" i dostaje wyjazdy, albo jej zaległość PG/PGZ wygląda na
+        // „przeciążoną" i zostaje zrzucona na ranną — mylenie zmian w sugestiach agenta).
+        // Cała pula kluczy z pm_assignments, nie tylko jedna osoba oznaczona rolą w
+        // rosterze — kilka osób może mieć przydzielone pokoje popołudniowe naraz.
         const roster = Array.isArray(rosterRow?.roster) ? rosterRow.roster : [];
-        const excludeTo = roster.filter(r => r?.role === "popoludnie" && r?.name).map(r => r.name);
+        const pmWorkers = [...new Set([
+          ...Object.keys(pmPlan),
+          ...roster.filter(r => r?.role === "popoludnie" && r?.name).map(r => r.name),
+        ])];
 
         // 1) Propozycje zamian (równoważenie obciążenia wśród OBECNYCH, też idle bez pokoi)
-        const sugg = suggestReassignments({ assignments, roomStates, presentWorkers, excludeTo })
+        const sugg = suggestReassignments({ assignments, roomStates, presentWorkers, excludeTo: pmWorkers, excludeFrom: pmWorkers })
           .filter(s => !dismissedSugRef.current.includes(sugKey(s)));
 
         // 2) Prośby o pokój z telefonów — nierozpatrzone
@@ -263,6 +277,8 @@ export function useHKAgent(date, enabled = true, roomMetaRef = null) {
           const firstNotice = noticeItems.find(n => fresh.includes(n.id) && toMs(n.ts) > wm);
           const firstSwap = sugg.find(s => fresh.includes("swap:" + sugKey(s)));
           if (firstReq || firstNotice || firstSwap) {
+            // Emoji w tytułach to treść powiadomienia systemowego (OS notify) — nie da się
+            // tam wstawić SVG. Maskotka w UI aplikacji jest już ikoną (AgentIcon, WYKONANIE 1.17).
             let kind = "swap", text = "Nowa propozycja agenta", title = "🤖 Agent: propozycja zamiany";
             // action: payload do zatwierdzenia wprost z dymka (bez wchodzenia do HK).
             // Tylko dla zdarzeń wykonywalnych — usterki/pilne pokoje są informacyjne.

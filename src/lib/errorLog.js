@@ -3,8 +3,9 @@
 // może wywołać kolejnego błędu w UI. Zob. migracja 0013_error_logs.sql.
 import { supabase, supabaseReady } from "./supabase.js";
 import { TENANT_ID } from "./constants.js";
+import { STORAGE_KEYS } from "./storage.js";
 
-const LS_KEY = "reception-error-log";
+const LS_KEY = STORAGE_KEYS.errorLog;
 const LS_MAX = 50; // trzymamy tylko ostatnie N lokalnie, by nie puchło
 
 // Wersja aplikacji wstrzykiwana przez Vite (define w vite.config.js); fallback gdy brak.

@@ -100,13 +100,14 @@ function ManualDailyReportPanel({showToast,askConfirm}){
         done:ts.done||0,
         missed:ts.missing?ts.missing.length:((ts.total||0)-(ts.done||0)),
       }));
+      const dayUpsells=loadJson(STORAGE_KEYS.upsellCharges,[]).filter(u=>u.date===selDayKey); // dopłaty (4.12)
       downloadDailyReportPDF({
         generatedAt:fmt(),dateLabel:dayLabel,
         shiftMode:hasDzienna||hasNocna?"Dzienna + Nocna":"Poranna + Popoludniowa + Wieczorowa",
         shifts:shiftsData.length?shiftsData:[],
         taskSummary,
         allNotes:dayNotes,cashRows,corrections:dayCorrections,
-        empReports:dayEmpReports,
+        empReports:dayEmpReports,upsells:dayUpsells,
         filename:`raport_dobowy_${selDayKey}.pdf`,
       });
       showToast(`Raport dobowy (${dayReportsFiltered.length} zmian) wygenerowany.`,"success");

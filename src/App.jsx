@@ -25,6 +25,11 @@ const WikiAdminPanel = lazy(() => import("./modules/Admin/WikiAdminPanel"));
 const KasaAdminPanel = lazy(() => import("./modules/Admin/KasaAdminPanel"));
 const WiadomosciPanel = lazy(() => import("./modules/Admin/WiadomosciPanel"));
 const ParkingPanel = lazy(() => import("./modules/Parking/ParkingPanel"));
+import ArrivalsSummary from "./modules/Arrivals/ArrivalsSummary";
+const KeysPanel = lazy(() => import("./modules/Keys/KeysPanel"));
+const DepositsPanel = lazy(() => import("./modules/Deposits/DepositsPanel"));
+import WakeUpsCard from "./modules/WakeUps/WakeUpsCard";
+import UpsellCard from "./modules/Upsell/UpsellCard";
 const HistoriaWorkerPanel = lazy(() => import("./modules/Historia/HistoriaPanel"));
 const StaliGosciePanel = lazy(() => import("./modules/StaliGoscie/StaliGosciePanel"));
 import ConfirmModal from "./components/modals/ConfirmModal";
@@ -50,6 +55,8 @@ import { useSound } from "./hooks/useSound";
 import { getFullName } from "./lib/employees";
 import { supabase, supabaseReady } from "./lib/supabase";
 import { pushMirror } from "./lib/cloudSync";
+import { computeSafeDeposit } from "./lib/cash.mjs";
+import { initSyncQueueListener } from "./lib/syncQueue";
 import { useHKAgent, markRequestHandled } from "./lib/useHKAgent";
 import { pushHkState, fetchHkState, subscribeHkState, hkStateDeviceId } from "./lib/hkState";
 import { pushSchedule, fetchSchedule, subscribeSchedule } from "./lib/scheduleSync";
@@ -64,19 +71,19 @@ import {
   Eye, EyeOff, Maximize2, Minimize2, Sparkles, Clock,
 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers, setCustomManagers as persistCustomManagers } from "./lib/storage";
-import { isModuleEnabled } from "./lib/modules";
+import { isModuleEnabled, loadTenantFeatures } from "./lib/modules";
 import { verifyOrCreateAdminPassword, hasAdminPassword, verifyBootstrapPassword, createManagerPassword } from "./lib/adminAuth";
 import {
   ADMIN_MANAGERS, SHIFT_OPTIONS,
   SHIFT_LABELS, SHIFT_LABELS_PL, SHIFT_SHORT_LABELS, SHIFT_NAME_PL, NEXT_SHIFT,
   defaultEmployees, defaultTasks, getDefaultWikiEntries, emptyCarryOver,
   HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_ALL, TENANT_ID,
-  WORKER_TAB_LABELS, ADMIN_TAB_LABELS,
+  WORKER_TAB_LABELS, ADMIN_TAB_LABELS, DEFAULT_STALA_KASOWA, HOTEL_NAME,
 } from "./lib/constants";
 import { fmt, fmtA, todayKey, monthKey, parsePlDateTime, autoDetectShift, shiftFromSchedule, shiftStartMinutes, shiftEndDate, getScheduleDayEntry } from "./lib/dates";
 import { normalizeToShift } from "./lib/excel";
 import { pl, plR, normTask, buildShiftFn, buildEmpFn, fmtMoney } from "./lib/format";
-import { canonicalizeNameInput, canonicalizePersonName, getCanonicalManagerName, isManagerName } from "./lib/names";
+import { canonicalizeNameInput, canonicalizePersonName, getCanonicalManagerName, isManagerName, stripDiacritics } from "./lib/names";
 import { downloadDailyReportPDF } from "./lib/pdf-daily";
 import { downloadCorrectionPDF, downloadShiftPDF, downloadEmployeeReportPDF, downloadWikiPDF } from "./lib/pdf-reports";
 import Lottie from "lottie-react";
@@ -92,7 +99,7 @@ const IS_DEV_TEST = typeof localStorage !== 'undefined' && localStorage.getItem(
 // w `vite build` to stała false, więc cały blok jest usuwany z release (dead-code).
 // Widoczne tylko podczas `npm run dev`. Świadomie BEZ IS_DEV_TEST, by nie trafiło na produkcję.
 const DEV_TOOLS = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
-const TEST_CLOCK_KEY = 'reception-test-clock-offset';
+const TEST_CLOCK_KEY = STORAGE_KEYS.testClockOffset;
 
 // Apartamenty mają typ wpisywany RĘCZNIE przez recepcję (np. "2xDBL", "D+T+SOFA")
 // i nie wolno go nadpisywać generycznym "APT" z planu mailowego. room_types to
@@ -153,7 +160,7 @@ export default function App(){
   const [shiftNoteInput,setShiftNoteInput]=useState("");
   const [handoverNote,setHandoverNote]=useState("");
   const [autosaveNote,setAutosaveNote]=useState(()=>{
-    try{const s=localStorage.getItem("reception-autosave-note");return s?JSON.parse(s):null;}catch{return null;}
+    try{const s=localStorage.getItem(STORAGE_KEYS.autosaveNote);return s?JSON.parse(s):null;}catch{return null;}
   });
   const [carryOverTarget,setCarryOverTarget]=useState("nocna");
   // autosave last carry note every 60s
@@ -201,10 +208,17 @@ export default function App(){
     },700);
     return ()=>clearTimeout(t);
   },[schedule]);
+  useEffect(()=>{if(supabase)initSyncQueueListener(supabase);},[]); // bufor offline: flush po powrocie online (WYKONANIE 1.5)
+  // Heartbeat recepcji co 60s → panel kierownika wie, czy recepcja jest online (WYKONANIE 2.11).
+  useEffect(()=>{if(!supabaseReady)return;const beat=()=>pushMirror("heartbeat",{at:Date.now()});beat();const iv=setInterval(beat,60000);return()=>clearInterval(iv);},[]);
+  // Licencja modułów z DB (tenant_features). Po załadowaniu wymuszamy re-render, by nawigacja
+  // odzwierciedliła stan z bazy. Bez DB/migracji 0049 → fallback do VITE_MODULES (WYKONANIE 2.2).
+  const [,setFeaturesLoaded]=useState(false);
+  useEffect(()=>{if(supabase)loadTenantFeatures(supabase,TENANT_ID).then(()=>setFeaturesLoaded(true));},[]);
   useEffect(()=>{pushMirror("employees",employees);},[employees]); // rejestr recepcji dla panelu menedżerskiego
   useEffect(()=>{const r=loadJson(STORAGE_KEYS.empReports,[]);if(r.length)pushMirror("employee_reports",r.slice(0,100));},[]); // notatki służbowe → panel (koordynator/kierownik)
-  const [lastView,setLastView]=useState(()=>localStorage.getItem("reception-last-view")||"worker"); // worker | manager
-  const [mgrToggleMini,setMgrToggleMini]=useState(()=>localStorage.getItem("reception-mgr-toggle-mini")==="1");
+  const [lastView,setLastView]=useState(()=>localStorage.getItem(STORAGE_KEYS.lastView)||"worker"); // worker | manager
+  const [mgrToggleMini,setMgrToggleMini]=useState(()=>localStorage.getItem(STORAGE_KEYS.mgrToggleMini)==="1");
   const activeManagerName=getCanonicalManagerName(employeeName,customManagers);
   const canAccessManagerPanel=!!(isAdmin&&activeManagerName&&currentManager===activeManagerName);
   const resolveLoginShift=useCallback((name)=>{
@@ -313,7 +327,7 @@ export default function App(){
   },[selectedShift]);
   // Odrzucenia przypomnień/powiadomień utrwalamy per pracownik + dzień (klucz tu,
   // efekt zapisujący niżej — po deklaracji dismissedReminderKeys, by uniknąć TDZ).
-  const dismissStoreKey=useCallback((name)=>`reception-dismissed-reminders-${name||"_"}-${todayKey()}`,[]);
+  const dismissStoreKey=useCallback((name)=>`${STORAGE_KEYS.dismissedRemindersPrefix}-${name||"_"}-${todayKey()}`,[]);
   // ── Pre-shift modal (B5) ────────────────────────────────────────────────
   const [showPreShiftModal,setShowPreShiftModal]=useState(false);
   // Switch top-bar po zalogowaniu kierownika
@@ -427,12 +441,14 @@ export default function App(){
   const [newGlobalNote,setNewGlobalNote]=useState("");
   const [newGlobalNoteShift,setNewGlobalNoteShift]=useState("");
   const [newGlobalNoteDate,setNewGlobalNoteDate]=useState(()=>todayKey());
-  const [dismissedGlobalNotes,setDismissedGlobalNotes]=useState(()=>{try{return JSON.parse(localStorage.getItem("reception-dismissed-gnotes")||"[]");}catch{return[];}});
+  const [dismissedGlobalNotes,setDismissedGlobalNotes]=useState(()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEYS.dismissedGnotes)||"[]");}catch{return[];}});
   const [handoverLog,setHandoverLog]=useState(()=>loadJson(STORAGE_KEYS.handoverLog,[]));
+  // Dopisuje wpis na początek dziennika przekazań (max 300) + zapis do localStorage. Patrz WYKONANIE 1.7.
+  const pushHandoverLog=(entry)=>{const updated=[entry,...handoverLog].slice(0,300);setHandoverLog(updated);saveJson(STORAGE_KEYS.handoverLog,updated);};
   const [incidentLog,setIncidentLog]=useState(()=>loadJson(STORAGE_KEYS.incidentLog,[]));
   const [pcDocType,setPcDocType]=useState("paragon");
   const [adminNotifType,setAdminNotifType]=useState("notif");
-  const AUTOSAVE_KEY="reception-autosave-note";
+  const AUTOSAVE_KEY=STORAGE_KEYS.autosaveNote;
   const autosaveTimerRef=React.useRef(null);
   const [showMsgModal,setShowMsgModal]=useState(false);
   const [messages,setMessages]=useState(()=>loadJson(STORAGE_KEYS.messages,[]));
@@ -592,7 +608,7 @@ export default function App(){
           const d=new Date(start.getTime()+i*86400000);
           const date=d.toISOString().split("T")[0];
           if(date===hkDate)continue;
-          const saved=loadJson(`reception-hk-plan-${date}`,null);
+          const saved=loadJson(`${STORAGE_KEYS.hkPlan}-${date}`,null);
           let data=saved&&typeof saved==="object"&&!Array.isArray(saved)&&saved.data&&typeof saved.data==="object"?saved.data:loadJson(`hk-data-${date}`,null);
           if(!data||Object.keys(data).length===0){
             const diskData=await loadDiskPlanData(date);
@@ -722,7 +738,7 @@ export default function App(){
           const date=d.toISOString().split("T")[0];
           // Preferuj recznie zapisane dane z localStorage (zmiany usera).
           // Dysk (raport KWHotel z maila) tylko jako fallback gdy brak lokalnych.
-          const saved=loadJson(`reception-hk-plan-${date}`,null);
+          const saved=loadJson(`${STORAGE_KEYS.hkPlan}-${date}`,null);
           let data=saved&&typeof saved==="object"&&!Array.isArray(saved)&&saved.data&&typeof saved.data==="object"?saved.data:loadJson(`hk-data-${date}`,null);
           if(!data||Object.keys(data).length===0){
             let res=null;
@@ -765,19 +781,23 @@ export default function App(){
     const d=new Date(base);d.setDate(d.getDate()+testDateOffset);return d;
   };
   // ── Stała kasowa ──────────────────────────────────────────────────────────────
-  const STALA_KASOWA_KEY="reception-stala-kasowa";
-  const KW_TOTAL_KEY="reception-kw-total";
-  const [stalaKasowa,setStalaKasowa]=useState(()=>{const v=localStorage.getItem("reception-stala-kasowa");return v&&!isNaN(parseFloat(v))?parseFloat(v):500;});
-  const [kwTotal,setKwTotal]=useState(()=>{const v=localStorage.getItem("reception-kw-total");return v&&!isNaN(parseFloat(v))?parseFloat(v):0;});
+  const STALA_KASOWA_KEY=STORAGE_KEYS.stalaKasowa;
+  const KW_TOTAL_KEY=STORAGE_KEYS.kwTotal;
+  const [stalaKasowa,setStalaKasowa]=useState(()=>{const v=localStorage.getItem(STORAGE_KEYS.stalaKasowa);return v&&!isNaN(parseFloat(v))?parseFloat(v):DEFAULT_STALA_KASOWA;});
+  const [kwTotal,setKwTotal]=useState(()=>{const v=localStorage.getItem(STORAGE_KEYS.kwTotal);return v&&!isNaN(parseFloat(v))?parseFloat(v):0;});
   const [stalaPotwierdzono,setStalaPotwierdzono]=useState(false);
   const [stalaNiezgodnosc,setStalaNiezgodnosc]=useState(false);
   const [showSafeDepositModal,setShowSafeDepositModal]=useState(false);
   const [safeDepositKW,setSafeDepositKW]=useState("");
-  const [safeDepositAmount,setSafeDepositAmount]=useState("");
   const [postDepositKW,setPostDepositKW]=useState(""); // płatności gotówkowe PO wpłacie do sejfu
-  // Domyślnie kwota do sejfu = przyrost KW (nie wpisuje się jej drugi raz). Override gdy true.
-  const [safeDepositManual,setSafeDepositManual]=useState(false);
   const [showPostDeposit,setShowPostDeposit]=useState(false); // zwijana opcja „płatność po 24:00"
+  // ── Sejf nocny: ślepe liczenie + bramka uzgodnienia (nocna/wieczorowa) ──
+  // read = odczyt z drukarki · count = policz gotówkę na ślepo · reconcile = uzgodnij
+  const [safeSubStep,setSafeSubStep]=useState("read");
+  const [safeCounted,setSafeCounted]=useState("");            // gotówka policzona fizycznie
+  const [safeNoCash,setSafeNoCash]=useState(false);           // deklaracja: brak gotówki tej nocy
+  const [safeAttested,setSafeAttested]=useState(false);       // podpis atestacji przy wpłacie 0
+  const [safeDiffReported,setSafeDiffReported]=useState(false);// różnica zgłoszona kierownikowi
   // ── Strażnik sejfu + przypomnienie końca zmiany (agent) ─────────────────────
   // Wpłata do sejfu zarejestrowana w tej sesji (ustawiane w handleSafeDeposit).
   // Nocna/wieczorowa nie może opuścić zmiany dopóki to nie jest true.
@@ -915,12 +935,12 @@ export default function App(){
     // Admin session intentionally NOT restored on restart — must log in each time
     localStorage.removeItem(STORAGE_KEYS.adminSession);
     localStorage.removeItem(STORAGE_KEYS.adminUser);
-    setEmployees(loadJson("reception-final-employees",defaultEmployees));
+    setEmployees(loadJson(STORAGE_KEYS.employees,defaultEmployees));
     // Seed przykladowych alertow i przypomnien przy pierwszym uruchomieniu (demo)
     if(!localStorage.getItem(STORAGE_KEYS.managerAlerts)){
       const seedAlerts=[{
         id:crypto.randomUUID(),
-        title:"Witaj w Conrad Comfort!",
+        title:`Witaj w ${HOTEL_NAME}!`,
         body:"System przypomnień został wprowadzony. Kierownik może dodawać tu ważne informacje dla całego zespołu. Nowe alerty pojawią się automatycznie przy rozpoczęciu zmiany.",
         priority:"normal",
         created_by:"System",
@@ -1036,7 +1056,12 @@ export default function App(){
   // Zadania przekazane z panelu menedżera (manager_alerts, kind='task') na bieżącą zmianę/dzień — zakładka „Zadania".
   const managerTasksForShift=useMemo(()=>{
     if(!selectedShift)return[];
-    const dk=currentSessionDate||todayKey();
+    // Data LIVE (nie zamrożona currentSessionDate, ustalana raz przy logowaniu) —
+    // inaczej sesja nocna przechodząca przez północ nie widziała zadania wystawionego
+    // na nowy dzień, dopóki pracownik się nie przelogował. nowTick (co 60s) wymusza
+    // ponowne przeliczenie, żeby przejście przez północ złapało się bez odświeżenia.
+    void nowTick;
+    const dk=todayKey();
     const nowMs=Date.now();
     return loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>
       a.kind==="task"&&!a.done&&
@@ -1044,7 +1069,7 @@ export default function App(){
       (!a.target_shift||a.target_shift===selectedShift)&&
       (!a.target_date||a.target_date===dk)
     ).sort((a,b)=>(b.priority==="high"?1:0)-(a.priority==="high"?1:0)||new Date(b.created_at)-new Date(a.created_at));
-  },[selectedShift,currentSessionDate,inboxVersion]);
+  },[selectedShift,inboxVersion,nowTick]);
   const filteredExtraTasks=useMemo(()=>extraTasksLog.filter(item=>item.shift===selectedShift&&item.employee===employeeName&&item.sessionDate===currentSessionDate),[extraTasksLog,selectedShift,employeeName,currentSessionDate]);
   const filteredWikiEntries=useMemo(()=>{const q=wikiSearch.trim().toLowerCase();return q?wikiEntries.filter(e=>e.topic.toLowerCase().includes(q)||e.content.toLowerCase().includes(q)):wikiEntries;},[wikiEntries,wikiSearch]);
   const selectedWikiEntry=useMemo(()=>filteredWikiEntries.find(e=>e.id===selectedWikiId)||filteredWikiEntries[0]||null,[filteredWikiEntries,selectedWikiId]);
@@ -1069,7 +1094,7 @@ export default function App(){
   },[cashClosingDocumentsAmount,stalaKasowa,kwTotal]);
 
   // Kwota w sejfie dla następnej zmiany (zapisywana do localStorage)
-  const SAFE_KEY="reception-safe-amount";
+  const SAFE_KEY=STORAGE_KEYS.safeAmount;
 
   // Live stan kasy → panel menedżerski: kasetka = stała kasowa (KPI recepcji),
   // plus aktualny sejf i suma KW. Ten sam wzorzec co inne mirrory (employees itd.).
@@ -1204,15 +1229,21 @@ export default function App(){
   useEffect(()=>{
     const onStorage=(e)=>{if(e.key===STORAGE_KEYS.faults)setFaultsVersion(v=>v+1);};
     window.addEventListener("storage",onStorage);
-    const poll=setInterval(()=>setFaultsVersion(v=>v+1),3000);
-    return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);};
+    // Realtime z Supabase (cross-device) bumpuje licznik natychmiast; poll to już tylko
+    // rzadka siatka bezpieczeństwa dla zmian w tej samej karcie (storage-event ich nie łapie). WYKONANIE 3.6.
+    let ch=null;
+    if(supabase){ch=supabase.channel("app-faults-badge")
+      .on("postgres_changes",{event:"*",schema:"public",table:"faults",filter:`tenant_id=eq.${TENANT_ID}`},()=>setFaultsVersion(v=>v+1))
+      .subscribe();}
+    const poll=setInterval(()=>setFaultsVersion(v=>v+1),30000);
+    return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);if(ch)supabase.removeChannel(ch);};
   },[]);
 
   // Licznik nieprzeczytanych wiadomosci czatu zespolowego (B5)
   const [chatTick,setChatTick]=useState(0);
   const chatUnread=useMemo(()=>{
-    const msgs=loadJson("reception-team-messages",[]);
-    const seen=loadJson("reception-team-lastseen",{});
+    const msgs=loadJson(STORAGE_KEYS.teamMessages,[]);
+    const seen=loadJson(STORAGE_KEYS.teamLastSeen,{});
     const me=employeeName||currentManager||"Recepcja";
     return msgs.filter(m=>{
       const ch=m.channel||"team";
@@ -1221,19 +1252,26 @@ export default function App(){
     }).length;
   },[chatTick,employeeName,currentManager,workerTab,adminTab]);
   useEffect(()=>{
-    const onStorage=(e)=>{if(e.key==="reception-team-messages"||e.key==="reception-team-lastseen")setChatTick(t=>t+1);};
+    const onStorage=(e)=>{if(e.key===STORAGE_KEYS.teamMessages||e.key===STORAGE_KEYS.teamLastSeen)setChatTick(t=>t+1);};
     window.addEventListener("storage",onStorage);
-    const poll=setInterval(()=>setChatTick(t=>t+1),15000);
-    return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);};
+    // Realtime czatu (messages) bumpuje badge natychmiast; poll = rzadka siatka bezpieczeństwa. WYKONANIE 3.6.
+    let ch=null;
+    if(supabase){ch=supabase.channel("app-chat-badge")
+      .on("postgres_changes",{event:"*",schema:"public",table:"messages",filter:`tenant_id=eq.${TENANT_ID}`},()=>setChatTick(t=>t+1))
+      .subscribe();}
+    const poll=setInterval(()=>setChatTick(t=>t+1),60000);
+    return ()=>{window.removeEventListener("storage",onStorage);clearInterval(poll);if(ch)supabase.removeChannel(ch);};
   },[]);
 
   // Licznik Informacji (Inbox) — aktywne alerty + stale + nowe wiki
   const inboxCount=useMemo(()=>{
+    void nowTick; // wymusza przeliczenie po północy — patrz managerTasksForShift
     const nowMs=Date.now();
+    const today=todayKey();
     const alerts=loadJson(STORAGE_KEYS.managerAlerts,[]).filter(a=>{
       const notExp=!a.expires_at||new Date(a.expires_at).getTime()>nowMs;
       const shiftOk=!a.target_shift||!selectedShift||a.target_shift===selectedShift;
-      const dateOk=!a.target_date||a.target_date===(currentSessionDate||todayKey());
+      const dateOk=!a.target_date||a.target_date===today;
       const alertOk=a.kind!=="task"||a.priority==="high";   // zadania → zakładka Zadania; tylko pilne liczą się jako alert
       return notExp&&shiftOk&&dateOk&&alertOk&&!a.done;
     }).length;
@@ -1242,7 +1280,7 @@ export default function App(){
     const newWiki=wikiEntries.filter(w=>parsePlDateTime(w.updatedAt)>wikiLastSeen).length;
     const pending=loadJson(STORAGE_KEYS.pendingItems,[]).filter(p=>!p.resolved).length;
     return alerts+reminders+newWiki+pending;
-  },[wikiEntries,employeeName,selectedShift,currentSessionDate,started,inboxVersion]);
+  },[wikiEntries,employeeName,selectedShift,started,inboxVersion,nowTick]);
 
   const futureDatedReminders=useMemo(()=>{
     const today=todayKey();
@@ -1282,7 +1320,7 @@ export default function App(){
 
   // Last handover note — show only the note from the very last completed shift
   // Dismissed when a new shift is started (handoverNoteDismissed state)
-  const [handoverNoteDismissed,setHandoverNoteDismissed]=useState(()=>localStorage.getItem("reception-handover-seen")||"");
+  const [handoverNoteDismissed,setHandoverNoteDismissed]=useState(()=>localStorage.getItem(STORAGE_KEYS.handoverSeen)||"");
   const lastHandoverNote=useMemo(()=>{
     const notes=loadJson(STORAGE_KEYS.handoverNotes,[]);
     if(!notes.length)return null;
@@ -1357,10 +1395,10 @@ export default function App(){
     setCashOpeningAmount(String(stalaKasowa));
     setStalaPotwierdzono(false);setStalaNiezgodnosc(false);
     // Sprawdź płatności po wpłacie nocnej
-    const postKWStr=localStorage.getItem("reception-post-deposit-kw");
+    const postKWStr=localStorage.getItem(STORAGE_KEYS.postDepositKw);
     if(postKWStr&&!isNaN(parseFloat(postKWStr))&&parseFloat(postKWStr)>0){
       showToast(`Zmiana ${shiftLabel} rozpoczęta. ⚠️ Nocna miała ${fmtMoney(parseFloat(postKWStr))} zł KW po wpłacie do sejfu — uwzględnione w KW.`,"warning",9000);
-      localStorage.removeItem("reception-post-deposit-kw");
+      localStorage.removeItem(STORAGE_KEYS.postDepositKw);
     } else {
       showToast(`Zmiana ${shiftLabel} rozpoczęta. Powodzenia!`,"success");
     }
@@ -1455,7 +1493,7 @@ export default function App(){
     const item={id:crypto.randomUUID(),text:t,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),resolved:false};
     const list=[item,...loadJson(STORAGE_KEYS.pendingItems,[])];saveJson(STORAGE_KEYS.pendingItems,list);
     const logEntry={id:crypto.randomUUID(),type:"pending",from:item.createdBy,fromShift:selectedShift||"—",toShift:"oczekujące",text:t,createdAt:fmtA()};
-    const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+    pushHandoverLog(logEntry);
     showToast("Dodano do Oczekujących (Informacje → Oczekujące).","success");
   };
   // ── Kompozer v2: jedno pole + dwie osie (Rodzaj × Kiedy) → właściwy magazyn ──
@@ -1470,7 +1508,7 @@ export default function App(){
       const ne={id:crypto.randomUUID(),text,targetShift:newReminderShift||null,targetDate:newReminderDate,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),entryType:entryKind==="task"?"task":"reminder",source:isAdminCreated?"admin":"worker"};
       const updated=[ne,...datedReminders];setDatedReminders(updated);saveJson(STORAGE_KEYS.datedReminders,updated);
       const logEntry={id:crypto.randomUUID(),type:ne.entryType,from:ne.createdBy,fromShift:selectedShift||"—",toShift:newReminderShift,text,targetDate:newReminderDate,createdAt:fmtA()};
-      const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+      pushHandoverLog(logEntry);
       setShiftNoteInput("");showToast(`Ustawione na ${newReminderDate} (${newReminderShift?SHIFT_SHORT_LABELS[newReminderShift]:"wszystkie zmiany"}).`,"success");return;
     }
     // Następna zmiana → zadanie (checkbox) albo powiadomienie (do wiadomości)
@@ -1480,13 +1518,13 @@ export default function App(){
       const updated={...carryOverTasks,[carryOverTarget]:[...(carryOverTasks[carryOverTarget]||[]),ne]};
       setCarryOverTasks(updated);saveJson(STORAGE_KEYS.carry,updated);
       const logEntry={id:crypto.randomUUID(),type:"task",from:employeeName,fromShift:selectedShift,toShift:carryOverTarget,text,createdAt:fmtA()};
-      const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+      pushHandoverLog(logEntry);
       setShiftNoteInput("");showToast(`Zadanie przekazane do zmiany ${SHIFT_SHORT_LABELS[carryOverTarget]}.`,"success");
     }else{
       const n={id:crypto.randomUUID(),text,createdBy:employeeName||currentManager||"recepcja",createdAt:fmtA(),targetShift:null,entryType:"reminder"};
       const updated=[n,...globalNotifications];setGlobalNotifications(updated);saveJson(STORAGE_KEYS.globalNotifications,updated);
       const logEntry={id:crypto.randomUUID(),type:"reminder",from:n.createdBy,fromShift:selectedShift||"—",toShift:"wszystkie",text,createdAt:fmtA()};
-      const updatedLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updatedLog);saveJson(STORAGE_KEYS.handoverLog,updatedLog);
+      pushHandoverLog(logEntry);
       setShiftNoteInput("");showToast("Powiadomienie dodane — widoczne na ekranie startowym.","success");
     }
   };
@@ -1762,7 +1800,7 @@ export default function App(){
     }
     resetView();
   };
-  const saveEmployees=(next)=>{setEmployees(next);saveJson("reception-final-employees",next);};
+  const saveEmployees=(next)=>{setEmployees(next);saveJson(STORAGE_KEYS.employees,next);};
   const addEmployee=()=>{const name=newEmployeeName.trim();if(!name)return;if(employees.some(e=>e.toLowerCase()===name.toLowerCase())){showToast("Pracownik o tym imieniu już istnieje.","warning");return;}saveEmployees([...employees,name]);addAudit(currentManager,`Dodanie pracownika: "${name}"`);setNewEmployeeName("");showToast(`Dodano: ${name}`,"success");};
   const startEditEmployee=(i)=>{setEditingEmployeeIndex(i);setEditingEmployeeName(employees[i]||"");};
   const saveEditedEmployee=()=>{const name=editingEmployeeName.trim();if(!name)return;addAudit(currentManager,`Edycja pracownika: "${employees[editingEmployeeIndex]}" -> "${name}"`);saveEmployees(employees.map((e,i)=>i===editingEmployeeIndex?name:e));setEditingEmployeeIndex(null);setEditingEmployeeName("");showToast("Zmiany zapisane.","success");};
@@ -1777,37 +1815,57 @@ export default function App(){
   };
 
   // ── Stała kasowa handlers ─────────────────────────────────────────────────────
-  const handleSafeDeposit=()=>{
-    const kwNew=parseFloat(safeDepositKW)||0;
-    const kwPrev=kwTotal;
-    const kwIncrement=Math.max(0,kwNew-kwPrev);
-    // Domyślnie do sejfu trafia dokładnie przyrost KW (kasa wraca do stałej) — bez
-    // drugiego wpisywania tej samej kwoty. Override tylko gdy zaznaczono „inna kwota".
-    const deposit=safeDepositManual?(parseFloat(safeDepositAmount)||0):kwIncrement;
-    const totalBeforeDeposit=stalaKasowa+kwIncrement;
-    const newStala=totalBeforeDeposit-deposit;
+  // Tryb: "match" = policzona = naliczona (kasa wraca do stałej), "zero" = brak gotówki
+  // (atestacja), "reported" = rozjazd zgłoszony kierownikowi → do sejfu trafia policzona
+  // (fizyczna) gotówka, a stan kasy odzwierciedla rzeczywistość do rozliczenia w panelu.
+  const handleSafeDeposit=(mode="match")=>{
+    // Czysta matematyka wpłaty do sejfu wydzielona do lib/cash.mjs (WYKONANIE 2.12,
+    // strefa zamrożona). App.jsx orkiestruje tylko efekty (localStorage/stan/log/toast).
+    const {kwIncrement,counted,totalBeforeDeposit,deposit,newStala,postKW}=
+      computeSafeDeposit({mode,safeDepositKW,kwTotal,safeCounted,stalaKasowa,postDepositKW});
     localStorage.setItem(STALA_KASOWA_KEY,String(newStala));
     setStalaKasowa(newStala);
     localStorage.setItem(SAFE_KEY,String(newStala));
     // KW po wpłacie do sejfu (płatności między wpłatą a końcem nocy)
-    const postKW=parseFloat(postDepositKW)||0;
     localStorage.setItem(KW_TOTAL_KEY,String(postKW));
     setKwTotal(postKW);
     if(postKW>0){
-      localStorage.setItem("reception-post-deposit-kw",String(postKW));
-      const kasaLog2=loadJson("reception-kasa-log",[]);
-      saveJson("reception-kasa-log",[{id:crypto.randomUUID(),type:"post_wplata",from:employeeName,shift:selectedShift,text:`Płatność po wpłacie do sejfu: ${fmtMoney(postKW)} zł — wliczone w KW zmiany porannej.`,createdAt:fmtA()},...kasaLog2].slice(0,100));
+      localStorage.setItem(STORAGE_KEYS.postDepositKw,String(postKW));
+      const kasaLog2=loadJson(STORAGE_KEYS.kasaLog,[]);
+      saveJson(STORAGE_KEYS.kasaLog,[{id:crypto.randomUUID(),type:"post_wplata",from:employeeName,shift:selectedShift,text:`Płatność po wpłacie do sejfu: ${fmtMoney(postKW)} zł — wliczone w KW zmiany porannej.`,createdAt:fmtA()},...kasaLog2].slice(0,100));
     } else {
-      localStorage.removeItem("reception-post-deposit-kw");
+      localStorage.removeItem(STORAGE_KEYS.postDepositKw);
     }
     // Zapis do logu kasy (nie do wiadomości)
-    const kasaLog=loadJson("reception-kasa-log",[]);
-    saveJson("reception-kasa-log",[{id:crypto.randomUUID(),type:"wplata",from:employeeName,shift:selectedShift,text:`Wpłata do sejfu: ${fmtMoney(deposit)} zł. Przed wpłatą: ${fmtMoney(totalBeforeDeposit)} zł. Nowa stała: ${fmtMoney(newStala)} zł.`,createdAt:fmtA()},...kasaLog].slice(0,100));
+    const kasaLog=loadJson(STORAGE_KEYS.kasaLog,[]);
+    const logText=mode==="zero"
+      ? `Wpłata do sejfu: 0 zł — pracownik potwierdził brak płatności gotówką tej nocy (atestacja). Kasa: ${fmtMoney(newStala)} zł.`
+      : mode==="reported"
+        ? `⚠️ Wpłata do sejfu z RÓŻNICĄ: naliczono ${fmtMoney(kwIncrement)} zł, policzono ${fmtMoney(counted)} zł (różnica ${fmtMoney(Math.abs(counted-kwIncrement))} zł). Do sejfu: ${fmtMoney(deposit)} zł. Nowa stała: ${fmtMoney(newStala)} zł. Zgłoszono kierownikowi.`
+        : `Wpłata do sejfu: ${fmtMoney(deposit)} zł (zgodna z liczeniem). Przed wpłatą: ${fmtMoney(totalBeforeDeposit)} zł. Nowa stała: ${fmtMoney(newStala)} zł.`;
+    saveJson(STORAGE_KEYS.kasaLog,[{id:crypto.randomUUID(),type:"wplata",from:employeeName,shift:selectedShift,text:logText,createdAt:fmtA()},...kasaLog].slice(0,100));
     setShowSafeDepositModal(false);
     setSafeDepositRegistered(true);
     setSafeGuardOpen(false);
-    showToast(`Wpłata do sejfu: ${fmtMoney(deposit)} zł. Nowa stała kasowa: ${fmtMoney(newStala)} zł.`,"success",6000);
+    setSafeSubStep("read");setSafeCounted("");setSafeNoCash(false);setSafeAttested(false);setSafeDiffReported(false);
+    const toastMsg=mode==="zero"
+      ? "Zmiana zamknięta. Wpłata 0 zł — atestacja zapisana w logu kasy."
+      : mode==="reported"
+        ? `Zmiana zamknięta z różnicą ${fmtMoney(Math.abs(counted-kwIncrement))} zł — zgłoszono kierownikowi.`
+        : `Wpłata do sejfu: ${fmtMoney(deposit)} zł. Nowa stała kasowa: ${fmtMoney(newStala)} zł.`;
+    showToast(toastMsg,mode==="reported"?"warning":"success",6000);
     finishShift();
+  };
+
+  // Zgłoszenie różnicy wpłaty do sejfu do panelu menedżera (ten sam kanał co niezgodność stałej).
+  const reportSafeDiscrepancy=()=>{
+    const kwInc=Math.max(0,(parseFloat(safeDepositKW)||0)-kwTotal);
+    const counted=parseFloat(safeCounted)||0;
+    const msg={id:crypto.randomUUID(),from:employeeName,shift:selectedShift,text:`⚠️ RÓŻNICA W WPŁACIE DO SEJFU: naliczono ${fmtMoney(kwInc)} zł (odczyt drukarki − KW), pracownik policzył ${fmtMoney(counted)} zł. Różnica: ${fmtMoney(Math.abs(counted-kwInc))} zł. Zmiana: ${SHIFT_LABELS_PL[selectedShift]||selectedShift}. Proszę o weryfikację.`,createdAt:fmtA(),type:"cash_discrepancy",read:false};
+    const updMsgs=[msg,...messages];
+    setMessages(updMsgs);saveJson(STORAGE_KEYS.messages,updMsgs);
+    setSafeDiffReported(true);
+    showToast("Różnica w wpłacie do sejfu zgłoszona do kierownika.","warning",8000);
   };
 
   const reportStalaDiscrepancy=(workerAmount)=>{
@@ -1825,11 +1883,11 @@ export default function App(){
     if(isNaN(v)||v<0){showToast("Nieprawidłowa kwota.","error");return;}
     const oldVal=stalaKasowa;
     setStalaKasowa(v);
-    localStorage.setItem("reception-stala-kasowa",String(v));
-    localStorage.setItem("reception-safe-amount",String(v));
-    const log=loadJson("reception-stala-kasowa-log",[]);
+    localStorage.setItem(STORAGE_KEYS.stalaKasowa,String(v));
+    localStorage.setItem(STORAGE_KEYS.safeAmount,String(v));
+    const log=loadJson(STORAGE_KEYS.stalaKasowaLog,[]);
     const entry={id:crypto.randomUUID(),changedBy:currentManager,from:oldVal,to:v,changedAt:fmtA()};
-    saveJson("reception-stala-kasowa-log",[entry,...log].slice(0,50));
+    saveJson(STORAGE_KEYS.stalaKasowaLog,[entry,...log].slice(0,50));
     addAudit(currentManager,`Zmiana stałej kasowej: ${fmtMoney(oldVal)} → ${fmtMoney(v)}`);
     showToast(`Stała kasowa zmieniona na ${fmtMoney(v)}.`,"success");
     setManagerNewStala("");
@@ -1859,7 +1917,7 @@ export default function App(){
     const updated={...carryOverTasks,[newGlobalNoteShift]:[...(carryOverTasks[newGlobalNoteShift]||[]),ne]};
     setCarryOverTasks(updated);saveJson(STORAGE_KEYS.carry,updated);
     const logEntry={id:crypto.randomUUID(),type:"task",from:currentManager,fromShift:"kierownik",toShift:newGlobalNoteShift,text:newGlobalNote.trim(),createdAt:fmtA()};
-    const updLog=[logEntry,...handoverLog].slice(0,300);setHandoverLog(updLog);saveJson(STORAGE_KEYS.handoverLog,updLog);
+    pushHandoverLog(logEntry);
     setNewGlobalNote("");setNewGlobalNoteShift("");setNewGlobalNoteDate(todayKey());showToast(`Zadanie dodane do zmiany ${SHIFT_SHORT_LABELS[newGlobalNoteShift]}.`,"success");
   };
   const removeGlobalNotification=(id)=>{
@@ -1868,7 +1926,7 @@ export default function App(){
   };
   const dismissGlobalNote=(id)=>{
     const updated=[...dismissedGlobalNotes,id];
-    setDismissedGlobalNotes(updated);localStorage.setItem("reception-dismissed-gnotes",JSON.stringify(updated));
+    setDismissedGlobalNotes(updated);localStorage.setItem(STORAGE_KEYS.dismissedGnotes,JSON.stringify(updated));
   };
   const visibleGlobalNotes=globalNotifications.filter(n=>
     !dismissedGlobalNotes.includes(n.id)&&
@@ -1895,7 +1953,7 @@ export default function App(){
 
   const handleExportBackup=()=>{
     const backup={};
-    [...Object.values(STORAGE_KEYS),"reception-final-employees"].forEach(k=>{
+    [...Object.values(STORAGE_KEYS),STORAGE_KEYS.employees].forEach(k=>{
       const v=localStorage.getItem(k);if(v){try{backup[k]=JSON.parse(v);}catch{}}
     });
     const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json"});
@@ -2364,6 +2422,8 @@ export default function App(){
                 {briefingText&&<div style={{marginTop:8,fontSize:12.5,lineHeight:1.55,whiteSpace:"pre-wrap",color:"var(--text-primary)"}}>{briefingText}</div>}
               </div>
             )}
+            {started && <ArrivalsSummary/>}
+            {started && <UpsellCard employeeName={employeeName} showToast={showToast}/>}
             {!started?(
               <div className="stack">
                 {IS_DEV_TEST&&(
@@ -2446,7 +2506,7 @@ export default function App(){
                           <div style={{display:"flex",gap:8}}>
                             {canAccessManagerPanel&&(
                               <button className="btn btn-outline" onClick={()=>{
-                                localStorage.setItem("reception-last-view","manager");
+                                localStorage.setItem(STORAGE_KEYS.lastView,"manager");
                                 setLastView("manager");
                                 setShowAdminPanel(true);
                               }}>
@@ -2464,7 +2524,7 @@ export default function App(){
                   <div className="panel" style={{borderColor:"var(--sky-border)",background:"var(--sky-light)",position:"relative"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                       <div className="panel-title sky-text" style={{marginBottom:8}}><MessageSquare size={16}/> Notatka od poprzedniej zmiany</div>
-                      <button onClick={()=>{localStorage.setItem("reception-handover-seen",lastHandoverNote.id);setHandoverNoteDismissed(lastHandoverNote.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sky)",padding:"2px",borderRadius:"50%",display:"flex",alignItems:"center",opacity:.7,flexShrink:0}} title="Zamknij notatkę"><X size={15}/></button>
+                      <button onClick={()=>{localStorage.setItem(STORAGE_KEYS.handoverSeen,lastHandoverNote.id);setHandoverNoteDismissed(lastHandoverNote.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sky)",padding:"2px",borderRadius:"50%",display:"flex",alignItems:"center",opacity:.7,flexShrink:0}} title="Zamknij notatkę"><X size={15}/></button>
                     </div>
                     <div style={{fontSize:13.5,lineHeight:1.65,color:"var(--text-primary)"}}>{lastHandoverNote.text}</div>
                     <div className="tiny muted" style={{marginTop:6}}>{lastHandoverNote.employee} · {SHIFT_SHORT_LABELS[lastHandoverNote.shift]||lastHandoverNote.shift} · {lastHandoverNote.createdAt}</div>
@@ -2766,7 +2826,7 @@ export default function App(){
               <div className="panel" style={{borderColor:"var(--sky-border)",background:"var(--sky-light)",position:"relative"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                   <div className="panel-title sky-text" style={{marginBottom:6}}><MessageSquare size={15}/> Notatka od poprzedniej zmiany</div>
-                  <button onClick={()=>{localStorage.setItem("reception-handover-seen",lastHandoverNote.id);setHandoverNoteDismissed(lastHandoverNote.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sky)",padding:"2px",display:"flex",alignItems:"center",opacity:.7,flexShrink:0}} title="Zamknij notatkę"><X size={14}/></button>
+                  <button onClick={()=>{localStorage.setItem(STORAGE_KEYS.handoverSeen,lastHandoverNote.id);setHandoverNoteDismissed(lastHandoverNote.id);}} style={{background:"none",border:"none",cursor:"pointer",color:"var(--sky)",padding:"2px",display:"flex",alignItems:"center",opacity:.7,flexShrink:0}} title="Zamknij notatkę"><X size={14}/></button>
                 </div>
                 <div style={{fontSize:13,lineHeight:1.6,color:"var(--text-primary)"}}>{lastHandoverNote.text}</div>
                 <div className="tiny muted" style={{marginTop:4}}>{lastHandoverNote.employee} · {SHIFT_SHORT_LABELS[lastHandoverNote.shift]||lastHandoverNote.shift} · {lastHandoverNote.createdAt}</div>
@@ -3131,7 +3191,8 @@ export default function App(){
           </motion.div>
         )}
         {workerTab==="informacje"&&(
-          <motion.div key="informacje" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+          <motion.div key="informacje" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
+            <WakeUpsCard employeeName={employeeName} showToast={showToast}/>
             <InboxPanel dark={workerDark} employeeName={employeeName} selectedShift={selectedShift} wikiEntries={wikiEntries} isManager={canAccessManagerPanel} onOpenWiki={()=>setShowWiki(true)} onMarkedRead={()=>setInboxVersion(v=>v+1)}/>
           </motion.div>
         )}
@@ -3139,6 +3200,12 @@ export default function App(){
           <motion.div key="usterki" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <FaultsPanel dark={workerDark} employeeName={employeeName} showToast={showToast} floors1={HK_FLOOR1} floors2={HK_FLOOR2} floors3={HK_FLOOR3} isManager={canAccessManagerPanel}/>
           </motion.div>
+        )}
+        {isModuleEnabled("klucze")&&workerTab==="klucze"&&(
+          <KeysPanel employeeName={employeeName} showToast={showToast}/>
+        )}
+        {isModuleEnabled("depozyty")&&workerTab==="depozyty"&&(
+          <DepositsPanel employeeName={employeeName} showToast={showToast} dark={workerDark}/>
         )}
         {isModuleEnabled("parking")&&workerTab==="parking"&&(
           <motion.div key="parking" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
@@ -3347,9 +3414,9 @@ export default function App(){
                 onClick={()=>{
                   const isDeposit=selectedShift==="nocna"||selectedShift==="wieczorowa";
                   if(isDeposit){
-                    // Przenieś już wpisaną KW końcową do pola sejfu — bez podwójnego wpisywania
-                    // i bez ryzyka, że puste pole da przyrost 0 → wpłatę 0.
-                    if(!safeDepositKW.trim()&&cashClosingDocumentsAmount.trim())setSafeDepositKW(cashClosingDocumentsAmount);
+                    // Czysta kartka: BEZ auto-podstawienia odczytu — pracownik musi spojrzeć
+                    // na drukarkę i policzyć gotówkę, inaczej zero przeklikuje się bezmyślnie.
+                    setSafeDepositKW("");setSafeCounted("");setSafeNoCash(false);setSafeAttested(false);setSafeDiffReported(false);setSafeSubStep("read");
                     setSafeConfirmStep(true);
                   }else{setFinishDialogOpen(false);finishShift();}
                 }}>
@@ -3358,39 +3425,64 @@ export default function App(){
             </div>
           </>
         ):(
-          // ── Krok 2: Wpłata do sejfu (nocna/wieczorowa) ──
-          <>
+          // ── Krok 2: Wpłata do sejfu (nocna/wieczorowa) — ślepe liczenie + bramka uzgodnienia ──
+          ((()=>{
+            const kw=parseFloat(safeDepositKW)||0;
+            const kwInc=Math.max(0,kw-kwTotal);          // naliczone: odczyt drukarki − KW poprz.
+            const counted=parseFloat(safeCounted)||0;     // policzone fizycznie
+            const diff=counted-kwInc;
+            const match=Math.abs(diff)<0.005;
+            const readOk=safeDepositKW.trim()!==""&&kw>=kwTotal;
+            const canNoCash=kwInc===0;                    // „brak gotówki" możliwe tylko gdy odczyt = KW poprz.
+            const steps=[["read","A · Odczyt"],["count","B · Policz"],["reconcile","C · Uzgodnij"]];
+            const cur=["read","count","reconcile"].indexOf(safeSubStep);
+            return(
+            <>
               <div className="modal-header"><h2>Wpłata do sejfu</h2></div>
               <div className="stack">
-                {(()=>{const kw=parseFloat(safeDepositKW)||0;const postKW=parseFloat(postDepositKW)||0;const kwPrev=kwTotal;const kwInc=Math.max(0,kw-kwPrev);const deposit=safeDepositManual?(parseFloat(safeDepositAmount)||0):kwInc;const totalBefore=stalaKasowa+kwInc;const newS=totalBefore-deposit;return(<>
-                  <div style={{background:"var(--plum-soft)",border:"1px solid var(--plum-border)",borderLeft:"4px solid var(--plum)",borderRadius:"var(--radius-md)",padding:"14px 18px"}}>
-                    <div style={{fontSize:11,color:"var(--plum)",fontWeight:800,marginBottom:6,textTransform:"uppercase",letterSpacing:".07em"}}>W kasie przed wpłatą</div>
-                    <div style={{fontSize:32,fontWeight:400,color:"var(--plum)",fontFamily:"'DM Serif Display',serif",letterSpacing:"-.02em",lineHeight:1}}>{fmtMoney(totalBefore)}</div>
-                    <div style={{fontSize:12,color:"var(--text-secondary)",marginTop:6}}>Stała: {fmtMoney(stalaKasowa)} + KW: {fmtMoney(kw)}</div>
+                <div style={{display:"flex",gap:6}} aria-hidden="true">
+                  {steps.map(([k,lbl],i)=>(
+                    <div key={k} style={{flex:1}}>
+                      <div style={{height:4,borderRadius:2,background:i<=cur?"var(--plum)":"var(--border-light)"}}/>
+                      <div style={{fontSize:10,fontWeight:800,letterSpacing:".04em",textTransform:"uppercase",marginTop:5,color:i===cur?"var(--plum)":i<cur?"var(--text-secondary)":"var(--text-muted)"}}>{lbl}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {safeSubStep==="read"&&(<>
+                  <div style={{background:"var(--plum-soft)",border:"1px solid var(--plum-border)",borderLeft:"4px solid var(--plum)",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,lineHeight:1.5,color:"var(--text-primary)"}}>
+                    <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".07em",textTransform:"uppercase",color:"var(--plum)",marginBottom:5}}>Ta noc — najpierw fakty</div>
+                    Przepisz <strong>odczyt KW narastająco</strong> wprost z paragonu drukarki kasowej. Pole jest puste celowo — sprawdź drukarkę teraz.
                   </div>
                   <div>
-                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Stan KW — ile gotówki z dokumentów masz w kasie (zł)</div>
-                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositKW} onChange={e=>setSafeDepositKW(e.target.value)} style={{fontSize:13}} autoFocus/>
+                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4}}>Odczyt drukarki kasowej (KW narastająco) — zł</div>
+                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositKW} onChange={e=>setSafeDepositKW(e.target.value)} style={{fontSize:16,fontWeight:700}} autoFocus/>
                   </div>
-                  {/* Kwota do sejfu liczy się sama = przyrost KW tej zmiany. Bez podwójnego wpisywania. */}
-                  <div style={{background:"var(--emerald-light)",border:"1px solid var(--emerald-border)",borderLeft:"3px solid var(--emerald)",borderRadius:"var(--radius-md)",padding:"12px 16px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                      <span style={{fontSize:11,fontWeight:800,color:"var(--emerald)",textTransform:"uppercase",letterSpacing:".06em"}}>Do sejfu (przyrost KW)</span>
-                      <span style={{fontSize:22,fontWeight:400,color:"var(--emerald)",fontFamily:"'DM Serif Display',serif",letterSpacing:"-.02em"}}>{fmtMoney(safeDepositManual?(parseFloat(safeDepositAmount)||0):kwInc)}</span>
+                  {safeDepositKW.trim()!==""&&kw<kwTotal&&(
+                    <div style={{background:"#fdecec",border:"1px solid #e8a0a0",borderLeft:"4px solid #d04545",borderRadius:"var(--radius-md)",padding:"11px 15px",fontSize:12.5,color:"#8a1c1c",lineHeight:1.5}}>
+                      <strong>Odczyt niższy niż KW poprzedniej zmiany ({fmtMoney(kwTotal)}).</strong> To niemożliwe — sprawdź, czy przepisujesz właściwą liczbę z paragonu.
                     </div>
-                    {!safeDepositManual&&<div style={{fontSize:11.5,color:"var(--text-secondary)",marginTop:5,lineHeight:1.5}}>Tyle wkładasz do sejfu — kasa wraca do stałej {fmtMoney(stalaKasowa)} zł. Nie wpisujesz tej kwoty drugi raz.</div>}
-                    <label style={{display:"flex",alignItems:"center",gap:7,marginTop:8,fontSize:12,color:"var(--text-secondary)",cursor:"pointer"}}>
-                      <input type="checkbox" checked={safeDepositManual} onChange={e=>setSafeDepositManual(e.target.checked)}/>
-                      Wpłacam inną kwotę niż przyrost KW
-                    </label>
-                    {safeDepositManual&&(
-                      <div style={{marginTop:8}}>
-                        <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Kwota wpłaty do sejfu (zł)</div>
-                        <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeDepositAmount} onChange={e=>setSafeDepositAmount(e.target.value)} style={{fontSize:13}}/>
-                      </div>
-                    )}
+                  )}
+                  <div style={{fontSize:11.5,color:"var(--text-secondary)",lineHeight:1.5}}>KW poprzedniej zmiany: <strong>{fmtMoney(kwTotal)}</strong>. Twój odczyt powinien być równy lub wyższy — nigdy niższy.</div>
+                </>)}
+
+                {safeSubStep==="count"&&(<>
+                  <div style={{background:"var(--emerald-light)",border:"1px solid var(--emerald-border)",borderLeft:"4px solid var(--emerald)",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,lineHeight:1.5,color:"var(--text-primary)"}}>
+                    <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".07em",textTransform:"uppercase",color:"var(--emerald)",marginBottom:5}}>Policz gotówkę</div>
+                    Wyjmij gotówkę do wpłaty, <strong>policz ją fizycznie</strong> i wpisz kwotę. Ile powinno wyjść — pokażemy dopiero po Twoim wpisie.
                   </div>
-                  {/* Płatność po wpłacie do sejfu (po 24:00) — zwinięta, by nie mylić z wpłatą. */}
+                  <div>
+                    <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4}}>Policzona gotówka do koperty — zł</div>
+                    <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={safeCounted} onChange={e=>setSafeCounted(e.target.value)} disabled={safeNoCash} style={{fontSize:16,fontWeight:700}} autoFocus/>
+                  </div>
+                  {canNoCash?(
+                    <label style={{display:"flex",alignItems:"flex-start",gap:10,padding:"11px 14px",border:"1px dashed var(--border-medium)",borderRadius:"var(--radius-md)",cursor:"pointer",background:"var(--bg-card)"}}>
+                      <input type="checkbox" checked={safeNoCash} onChange={e=>{setSafeNoCash(e.target.checked);if(e.target.checked)setSafeCounted("");}} style={{marginTop:2}}/>
+                      <span style={{fontSize:12.5,color:"var(--text-primary)"}}><strong>Tej nocy NIE było żadnej płatności gotówką</strong><br/><span style={{color:"var(--text-muted)",fontSize:11.5}}>wpłata = 0 zł, potwierdzisz to w następnym kroku</span></span>
+                    </label>
+                  ):(
+                    <div style={{fontSize:11.5,color:"var(--text-secondary)",lineHeight:1.5}}>Odczyt pokazuje wpływ gotówki <strong style={{color:"var(--emerald)"}}>+{fmtMoney(kwInc)}</strong> — policz i wpłać tę kwotę.</div>
+                  )}
                   {!showPostDeposit?(
                     <button type="button" onClick={()=>setShowPostDeposit(true)} style={{background:"none",border:"none",padding:0,textAlign:"left",cursor:"pointer",fontSize:12.5,color:"var(--plum)",fontWeight:700}}>
                       + Płatność gotówką po wpłacie do sejfu (po 24:00)
@@ -3398,37 +3490,87 @@ export default function App(){
                   ):(
                     <div>
                       <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:3}}>Płatność gotówkowa PO wpłacie do sejfu (zł) <span style={{color:"#c8a050"}}>— opcjonalne</span></div>
-                      <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4,lineHeight:1.5}}>Gotówka, która wpłynęła już po wpłacie do sejfu (np. po 24:00) — zostanie wliczona jako KW zmiany porannej, NIE trafia do tego sejfu.</div>
-                      <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={postDepositKW} onChange={e=>setPostDepositKW(e.target.value)} style={{fontSize:13}} autoFocus/>
+                      <div style={{fontSize:11,color:"var(--text-muted)",marginBottom:4,lineHeight:1.5}}>Gotówka, która wpłynęła już po wpłacie (np. po 24:00) — wliczy się w KW zmiany porannej, NIE trafia do tego sejfu.</div>
+                      <input className="input" type="number" min="0" step="0.01" placeholder="0.00" value={postDepositKW} onChange={e=>setPostDepositKW(e.target.value)} style={{fontSize:13}}/>
                     </div>
                   )}
-                  {deposit<=0&&(
-                    <div style={{background:"#fdf3e3",border:"1px solid #e8c98a",borderLeft:"4px solid #c8a050",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,color:"#7a5a16",lineHeight:1.5}}>
-                      <strong>Do sejfu wychodzi 0 zł.</strong> Sprawdź, czy w polu „Stan KW" jest <u>aktualny</u> odczyt z drukarki kasowej (musi być wyższy niż KW poprzedniej zmiany: {fmtMoney(kwTotal)}). Jeśli w nocy nie było żadnej wpłaty gotówką — to jest OK, możesz zatwierdzić.
+                </>)}
+
+                {safeSubStep==="reconcile"&&safeNoCash&&(<>
+                  <div style={{background:"#fdf3e3",border:"1px solid #e8c98a",borderLeft:"4px solid #c8a050",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,lineHeight:1.5,color:"#7a5a16"}}>
+                    <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".07em",textTransform:"uppercase",color:"#b07d1a",marginBottom:5}}>Deklarujesz: 0 zł do sejfu</div>
+                    Wpłata zerowa nie jest domyślna — potwierdzasz ją świadomie i pod imieniem. Kasa zostaje na stałej <strong>{fmtMoney(stalaKasowa)}</strong>.
+                  </div>
+                  <label style={{display:"flex",alignItems:"flex-start",gap:10,fontSize:12.5,color:"var(--text-secondary)",cursor:"pointer",lineHeight:1.5}}>
+                    <input type="checkbox" checked={safeAttested} onChange={e=>setSafeAttested(e.target.checked)} style={{marginTop:2}}/>
+                    <span>Potwierdzam, że sprawdziłem drukarkę kasową i tej nocy nie było żadnej płatności gotówką. Stan kasy = stała {fmtMoney(stalaKasowa)}.</span>
+                  </label>
+                </>)}
+
+                {safeSubStep==="reconcile"&&!safeNoCash&&(<>
+                  <div style={{border:"1px solid var(--plum-border)",borderRadius:"var(--radius-md)",overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr"}}>
+                      <div style={{padding:"12px 15px",borderRight:"1px solid var(--plum-border)"}}>
+                        <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:".05em",color:"var(--text-muted)",fontWeight:700,marginBottom:5}}>Naliczono (odczyt − KW)</div>
+                        <div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--plum)"}}>{fmtMoney(kwInc)}</div>
+                      </div>
+                      <div style={{padding:"12px 15px"}}>
+                        <div style={{fontSize:10,textTransform:"uppercase",letterSpacing:".05em",color:"var(--text-muted)",fontWeight:700,marginBottom:5}}>Policzyłeś fizycznie</div>
+                        <div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--text-primary)"}}>{fmtMoney(counted)}</div>
+                      </div>
                     </div>
-                  )}
-                  {newS<0&&(
-                    <div style={{background:"#fdecec",border:"1px solid #e8a0a0",borderLeft:"4px solid #d04545",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,color:"#8a1c1c",lineHeight:1.5}}>
-                      <strong>Uwaga: kasa po wpłacie byłaby ujemna ({fmtMoney(newS)} zł).</strong> Wpłacasz więcej, niż jest w kasie ({fmtMoney(totalBefore)} zł). Sprawdź kwotę wpłaty i odczyt „Stan KW" przed zatwierdzeniem.
+                    <div style={{borderTop:"1px solid var(--plum-border)",padding:"10px 15px",display:"flex",justifyContent:"space-between",alignItems:"baseline",background:"var(--bg-card)"}}>
+                      <span style={{fontSize:11.5,fontWeight:800,textTransform:"uppercase",letterSpacing:".05em",color:match?"var(--emerald)":"#d04545"}}>Różnica</span>
+                      <span style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:match?"var(--emerald)":"#d04545"}}>{diff>0?"+":""}{fmtMoney(diff)}</span>
                     </div>
-                  )}
-                  {safeDepositKW&&(
-                    <div style={{background:"var(--bg-card)",border:"1px solid var(--border-light)",borderRadius:"var(--radius-md)",padding:"14px 18px"}}>
-                      <div style={{fontSize:11,fontWeight:800,color:"var(--plum)",marginBottom:8,textTransform:"uppercase",letterSpacing:".07em"}}>Podgląd po wpłacie</div>
-                      <div style={{fontSize:13,color:"var(--text-secondary)",marginBottom:3}}>W kasie po wpłacie: <strong style={{color:"var(--emerald)"}}>{fmtMoney(newS)}</strong></div>
-                      <div style={{fontSize:13,color:"var(--text-secondary)",marginBottom:3}}>KW dla zmiany porannej: <strong style={{color:"var(--text-primary)"}}>{fmtMoney(postKW)}</strong></div>
-                      <div style={{fontSize:13,color:"var(--text-secondary)"}}>Nowa stała kasowa: <strong style={{color:"var(--plum)"}}>{fmtMoney(newS)}</strong></div>
+                  </div>
+                  {match?(
+                    <div style={{background:"var(--emerald-light)",border:"1px solid var(--emerald-border)",borderLeft:"4px solid var(--emerald)",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,lineHeight:1.5,color:"var(--text-primary)"}}>
+                      <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".07em",textTransform:"uppercase",color:"var(--emerald)",marginBottom:5}}>Zgadza się</div>
+                      Do sejfu wkładasz <strong>{fmtMoney(kwInc)}</strong>. Kasa wraca do stałej {fmtMoney(stalaKasowa)}. Możesz zamknąć zmianę.
                     </div>
-                  )}
-                </>);})()}
+                  ):(<>
+                    <div style={{background:"#fdecec",border:"1px solid #e8a0a0",borderLeft:"4px solid #d04545",borderRadius:"var(--radius-md)",padding:"12px 16px",fontSize:12.5,lineHeight:1.5,color:"#8a1c1c"}}>
+                      <div style={{fontSize:10.5,fontWeight:800,letterSpacing:".07em",textTransform:"uppercase",color:"#d04545",marginBottom:5}}>Nie zgadza się — zmiana zablokowana</div>
+                      Naliczono <strong>{fmtMoney(kwInc)}</strong>, policzyłeś <strong>{fmtMoney(counted)}</strong> — różnica <strong>{fmtMoney(Math.abs(diff))}</strong>. Nie zamkniesz zmiany, dopóki się nie zgadza. Wróć i policz jeszcze raz albo zgłoś różnicę kierownikowi.
+                    </div>
+                    {safeDiffReported&&(
+                      <div style={{background:"#fdf3e3",border:"1px solid #e8c98a",borderLeft:"4px solid #c8a050",borderRadius:"var(--radius-md)",padding:"11px 15px",fontSize:12.5,color:"#7a5a16",lineHeight:1.5}}>
+                        <strong>Różnica zgłoszona.</strong> Alert trafił do kierownika (imię, kwota, godzina). Możesz zamknąć zmianę z odnotowanym rozjazdem {fmtMoney(Math.abs(diff))}.
+                      </div>
+                    )}
+                  </>)}
+                </>)}
               </div>
               <div className="modal-footer" style={{gap:8}}>
-                <button className="btn btn-outline" onClick={()=>setSafeConfirmStep(false)}>← Wróć</button>
-                <button className="btn btn-emerald" style={{flex:1}} onClick={()=>{setFinishDialogOpen(false);handleSafeDeposit();}}>
-                  Zatwierdź wpłatę i zakończ zmianę
-                </button>
+                {safeSubStep==="read"&&(<>
+                  <button className="btn btn-outline" onClick={()=>setSafeConfirmStep(false)}>← Wróć</button>
+                  <button className="btn btn-indigo" style={{flex:1}} disabled={!readOk} onClick={()=>setSafeSubStep("count")}>Dalej — policz gotówkę →</button>
+                </>)}
+                {safeSubStep==="count"&&(<>
+                  <button className="btn btn-outline" onClick={()=>setSafeSubStep("read")}>← Wróć</button>
+                  <button className="btn btn-indigo" style={{flex:1}} disabled={!(safeNoCash||safeCounted.trim()!=="")} onClick={()=>{setSafeDiffReported(false);setSafeSubStep("reconcile");}}>Sprawdź zgodność →</button>
+                </>)}
+                {safeSubStep==="reconcile"&&safeNoCash&&(<>
+                  <button className="btn btn-outline" onClick={()=>setSafeSubStep("count")}>← Wróć</button>
+                  <button className="btn btn-emerald" style={{flex:1}} disabled={!safeAttested} onClick={()=>{setFinishDialogOpen(false);handleSafeDeposit("zero");}}>Podpisz i zakończ zmianę</button>
+                </>)}
+                {safeSubStep==="reconcile"&&!safeNoCash&&match&&(<>
+                  <button className="btn btn-outline" onClick={()=>setSafeSubStep("count")}>← Wróć</button>
+                  <button className="btn btn-emerald" style={{flex:1}} onClick={()=>{setFinishDialogOpen(false);handleSafeDeposit("match");}}>Zatwierdź wpłatę i zakończ</button>
+                </>)}
+                {safeSubStep==="reconcile"&&!safeNoCash&&!match&&(<>
+                  <button className="btn btn-outline" onClick={()=>setSafeSubStep("count")}>← Policz ponownie</button>
+                  {!safeDiffReported?(
+                    <button className="btn" style={{flex:1,background:"#c0392b",color:"#fff",borderColor:"#c0392b"}} onClick={reportSafeDiscrepancy}>Zgłoś różnicę do panelu</button>
+                  ):(
+                    <button className="btn" style={{flex:1,background:"#c0392b",color:"#fff",borderColor:"#c0392b"}} onClick={()=>{setFinishDialogOpen(false);handleSafeDeposit("reported");}}>Zamknij z odnotowaną różnicą</button>
+                  )}
+                </>)}
               </div>
             </>
+            );
+          })())
         )}
 
       </div>
@@ -3454,7 +3596,7 @@ export default function App(){
           Brak aktywności przez 15 minut.
         </div>
         <button className="lock-emp-btn" onClick={unlock} style={{marginTop:12}}>Kliknij aby odblokować</button>
-        <div className="lock-timer">Conrad Comfort · Panel Recepcji</div>
+        <div className="lock-timer">{HOTEL_NAME} · Panel Recepcji</div>
       </div>
     );
   }
@@ -3509,7 +3651,7 @@ export default function App(){
         <main className="cc-login-form" role="main">
           <div className="cc-login-form-eyebrow">
             <span className="cc-login-form-eyebrow-line"/>
-            <span>Logowanie · Conrad Comfort</span>
+            <span>Logowanie · {HOTEL_NAME}</span>
           </div>
           <div className="cc-login-center">
           {loginStep==="name"&&(
@@ -3536,7 +3678,7 @@ export default function App(){
                 {(()=>{
                   const seen=new Set();const out=[];
                   [...employees,...customManagers].forEach(n=>{
-                    const k=String(n||"").trim().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ł/g,"l").toLowerCase();
+                    const k=stripDiacritics(n).trim();
                     if(!k||seen.has(k))return;seen.add(k);out.push(n);
                   });
                   return out.map(n=><option key={n} value={n}/>);
@@ -3754,7 +3896,7 @@ export default function App(){
             </div>
           )}
           </div>
-          <div className="cc-login-footer">© Conrad Comfort · Panel Recepcji</div>
+          <div className="cc-login-footer">© {HOTEL_NAME} · Panel Recepcji</div>
         </main>
         {/* Modal potwierdzenia tożsamości — musi być też tutaj: gdy pracownik loguje się
             0–30 min przed startem zmiany, loginStep zostaje "name" i render trafia w ten
@@ -3835,13 +3977,13 @@ export default function App(){
               <button
                 className={`cc-shell-topbar-roletab${!showAdminPanel?" is-active":""}`}
                 role="tab" aria-selected={!showAdminPanel}
-                onClick={()=>{setShowAdminPanel(false);localStorage.setItem("reception-last-view","worker");setLastView("worker");}}>
+                onClick={()=>{setShowAdminPanel(false);localStorage.setItem(STORAGE_KEYS.lastView,"worker");setLastView("worker");}}>
                 Panel pracownika
               </button>
               <button
                 className={`cc-shell-topbar-roletab${showAdminPanel?" is-active":""}`}
                 role="tab" aria-selected={showAdminPanel}
-                onClick={()=>{setShowAdminPanel(true);localStorage.setItem("reception-last-view","manager");setLastView("manager");}}>
+                onClick={()=>{setShowAdminPanel(true);localStorage.setItem(STORAGE_KEYS.lastView,"manager");setLastView("manager");}}>
                 Panel kierownika
               </button>
             </div>

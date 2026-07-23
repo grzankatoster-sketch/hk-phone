@@ -4,6 +4,7 @@ import {
   weekMonday, weekDays, dateKey, exportScheduleXlsx, importScheduleXlsx, readScheduleGrid, SHIFT_CODE, parseHoursToShift,
 } from "../../lib/excel";
 import { parseScheduleWithAI, llmReady } from "../../lib/llm";
+import { fetchSchedule } from "../../lib/scheduleSync";
 import { autoDetectShift, getScheduleDayEntry } from "../../lib/dates";
 import { SHIFT_SHORT_LABELS, SHIFT_OPTIONS, TENANT_ID } from "../../lib/constants";
 import { supabase } from "../../lib/supabase";
@@ -206,22 +207,33 @@ export default function ScheduleAdminPanel({ schedule, setSchedule, employees, d
     e.target.value = "";
   };
 
-  // Pobierz propozycję grafiku przygotowaną w panelu menedżerów (AI) i scal z grafikiem.
+  // Pobierz grafik zapisany w panelu menedżera i scal z bieżącym grafikiem.
+  // Grafik z panelu („Zapisz grafik" → schedule_merge) trafia do panel_mirror
+  // kind='schedule' — czytamy właśnie ten dokument. Zwykle grafik dociera tu
+  // automatycznie (realtime, App.jsx), ten przycisk to ręczny fallback.
+  // Zapasowo czytamy starą propozycję AI (kind='proposed_schedule') dla zgodności.
   const importFromPanel = async () => {
     if (!supabase) { showToast && showToast("Brak połączenia z chmurą.", "error"); return; }
     try {
-      const { data } = await supabase.from("panel_mirror").select("data")
-        .eq("tenant_id", TENANT_ID).eq("kind", "proposed_schedule").maybeSingle();
-      const prop = data && data.data;
-      if (!prop || !Object.keys(prop).length) { showToast && showToast("Brak propozycji z panelu.", "info"); return; }
+      const row = await fetchSchedule();
+      let prop = row && row.data;
+      if (!prop || !Object.keys(prop).length) {
+        const { data } = await supabase.from("panel_mirror").select("data")
+          .eq("tenant_id", TENANT_ID).eq("kind", "proposed_schedule").maybeSingle();
+        prop = data && data.data;
+      }
+      if (!prop || !Object.keys(prop).length) {
+        showToast && showToast("Brak grafiku z panelu — zapisz go najpierw w panelu menedżera.", "info");
+        return;
+      }
       setSchedule(prev => {
         const merged = { ...prev };
         for (const [dk, day] of Object.entries(prop)) merged[dk] = { ...(merged[dk] || {}), ...day };
         return merged;
       });
-      showToast && showToast("Wczytano propozycję grafiku z panelu — zweryfikuj i zapisz.", "success");
+      showToast && showToast("Wczytano grafik z panelu — zweryfikuj i zapisz.", "success");
     } catch {
-      showToast && showToast("Nie udało się pobrać propozycji.", "error");
+      showToast && showToast("Nie udało się pobrać grafiku z panelu.", "error");
     }
   };
 
@@ -295,7 +307,7 @@ export default function ScheduleAdminPanel({ schedule, setSchedule, employees, d
             <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={() => fileRef.current?.click()}>
               <Upload size={12} /> Import XLSX
             </button>
-            <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={importFromPanel} title="Wczytaj propozycję grafiku z panelu menedżerów">
+            <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={importFromPanel} title="Wczytaj grafik zapisany w panelu menedżera (zwykle dociera automatycznie)">
               <Download size={12} /> Pobierz z panelu
             </button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={handleImport} />

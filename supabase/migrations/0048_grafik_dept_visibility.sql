@@ -1,4 +1,7 @@
--- 0036_grafik_dept_visibility.sql
+-- 0048_grafik_dept_visibility.sql
+-- Przenumerowane z 0036 (kolizja numeru, WYKONANIE 1.2). To OSTATNIA definicja
+-- list_availability_requests() (nic po niej jej nie nadpisuje), a zależy tylko od
+-- obiektów tworzonych wcześniej — bezpiecznie na końcu. Idempotentne (drop+create).
 -- KORELACJA DZIAŁU dla zbiórek dyspozycyjności (zakładka „Grafik" w panelu).
 -- Dotąd `list_availability_requests` zwracała wszystkie prośby, a panel filtrował
 -- je po imieniu twórcy (created_by === zalogowany) — przez co koordynator i

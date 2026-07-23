@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import { pl } from "./format";
 import { getFullName } from "./employees";
 import { mkPDF_header, mkPDF_section, mkPDF_item, mkPDF_footer, savePDF } from "./pdf";
+import { fmtMoney } from "./format";
 
 export function downloadDailyReportPDF(report) {
   const doc=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
@@ -91,6 +92,27 @@ export function downloadDailyReportPDF(report) {
       y+=8;
     });
     y+=4;
+  }
+
+  // Dopłaty (upsell) — osobna linia, NIE miesza się z kasą KW (WYKONANIE 4.12).
+  if(report.upsells&&report.upsells.length){
+    chk(14);
+    y=mkPDF_section(doc,pw,ml,cw,y,"Doplaty (upsell)");
+    let upTotal=0;
+    report.upsells.forEach(u=>{
+      chk(8);
+      const amt=Number(u.amount)||0; upTotal+=amt;
+      doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(14,12,10);
+      doc.text(pl((u.type||"-")+(u.room?" | pok. "+u.room:"")),ml+3,y);
+      doc.setFont("helvetica","bold");doc.setTextColor(14,12,10);
+      doc.text(fmtMoney(amt)+" zl",pw-mr,y,{align:"right"});
+      y+=8;
+    });
+    chk(8);
+    doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(108,80,28);
+    doc.text("Razem doplaty",ml+3,y);
+    doc.text(fmtMoney(upTotal)+" zl",pw-mr,y,{align:"right"});
+    y+=10;
   }
 
   mkPDF_footer(doc,ph,pw,ml,mr,"raport dobowy");

@@ -3,6 +3,7 @@
 // download*PDF report functions stay in App.jsx (depend on getFullName + report state).
 
 import { pl } from "./format";
+import { HOTEL_NAME } from "./constants";
 
 export function mkPDF_header(doc, pw, title, dateStr) {
   // Ciemny naglowek z logo
@@ -59,7 +60,7 @@ export function mkPDF_footer(doc, ph, pw, ml, mr, label) {
     doc.setPage(p);
     doc.setDrawColor(190, 180, 158); doc.setLineWidth(0.3); doc.line(ml, ph - 10, pw - mr, ph - 10);
     doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(155, 148, 135);
-    doc.text("Conrad Comfort - " + pl(label), ml, ph - 5);
+    doc.text(HOTEL_NAME + " - " + pl(label), ml, ph - 5);
     doc.text("Strona " + p + " / " + total, pw - mr, ph - 5, { align: "right" });
   }
 }

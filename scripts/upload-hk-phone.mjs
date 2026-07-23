@@ -7,11 +7,11 @@ import { config } from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
 
-const SB_URL = process.env.VITE_SUPABASE_URL || "https://pjgcaujndvjvicqsdcns.supabase.co";
+const SB_URL = process.env.VITE_SUPABASE_URL;
 const SB_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-if (!SB_KEY) {
-  console.error("Brak SUPABASE_SERVICE_KEY w .env");
+if (!SB_URL || !SB_KEY) {
+  console.error("Brak VITE_SUPABASE_URL lub SUPABASE_SERVICE_KEY w .env");
   console.error("Dodaj: SUPABASE_SERVICE_KEY=eyJ... (z Supabase → Project Settings → API → service_role)");
   process.exit(1);
 }

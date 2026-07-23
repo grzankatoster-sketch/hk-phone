@@ -2,6 +2,15 @@
 
 Dokument do wczytania na początku kolejnej sesji. Lista poprawek frontendu (cleanup), zadań backend i mapa plików projektu.
 
+> ⚠️ **NIEAKTUALNE (stan sprzed dużego refaktoru — WYKONANIE 1.14).**
+> Ten dokument opisuje `App.jsx` mające ~7000 linii; realny plik ma dziś **3999 linii**,
+> a numery linii poniżej (np. 6850–7010, 6072–6107, 1318–1395) już nie obowiązują.
+> Cleanup CZĘŚCI A jest w większości **wykonany**: `AdminTopNav`, `adminSidebarGroups`,
+> `ManagerSelectModal`, `adminDialogOpen` **nie istnieją już w kodzie** (A2/A3/A4 zrobione).
+> A1 (`loginStep`) — martwe gałęzie login usunięte; `loginStep` żyje jako obecny
+> pełnoekranowy login (nie martwy kod). Aktualny plan prac: **WYKONANIE.md / MASTERPLAN.md**.
+> Poniższą treść traktować jako archiwum, nie jako listę zadań do zrobienia.
+
 ---
 
 ## CONTEXT

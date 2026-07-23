@@ -1,4 +1,5 @@
 import React from "react";
+import { tenantConfig } from "../tenants/config";
 
 // Conrad Comfort logo SVG
 // Wzor: 4 kropki nad napisem CONRAD + COMFORT
@@ -25,7 +26,7 @@ export default function Logo({
   width,
   height,
   className = "",
-  ariaLabel = "Conrad Comfort",
+  ariaLabel = tenantConfig.hotelName,
   style = {},
 }) {
   if (variant === "dotsOnly") {

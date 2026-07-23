@@ -24,6 +24,26 @@ export function calculateShiftCash({ stalaKasowa, kwTotal, kwTotalInput }) {
   };
 }
 
+// Kwoty wpłaty do sejfu wg trybu zamknięcia zmiany (match/zero/reported) — czysta
+// wersja logiki z handleSafeDeposit w App.jsx (WYKONANIE 2.12, strefa zamrożona).
+// UWAGA: świadomie zachowuje DOKŁADNĄ semantykę oryginału — parsowanie parseFloat(x)||0
+// (NIE parseCashAmount: "260,50" → 260, nie 260.5) i BEZ round2 — żeby wynik był
+// bit-w-bit identyczny z dotychczasowym kodem inline. Nie zmieniać bez pełnych testów.
+export function computeSafeDeposit({ mode = "match", safeDepositKW, kwTotal, safeCounted, stalaKasowa, postDepositKW }) {
+  const num = (v) => parseFloat(v) || 0;
+  const kwNew = num(safeDepositKW);
+  const kwPrev = num(kwTotal);
+  const stala = num(stalaKasowa);
+  const counted = num(safeCounted);
+  const kwIncrement = Math.max(0, kwNew - kwPrev);
+  const totalBeforeDeposit = stala + kwIncrement;
+  let deposit, newStala;
+  if (mode === "zero") { deposit = 0; newStala = stala; }
+  else if (mode === "reported") { deposit = counted; newStala = stala + kwIncrement - counted; }
+  else { deposit = kwIncrement; newStala = stala; }
+  return { kwIncrement, counted, totalBeforeDeposit, deposit, newStala, postKW: num(postDepositKW) };
+}
+
 export function calculateSafeDeposit({ stalaKasowa, kwTotal, safeDepositKW, safeDepositAmount, postDepositKW }) {
   const shiftCash = calculateShiftCash({
     stalaKasowa,

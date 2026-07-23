@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calculateSafeDeposit, calculateShiftCash, parseCashAmount } from "../src/lib/cash.mjs";
+import { calculateSafeDeposit, calculateShiftCash, parseCashAmount, computeSafeDeposit } from "../src/lib/cash.mjs";
 
 const money = value => Math.round(value * 100) / 100;
 
@@ -165,5 +165,56 @@ describe("wpłata do sejfu — kwoty graniczne", () => {
   it("flaga overDeposit: typowa wpłata = przyrost KW → false", () => {
     const r = calculateSafeDeposit({ stalaKasowa: 680, kwTotal: 180, safeDepositKW: 260, safeDepositAmount: 80, postDepositKW: 0 });
     expect(r.overDeposit).toBe(false);
+  });
+});
+
+describe("computeSafeDeposit (wydzielone z handleSafeDeposit — WYKONANIE 2.12)", () => {
+  it("tryb match: deposit = przyrost KW, stała bez zmian", () => {
+    const r = computeSafeDeposit({ mode: "match", safeDepositKW: "260", kwTotal: 180, safeCounted: "", stalaKasowa: 500, postDepositKW: "" });
+    expect(r.kwIncrement).toBe(80);
+    expect(r.deposit).toBe(80);
+    expect(r.newStala).toBe(500);
+    expect(r.totalBeforeDeposit).toBe(580);
+    expect(r.postKW).toBe(0);
+  });
+
+  it("tryb zero: brak wpłaty, stała bez zmian (atestacja)", () => {
+    const r = computeSafeDeposit({ mode: "zero", safeDepositKW: "260", kwTotal: 180, safeCounted: "", stalaKasowa: 500, postDepositKW: "" });
+    expect(r.deposit).toBe(0);
+    expect(r.newStala).toBe(500);
+  });
+
+  it("tryb reported: deposit = policzone, stała koryguje różnicę", () => {
+    const r = computeSafeDeposit({ mode: "reported", safeDepositKW: "260", kwTotal: 180, safeCounted: "50", stalaKasowa: 500, postDepositKW: "" });
+    expect(r.kwIncrement).toBe(80);
+    expect(r.counted).toBe(50);
+    expect(r.deposit).toBe(50);          // policzona kwota idzie do sejfu
+    expect(r.newStala).toBe(530);        // 500 + 80 - 50
+  });
+
+  it("clamp: wpisane KW niższe niż poprzednie → przyrost 0", () => {
+    const r = computeSafeDeposit({ mode: "match", safeDepositKW: "100", kwTotal: 180, safeCounted: "", stalaKasowa: 500, postDepositKW: "" });
+    expect(r.kwIncrement).toBe(0);
+    expect(r.deposit).toBe(0);
+    expect(r.newStala).toBe(500);
+  });
+
+  it("semantyka parseFloat (NIE parseCashAmount): '260,50' → 260 (przecinek ucięty jak w oryginale)", () => {
+    const r = computeSafeDeposit({ mode: "match", safeDepositKW: "260,50", kwTotal: 180, safeCounted: "", stalaKasowa: 500, postDepositKW: "" });
+    expect(r.kwIncrement).toBe(80);      // parseFloat("260,50")=260 → 260-180=80
+  });
+
+  it("postDepositKW parsowane parseFloat||0", () => {
+    const r = computeSafeDeposit({ mode: "match", safeDepositKW: "260", kwTotal: 180, safeCounted: "", stalaKasowa: 500, postDepositKW: "45" });
+    expect(r.postKW).toBe(45);
+  });
+
+  it("puste/śmieciowe wejścia → 0 (nigdy NaN)", () => {
+    const r = computeSafeDeposit({ mode: "match", safeDepositKW: "", kwTotal: 0, safeCounted: "x", stalaKasowa: "", postDepositKW: null });
+    expect(r.kwIncrement).toBe(0);
+    expect(r.deposit).toBe(0);
+    expect(r.newStala).toBe(0);
+    expect(r.counted).toBe(0);
+    expect(r.postKW).toBe(0);
   });
 });

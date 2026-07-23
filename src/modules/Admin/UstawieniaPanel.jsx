@@ -2,6 +2,59 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Settings, Download, RefreshCw, Mail, CheckCircle2, AlertTriangle, KeyRound } from "lucide-react";
 import UpdateBanner from "../../UpdateBanner";
+import { SETTINGS_REGISTRY, SETTINGS_GROUP_ORDER } from "../../lib/settingsRegistry";
+import { getAllSettings, setSetting, loadTenantSettings } from "../../lib/settings";
+
+// Generyczny formularz ustawień per hotel (WYKONANIE 2.19). Renderuje SETTINGS_REGISTRY
+// pogrupowane; dodanie nowego przełącznika = wiersz w rejestrze, bez zmian tutaj.
+function TenantSettingsCard() {
+  const [vals, setVals] = useState(() => getAllSettings());
+  const [savedKey, setSavedKey] = useState(null);
+  useEffect(() => { loadTenantSettings().then(() => setVals(getAllSettings())); }, []);
+
+  const groups = [...new Set([...SETTINGS_GROUP_ORDER, ...SETTINGS_REGISTRY.map(s => s.group)])];
+  const save = (s, raw) => {
+    let v = raw;
+    if (s.type === "number") { v = parseFloat(raw); if (Number.isNaN(v)) v = s.default; }
+    setSetting(s.key, v);
+    setVals(x => ({ ...x, [s.key]: v }));
+    setSavedKey(s.key); setTimeout(() => setSavedKey(null), 1500);
+  };
+
+  return (
+    <div className="panel glass dark-panel">
+      <div className="panel-title"><Settings size={16}/> Ustawienia hotelu</div>
+      <div className="tiny muted-light" style={{marginBottom:12,marginTop:-6}}>
+        Wartości per hotel, synchronizowane w chmurze. Nowe ustawienie dodaje się jednym wierszem w rejestrze.
+      </div>
+      {groups.map(group => {
+        const items = SETTINGS_REGISTRY.filter(s => s.group === group);
+        if (!items.length) return null;
+        return (
+          <div key={group} style={{marginBottom:14}}>
+            <div style={{fontSize:11.5,fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",color:"var(--dark-text-muted)",marginBottom:8}}>{group}</div>
+            <div className="stack">
+              {items.map(s => (
+                <label key={s.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 13px",background:"rgba(255,255,255,.04)",border:"1px solid var(--dark-border)",borderRadius:"var(--radius-md)"}}>
+                  <span style={{fontSize:13,color:"var(--dark-text)"}}>{s.label}</span>
+                  {s.type === "boolean" ? (
+                    <input type="checkbox" checked={!!vals[s.key]} onChange={e=>save(s, e.target.checked)}/>
+                  ) : (
+                    <span style={{display:"flex",alignItems:"center",gap:8}}>
+                      <input className="input dark-input" style={{width:120}} type={s.type==="number"?"number":"text"}
+                        defaultValue={vals[s.key]} onBlur={e=>save(s, e.target.value)} key={String(vals[s.key])}/>
+                      {savedKey===s.key && <CheckCircle2 size={14} color="#5acc94"/>}
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 // Panel "Serwer Railway (HK)" usunięty — synchronizacja HK działa przez Supabase.
 
@@ -108,6 +161,8 @@ export default function UstawieniaPanel({
       )}
 
       {!!window.electronAPI && <AutomationCard/>}
+
+      <TenantSettingsCard/>
 
       <div className="panel glass dark-panel">
         <div className="panel-title"><Download size={16}/> Backup i przywracanie danych</div>

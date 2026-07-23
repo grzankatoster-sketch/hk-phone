@@ -1,3 +1,7 @@
+// UWAGA (WYKONANIE 1.8): voucher/cashback to dekoracyjna karta A5 landscape
+// (tło, pasek akcentu, znak wodny, kod) — CELOWO NIE używa wspólnego
+// mkPDF_header/mkPDF_footer z pdf.js (te są dla raportów portrait). Raporty
+// (pdf-daily, pdf-reports, pdf-hk) już współdzielą nagłówek/stopkę przez pdf.js.
 import jsPDF from "jspdf";
 
 const TYPE_RGB = {

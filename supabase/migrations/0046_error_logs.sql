@@ -1,4 +1,7 @@
--- 0013_error_logs.sql
+-- 0046_error_logs.sql
+-- Przenumerowane z 0013 (kolizja numeru, WYKONANIE 1.2). Na żywej bazie było
+-- już zastosowane jako 0013; idempotentne (create ... if not exists), więc
+-- ponowne `db push` jest bezpieczne. Zależności: brak (tabela liściowa).
 -- Cichy rejestr błędów runtime panelu recepcji (ErrorBoundary + globalne
 -- window.onerror / unhandledrejection). Cel: rano widać crash z nocnej zmiany
 -- bez telefonu od recepcji. Zapis best-effort, błąd insertu nie może zepsuć UI.

@@ -29,15 +29,15 @@ const HK_STATUS_LABELS = {
   ZS: "ZS",
 };
 
-const HK_PLAN_PREFIX = "reception-hk-plan";
-const HK_PRIORITY_PREFIX = "reception-hk-priority";
+const HK_PLAN_PREFIX = STORAGE_KEYS.hkPlan;
+const HK_PRIORITY_PREFIX = STORAGE_KEYS.hkPriority;
 const priorityKey = (date) => `${HK_PRIORITY_PREFIX}-${date}`;
 const HK_LEGACY_DATA_PREFIX = "hk-data";
 const HK_PLAN_RETENTION_DAYS = 31;
 // Obsada (lista pracowników) wysyłana z telefonu (wyjazdy.html → hk_roster).
 // Hierarchia: nowszy wysłany roster jest prawidłowy i nadpisuje starszy/lokalny.
 // Retencja: roster starszy niż 2 dni jest traktowany jako nieaktualny (nie nadpisuje automatycznie).
-const ROSTER_APPLIED_PREFIX = "reception-hk-roster-last";
+const ROSTER_APPLIED_PREFIX = STORAGE_KEYS.hkRosterLast;
 const ROSTER_MAX_AGE_DAYS = 2;
 const isRosterStale = (updatedAt) => {
   const t = Date.parse(updatedAt || "");
@@ -581,7 +581,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         lastAutoError.current=null;
         if(!res.plan?.data||res.plan.meta?.dryRun)return;
         const generatedAt=res.plan.meta?.generatedAt||res.plan.savedAt||"";
-        const appliedKey=`reception-hk-auto-last-${hkDate}`;
+        const appliedKey=`${STORAGE_KEYS.hkAutoLast}-${hkDate}`;
         // force = ręczne "Pobierz teraz": omiń blokadę, która normalnie zapobiega
         // wielokrotnemu zastosowaniu tego samego planu (np. po przypadkowym resecie).
         if(!force&&(!generatedAt||localStorage.getItem(appliedKey)===generatedAt))return;

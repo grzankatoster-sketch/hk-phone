@@ -12,8 +12,8 @@ import { config } from "dotenv";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env") });
 
-const OWNER = "grzankatoster-sketch";
-const REPO  = "hk-phone";
+const OWNER = process.env.HK_PHONE_REPO_OWNER || "grzankatoster-sketch";
+const REPO  = process.env.HK_PHONE_REPO || "hk-phone";
 const TOKEN = process.env.GITHUB_TOKEN;
 
 if (!TOKEN) {

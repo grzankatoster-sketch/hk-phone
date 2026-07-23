@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 import { pl } from "./format";
 import { getFullName } from "./employees";
 import { mkPDF_header, mkPDF_section, mkPDF_kv, mkPDF_paragraph, mkPDF_item, mkPDF_footer, savePDF } from "./pdf";
-import { SHIFT_LABELS_PL } from "./constants";
+import { SHIFT_LABELS_PL, HOTEL_NAME } from "./constants";
 
 export function downloadCorrectionPDF(c,managerName){
   const doc=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
@@ -183,7 +183,7 @@ export function downloadWikiPDF(entries) {
   doc.text(pl("Baza wiedzy recepcji - "+entries.length+" tematow - Wydruk: "+now),ml,32);
   doc.setFillColor(244,237,226);doc.rect(0,38,pw,10,"F");
   doc.setFontSize(9);doc.setFont("helvetica","bold");doc.setTextColor(140,100,32);
-  doc.text(pl("Instrukcja obslugi dla pracownikow recepcji - Conrad Comfort"),ml,45);
+  doc.text(pl("Instrukcja obslugi dla pracownikow recepcji - " + HOTEL_NAME),ml,45);
   y=56;
   // TOC
   chk(14);
@@ -226,7 +226,7 @@ export function downloadWikiPDF(entries) {
     doc.setPage(p);
     doc.setDrawColor(200,190,178);doc.setLineWidth(0.3);doc.line(ml,ph-12,pw-mr,ph-12);
     doc.setFontSize(7.5);doc.setFont("helvetica","normal");doc.setTextColor(170,165,158);
-    doc.text("Conrad Comfort - Wikirecepcja (wydruk dla pracownikow)",ml,ph-7);
+    doc.text(HOTEL_NAME + " - Wikirecepcja (wydruk dla pracownikow)",ml,ph-7);
     doc.text("Strona "+p+" / "+total,pw-mr,ph-7,{align:"right"});
   }
   savePDF(doc,"wikirecepcja_"+now.replace(/\./g,"-")+".pdf");

@@ -41,14 +41,19 @@ export function workerStats(assignments, roomStates, presentWorkers = []) {
 // z największą liczbą czekających do osoby najmniej obciążonej (też z 0 pokoi),
 // ale TYLKO gdy różnica jest znacząca (>= minGap). Małe nierówności (np. 3 vs 8)
 // zostawiamy w spokoju. presentWorkers włącza do puli osoby idle bez pokoi.
-export function suggestReassignments({ assignments, roomStates, presentWorkers = [], excludeTo = [] } = {}, opts = {}) {
+export function suggestReassignments({ assignments, roomStates, presentWorkers = [], excludeTo = [], excludeFrom = [] } = {}, opts = {}) {
   const minGap = opts.minGap ?? 6;             // min. różnica wolnych, by sugerować
   const minBusy = opts.minBusy ?? 6;           // przeciążona musi mieć min. tyle czekających
   const maxSuggestions = opts.maxSuggestions ?? 3;
   // excludeTo = osoby, które NIE mają dostawać pokoi rano (np. zmiana popołudniowa:
   // obsługuje tylko pobyty PG/PGZ + BR/ZS, nie wyjazdy). Bez tego idle popołudniówka
   // wyglądała na „wolną" i agent proponował zrzucanie jej wyjazdów przeciążonej osoby.
+  // excludeFrom = te same osoby jako DAWCY — bez tego popołudniówka z zaległymi
+  // pobytami (PG/PGZ) wyglądała na „przeciążoną" i agent zrzucał jej pokoje na
+  // ranną zmianę, mimo że to inny rodzaj pracy (bug: rano dostawało zamiany
+  // dotyczące pokoi realnie sprzątanych po południu, i odwrotnie).
   const noTo = new Set(excludeTo || []);
+  const noFrom = new Set(excludeFrom || []);
 
   // Bramka: sugeruj DOPIERO, gdy zmiana wystartowała (ktoś już sprząta/skończył).
   // W fazie planowania (recepcja układa obsadę, wszystko jeszcze „W") agent milczy,
@@ -65,8 +70,11 @@ export function suggestReassignments({ assignments, roomStates, presentWorkers =
 
   const suggestions = [];
   for (let i = 0; i < maxSuggestions; i++) {
-    // przeciążona = najwięcej czekających
-    const busy = pool.slice().sort((a, b) => b.waiting - a.waiting)[0];
+    // przeciążona = najwięcej czekających, i NIE z puli wykluczonych dawców
+    // (np. zmiana popołudniowa — jej zaległość to inny rodzaj pracy).
+    const busy = pool
+      .filter(w => !noFrom.has(w.worker))
+      .sort((a, b) => b.waiting - a.waiting)[0];
     // najmniej obciążona (wg pozostałej roboty), różna od przeciążonej
     // i NIE z puli wykluczonych odbiorców (np. zmiana popołudniowa).
     const idle = pool

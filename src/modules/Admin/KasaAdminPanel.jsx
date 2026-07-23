@@ -2,7 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Settings, History, AlertTriangle } from "lucide-react";
 import { SHIFT_SHORT_LABELS } from "../../lib/constants";
-import { loadJson } from "../../lib/storage";
+import { loadJson, STORAGE_KEYS } from "../../lib/storage";
 import { fmtMoney } from "../../lib/format";
 
 export default function KasaAdminPanel({
@@ -11,8 +11,8 @@ export default function KasaAdminPanel({
   setStalaKasowaByManager,
   messages,
 }) {
-  const kasaLog = loadJson("reception-kasa-log", []);
-  const stalaLog = loadJson("reception-stala-kasowa-log", []);
+  const kasaLog = loadJson(STORAGE_KEYS.kasaLog, []);
+  const stalaLog = loadJson(STORAGE_KEYS.stalaKasowaLog, []);
   const discrepancies = messages.filter(m => m.type === "cash_discrepancy");
 
   return (

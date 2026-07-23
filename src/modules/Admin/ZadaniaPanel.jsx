@@ -111,12 +111,11 @@ export default function ZadaniaPanel({
         <div className="panel-title" style={{marginBottom:12}}><Bell size={16}/> Powiadomienia dla wszystkich zmian</div>
         <div style={{fontSize:12.5,color:"var(--dark-text-secondary)",marginBottom:14,lineHeight:1.6}}>Widoczne na ekranie startowym pracownika przed rozpoczęciem zmiany. Każdy może zamknąć u siebie — usunięcia dokonuje kierownik.</div>
         <div style={{display:"flex",gap:0,marginBottom:10,borderRadius:"var(--radius-md)",overflow:"hidden",border:"1px solid rgba(255,255,255,.12)"}}>
-          {[["notif","&#128276; Powiadomienie"],["task","&#10003; Zadanie dla zmiany"]].map(([v,l])=>(
+          {[["notif","🔔 Powiadomienie"],["task","✓ Zadanie dla zmiany"]].map(([v,l])=>(
             <button key={v} onClick={()=>setAdminNotifType(v)}
               style={{flex:1,padding:"8px",border:"none",cursor:"pointer",fontSize:12.5,fontWeight:600,
                       background:adminNotifType===v?"rgba(245,158,11,.18)":"rgba(255,255,255,.05)",
-                      color:adminNotifType===v?"#fbbf24":"#948e85"}}
-              dangerouslySetInnerHTML={{__html:l}}/>
+                      color:adminNotifType===v?"#fbbf24":"#948e85"}}>{l}</button>
           ))}
         </div>
         <div style={{display:"grid",gap:10,marginBottom:14}}>

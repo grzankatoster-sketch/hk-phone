@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Sparkles, RefreshCw, Wifi, ThumbsUp, ThumbsDown
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { REVIEWS_SEED } from "./reviewsSeed";
 import { analyzeReviews, llmReady } from "../../lib/llm";
+import { stripDiacritics } from "../../lib/names";
 
 const THIS_YEAR = new Date().getFullYear();
 const REVIEW_RANGE_LAST_6_MONTHS = "last6m";
@@ -66,13 +67,11 @@ function loadOrSeed() {
   return stored;
 }
 
+// stripDiacritics (WYKONANIE 1.6) + scalenie białych znaków/trim. Klucz do
+// scalania opinii (reviewMergeKey) — symetryczny po obu stronach, więc mapowanie
+// ł→l tylko poprawia dopasowanie tego samego gościa.
 function normalizedReviewText(value) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
+  return stripDiacritics(value).replace(/\s+/g, " ").trim();
 }
 
 function reviewDate(review) {

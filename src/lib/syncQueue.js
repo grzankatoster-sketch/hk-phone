@@ -2,7 +2,9 @@
 // flushuje automatycznie po powrocie online.
 // Użycie: enqueue({ table, method, data }) → flushAll() wywoływane auto przez listener.
 
-const QUEUE_KEY = "reception-sync-queue";
+import { STORAGE_KEYS } from "./storage";
+
+const QUEUE_KEY = STORAGE_KEYS.syncQueue;
 
 function loadQueue() {
   try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]"); } catch { return []; }
@@ -12,9 +14,17 @@ function saveQueue(q) {
   try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); } catch {}
 }
 
-export function enqueue(op) {
-  const q = loadQueue();
-  q.push({ ...op, queuedAt: new Date().toISOString() });
+// Po tylu nieudanych próbach flush porzucamy operację (op „trujący" — np. odrzut RLS,
+// nie przejściowy offline) — żeby kolejka nie rosła w nieskończoność.
+const MAX_ATTEMPTS = 5;
+
+// dedupeKey (opcjonalnie): operacje snapshotowe (np. panel_mirror per kind) zastępują
+// poprzednią zakolejkowaną tego samego rodzaju — kolejka pozostaje ograniczona, a i tak
+// liczy się tylko ostatni stan (upsert idempotentny).
+export function enqueue(op, dedupeKey) {
+  let q = loadQueue();
+  if (dedupeKey) q = q.filter((o) => o._dedupe !== dedupeKey);
+  q.push({ ...op, _dedupe: dedupeKey || undefined, attempts: 0, queuedAt: new Date().toISOString() });
   saveQueue(q);
 }
 
@@ -46,7 +56,9 @@ export async function flushAll(supabase) {
       flushed++;
     } catch {
       errors++;
-      remaining.push(op);
+      const attempts = (op.attempts || 0) + 1;
+      if (attempts < MAX_ATTEMPTS) remaining.push({ ...op, attempts });
+      // po MAX_ATTEMPTS porzucamy op (trujący) — nie wraca do kolejki
     }
   }
   saveQueue(remaining);

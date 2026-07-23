@@ -1,4 +1,5 @@
 import { normalizeToShift } from "./excel";
+import { stripDiacritics } from "./names";
 
 export const fmt = (date = new Date()) => date.toLocaleString("pl-PL");
 
@@ -51,16 +52,10 @@ export const parsePlDateTime = (s) => {
   return new Date(+y, +mo - 1, +d, +h, +mi, +se).getTime();
 };
 
+// stripDiacritics (WYKONANIE 1.6) mapuje te\u017c \u0142\u2192l; tu dok\u0142adamy tylko scalenie
+// bia\u0142ych znak\u00f3w i trim (specyfika dopasowania nazwisk z grafiku).
 const normalizeScheduleEmployeeName = (name) =>
-  String(name || "")
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .toLowerCase()
-    // Unicode NFD nie rozk\u0142ada polskiego "\u0142"/"\u0141" \u2014 mapujemy r\u0119cznie, by
-    // dopasowanie nazwisk (np. "Pawe\u0142" \u2194 "pawel") dzia\u0142a\u0142o jak dla \u0105/\u0107/\u0119/\u2026
-    .replace(/\u0142/g, "l");
+  stripDiacritics(name).replace(/\s+/g, " ").trim();
 
 // Returns the raw schedule entry for a worker on a given day.
 // Name lookup ignores case and Polish diacritics.

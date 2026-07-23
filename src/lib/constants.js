@@ -7,7 +7,14 @@ import { tenantConfig } from "../tenants/config";
 export const TENANT_ID = import.meta.env.VITE_TENANT_ID || "00000000-0000-0000-0000-000000000001";
 export const ADMIN_PASSWORD = import.meta.env?.VITE_ADMIN_PASSWORD || (() => { throw new Error("VITE_ADMIN_PASSWORD is not set"); })();
 
+// Startowa stała kasowa (kasetka) w PLN — wartość domyślna, nadpisywana przez
+// kierownika w UI. Docelowo migruje do tenant_settings (WYKONANIE 2.19).
+export const DEFAULT_STALA_KASOWA = 500;
+
 // ─── Dane hotelowe — re-export z tenantConfig dla backward compat ─────────────
+// Nazwa hotelu do UI/PDF (WYKONANIE 2.5) — jedno źródło zamiast „Conrad Comfort"
+// zaszytego w ~10 miejscach. Inny tenant = inna VITE_HOTEL_NAME, zero zmian w kodzie.
+export const HOTEL_NAME            = tenantConfig.hotelName;
 export const ADMIN_MANAGERS        = Object.freeze(tenantConfig.managers);
 export const defaultEmployees      = Object.freeze(tenantConfig.employees);
 export const KONSERWATOR_WORKERS   = Object.freeze(tenantConfig.maintainers);
@@ -83,6 +90,8 @@ export const WORKER_TAB_LABELS = Object.freeze({
   goscie: "Stali goście",
   vouchery: "Vouchery",
   opinie: "Opinie gości",
+  klucze: "Klucze / karty",
+  depozyty: "Depozyty",
 });
 export const ADMIN_TAB_LABELS = Object.freeze({
   ewidencja: "Ewidencja", zadania: "Zadania", pracownicy: "Pracownicy",

@@ -1,8 +1,9 @@
-// Klient warstwy LLM — woła Edge Function `llm` (proxy Claude).
+// Klient warstwy LLM — woła Edge Function `llm` (proxy Groq/Llama).
 // Klucz API nigdy nie jest tutaj: invoke dokłada anon key, prompt powstaje na serwerze.
 // LLM = warstwa językowa (doradcza). Nigdy źródło liczb (kasa, liczenie pokoi).
 import { supabase } from "./supabase";
 import { TENANT_ID } from "./constants";
+import { stripDiacritics as strip } from "./names";
 
 export const llmReady = Boolean(supabase);
 
@@ -25,9 +26,6 @@ export async function callLLM(task, payload) {
 }
 
 // ── RAG Wiki ────────────────────────────────────────────────────────────────
-const strip = (s) =>
-  String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/ł/g, "l");
-
 // Prefiltr: wybiera wpisy najbardziej pasujące do pytania (overlap słów >3 znaki).
 // Mała baza Wiki → bez wektorów; wrzucamy do kontekstu top-N wpisów.
 function selectEntries(question, entries, limit = 4) {

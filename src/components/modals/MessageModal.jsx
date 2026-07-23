@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { X, AlertCircle, Send } from "lucide-react";
+import { STORAGE_KEYS } from "../../lib/storage";
 
 export default function MessageModal({onClose,employeeName,employees,messages,setMessages,dark}){
   const [sender,setSender]=React.useState(employeeName||"");
@@ -14,7 +15,7 @@ export default function MessageModal({onClose,employeeName,employees,messages,se
               readByAdmin:false};
     const updated=[m,...messages];
     setMessages(updated);
-    localStorage.setItem("reception-messages",JSON.stringify(updated));
+    localStorage.setItem(STORAGE_KEYS.messages,JSON.stringify(updated));
     setText("");
     onClose();
   };

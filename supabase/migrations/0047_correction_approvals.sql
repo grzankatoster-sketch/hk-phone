@@ -1,4 +1,6 @@
--- 0030_correction_approvals.sql
+-- 0047_correction_approvals.sql
+-- Przenumerowane z 0030 (kolizja numeru, WYKONANIE 1.2). Idempotentne
+-- (create table if not exists). Zależności: brak (tabela liściowa).
 -- Zatwierdzanie korekt płatności z panelu menedżerskiego.
 -- Korekty są zapisywane jednokierunkowo (recepcja -> panel_mirror, read-only snapshot),
 -- więc decyzję kierownika trzymamy w osobnej tabeli, żeby nie nadpisywać lustra recepcji.

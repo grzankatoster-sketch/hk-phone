@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Logo from "../ui/Logo";
+import { HOTEL_NAME } from "../lib/constants";
 
 // Ekran powitalny po zalogowaniu — wydzielony z App.jsx (krok 2 odchudzania monolitu).
 export default function WelcomeOverlayScreen({name,onDone}){
@@ -26,7 +27,7 @@ export default function WelcomeOverlayScreen({name,onDone}){
         </div>
         <div className="cc-welcome-greeting">{greeting}</div>
         <div className="cc-welcome-name">{name||"Recepcja"}</div>
-        <div className="cc-welcome-brand" aria-hidden="true">Conrad Comfort</div>
+        <div className="cc-welcome-brand" aria-hidden="true">{HOTEL_NAME}</div>
       </motion.div>
     </div>
   );

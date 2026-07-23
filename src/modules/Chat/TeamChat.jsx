@@ -1,12 +1,12 @@
 import React from "react";
 import { Send, ArrowLeftRight, Check, X, Hash, Users, Wrench, Home } from "lucide-react";
-import { loadJson, saveJson } from "../../lib/storage";
+import { loadJson, saveJson, STORAGE_KEYS } from "../../lib/storage";
 import { TENANT_ID } from "../../lib/constants";
 import { supabase } from "../../lib/supabase";
 
 const TABLE = "messages";
-const LS_KEY = "reception-team-messages";
-const SEEN_KEY = "reception-team-lastseen";
+const LS_KEY = STORAGE_KEYS.teamMessages;
+const SEEN_KEY = STORAGE_KEYS.teamLastSeen;
 
 // Kanały czatu zespołowego. id = wartość kolumny `channel` w Supabase.
 const CHANNELS = [

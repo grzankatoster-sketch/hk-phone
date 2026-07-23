@@ -6,6 +6,7 @@
 //   na nowe zdarzenie i sam znika — z przyciskiem „Pokaż" prowadzącym do HK.
 // Agent NIGDY nie przenosi sam — zawsze pyta recepcję o zgodę.
 import React from "react";
+import AgentIcon from "./AgentIcon";
 
 const sugKey = (s) => `${s.from}->${s.to}:${s.rooms.join(",")}`;
 const BUBBLE_MS = 9000;
@@ -127,7 +128,7 @@ export default function AgentBot({
       {/* ── Dymek „mowy" bota — nad uchwytem w HK, floating w innych oknach ── */}
       {bubble && (
         <div className={`cc-agent-bubble${inHK ? "" : " cc-agent-bubble--float"}${!inHK && bubble.action ? " cc-agent-bubble--act" : ""}`} role="status">
-          <span className="cc-agent-bubble-icon" aria-hidden="true">🤖</span>
+          <span className="cc-agent-bubble-icon" aria-hidden="true"><AgentIcon size={18} /></span>
           <div className="cc-agent-bubble-text">{bubble.text}</div>
           <div className="cc-agent-bubble-actions">
             {!inHK && bubble.action ? (
@@ -147,7 +148,7 @@ export default function AgentBot({
       {inHK && revealed && open && (
         <div className="cc-agent-pop" role="dialog" aria-label="Agent AI — zdarzenia, propozycje, historia">
           <div className="cc-agent-pop-head">
-            <span className="cc-agent-pop-title">🤖 Agent AI</span>
+            <span className="cc-agent-pop-title"><AgentIcon size={15} style={{verticalAlign:"-2px"}} /> Agent AI</span>
             <div className="cc-agent-pop-tabs">
               <button className={`cc-agent-pop-tab${!showHist ? " is-active" : ""}`} onClick={() => setShowHist(false)}>
                 Teraz{count > 0 ? ` (${count})` : ""}
@@ -242,7 +243,7 @@ export default function AgentBot({
           aria-label={hasItems ? `Agent AI — ${count} zdarzeń` : "Agent AI"}
           title={hasItems ? "Agent ma nowe zdarzenia" : "Agent AI"}
         >
-          <span className="cc-agent-fab-icon" aria-hidden="true">🤖</span>
+          <span className="cc-agent-fab-icon" aria-hidden="true"><AgentIcon size={22} /></span>
           {count > 0 && <span className="cc-agent-badge">{count}</span>}
         </button>
       )}
@@ -255,7 +256,7 @@ export default function AgentBot({
           aria-label={hasItems ? `Pokaż agenta AI — ${count} zdarzeń` : "Pokaż agenta AI"}
           title="Agent AI — kliknij, by pokazać"
         >
-          <span className="cc-agent-handle-icon" aria-hidden="true">🤖</span>
+          <span className="cc-agent-handle-icon" aria-hidden="true"><AgentIcon size={20} /></span>
           {count > 0 && <span className="cc-agent-handle-dot">{count}</span>}
         </button>
       )}

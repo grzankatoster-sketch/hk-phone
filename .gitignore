@@ -1,6 +1,7 @@
 node_modules/
 dist/
 release/
+release-manager/
 .env
 .env.local
 *.log
@@ -12,3 +13,9 @@ recepcja-mail-setup/
 tmp-*/
 *.backup.json
 schedule-backup-*.json
+
+# Obce projekty / narzędzia spoza panelu recepcji (WYKONANIE 1.1)
+open-design/
+scripts/broker/
+test_results.txt
+.mcp.json.backup*
