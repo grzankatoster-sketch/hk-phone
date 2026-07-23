@@ -25,3 +25,6 @@ test_results.txt
 ceny.csv
 kwhotel-calibration.json
 *-revenue-report.csv
+
+# Worktree agentow MOZG (transientne)
+.claude/worktrees/
