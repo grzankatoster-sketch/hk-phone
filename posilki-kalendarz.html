@@ -65,14 +65,17 @@ function goToDay(iso){
   location.href = "posilki.html?date=" + iso + (DEMO?"&demo=1":"");
 }
 
+// Raport z KWHotel przychodzi automatycznie 2x dziennie (~6:00 i ~16:00) i zawsze
+// pokrywa tylko 3 dni do przodu (dziś/jutro/pojutrze) — kalendarz celowo ograniczony
+// do tego samego okna, żeby nie sugerować dni, dla których i tak nie będzie danych.
 async function load(){
   const days = [];
-  for (let i=-2;i<12;i++) days.push(new Date(today.getTime()+i*86400000));
+  for (let i=0;i<3;i++) days.push(new Date(today.getTime()+i*86400000));
   const from = isoDate(days[0]), to = isoDate(days[days.length-1]);
 
   let counts = {};
   if (DEMO) {
-    const demoVals = [8,10,12,9,14,6,3,11,5,7,9,13,4,2];
+    const demoVals = [12,9,14];
     days.forEach((d,i) => { counts[isoDate(d)] = demoVals[i % demoVals.length]; });
   } else if (sb) {
     try {
