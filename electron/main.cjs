@@ -335,8 +335,14 @@ ipcMain.handle("hk-get-konserwator-qr", async (_, name, faults) => {
 
 // ─── Powiadomienia natywne Windows (agent AI / prośby HK) ─────────────────────
 // AppUserModelId jest wymagany, by Windows pokazywał natywne toasty z poprawną
-// nazwą/ikoną (zwłaszcza w buildzie). Ustawiamy stałe ID producenta.
-const APP_USER_MODEL_ID = "com.conradcomfort.panelrecepcji";
+// nazwą/ikoną (zwłaszcza w buildzie). MUSI być identyczne z build.appId w
+// package.json — to ten identyfikator elektron-builder/NSIS wpisuje do skrótu
+// w Menu Start przy instalacji. Rozjazd (dawniej: "com.conradcomfort.panelrecepcji"
+// tu vs "pl.conradcomfort.reception" w package.json) sprawiał, że Windows nie
+// znajdował zarejestrowanej aplikacji dla tego ID i pokazywał powiadomienia z
+// losowym/nieprawidłowym nadawcą zamiast nazwy aplikacji — czasem w ogóle je
+// gubił (Notification.isSupported() bywa zależne od poprawnej rejestracji AUMID).
+const APP_USER_MODEL_ID = "pl.conradcomfort.reception";
 
 ipcMain.handle("notify", (_e, payload = {}) => {
   try {

@@ -11,10 +11,12 @@ Adresy stron po wdrożeniu:
 Supabase → **SQL Editor** → New query → wklej **całą** zawartość pliku
 [`supabase/panel_install.sql`](supabase/panel_install.sql) → **Run**.
 
-To zakłada tabele, role, funkcje, polityki bezpieczeństwa, TTL i 7 kont startowych.
-Plik jest idempotentny — można puścić ponownie bez szkody.
-
-> Jeśli wolisz osobno: uruchom po kolei `0010` → `0011` → `0012` → `0013` → `0014` → `0015` → `0016` → `seed_app_accounts.sql`.
+Plik zawiera WSZYSTKIE migracje `0001`–`0055` (cała aplikacja + panel) + 7 kont
+startowych, sklejone w jednej kolejności. Jest w pełni idempotentny — bezpiecznie
+uruchomić go w całości nawet jeśli część migracji była już wcześniej wklejona
+osobno (żadna operacja się nie zdubluje/nie wywali na "już istnieje").
+Wygenerowany automatycznie z `supabase/migrations/*.sql` — jeśli dojdzie kolejna
+migracja, doklej ją na końcu tego pliku zamiast wklejać osobno.
 
 ## 2) Logowanie bez maila
 Supabase → **Authentication → Sign In / Providers** (lub **Settings**) → **wyłącz „Confirm email"**.
@@ -39,6 +41,23 @@ supabase functions deploy llm
 Zadanie dodane konserwatorowi = wpis do `faults`. Push poleci **automatycznie**, jeśli istnieje
 **Database Webhook na INSERT do `faults`** (to było w Twoim wdrożeniu push). Sprawdź:
 Supabase → **Database → Webhooks** → czy jest webhook na `faults` (INSERT) → URL funkcji `push-send`.
+
+## 5b) Eskalacja SLA usterek (migracja 0044, jeśli chcesz automatyczne przypomnienia)
+Ten sam krok co (3) — wymaga `pg_cron`. Jeśli włączyłeś rozszerzenie w kroku (3),
+harmonogram `escalate-overdue-faults` już się utworzył przy uruchomieniu
+`panel_install.sql`. Jeśli `pg_cron` włączyłeś PO uruchomieniu instalatora,
+uruchom ponownie tylko sekcję `0044_faults_sla_escalation.sql` z instalatora
+(bezpieczne — idempotentne).
+
+## 5c) Bot WhatsApp — link do grafiku (migracja 0053, opcjonalne)
+Wymaga jednego ręcznego kroku, którego NIE MOŻNA trzymać w pliku migracji (trafiłby
+do repo): Supabase → **SQL Editor** → uruchom raz:
+```sql
+alter database postgres set app.whatsapp_key = '<długi losowy sekret, np. z `openssl rand -hex 32`>';
+```
+Bez tego zapisywanie/wysyłka numerów telefonów pracowników (zakładka Grafik →
+„📱 Numery WhatsApp") zwróci błąd. Sam serwis bota: `npm run whatsapp:bot`
+(wymaga dedykowanego numeru telefonu — patrz opis w README bota/rozmowie wdrożeniowej).
 
 ## 6) Publikacja stron
 W projekcie:
@@ -71,3 +90,7 @@ lub w SQL (`update public.app_accounts set name=… where role=…`).
 - „Pierwsze hasło" nie loguje → „Confirm email" nadal włączone (krok 2).
 - Dane puste po zalogowaniu → sprawdź, czy migracje 0010+ przeszły (polityki dla `authenticated`).
 - AI-opis „niedostępne" → funkcja `llm` niewdrożona z krokiem `worker` (krok 4).
+- Stary zapisany link do „Wyjazdy" (menedżer HK) przestał działać po migracji `0054` →
+  to celowe (był dostępny bez żadnego zabezpieczenia). Nowy link z tokenem: dopisz
+  `?t=C59313` do adresu strony (token startowy, seedowany przez migrację) — albo
+  wygeneruj nowy przez `page_access_tokens` i podmień zapisany link.

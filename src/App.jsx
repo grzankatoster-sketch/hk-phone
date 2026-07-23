@@ -18,6 +18,7 @@ const EwidencjaPanel = lazy(() => import("./modules/Admin/EwidencjaPanel"));
 const ZadaniaPanel = lazy(() => import("./modules/Admin/ZadaniaPanel"));
 const PracownicyPanel = lazy(() => import("./modules/Admin/PracownicyPanel"));
 const StatystykiPanel = lazy(() => import("./modules/Admin/StatystykiPanel"));
+const PricingPanel = lazy(() => import("./modules/Pricing/PricingPanel"));
 const UstawieniaPanel = lazy(() => import("./modules/Admin/UstawieniaPanel"));
 const KorektyPanel = lazy(() => import("./modules/Admin/KorektyPanel"));
 const HistoriaPanel = lazy(() => import("./modules/Admin/HistoriaPanel"));
@@ -2325,6 +2326,9 @@ export default function App(){
           <motion.div key="grafik" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <ScheduleAdminPanel schedule={schedule} setSchedule={setSchedule} employees={employees} dark={adminDark} showToast={showToast}/>
           </motion.div>
+        )}
+        {adminTab==="ceny"&&(
+          <PricingPanel showToast={showToast}/>
         )}
         {adminTab==="statystyki"&&(
           <StatystykiPanel

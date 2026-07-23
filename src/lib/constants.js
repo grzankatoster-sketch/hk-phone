@@ -99,5 +99,5 @@ export const ADMIN_TAB_LABELS = Object.freeze({
   korekty: "Korekty", usterki: "Usterki",
   wiadomosci: "Wiadomości", alerty: "Alerty",
   przypomnienia: "Przypomnienia", historia: "Historia", wiki: "Wiki",
-  kasa: "Kasa",
+  kasa: "Kasa", ceny: "Ceny",
 });

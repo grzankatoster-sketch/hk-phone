@@ -3,7 +3,7 @@ import {
   BarChart2, Users, Cog, MessageSquare, FileText, Settings, ShieldCheck,
   Search, RefreshCw, Sun, Moon, LogOut, Bell, History, CheckSquare,
   ArrowLeftRight, AlertTriangle, AlertCircle, BellRing, BookOpen,
-  Calendar,
+  Calendar, TrendingUp,
 } from "lucide-react";
 import Logo from "../../ui/Logo";
 import { isModuleEnabled } from "../../lib/modules";
@@ -127,6 +127,7 @@ export default function AdminSidebarRail({
           {activeGroup==="dashboard"&&<>
             {nb("wiadomosci",<Bell size={14}/>,"Wiadomości",unreadMsgCount)}
             {nb("statystyki",<BarChart2 size={14}/>,"Statystyki")}
+            {isModuleEnabled("ceny")&&nb("ceny",<TrendingUp size={14}/>,"Ceny")}
           </>}
           {activeGroup==="zespol"&&<>
             {nb("pracownicy",<Users size={14}/>,"Pracownicy")}

@@ -39,6 +39,7 @@ export const MODULE_REGISTRY = Object.freeze([
   { key: "przypomnienia",label:"Przypomnienia",    scope: "admin",   core: true },
   { key: "wiki",        label: "Wiki",             scope: "admin",   core: true },
   { key: "ustawienia",  label: "Ustawienia",       scope: "admin",   core: true },
+  { key: "ceny",        label: "Ceny",             scope: "admin",   core: true }, // 4.20; tier PREMIUM→5.1
   // Moduły licencjonowalne
   { key: "hk",          label: "Housekeeping",     scope: "worker" },
   { key: "parking",     label: "Parking",          scope: "worker" },
