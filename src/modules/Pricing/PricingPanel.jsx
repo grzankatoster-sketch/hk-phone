@@ -5,7 +5,7 @@ import { supabase } from "../../lib/supabase";
 import { TENANT_ID } from "../../lib/constants";
 import { fmtMoney } from "../../lib/format";
 import { todayKey } from "../../lib/dates";
-import { suggestPrice } from "../../lib/pricing";
+import { generatePriceSuggestion, llmReady } from "../../lib/llm";
 
 // Propozycje cen (WYKONANIE 4.20) — wariant manual-first: kierownik podaje cenę
 // bazową + obłożenie, silnik (lib/pricing.js) proponuje, on zatwierdza/edytuje/odrzuca.
@@ -19,6 +19,7 @@ export default function PricingPanel({ showToast }) {
   const [preview, setPreview] = React.useState(null);
   const [rows, setRows] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
+  const [calcLoading, setCalcLoading] = React.useState(false);
 
   const load = React.useCallback(async () => {
     if (!supabase) return;
@@ -30,11 +31,17 @@ export default function PricingPanel({ showToast }) {
   }, [date]);
   React.useEffect(() => { load(); }, [load]);
 
-  const calc = () => {
+  const calc = async () => {
     const basePrice = parseFloat(String(base).replace(",", ".")) || 0;
     if (basePrice <= 0) { showToast?.("Podaj cenę bazową.", "error"); return; }
     const occupancy = occ === "" ? null : Math.max(0, Math.min(1, (parseFloat(occ) || 0) / 100));
-    setPreview(suggestPrice({ basePrice, stayDate: date, occupancy }));
+    setCalcLoading(true);
+    try {
+      // AI-sędzia w granicach reguł (fallback do czystej matematyki, gdy AI niedostępne).
+      const res = await generatePriceSuggestion({ basePrice, stayDate: date, roomType, occupancy });
+      setPreview(res);
+    } catch { showToast?.("Błąd liczenia ceny.", "error"); }
+    finally { setCalcLoading(false); }
   };
 
   const save = async (status) => {
@@ -43,9 +50,9 @@ export default function PricingPanel({ showToast }) {
     if (!supabase) { showToast?.("Brak połączenia z bazą.", "error"); return; }
     const row = {
       tenant_id: TENANT_ID, stay_date: date, room_type: roomType.trim(),
-      base_price: preview.base, suggested_price: preview.suggested,
-      suggested_reason: { reason: preview.reason, factors: preview.factors },
-      approved_price: status === "approved" ? preview.suggested : null,
+      base_price: preview.base, suggested_price: preview.price,
+      suggested_reason: { reason: preview.reason, factors: preview.factors, source: preview.source, baseline: preview.baseline },
+      approved_price: status === "approved" ? preview.price : null,
       status, updated_at: new Date().toISOString(),
     };
     const { error } = await supabase.from("own_rates").upsert(row, { onConflict: "tenant_id,stay_date,room_type" });
@@ -79,13 +86,14 @@ export default function PricingPanel({ showToast }) {
           <input className="input dark-input" placeholder="Typ pokoju" value={roomType} onChange={(e) => setRoomType(e.target.value)} style={{ width: 130 }} />
           <input className="input dark-input" placeholder="Cena bazowa" value={base} onChange={(e) => setBase(e.target.value)} style={{ width: 110 }} />
           <input className="input dark-input" placeholder="Obłożenie %" value={occ} onChange={(e) => setOcc(e.target.value)} style={{ width: 110 }} />
-          <button className="btn btn-outline-dark" onClick={calc}>Policz sugestię</button>
+          <button className="btn btn-outline-dark" onClick={calc} disabled={calcLoading}>{calcLoading ? "Liczę…" : (llmReady ? "Zaproponuj cenę (AI)" : "Policz sugestię")}</button>
         </div>
         {preview && (
           <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(45,138,112,.1)", border: "1px solid rgba(45,138,112,.3)" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-              <span style={{ fontSize: 22, fontWeight: 900, color: "var(--dark-text)" }}>{fmtMoney(preview.suggested)} zł</span>
-              <span className="tiny muted-light">(baza {fmtMoney(preview.base)} zł)</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 22, fontWeight: 900, color: "var(--dark-text)" }}>{fmtMoney(preview.price)} zł</span>
+              <span className="tiny muted-light">(baza {fmtMoney(preview.base)} zł{preview.source === "ai" && preview.baseline !== preview.price ? `, reguły ${fmtMoney(preview.baseline)}` : ""})</span>
+              <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 8px", borderRadius: 999, textTransform: "uppercase", background: preview.source === "ai" ? "#8b5cf622" : "#64748b22", color: preview.source === "ai" ? "#a78bfa" : "#94a3b8" }}>{preview.source === "ai" ? "AI" : "reguły"}</span>
             </div>
             <div className="tiny muted-light" style={{ marginTop: 4 }}>{preview.reason}</div>
             <div style={{ display: "flex", gap: 8, marginTop: 10 }}>

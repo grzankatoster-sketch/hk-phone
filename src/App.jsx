@@ -2038,10 +2038,16 @@ export default function App(){
           openFaults=(data||[]).map(f=>({pokoj:f.room||f.space_id,opis:f.description,priorytet:f.priority,status:f.status}));
         }catch{/* briefing działa też bez usterek */}
       }
+      // Świadomie NIE wykluczamy już kind="task" — to główny, codzienny kanał
+      // komunikacji kierownika z recepcją (panel → "Przekaż zadanie"). Wykluczenie
+      // ich sprawiało, że briefing prawie zawsze dostawał pusty kontekst i mówił
+      // "Spokojna zmiana", nawet gdy realnie było co przekazać (zweryfikowane
+      // na żywo: ten sam prompt z zadaniami w kontekście daje sensowny briefing).
       const alerts=loadJson(STORAGE_KEYS.managerAlerts,[])
         .filter(a=>!a.expires_at||new Date(a.expires_at).getTime()>Date.now())
         .filter(a=>!a.target_date||a.target_date===(currentSessionDate||todayKey()))
-        .filter(a=>a.kind!=="task"&&!a.done)   // zadania (kind='task') idą do sekcji zadań, nie do alertów
+        .filter(a=>!a.target_shift||a.target_shift===selectedShift)
+        .filter(a=>!a.done)
         .map(a=>({tytul:a.title,tresc:a.body}));
       // Wysyłamy do modelu TYLKO niepuste sekcje (po polsku) — inaczej model pisał
       // np. "Nie ma usterek, bo lista openFaults jest pusta".

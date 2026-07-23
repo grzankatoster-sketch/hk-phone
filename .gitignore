@@ -20,3 +20,8 @@ open-design/
 scripts/broker/
 test_results.txt
 .mcp.json.backup*
+
+# Dane cenowe hotelu (kalibracja silnika cen) — nie wersjonować
+ceny.csv
+kwhotel-calibration.json
+*-revenue-report.csv

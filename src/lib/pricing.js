@@ -1,9 +1,9 @@
 // Silnik sugestii cen — wariant BEZ konkurencji (WYKONANIE 4.20).
-// suggested = cena_bazowa × sezonowość(dzień tygodnia) × czynnik_obłożenia,
-// z twardymi widełkami min/max. Czysta, deterministyczna funkcja (testowalna) —
+// suggested = cena_bazowa × sezonowość(dzień tygodnia) × obłożenie × święto × impreza × pogoda,
+// z twardymi widełkami min/max. Czysta, deterministyczna funkcja (testowalna) — stanowi
+// BARIERKĘ dla warstwy AI (lib/llm.generatePriceSuggestion), która rozumuje w tych granicach.
 // NIGDY nie zmienia cen sama; kierownik zatwierdza/edytuje/odrzuca propozycję.
-// Sygnały zewnętrzne (wydarzenia 4.21, pogoda 4.22, konkurencja 4.23) dokładają
-// się później jako dodatkowe czynniki do tego samego wyniku.
+import { holidayFactor } from "./holidays.js";
 
 // Mnożnik dnia tygodnia (0=niedziela … 6=sobota). Weekend drożej, środek tygodnia taniej.
 export const DOW_FACTORS = Object.freeze({ 0: 0.95, 1: 0.92, 2: 0.92, 3: 0.95, 4: 1.05, 5: 1.15, 6: 1.12 });
@@ -22,7 +22,8 @@ export function occupancyFactor(occ) {
 // stayDate: "YYYY-MM-DD". occupancy: 0..1 lub null (pomiń). eventBoost: mnożnik ≥1 od
 // imprezy w mieście (Ticketmaster 4.21, np. 1.15 za duży koncert) lub null. weatherFactor:
 // mnożnik ~0.97..1.02 od pogody (4.22, mała waga — słaby predyktor) lub null. min/maxPrice: widełki.
-export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost = null, weatherFactor = null, minPrice = null, maxPrice = null } = {}) {
+// holidayBoost: nadpisuje auto-kalendarz świąt (null = policz z daty). applyHoliday=false wyłącza.
+export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost = null, weatherFactor = null, holidayBoost = null, applyHoliday = true, minPrice = null, maxPrice = null } = {}) {
   const base = Math.max(0, Number(basePrice) || 0);
   const d = stayDate ? new Date(stayDate + "T12:00:00") : new Date();
   const dow = d.getDay();
@@ -30,8 +31,11 @@ export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost
   const occF = occupancy == null ? 1 : occupancyFactor(occupancy);
   const evF = eventBoost == null ? 1 : Math.max(1, Number(eventBoost) || 1);   // impreza tylko podbija
   const wF = weatherFactor == null ? 1 : (Number(weatherFactor) || 1);          // pogoda w obie strony, mała
+  const hol = holidayBoost != null ? { factor: Math.max(1, Number(holidayBoost) || 1), label: "święto" }
+            : (applyHoliday ? holidayFactor(stayDate) : { factor: 1, label: null });
+  const holF = hol.factor;
 
-  let suggested = Math.round(base * dowF * occF * evF * wF);
+  let suggested = Math.round(base * dowF * occF * evF * wF * holF);
   let clamped = null;
   if (minPrice != null && suggested < Number(minPrice)) { suggested = Math.round(Number(minPrice)); clamped = "min"; }
   if (maxPrice != null && suggested > Number(maxPrice)) { suggested = Math.round(Number(maxPrice)); clamped = "max"; }
@@ -41,6 +45,7 @@ export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost
     { key: "dow", label: DOW_LABELS[dow], factor: dowF },
   ];
   if (occupancy != null) factors.push({ key: "occ", label: `obłożenie ${Math.round(occupancy * 100)}%`, factor: occF });
+  if (holF !== 1) factors.push({ key: "holiday", label: hol.label || "święto / długi weekend", factor: holF });
   if (eventBoost != null && evF !== 1) factors.push({ key: "event", label: "impreza w mieście", factor: evF });
   if (weatherFactor != null && wF !== 1) factors.push({ key: "weather", label: "pogoda", factor: wF });
   if (clamped) factors.push({ key: "clamp", label: `widełki (${clamped})`, value: suggested });

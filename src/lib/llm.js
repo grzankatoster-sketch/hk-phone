@@ -4,6 +4,8 @@
 import { supabase } from "./supabase";
 import { TENANT_ID } from "./constants";
 import { stripDiacritics as strip } from "./names";
+import { suggestPrice } from "./pricing";
+import { holidayFactor } from "./holidays";
 
 export const llmReady = Boolean(supabase);
 
@@ -126,6 +128,35 @@ const MAX_ANALYZE_REVIEWS = 150;
 export async function generateReviewReply({ score, positives = "", negatives = "", guest_name = "", language = "pl" } = {}) {
   const { text } = await callLLM("reply", { score, positives, negatives, guest_name, language });
   return String(text || "").trim();
+}
+
+// AI-sędzia cenowy (WYKONANIE 4.20) rozumujący W GRANICACH silnika regułowego.
+// LLM NIE jest źródłem liczby: dostaje policzone widełki [min,max] + sugestię reguł i może
+// tylko doprecyzować w środku (twarda barierka: nigdy poza widełki ani dalej niż ±15% od
+// reguły). Gdy AI zawiedzie/niedostępne → cichy fallback do czystej matematyki. Człowiek
+// i tak zatwierdza każdą cenę. Zwraca { price, reason, baseline, source:"ai"|"rules", factors }.
+export async function generatePriceSuggestion({ basePrice, stayDate, roomType = "", occupancy = null, event = "", weather = "", eventBoost = null, weatherFactor = null, historyHint = "", minPrice = null, maxPrice = null } = {}) {
+  const base = Math.max(0, Number(basePrice) || 0);
+  const min = minPrice != null ? Number(minPrice) : Math.round(base * 0.7);
+  const max = maxPrice != null ? Number(maxPrice) : Math.round(base * 1.7);
+  const det = suggestPrice({ basePrice: base, stayDate, occupancy, eventBoost, weatherFactor, minPrice: min, maxPrice: max });
+  const rules = { price: det.suggested, base, reason: det.reason, baseline: det.suggested, source: "rules", factors: det.factors };
+  if (!llmReady || base <= 0) return rules;
+  try {
+    const { data: ai } = await callLLM("pricing", {
+      date: stayDate, dow_label: det.factors.find((f) => f.key === "dow")?.label, room_type: roomType,
+      base, occupancy, holiday: holidayFactor(stayDate).label, event, weather, history_hint: historyHint,
+      baseline: det.suggested, min, max,
+    });
+    let price = Math.round(Number(ai?.price));
+    if (!Number.isFinite(price)) return rules;
+    const lo = Math.max(min, Math.round(det.suggested * 0.85)); // barierka dolna
+    const hi = Math.min(max, Math.round(det.suggested * 1.15)); // barierka górna
+    price = Math.min(hi, Math.max(lo, price));
+    return { price, base, reason: String(ai?.reason || "").trim() || det.reason, baseline: det.suggested, source: "ai", factors: det.factors };
+  } catch {
+    return rules;
+  }
 }
 
 export async function analyzeReviews(reviews) {

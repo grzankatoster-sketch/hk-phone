@@ -114,6 +114,7 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 - [ ] 4.23 ⚠️ [ICE 12, PREMIUM add-on, WYŁĄCZONY DOMYŚLNIE] Opcjonalne rozszerzenie: śledzenie cen konkurencji z Booking — RYZYKO PRAWNE (narusza regulamin), tylko za świadomą zgodą i limitem częstotliwości; rozważyć płatne API rate-shopperów zamiast własnego scrapingu zamiast tej pozycji
 - [x] 4.24 [ICE 36, add-on/STANDARD] Bot WhatsApp: wysyłka linku do grafiku (F15 — brainstorming 22.07.2026) — KOD GOTOWY, czeka na dedykowany numer telefonu + `supabase db push` + ręczny `alter database ... set app.whatsapp_key`
 - [x] 4.25 [ICE 40, platforma] Onboarding pracownika: tura pierwszego logowania (F16 — brainstorming 22.07.2026) — KOD GOTOWY, migracja 0052 czeka na `supabase db push`
+- [x] 4.26 [ICE 40, platforma] Kokpit operatora SaaS „Hotele" — lista hoteli, status/opłacone-do, kill-switch, numer WhatsApp per hotel (F17 — brainstorming 22-23.07.2026; domyka „panel super-admin" z SAAS_PLAN) — KOD GOTOWY
 
 ## ETAP 5 — KOMERCJA — 4 pozycje
 - [ ] 5.1 Tiery cenowe: START 149 / STANDARD 299 / PRO 499 / PREMIUM 749 PLN/msc + add-ony 29–99
@@ -122,11 +123,12 @@ Gałąź `master` (odrębna od main) zostawiona nietknięta — do wyjaśnienia.
 - [ ] 5.4 Pilot: hotel #2 na wersji neutralnej — dowód, że fabryka wersji działa
 
 ---
-**Suma: 82 pozycje** (20.07.2026: +3 autoryzacja, +6 opinie/ceny, +4 aplikacja
+**Suma: 83 pozycje** (20.07.2026: +3 autoryzacja, +6 opinie/ceny, +4 aplikacja
 kierownika, +1 konfigurowalność, +4 audyt design/emoji, +1 rozbicie cen na
-bezpieczną wersję bez konkurencji; 22.07.2026: +2 z brainstormingu — bot
-WhatsApp do grafiku, onboarding pracownika). Pozycja 4.23 (jedyna z ryzykiem
-prawnym) jest teraz opcjonalnym dodatkiem wyłączonym domyślnie, nie blokerem.
+bezpieczną wersję bez konkurencji; 22-23.07.2026: +3 z brainstormingu — bot
+WhatsApp do grafiku, onboarding pracownika, kokpit „Hotele" operatora SaaS).
+Pozycja 4.23 (jedyna z ryzykiem prawnym) jest teraz opcjonalnym dodatkiem
+wyłączonym domyślnie, nie blokerem.
 ⚠️ Migracje bazy przy 0045 (audyt bazował na 0001–0037) — skoordynować
 z równoległą pracą PRZED Etapem 0. Kolejność: Etap 0 zawsze pierwszy.
 Etap 1 równolegle z Etapem 2. Etap 3 kończy się przed przyjęciem hotelu #2.

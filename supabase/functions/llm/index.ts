@@ -36,6 +36,7 @@ const MODELS = {
   nudge: "llama-3.3-70b-versatile",
   reviews: "llama-3.3-70b-versatile",
   reply: "llama-3.3-70b-versatile",
+  pricing: "llama-3.3-70b-versatile",
   worker: "llama-3.3-70b-versatile",
   grafik: "llama-3.3-70b-versatile",
   plan: "llama-3.3-70b-versatile",
@@ -297,6 +298,32 @@ function buildPrompt(task: string, payload: any): { system: string; user: string
         `MINUSY: ${p.negatives || "(brak)"}`,
     };
   }
+  if (task === "pricing") {
+    // Sędzia cenowy (WYKONANIE 4.20). AI rozumuje o cenie na dziś/jutro W GRANICACH
+    // policzonych przez silnik regułowy (barierka). Zwraca JSON {price, reason}.
+    const p = payload || {};
+    const sig = [
+      `Data pobytu: ${p.date} (${p.dow_label || ""})`,
+      p.room_type ? `Typ pokoju: ${p.room_type}` : "",
+      p.base != null ? `Cena bazowa: ${p.base} zł` : "",
+      p.occupancy != null ? `Wolnych pokoi DZIŚ / obłożenie: ${Math.round((p.occupancy) * 100)}%` : "",
+      p.holiday ? `Święto/długi weekend: ${p.holiday}` : "",
+      p.event ? `Wydarzenie w mieście: ${p.event}` : "",
+      p.weather ? `Pogoda: ${p.weather}` : "",
+      p.history_hint ? `Historia (podobne dni): ${p.history_hint}` : "",
+      `Sugestia silnika regułowego: ${p.baseline} zł`,
+    ].filter(Boolean).join("\n");
+    return {
+      system:
+        "Jesteś rewenue managerem hotelu prowadzącym YIELD LAST-MINUTE (większość rezerwacji tego " +
+        "samego dnia/dzień wcześniej). Zaproponuj cenę pokoju na wskazaną datę. Rozważ: obłożenie na " +
+        "dziś (mało wolnych → w górę; dużo wolnych późną porą → dobić w dół), święta/długie weekendy " +
+        "i wydarzenia (w górę), pogodę (przy złej lekko w dół — gość decyduje last-minute). " +
+        `TWARDE OGRANICZENIE: cena MUSI mieścić się w przedziale ${p.min}–${p.max} zł. ` +
+        "Odpowiedz WYŁĄCZNIE JSON: {\"price\": <liczba całkowita zł>, \"reason\": \"<1–2 zdania po polsku, dlaczego>\"}.",
+      user: sig,
+    };
+  }
   if (task === "history") {
     const ctx = JSON.stringify(payload ?? {}, null, 1);
     return {
@@ -428,7 +455,7 @@ Deno.serve(async (req) => {
         max_tokens: task === "weekly" ? 2000 : task === "plan" ? 1200 : task === "briefing" ? 700 : 500,
         temperature: task === "triage" ? 0 : 0.3,
         // Tryb JSON dla zadań zwracających strukturę (triage, route, schedule).
-        ...(task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" ? { response_format: { type: "json_object" } } : {}),
+        ...(task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" || task === "pricing" ? { response_format: { type: "json_object" } } : {}),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -460,7 +487,7 @@ Deno.serve(async (req) => {
   });
 
   // triage/route/schedule: oczekujemy JSON — parsujemy, a gdy się nie uda, klient ma fallback.
-  if (task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan") {
+  if (task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" || task === "pricing") {
     let parsed: unknown = null;
     try {
       const m = text.match(/\{[\s\S]*\}/);

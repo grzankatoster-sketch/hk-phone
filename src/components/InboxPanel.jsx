@@ -1,7 +1,7 @@
 import React from "react";
 import { BellRing, Pin, Clock, Plus, Check, Trash2 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../lib/storage";
-import { parsePlDateTime, todayKey } from "../lib/dates";
+import { parsePlDateTime, todayKey, fmtA } from "../lib/dates";
 
 function EmptyState({icon,title,sub,action}){
   return(
@@ -70,7 +70,10 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
   const persistPending=(list)=>{setPending(list);saveJson(STORAGE_KEYS.pendingItems,list);onMarkedRead?.();};
   const addPending=()=>{
     const t=pendingInput.trim();if(!t)return;
-    const item={id:crypto.randomUUID(),text:t,createdBy:employeeName||"recepcja",createdAt:new Date().toISOString(),resolved:false};
+    // fmtA(), nie toISOString() — jedna konwencja z addPendingItem w App.jsx (drugą
+    // ścieżką dodającą do tej samej listy). Mieszanie formatów było przyczyną
+    // "Invalid Date" u pozycji dodanych tamtą drugą ścieżką (patrz fmtPL niżej).
+    const item={id:crypto.randomUUID(),text:t,createdBy:employeeName||"recepcja",createdAt:fmtA(),resolved:false};
     persistPending([item,...pending]);setPendingInput("");
   };
   const confirmResolve=(id)=>{
@@ -78,7 +81,7 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
       ...p,resolved:true,
       resolvedBy:employeeName||"recepcja",
       resolvedShift:selectedShift||"",
-      resolvedAt:new Date().toISOString(),
+      resolvedAt:fmtA(),
       resolveNote:resolveNote.trim(),
     }:p));
     setResolvingId("");setResolveNote("");
@@ -86,7 +89,12 @@ export default function InboxPanel({dark,employeeName,selectedShift,wikiEntries,
   const deletePending=(id)=>persistPending(pending.filter(p=>p.id!==id));
   const openPending=pending.filter(p=>!p.resolved);
   const resolvedPending=pending.filter(p=>p.resolved).slice(0,30);
-  const fmtPL=(iso)=>{try{return new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});}catch{return"";}};
+  // parsePlDateTime (nie new Date() wprost) — obsługuje ZARÓWNO ISO, jak i format
+  // pl-PL ("DD.MM.RRRR, GG:MM") zapisywany przez fmtA() w App.jsx (addPendingItem).
+  // new Date("22.07.2026, 15:41") nie rzuca wyjątku — zwraca Invalid Date, a
+  // .toLocaleString() na Invalid Date zwraca dosłowny string "Invalid Date"
+  // (try/catch tego nie łapie), stąd pozycje bez terminu pokazywały "Invalid Date".
+  const fmtPL=(iso)=>{const ms=parsePlDateTime(iso);return ms?new Date(ms).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"";};
   const shiftShort={poranna:"poranna",popoludniowa:"popołudniowa",nocna:"nocna",dzienna:"dzienna"};
 
   const alerts=loadJson(STORAGE_KEYS.managerAlerts,[])
