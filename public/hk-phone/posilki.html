@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="theme-color" content="#5a1d4a"/>
+<meta name="screen-orientation" content="landscape"/>
+<script>
+/* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
+   dodana do ekranu głównego (standalone PWA) sama się przeładuje. */
+(function(){
+  var url = location.pathname + (location.search || "");
+  var baseline = null, busy = false, INTERVAL = 5 * 60 * 1000;
+  function fp(s){ var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return s.length + ":" + h; }
+  async function check(){
+    if (busy || navigator.onLine === false) return;
+    busy = true;
+    try {
+      var res = await fetch(url, { cache: "no-store" });
+      if (res.ok){
+        var cur = fp(await res.text());
+        if (baseline === null) baseline = cur;
+        else if (cur !== baseline){ location.reload(); return; }
+      }
+    } catch (e) { /* offline / chwilowy błąd */ }
+    busy = false;
+  }
+  if ("serviceWorker" in navigator)
+    navigator.serviceWorker.getRegistration().then(function(r){ if (r) r.update(); }).catch(function(){});
+  check();
+  setInterval(function(){ if (!document.hidden) check(); }, INTERVAL);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) check(); });
+})();
+</script>
+<title>Posiłki • Restauracja</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+:root{
+  --plum:#5a1d4a; --plum-deep:#6E2B5C; --cream:#fdfaf7; --paper:#ffffff; --ink:#2d1422;
+  --muted:#8a6a7e; --line:rgba(90,29,74,.11); --line-strong:rgba(90,29,74,.24);
+  --green:#0f7a4a; --green-deep:#0b5c38; --green-bg:rgba(15,122,74,.09);
+  --amber:#a07820; --amber-deep:#7a5c17; --amber-bg:rgba(160,120,32,.11);
+  --gold:#c8a269;
+}
+html,body{background:var(--cream);height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);overscroll-behavior:none;display:flex;flex-direction:column}
+
+/* ── Nagłówek — subtelna poświata (echo brand-panelu z ekranu logowania) ── */
+.hdr{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--plum-deep) 0%,var(--plum) 100%);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0;box-shadow:0 2px 14px rgba(45,20,34,.22);z-index:5}
+.hdr::before{content:'';position:absolute;top:-60%;right:5%;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(200,162,105,.22) 0%,transparent 65%);pointer-events:none}
+.hdr>*{position:relative;z-index:1}
+.hdr .brand{display:flex;align-items:center;gap:11px}
+.hdr .brand-text{display:flex;flex-direction:column;line-height:1.1}
+.hdr .t1{font-family:'DM Serif Display',Georgia,serif;font-size:16px;letter-spacing:.15em;font-weight:400}
+.hdr .t2{font-size:10px;color:rgba(255,255,255,.6);margin-top:2px;letter-spacing:.06em}
+.hdr .spacer{flex:1}
+.dot{width:7px;height:7px;border-radius:50%;background:#7ad9a8;flex-shrink:0;box-shadow:0 0 6px rgba(122,217,168,.7)}
+.dot.off{background:#f59ea6;box-shadow:0 0 6px rgba(245,158,166,.7)}
+.datewrap{position:relative}
+.datechip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1.5px solid var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit}
+.datechip .dlbl{font-family:'DM Serif Display',Georgia,serif;font-size:14px;color:#fff}
+.datechip .dsub{font-size:8.5px;color:var(--gold);letter-spacing:.05em}
+.datechip .chev{margin-left:2px;transition:transform .2s;color:var(--gold)}
+.datechip.open .chev{transform:rotate(180deg)}
+/* Rozwijana lista dni (zamiast osobnego okna) — 3 dni, tyle ile realnie ma dane raport. */
+.daydrop{position:fixed;background:var(--paper);border:1.5px solid var(--line-strong);border-radius:14px;box-shadow:0 12px 32px rgba(45,20,34,.22);padding:8px;display:none;flex-direction:column;gap:6px;z-index:50;min-width:220px}
+.daydrop.open{display:flex}
+.dayrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--cream);cursor:pointer;border:1.5px solid transparent}
+.dayrow:hover{border-color:var(--line-strong)}
+.dayrow.sel{background:linear-gradient(155deg,var(--plum-deep),var(--plum));border-color:var(--gold)}
+.dayrow .dname{font-family:'DM Serif Display',Georgia,serif;font-size:15px;color:var(--plum)}
+.dayrow.sel .dname{color:#fff}
+.dayrow .dcnt{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--green)}
+.dayrow.sel .dcnt{color:var(--gold)}
+
+/* ── Przełącznik Śniadanie/Kolacja — pełna szerokość, jedna kategoria naraz ── */
+.tabs{display:flex;gap:10px;padding:12px 20px;background:var(--paper);border-bottom:1.5px solid var(--line);flex-shrink:0}
+.tab{flex:1;max-width:280px;display:flex;align-items:center;gap:10px;padding:10px 16px;border-radius:12px;border:1.5px solid var(--line);background:var(--cream);cursor:pointer;transition:all .15s}
+.tab .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tab.bb .ic{background:var(--green-bg);color:var(--green)}
+.tab.hb .ic{background:var(--amber-bg);color:var(--amber)}
+.tab .lbl{font-family:'DM Serif Display',Georgia,serif;font-size:16px;color:var(--plum);line-height:1.1}
+.tab .sub{font-size:10px;color:var(--muted)}
+.tab .count{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:var(--plum);background:var(--paper);border:1px solid var(--line-strong);border-radius:999px;padding:3px 11px}
+.tab.active{border-color:var(--gold);background:var(--paper);box-shadow:0 2px 8px rgba(90,29,74,.1)}
+.tab.active.bb{background:linear-gradient(180deg,var(--paper),var(--green-bg))}
+.tab.active.hb{background:linear-gradient(180deg,var(--paper),var(--amber-bg))}
+
+/* ── Siatka zawieszek (pełna szerokość) ── */
+.board{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:14px;
+  background:radial-gradient(ellipse 1200px 400px at 50% 0%, rgba(90,29,74,.05) 0%, transparent 70%), var(--cream)}
+.empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:13.5px;line-height:1.6;width:100%}
+
+.fob{position:relative;width:128px;padding:15px 10px 10px;border-radius:17px 17px 13px 13px;cursor:pointer;overflow:hidden;
+  box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25);
+  transition:transform .15s ease, box-shadow .15s ease, filter .3s ease;
+  text-align:center;flex-shrink:0}
+.fob:active{transform:scale(.94)}
+.fob.bb{background:linear-gradient(160deg,var(--green) 0%,var(--green-deep) 100%)}
+.fob.hb{background:linear-gradient(160deg,var(--amber) 0%,var(--amber-deep) 100%)}
+.fob::before{ /* dziurka jak w zawieszce do klucza */
+  content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);
+  width:10px;height:10px;border-radius:50%;background:var(--cream);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.35)}
+.fob .fno{font-family:'DM Serif Display',Georgia,serif;font-size:27px;color:#fff;margin-top:8px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.fob .fguest{font-size:11px;font-weight:700;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.fob .fcat{display:inline-flex;align-items:center;gap:3px;font-size:8.5px;font-weight:800;letter-spacing:.03em;color:rgba(255,255,255,.85);background:rgba(0,0,0,.14);border-radius:999px;padding:2px 7px;margin-top:5px}
+.fob .fprog{font-size:9.5px;color:rgba(255,255,255,.65);margin-top:4px;font-variant-numeric:tabular-nums}
+/* Cofnij pomyłkowe kliknięcie — zawsze dostępne, przygaszone gdy nic do cofnięcia */
+.fob .fundo{position:absolute;bottom:6px;left:7px;width:24px;height:24px;border-radius:7px;border:none;
+  background:rgba(0,0,0,.16);color:rgba(255,255,255,.85);font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:opacity .15s}
+.fob .fundo:disabled{opacity:.25;cursor:default}
+/* Dokupione — mały licznik w drugim rogu */
+.fob .fextra{position:absolute;bottom:6px;right:7px;display:flex;align-items:center;gap:3px}
+.fob .fextra button{width:20px;height:20px;border-radius:6px;border:none;background:rgba(0,0,0,.14);color:rgba(255,255,255,.8);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.fob .fextra span{font-size:9.5px;font-weight:800;color:rgba(255,255,255,.85)}
+
+/* Kafel GRUPY — więcej miejsca (nazwa firmy + duże liczby), stepper zamiast
+   pojedynczych dotknięć (grupy bywają 20-45-osobowe, tap-po-1 byłby niepraktyczny). */
+.fob.group{width:236px;cursor:default;text-align:left;padding:14px 14px 12px}
+.fob.group .fno{font-size:13px;letter-spacing:.08em;text-align:left;margin-top:2px;text-transform:uppercase;opacity:.85}
+.fob.group .fguest{font-size:14px;white-space:normal;text-align:left;margin-top:2px}
+.fob.group .fprog{font-size:12.5px;text-align:left;margin-top:2px}
+.fob.group .gstep{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap}
+.fob.group .gstep button{border:none;border-radius:8px;background:rgba(0,0,0,.16);color:#fff;font-weight:800;font-size:12px;padding:7px 0;cursor:pointer;flex:1;min-width:30px}
+.fob.group .gstep button.gall{flex:2;background:rgba(255,255,255,.22)}
+
+/* Stan wykonany — wstążka w rogu (nie zasłania numeru) + lekkie przygaszenie */
+.fob.done{filter:saturate(.6) brightness(.9)}
+.fob.done::after{
+  content:'GOTOWE';position:absolute;top:16px;right:-32px;width:130px;padding:3px 0;
+  background:rgba(245,237,224,.95);color:var(--ink);
+  font-size:9px;font-weight:900;letter-spacing:.06em;text-align:center;
+  transform:rotate(42deg);box-shadow:0 1px 4px rgba(0,0,0,.2);
+  animation:ribbon .3s ease}
+@keyframes ribbon{0%{transform:rotate(42deg) translateY(-14px);opacity:0}100%{transform:rotate(42deg) translateY(0);opacity:1}}
+
+/* ── Baner "przeglądasz inny dzień" ── */
+.notoday{display:none;align-items:center;gap:10px;background:var(--amber);color:#fff;padding:8px 20px;font-size:12.5px;font-weight:700;flex-shrink:0}
+.notoday.show{display:flex}
+.notoday button{margin-left:auto;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.32);color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}
+
+/* ── Ekran bezczynności — kolorystyka ekranu logowania recepcji (brand panel) ── */
+.idle-screen{position:fixed;inset:0;z-index:200;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .7s ease;
+  background:linear-gradient(155deg,var(--plum-deep) 0%,#2D0E2A 60%,#1A0A1A 100%)}
+.idle-screen::before{content:'';position:absolute;top:-20%;right:-20%;width:80%;height:80%;border-radius:50%;background:radial-gradient(circle,rgba(176,101,160,.35) 0%,transparent 60%);pointer-events:none}
+.idle-screen::after{content:'';position:absolute;bottom:-30%;left:-20%;width:90%;height:90%;border-radius:50%;background:radial-gradient(circle,rgba(200,162,105,.14) 0%,transparent 65%);pointer-events:none}
+.idle-screen.show{opacity:1;pointer-events:auto}
+.idle-inner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center}
+.idle-logo{margin-bottom:6px;filter:drop-shadow(0 8px 24px rgba(0,0,0,.4))}
+.idle-tagline{font-size:12.5px;color:rgba(245,237,224,.6);letter-spacing:.05em;margin-top:6px;text-align:center;max-width:320px;line-height:1.6}
+.idle-clock{font-family:'DM Serif Display',Georgia,serif;font-size:44px;color:#F5EDE0;margin-top:30px;letter-spacing:.02em}
+.idle-hint{font-size:10.5px;color:var(--gold);letter-spacing:.1em;margin-top:26px;animation:idlePulse 2.2s ease-in-out infinite}
+@keyframes idlePulse{0%,100%{opacity:.4}50%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="brand">
+    <svg viewBox="0 0 80 12" width="40" height="8" aria-hidden="true"><g fill="#fff"><circle cx="20" cy="6" r="2.4"/><circle cx="32" cy="6" r="2.4"/><circle cx="48" cy="6" r="2.4"/><circle cx="60" cy="6" r="2.4"/></g></svg>
+    <div class="brand-text"><div class="t1">CONRAD COMFORT</div><div class="t2">Posiłki • Restauracja</div></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="dot" id="dot"></div>
+  <div class="datewrap">
+    <div class="datechip" id="datechip" onclick="toggleCalendar()">
+      <span>📅</span><div><div class="dlbl" id="dchipLbl">Dziś</div><div class="dsub">DOTKNIJ, ABY ZMIENIĆ</div></div>
+      <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="daydrop" id="daydrop"></div>
+  </div>
+</div>
+
+<div class="notoday" id="notoday">
+  📅 Przeglądasz inny dzień niż dziś <button onclick="goToday()">← Wróć do dziś</button>
+</div>
+
+<div class="tabs">
+  <div class="tab bb active" id="tabBB" onclick="setMeal('breakfast')">
+    <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/></svg></div>
+    <div><div class="lbl">Śniadanie</div><div class="sub">wszystkie pokoje — BB i HB</div></div>
+    <div class="count" id="countBreakfast">0</div>
+  </div>
+  <div class="tab hb" id="tabHB" onclick="setMeal('dinner')">
+    <div class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3Zm0 0v7"/><path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/></svg></div>
+    <div><div class="lbl">Kolacja</div><div class="sub">tylko pokoje z HB</div></div>
+    <div class="count" id="countDinner">0</div>
+  </div>
+</div>
+
+<div class="board" id="board"><div class="empty">Wczytywanie…</div></div>
+
+<div class="idle-screen" id="idleScreen">
+  <div class="idle-inner">
+    <svg class="idle-logo" viewBox="0 0 220 110" width="220" height="110" role="img" aria-label="Conrad Comfort">
+      <circle cx="92" cy="30" r="2.6" fill="#F5EDE0"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+      <circle cx="100" cy="30" r="2.6" fill="#F5EDE0"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+      <circle cx="120" cy="30" r="2.6" fill="#F5EDE0"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+      <circle cx="128" cy="30" r="2.6" fill="#F5EDE0"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+      <text x="110" y="62" font-family="'DM Serif Display',Georgia,serif" font-size="22" font-weight="400" letter-spacing="0.18em" text-anchor="middle" fill="#F5EDE0">CONRAD</text>
+      <text x="110" y="86" font-family="-apple-system,sans-serif" font-size="11" font-weight="500" letter-spacing="0.55em" text-anchor="middle" fill="#F5EDE0">COMFORT</text>
+    </svg>
+    <div class="idle-tagline">Posiłki • Restauracja — lista śniadań i kolacji zawsze pod ręką.</div>
+    <div class="idle-clock" id="idleClock"></div>
+    <div class="idle-hint">DOTKNIJ EKRANU, ABY KONTYNUOWAĆ</div>
+  </div>
+</div>
+
+<script>
+const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
+const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+const TENANT_ID = "00000000-0000-0000-0000-000000000001";
+
+const params = new URLSearchParams(location.search);
+const DEMO = params.get("demo") === "1";       // ?demo=1 — dane testowe, bez Supabase (do testu na tablecie przed migracją)
+const pad = n => n<10 ? "0"+n : ""+n;
+const isoDate = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const todayIso = isoDate(new Date());
+let viewDate = params.get("date") || todayIso; // dzień oglądany — domyślnie dziś
+
+const escHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+
+const DOW = ["ND","PON","WT","ŚR","CZW","PT","SO"];
+
+function updateDateChip(){
+  const [y,m,d] = viewDate.split("-").map(Number);
+  const isToday = viewDate === todayIso;
+  document.getElementById("dchipLbl").textContent = isToday ? "Dziś, " + d + " " + MON[m-1] : d + " " + MON[m-1];
+  document.getElementById("notoday").classList.toggle("show", !isToday);
+}
+
+// Rozwijana lista dni (zamiast osobnego okna) — tylko 3 dni, bo raport z KWHotel
+// i tak nigdy nie ma danych na więcej (przychodzi mailem 2x dziennie, zawsze 3 dni do przodu).
+window.toggleCalendar = async () => {
+  const drop = document.getElementById("daydrop");
+  const chip = document.getElementById("datechip");
+  const opening = !drop.classList.contains("open");
+  if (opening) {
+    const r = chip.getBoundingClientRect();
+    drop.style.top = (r.bottom + 8) + "px";
+    drop.style.right = (window.innerWidth - r.right) + "px";
+  }
+  drop.classList.toggle("open", opening);
+  chip.classList.toggle("open", opening);
+  if (opening) await renderCalendarDrop();
+};
+
+async function renderCalendarDrop(){
+  const drop = document.getElementById("daydrop");
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [0,1,2].map(i => isoDate(new Date(today.getTime() + i*86400000)));
+  let counts = {};
+  if (DEMO) {
+    days.forEach((iso,i) => { counts[iso] = [12,9,14][i]; });
+  } else if (sb) {
+    try {
+      const from = days[0], to = days[days.length-1];
+      const { data } = await sb.from("meal_plans").select("room,persons,arrival,departure").eq("tenant_id", TENANT_ID).lte("arrival", to).gte("departure", from);
+      (data||[]).forEach(p => { days.forEach(iso => { if (p.arrival < iso && iso <= p.departure) counts[iso] = (counts[iso]||0)+(p.persons||1); }); });
+    } catch (e) { /* pokaż zera */ }
+  }
+  drop.innerHTML = days.map(iso => {
+    const d = new Date(iso + "T00:00:00");
+    const label = iso === todayIso ? "Dziś, " + d.getDate() + " " + MON[d.getMonth()] : DOW[d.getDay()] + ", " + d.getDate() + " " + MON[d.getMonth()];
+    return `<div class="dayrow ${iso===viewDate?"sel":""}" onclick="selectDay('${iso}')"><span class="dname">${label}</span><span class="dcnt">${counts[iso]||0} śniad.</span></div>`;
+  }).join("");
+}
+
+window.selectDay = (iso) => {
+  viewDate = iso;
+  document.getElementById("daydrop").classList.remove("open");
+  document.getElementById("datechip").classList.remove("open");
+  history.replaceState(null, "", location.pathname + "?date=" + iso + (DEMO?"&demo=1":""));
+  loadAll();
+};
+window.goToday = () => selectDay(todayIso);
+document.addEventListener("click", (e) => {
+  const wrap = document.querySelector(".datewrap");
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById("daydrop").classList.remove("open");
+    document.getElementById("datechip").classList.remove("open");
+  }
+});
+
+function tickClock(){
+  const d = new Date(), t = pad(d.getHours())+":"+pad(d.getMinutes());
+  const idleClockEl = document.getElementById("idleClock");
+  if (idleClockEl) idleClockEl.textContent = t;
+}
+tickClock(); setInterval(tickClock, 15000);
+
+const CAT_ICON = {
+  BB: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8h1a4 4 0 0 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/></svg>',
+  HB: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V2a5 5 0 0 0-5 5v6a2 2 0 0 0 2 2h3Zm0 0v7"/><path d="M3 2v7a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/></svg>',
+};
+
+let meal = "breakfast"; // breakfast | dinner
+let plans = [];
+let checkins = {}; // `${room}|${meal}` -> {checked_persons, extra_persons}
+
+// Dane demo (bez Supabase) — do testu interakcji na tablecie zanim migracja 0061 trafi na żywą bazę.
+const DEMO_GUESTS = ["Kowalski A.","Nowak B.","Wiśniewski C.","Wójcik D.","Kamiński E.","Lewandowski F.","Zieliński G.","Szymański H.","Woźniak I.","Dąbrowski J.","Kozłowski K.","Jankowski L.","Mazur M.","Krawczyk N.","Piotrowski O."];
+function buildDemoPlans(){
+  const out = [];
+  const yesterday = isoDate(new Date(Date.now() - 86400000));
+  const dayAfterTomorrow = isoDate(new Date(Date.now() + 2*86400000));
+  for (let i=0;i<18;i++){
+    const floor = 1+(i%3);
+    const room = String(floor*100 + 1 + Math.floor(i/3));
+    out.push({ room, guest_name: DEMO_GUESTS[i%DEMO_GUESTS.length], category: (i%4===0)?"HB":"BB", persons: (i%7===0)?2:1, arrival: yesterday, departure: dayAfterTomorrow });
+  }
+  return out;
+}
+
+function setMeal(m){
+  meal = m;
+  document.getElementById("tabBB").classList.toggle("active", m==="breakfast");
+  document.getElementById("tabHB").classList.toggle("active", m==="dinner");
+  render();
+}
+
+async function loadAll(){
+  updateDateChip();
+  if (DEMO){
+    plans = buildDemoPlans();
+    document.getElementById("dot").classList.remove("off");
+    render();
+    return;
+  }
+  if (!sb) return;
+  try {
+    const [{ data: pData }, { data: cData }] = await Promise.all([
+      sb.from("meal_plans").select("*").eq("tenant_id", TENANT_ID).lte("arrival", viewDate).gte("departure", viewDate),
+      sb.from("meal_checkins").select("*").eq("tenant_id", TENANT_ID).eq("date", viewDate),
+    ]);
+    plans = pData || [];
+    checkins = {};
+    (cData || []).forEach(c => { checkins[`${c.room}|${c.meal}`] = c; });
+    document.getElementById("dot").classList.remove("off");
+  } catch (e) {
+    document.getElementById("dot").classList.add("off");
+  }
+  render();
+}
+
+// Śniadanie: NIGDY w dzień przyjazdu (potwierdzone realnym raportem — gość
+// jeszcze nie spędził nocy), zawsze w dzień wyjazdu. Kolacja/HB: odwrotnie —
+// noc przyjazdu tak, dzień wyjazdu nie (gość wyjeżdża przed kolacją).
+const eatsBreakfast = (p) => p.arrival < viewDate && viewDate <= p.departure;
+const eatsDinner = (p) => p.arrival <= viewDate && viewDate < p.departure;
+
+function render(){
+  const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
+  const sumPersons = (arr) => arr.reduce((s,p) => s + (p.persons||1), 0);
+  document.getElementById("countBreakfast").textContent = sumPersons(plans.filter(eatsBreakfast));
+  document.getElementById("countDinner").textContent = sumPersons(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
+  const board = document.getElementById("board");
+  if (!rows.length) {
+    board.innerHTML = `<div class="empty">Brak pokoi na ${meal==="breakfast"?"śniadanie":"kolację (HB)"} ${viewDate===todayIso?"dzisiaj":"tego dnia"}.</div>`;
+    return;
+  }
+  const sorted = rows.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
+  board.innerHTML = sorted.map(p => fobHtml(p, meal)).join("");
+}
+
+function fobHtml(p, mealKey){
+  if (p.is_group) return fobHtmlGroup(p, mealKey);
+  const catClass = p.category.toLowerCase();
+  const c = checkins[`${p.room}|${mealKey}`] || { checked_persons: 0, extra_persons: 0 };
+  const checked = c.checked_persons || 0;
+  const extra = c.extra_persons || 0;
+  const done = checked >= p.persons;
+  return `<div class="fob ${catClass} ${done?"done":""}" data-room="${p.room}" onclick="tap('${p.room}','${mealKey}',${p.persons})">
+    <button class="fundo" title="Cofnij pomyłkowe kliknięcie" onclick="event.stopPropagation();undo('${p.room}','${mealKey}')" ${checked===0?"disabled":""}>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 7"/></svg>
+    </button>
+    <div class="fno">${escHtml(p.room)}</div>
+    <div class="fguest">${escHtml(p.guest_name || "—")}</div>
+    <div class="fcat">${CAT_ICON[p.category]||""}${p.category}</div>
+    <div class="fprog">${checked}/${p.persons} ${p.persons>1?"osób":"osoba"}</div>
+    <div class="fextra" title="Dokupione">
+      ${extra>0?`<span>+${extra}</span>`:""}
+      <button onclick="event.stopPropagation();extraStep('${p.room}','${mealKey}',1)">+</button>
+    </div>
+  </div>`;
+}
+
+// Grupa: bez pojedynczego pokoju z raportu, headcount bywa 20-45 osób —
+// tap-po-jednej-osobie byłby niepraktyczny, więc stepper +1/+5 i "cała grupa".
+function fobHtmlGroup(p, mealKey){
+  const catClass = p.category.toLowerCase();
+  const c = checkins[`${p.room}|${mealKey}`] || { checked_persons: 0, extra_persons: 0 };
+  const checked = c.checked_persons || 0;
+  const done = checked >= p.persons;
+  return `<div class="fob group ${catClass} ${done?"done":""}">
+    <div class="fno">GRUPA</div>
+    <div class="fguest">${escHtml(p.guest_name || p.room)}</div>
+    <div class="fcat">${CAT_ICON[p.category]||""}${p.category}</div>
+    <div class="fprog">${checked}/${p.persons} osób</div>
+    <div class="gstep">
+      <button onclick="groupStep('${p.room}','${mealKey}',-5,${p.persons})">−5</button>
+      <button onclick="groupStep('${p.room}','${mealKey}',-1,${p.persons})">−1</button>
+      <button onclick="groupStep('${p.room}','${mealKey}',1,${p.persons})">+1</button>
+      <button onclick="groupStep('${p.room}','${mealKey}',5,${p.persons})">+5</button>
+      <button class="gall" onclick="groupStep('${p.room}','${mealKey}',${p.persons},${p.persons})">Cała grupa</button>
+    </div>
+  </div>`;
+}
+
+async function submit(room, mealKey, checkedPersons, extraPersons){
+  checkins[`${room}|${mealKey}`] = { checked_persons: Math.max(0,checkedPersons), extra_persons: Math.max(0,extraPersons) };
+  render();
+  if (DEMO || !sb) return;
+  try {
+    await sb.rpc("meal_checkin_set", {
+      p_date: viewDate, p_room: room, p_meal: mealKey,
+      p_checked_persons: Math.max(0, checkedPersons), p_extra_persons: Math.max(0, extraPersons), p_by: null,
+    });
+  } catch (e) { /* offline — kolejny poll odświeży realny stan */ }
+}
+// Tap = +1 osoba (1-osobowy pokój zamyka się za 1 dotknięciem, 2-osobowy za 2). Po limicie — nic.
+window.tap = (room, mealKey, persons) => {
+  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
+  if ((c.checked_persons||0) >= persons) return;
+  submit(room, mealKey, (c.checked_persons||0)+1, c.extra_persons||0);
+};
+window.undo = (room, mealKey) => {
+  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
+  submit(room, mealKey, Math.max(0,(c.checked_persons||0)-1), c.extra_persons||0);
+};
+window.extraStep = (room, mealKey, delta) => {
+  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
+  submit(room, mealKey, c.checked_persons||0, Math.max(0,(c.extra_persons||0)+delta));
+};
+window.groupStep = (room, mealKey, delta, persons) => {
+  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
+  const next = Math.max(0, Math.min(persons, (c.checked_persons||0)+delta));
+  submit(room, mealKey, next, c.extra_persons||0);
+};
+
+loadAll();
+if (!DEMO) {
+  setInterval(loadAll, 20000); // polling fallback (jak reszta hk-phone)
+  if (sb) {
+    sb.channel(`posilki-${TENANT_ID}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "meal_checkins", filter: `tenant_id=eq.${TENANT_ID}` }, loadAll)
+      .subscribe();
+  }
+}
+
+// ── Ekran bezczynności — kolorystyka ekranu logowania recepcji (brand panel):
+// po 60s bez dotyku ciemny gradient plum→czerń z pełnym logo, dotknięcie odsłania appkę.
+const IDLE_MS = 60000;
+let idleTimer = null;
+const idleEl = document.getElementById("idleScreen");
+function resetIdle(){
+  idleEl.classList.remove("show");
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => idleEl.classList.add("show"), IDLE_MS);
+}
+["touchstart","mousedown","keydown"].forEach(ev => document.addEventListener(ev, resetIdle, {passive:true}));
+resetIdle();
+</script>
+</body>
+</html>

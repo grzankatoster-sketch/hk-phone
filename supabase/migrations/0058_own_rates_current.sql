@@ -5,3 +5,4 @@
 alter table public.own_rates add column if not exists current_price numeric;
 alter table public.own_rates add column if not exists source text;         -- 'yieldplanet' | 'kwhotel' | 'manual'
 alter table public.own_rates add column if not exists occupancy numeric;    -- zajętość danej daty 0..1 (do zaniżania)
+alter table public.own_rates add column if not exists competitor_price numeric; -- ręczna cena konkurencji (odniesienie; 4.23 legalnie, bez scrapingu)

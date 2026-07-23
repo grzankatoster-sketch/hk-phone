@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="theme-color" content="#5a1d4a"/>
+<title>Kalendarz śniadań</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+:root{--plum:#5a1d4a;--plum-deep:#6E2B5C;--cream:#fdfaf7;--paper:#fff;--ink:#2d1422;--muted:#8a6a7e;--line:rgba(90,29,74,.13);--line-strong:rgba(90,29,74,.26);--green:#0f7a4a;--gold:#c8a269}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh}
+.hdr{position:relative;overflow:hidden;background:linear-gradient(120deg,var(--plum-deep) 0%,var(--plum) 100%);color:#fff;padding:16px 24px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 14px rgba(45,20,34,.22)}
+.hdr::before{content:'';position:absolute;top:-60%;right:5%;width:220px;height:220px;border-radius:50%;background:radial-gradient(circle,rgba(200,162,105,.22) 0%,transparent 65%)}
+.hdr>*{position:relative;z-index:1}
+.back{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px}
+.back:hover{background:rgba(255,255,255,.16)}
+.hdr .t1{font-family:'DM Serif Display',Georgia,serif;font-size:19px;letter-spacing:.1em}
+.hdr .t2{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px;letter-spacing:.05em}
+
+.wrap{max-width:520px;margin:28px auto;padding:0 20px}
+.hint{font-size:12.5px;color:var(--muted);margin-bottom:16px;text-align:center}
+table{width:100%;border-collapse:separate;border-spacing:0 8px}
+tr.day{cursor:pointer}
+tr.day td{background:var(--paper);border:1.5px solid var(--line);padding:12px 18px;transition:border-color .15s}
+tr.day:hover td{border-color:var(--line-strong)}
+tr.day.today td{background:linear-gradient(155deg,var(--plum-deep),var(--plum));border-color:var(--gold)}
+tr.day.today .dname,tr.day.today .dnum{color:#F5EDE0}
+tr.day.today .cnt{color:var(--gold)}
+td:first-child{border-radius:12px 0 0 12px;border-right:none}
+td:last-child{border-radius:0 12px 12px 0;border-left:none;text-align:right}
+.dname{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);width:64px;display:inline-block}
+.dnum{font-family:'DM Serif Display',Georgia,serif;font-size:19px;color:var(--plum)}
+.cnt{font-variant-numeric:tabular-nums;font-weight:800;font-size:20px;color:var(--green)}
+.cnt-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-top:1px}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:30px}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="back" onclick="history.back()">←</div>
+  <div><div class="t1">Kalendarz śniadań</div><div class="t2">Wybierz dzień, aby zobaczyć listę pokoi</div></div>
+</div>
+<div class="wrap">
+  <div class="hint">Kliknij dzień, żeby przejść do jego listy śniadań</div>
+  <table id="tbl"><tr><td class="empty">Wczytywanie…</td></tr></table>
+</div>
+<script>
+const SB_URL = "https://pjgcaujndvjvicqsdcns.supabase.co";
+const SB_KEY = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+const TENANT_ID = "00000000-0000-0000-0000-000000000001";
+const params = new URLSearchParams(location.search);
+const DEMO = params.get("demo") === "1";
+
+const DOW = ["ND","PON","WT","ŚR","CZW","PT","SO"];
+const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
+const pad = n => n<10 ? "0"+n : ""+n;
+const isoDate = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today = new Date(); today.setHours(0,0,0,0);
+const todayIso = isoDate(today);
+
+function goToDay(iso){
+  location.href = "posilki.html?date=" + iso + (DEMO?"&demo=1":"");
+}
+
+// Raport z KWHotel przychodzi automatycznie 2x dziennie (~6:00 i ~16:00) i zawsze
+// pokrywa tylko 3 dni do przodu (dziś/jutro/pojutrze) — kalendarz celowo ograniczony
+// do tego samego okna, żeby nie sugerować dni, dla których i tak nie będzie danych.
+async function load(){
+  const days = [];
+  for (let i=0;i<3;i++) days.push(new Date(today.getTime()+i*86400000));
+  const from = isoDate(days[0]), to = isoDate(days[days.length-1]);
+
+  let counts = {};
+  if (DEMO) {
+    const demoVals = [12,9,14];
+    days.forEach((d,i) => { counts[isoDate(d)] = demoVals[i % demoVals.length]; });
+  } else if (sb) {
+    try {
+      const { data } = await sb.from("meal_plans").select("room,arrival,departure").eq("tenant_id", TENANT_ID).lte("arrival", to).gte("departure", from);
+      (data||[]).forEach(p => {
+        days.forEach(d => {
+          const iso = isoDate(d);
+          if (p.arrival < iso && iso <= p.departure) counts[iso] = (counts[iso]||0) + 1;
+        });
+      });
+    } catch (e) { /* pokaż zera, nie blokuj widoku */ }
+  }
+
+  const tbl = document.getElementById("tbl");
+  tbl.innerHTML = "";
+  days.forEach(d => {
+    const iso = isoDate(d);
+    const tr = document.createElement("tr");
+    tr.className = "day" + (iso===todayIso?" today":"");
+    tr.innerHTML = `<td><span class="dname">${DOW[d.getDay()]}</span><span class="dnum">${d.getDate()} ${MON[d.getMonth()]}</span></td>
+      <td><div class="cnt">${counts[iso]||0}</div><div class="cnt-lbl">śniadań</div></td>`;
+    tr.onclick = () => goToDay(iso);
+    tbl.appendChild(tr);
+  });
+}
+load();
+</script>
+</body>
+</html>

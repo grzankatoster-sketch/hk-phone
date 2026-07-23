@@ -1105,6 +1105,7 @@ const ONB_DESC = {
   staty: "Statystyki pracy zespołu.",
   praca: "Tryb pracy — sprzątanie pokoi krok po kroku.",
   jakosc: "Losowe kontrole jakości sprzątania.",
+  kontrole: "Plan kontroli pokoi (np. silikony) — wykonuje kto akurat sprząta.",
   tablica: "Ogłoszenia i przypomnienia dla zespołu.",
   znalezione: "Rejestr rzeczy znalezionych przez gości.",
   grafik: "Zbiórka dyspozyczności / grafik zmian.",
@@ -1201,6 +1202,7 @@ function tabsFor(role){
   t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || role === "mgr_hk") t.push(["jakosc","Jakość"]); // pulpit losowych kontroli pokoi
+  if (A || role === "mgr_hk") t.push(["kontrole","Kontrole"]); // plan kontroli pokoi (np. silikony) — wykonuje kto akurat sprząta
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || RECEPCJA_ROLES.has(role) || role === "mgr_hk") t.push(["znalezione","Znalezione"]); // rzeczy znalezione (recepcja + HK)
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
@@ -1230,6 +1232,7 @@ const NAV_ICON = {
   konta:   _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>'),
   praca:   _ic('<path d="M19 5l-7 7M14 4l6 6M8.5 10.5l5 5M3 21l3.5-1 9-9-2.5-2.5-9 9L3 21z"/>'),
   jakosc:  _ic('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/><path d="m8.5 11 1.8 1.8 3.2-3.6"/>'),
+  kontrole: _ic('<path d="M9 11l3 3L22 4"/><path d="M3 5v14a2 2 0 0 0 2 2h9"/><path d="M3 5a2 2 0 0 1 2-2h6"/>'),
   poczta:  _ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>'),
   logi:    _ic('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/>'),
 };
@@ -1374,6 +1377,7 @@ async function loadHkTab() {
   if (hkTab === "poczta")  return loadPoczta();
   if (hkTab === "pulpit")  return loadPulpit();
   if (hkTab === "jakosc")  return loadQuality();
+  if (hkTab === "kontrole") return loadKontrole();
   if (hkTab === "praca")   return loadPraca();
   if (hkTab === "live")    return loadLive();
   if (hkTab === "wyjazdy") return loadWyjazdy();
@@ -1663,8 +1667,8 @@ window.rosterSave = async (iso, btn) => {
 };
 
 // ── Na żywo: kto robi jaki pokój (hk_rooms dzisiaj) + feed zdarzeń (hk_logs) ──
-const FEED_ICON = { start:"▶", done:"✓", skip:"✕", vacate:"🔔", task_done:"☑" };
-const FEED_COLOR = { start:"#2563eb", done:"#1f7a52", skip:"#b0863a", vacate:"#7a3a6a", task_done:"#1f7a52" };
+const FEED_ICON = { start:"▶", done:"✓", skip:"✕", vacate:"🔔", task_done:"☑", late_checkout_left:"🕐", kontrola_wykonana:"🧽", kontrola_niewykonana:"⚠" };
+const FEED_COLOR = { start:"#2563eb", done:"#1f7a52", skip:"#b0863a", vacate:"#7a3a6a", task_done:"#1f7a52", late_checkout_left:"#2563eb", kontrola_wykonana:"#1f7a52", kontrola_niewykonana:"#b0863a" };
 function feedText(l){
   const a = l.action;
   if (a==="start")  return `${l.worker||"?"} zaczyna pokój ${l.room||""}`;
@@ -1672,6 +1676,9 @@ function feedText(l){
   if (a==="skip")   return `${l.worker||"?"} — goście nie chcieli (${l.room||""})`;
   if (a==="vacate") return `Recepcja: pokój ${l.room||""} pusty`;
   if (a==="task_done") return `${l.worker||"?"}: zadanie — ${l.extra||""}`;
+  if (a==="late_checkout_left") return l.extra || `Recepcja: gość wyjechał — pokój ${l.room||""} do sprzątania teraz`;
+  if (a==="kontrola_wykonana") return `${l.worker||"?"} — kontrola pokoju ${l.room||""} wykonana`;
+  if (a==="kontrola_niewykonana") return `${l.worker||"?"} — kontrola pokoju ${l.room||""} niewykonana: ${l.extra||""}`;
   return l.extra || `${l.worker||"?"}: ${a||""}`;
 }
 
@@ -3934,6 +3941,8 @@ window.addKonserwTask = async () => {
 // Konserwator na każde zadanie może odpowiedzieć i dołączyć zdjęcie zmian.
 let PLAN_OPEN_ID = null;   // null = lista planów; id = otwarty plan
 let PLAN_SHOW_DONE = false; // czy pokazywać zakończone plany na liście
+let CHK_OPEN_ID = null;    // null = lista planów kontroli; id = otwarty plan
+let CHK_SHOW_DONE = false; // czy pokazywać zakończone plany kontroli
 async function loadPlan() {
   let plans = [], tasks = [];
   try {
@@ -4102,6 +4111,154 @@ window.delPlanTask = async (id) => {
 };
 window.setPlanStatus = async (id, st) => {
   try { const { error } = await sb.from("maintenance_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadPlan(); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+};
+
+// ── Kontrole HK: plan kontroli PRZYPISANY DO POKOJU (nie do osoby) — wykonuje
+// kto akurat sprząta dany pokój danego dnia (przydział z hk_plan.assignments).
+// Jeśli dana pokojówka nie ma tego pokoju, zadanie NIE znika — czeka na kolejny
+// dzień/osobę. Rano "wykonane" zamyka na stałe (is_final w bazie, egzekwowane
+// przez RPC hk_check_submit); popołudnie może tylko zgłosić "nie udało się" z
+// powodem. Panel to READ-ONLY oversight — samo oznaczanie robi telefon HK.
+async function loadKontrole() {
+  let plans = [], items = [];
+  try {
+    const [{ data:pl }, { data:it }] = await Promise.all([
+      sb.from("hk_check_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+      sb.from("hk_check_items").select("*").eq("tenant_id", TENANT_ID),
+    ]);
+    plans = pl || []; items = it || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać planów kontroli.</div>'); }
+
+  if (CHK_OPEN_ID) {
+    const p = plans.find(x => x.id === CHK_OPEN_ID);
+    if (!p) { CHK_OPEN_ID = null; return loadKontrole(); }
+    return renderKontroleDetail(p, items.filter(x => x.plan_id === p.id));
+  }
+
+  const today = new Date().toISOString().slice(0,10);
+  const create = `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">Nowy plan kontroli</div>
+    <div class="field"><label>Nazwa</label><input id="nckName" class="inp" placeholder="np. Kontrola silikonów - lipiec"/></div>
+    <div class="field"><label>Zadanie dla sprzątającej</label><input id="nckTask" class="inp" placeholder="np. Sprawdź stan silikonów przy prysznicu"/></div>
+    <div class="field"><label>Pokoje (oddziel przecinkami)</label><input id="nckRooms" class="inp" placeholder="np. 201,202,304"/></div>
+    <div style="display:flex;gap:8px">
+      <div class="field" style="flex:1"><label>Od</label><input id="nckFrom" class="inp" type="date" value="${today}"/></div>
+      <div class="field" style="flex:1"><label>Do</label><input id="nckTo" class="inp" type="date" value="${today}"/></div>
+    </div>
+    <button id="nckBtn" class="btn" onclick="createKontrolePlan()">Utwórz plan</button>
+    <div id="nckMsg" class="msg"></div>
+  </div>`;
+
+  const active = plans.filter(p => p.status !== "done");
+  const done   = plans.filter(p => p.status === "done");
+  const list   = CHK_SHOW_DONE ? plans : active;
+  const counts = id => {
+    const t = items.filter(x => x.plan_id === id);
+    return { total:t.length, done:t.filter(x => x.status === "done").length, failed:t.filter(x => x.status === "failed").length };
+  };
+  const card = p => {
+    const c = counts(p.id);
+    const isDone = p.status === "done";
+    return `<div class="card" style="margin-bottom:10px;cursor:pointer;${isDone?"opacity:.7":""}" onclick="openKontrole('${p.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:15px;font-weight:800;flex:1">🧽 ${esc(p.name)}</span>
+        <span class="chip" style="color:${c.total&&c.done===c.total?"var(--ok)":"var(--muted)"}">${c.done}/${c.total}</span>
+        ${c.failed?`<span class="chip" style="color:#b3261e">${c.failed} nieudane</span>`:""}
+      </div>
+      <div style="font-size:12.5px;color:var(--muted)">${esc(p.task)}</div>
+    </div>`;
+  };
+  const listHtml = list.length ? list.map(card).join("") : '<div class="empty">Brak aktywnych planów kontroli — utwórz pierwszy powyżej.</div>';
+  const toggle = done.length
+    ? `<button class="rost-addbtn" style="margin:2px 0 10px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="toggleKontroleDone()">${CHK_SHOW_DONE?"Ukryj zakończone":`Pokaż zakończone (${done.length})`}</button>`
+    : "";
+  body(create + `<div class="soon">Aktywne plany kontroli</div>` + toggle + listHtml);
+}
+window.openKontrole       = (id) => { CHK_OPEN_ID = id; loadKontrole(); };
+window.backToKontrole     = ()   => { CHK_OPEN_ID = null; loadKontrole(); };
+window.toggleKontroleDone = ()   => { CHK_SHOW_DONE = !CHK_SHOW_DONE; loadKontrole(); };
+
+window.createKontrolePlan = async () => {
+  const name  = ((document.getElementById("nckName")||{}).value || "").trim();
+  const task  = ((document.getElementById("nckTask")||{}).value || "").trim();
+  const rooms = ((document.getElementById("nckRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
+  const from  = (document.getElementById("nckFrom")||{}).value || "";
+  const to    = (document.getElementById("nckTo")||{}).value || from;
+  const msg = document.getElementById("nckMsg"), btn = document.getElementById("nckBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!name) return setM("Wpisz nazwę planu.", "err");
+  if (!task) return setM("Wpisz zadanie.", "err");
+  if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
+  if (!from) return setM('Wybierz datę "od".', "err");
+  if (btn){ btn.disabled=true; btn.textContent="Tworzę…"; }
+  try {
+    const { data, error } = await sb.from("hk_check_plans")
+      .insert({ tenant_id:TENANT_ID, name, task, status:"active", created_by:CURRENT.name||"Panel" })
+      .select("id").single();
+    if (error) throw error;
+    const planId = data.id;
+    const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
+    const { error:itemsErr } = await sb.from("hk_check_items").insert(rows);
+    if (itemsErr) throw itemsErr;
+    try { await sb.rpc("log_action", { p_action:"kontrola_plan_utworzony", p_detail:`${name}: ${rooms.length} pok.` }); } catch {}
+    CHK_OPEN_ID = planId;
+    loadKontrole();
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Utwórz plan"; } }
+};
+
+function renderKontroleDetail(p, items) {
+  const head = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="backToKontrole()">← Plany</button>
+    <span style="font-size:16px;font-weight:800;flex:1">🧽 ${esc(p.name)}</span>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;color:var(--ink)">${esc(p.task)}</div>
+  </div>`;
+  const addCard = `<div class="card" style="margin-bottom:12px">
+    <div class="soon" style="margin-top:0">Dodaj pokoje do planu</div>
+    <div class="field"><label>Pokoje (oddziel przecinkami)</label><input id="ckAddRooms" class="inp" placeholder="np. 305,306"/></div>
+    <button id="ckAddBtn" class="btn" onclick="addKontroleRooms('${p.id}')">Dodaj pokoje</button>
+    <div id="ckAddMsg" class="msg"></div>
+  </div>`;
+  const sorted = items.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), undefined, {numeric:true}));
+  const rows = sorted.length ? sorted.map(kontroleItemRow).join("") : '<div class="empty">Brak pokoi w tym planie.</div>';
+  const isDone = p.status === "done";
+  const finishBtn = `<button class="rost-addbtn" style="margin-top:6px;padding:8px 13px;border-radius:8px;border:1px solid ${isDone?"var(--line-strong)":"rgba(31,122,82,.4)"};background:${isDone?"var(--paper)":"rgba(31,122,82,.08)"};color:${isDone?"var(--muted)":"var(--ok)"};font-weight:800;font-size:12px;cursor:pointer" onclick="setKontrolePlanStatus('${p.id}','${isDone?"active":"done"}')">${isDone?"↩ Wznów plan":"✓ Zakończ plan"}</button>`;
+  body(head + addCard + `<div class="soon">Pokoje</div>` + rows + finishBtn);
+}
+function kontroleItemRow(r) {
+  const col = r.status === "done" ? "var(--ok)" : (r.status === "failed" ? "#b3261e" : "var(--muted)");
+  const lbl = r.status === "done" ? "sprawdzone" : (r.status === "failed" ? "nie sprawdzono" : "oczekuje");
+  const who = r.done_by ? `${esc(r.done_by)} · ${r.result_shift === "pm" ? "popołudnie" : "rano"}` : "";
+  return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:4px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="k" style="flex:1">Pokój ${esc(r.room)}</span>
+      <span class="chip" style="color:${col}">${lbl}</span>
+    </div>
+    ${who?`<div style="font-size:12px;color:var(--muted)">${who}${r.done_at?` · ${new Date(r.done_at).toLocaleString("pl-PL")}`:""}</div>`:""}
+    ${r.fail_reason?`<div style="font-size:12.5px;color:#b3261e;background:rgba(179,38,30,.06);border:1px solid rgba(179,38,30,.25);border-radius:8px;padding:7px 9px">⚠ ${esc(r.fail_reason)}</div>`:""}
+  </div>`;
+}
+window.addKontroleRooms = async (planId) => {
+  const rooms = ((document.getElementById("ckAddRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
+  const msg = document.getElementById("ckAddMsg"), btn = document.getElementById("ckAddBtn");
+  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
+  if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
+  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+  try {
+    const { data:existing } = await sb.from("hk_check_items").select("valid_from,valid_to").eq("plan_id", planId).limit(1);
+    const today = new Date().toISOString().slice(0,10);
+    const from = (existing && existing[0] && existing[0].valid_from) || today;
+    const to   = (existing && existing[0] && existing[0].valid_to) || from;
+    const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
+    const { error } = await sb.from("hk_check_items").insert(rows);
+    if (error) throw error;
+    loadKontrole();
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj pokoje"; } }
+};
+window.setKontrolePlanStatus = async (id, st) => {
+  try { const { error } = await sb.from("hk_check_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadKontrole(); }
   catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 

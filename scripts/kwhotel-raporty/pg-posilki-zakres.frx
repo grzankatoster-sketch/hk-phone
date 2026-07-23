@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SZABLON FAST REPORT dla KWHotel Desktop (Firebird)
+  Tytuł : Posiłki — zakres dat (własny, z poprawnym parametrem zakresu)
+  Cel   : Zastępuje wbudowany raport "Posiłki i usługi w rezerwacji", który
+          przy wyborze zakresu 7 dni i tak zwraca tylko 3 dni. Ten szablon ma
+          DWA JAWNE PARAMETRY (DataOd / DataDo) ustawiane w oknie generowania
+          raportu w KWHotel — nie ma żadnego domyślnego/ukrytego ograniczenia
+          liczby dni, więc zakres 3 czy 7 (albo dowolny inny) działa tak samo.
+
+  KOLUMNY (dokładnie te, o które prosił user): Pokój, Gość, Od, Do, Dni, Osoby,
+  Liczba śniadań.
+
+  INSTALACJA:
+    1. Otwórz KWHotel → Raporty → Menadżer raportów
+    2. Nowy raport → Importuj szablon → wskaż ten plik .frx
+    3. Przy generowaniu raportu KWHotel powinien poprosić o dwa parametry:
+       "Data od" i "Data do" (zdefiniowane niżej jako TfrxParam) — wpisz
+       właściwy zakres, np. dziś i dziś+6 dla tygodnia.
+    4. JEŚLI okno z parametrami się NIE pojawi (zależy od wersji FastReport
+       wbudowanej w Twoje KWHotel): otwórz ten plik w edytorze tekstu i ustaw
+       ręcznie wartości Value="..." w sekcji <TfrxParam> poniżej PRZED każdym
+       generowaniem — to nadal naprawia błąd "7 dni wysyła 3", tylko wymaga
+       ręcznej edycji pliku zamiast okna dialogowego.
+
+  SCHEMAT BAZY — część PEWNA (identyczna jak w already-działającym
+  pg-wyjazdy-jutro.frx, sprawdzona):
+    Tabela REZERWACJE : ID_REZ, NR_POKOJU, DATA_PRZYJAZDU, DATA_WYJAZDU, STAN,
+                         ID_KLIENTA, LICZBA_OSOB (dostosuj nazwę kolumny osób,
+                         jeśli w Twojej bazie nazywa się inaczej, np. ILE_OSOB)
+    Tabela KLIENCI    : ID_KLIENTA, NAZWISKO, IMIE
+
+  SCHEMAT BAZY — część NIEPEWNA (liczba śniadań = usługi przypięte do
+  rezerwacji). Nie znam dokładnej nazwy tabeli usług w Twojej instalacji
+  KWHotel (nie mam dostępu do Twojej bazy) — LEFT JOIN niżej to NAJLEPSZE
+  PRZYBLIŻENIE wzorem typowego schematu KWHotel (tabela USLUGI_REZERWACJI
+  z kolumnami ID_REZ, NAZWA_USLUGI, ILOSC), ale wymaga weryfikacji:
+    - Jeśli w KWHotel → Raporty → Menadżer raportów masz podgląd SQL
+      wbudowanego raportu "Posiłki i usługi w rezerwacji", NAJLEPIEJ skopiuj
+      stamtąd prawdziwą nazwę tabeli/kolumn usług i podmień sekcję JOIN niżej.
+    - Jeśli JOIN się nie powiedzie (błąd "tabela nie istnieje" przy
+      generowaniu), kolumna "Śniadania" pokaże wyliczenie zastępcze
+      DNI_POBYTU (nie policzy realnie kto ma wykupione śniadanie) — patrz
+      komentarz przy SNIADANIA_FALLBACK w SQL.
+-->
+<TfrxReport Version="4.15" Author="Conrad Comfort" Name="Posilki_Zakres"
+  Description="Lista pokoi z posiłkami w wybranym zakresie dat (parametry Od/Do)"
+  PrinterSettings="1">
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       PARAMETRY RAPORTU — okno dialogowe przy generowaniu w KWHotel.
+       To jest KLUCZOWA poprawka: zakres NIE jest zaszyty na sztywno
+       (jak w błędnym wbudowanym raporcie), tylko wpisywany każdorazowo.
+  ════════════════════════════════════════════════════════════════════ -->
+  <TfrxParam Name="DataOd" DataType="dtDateTime" AsString="Data od" Value="[CURRENT_DATE]"/>
+  <TfrxParam Name="DataDo" DataType="dtDateTime" AsString="Data do" Value="[CURRENT_DATE + 6]"/>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       ZAPYTANIE GŁÓWNE — pokoje z pobytem nachodzącym na zakres DataOd..DataDo
+       (rezerwacja zachodzi na zakres, jeśli zaczyna się przed końcem zakresu
+       i kończy po jego początku — standardowy warunek nakładania się dwóch
+       przedziałów dat).
+  ════════════════════════════════════════════════════════════════════ -->
+  <TfrxADOQuery
+    Name="qPosilki"
+    Enabled="True"
+    SQL="
+      SELECT
+        rez.NR_POKOJU                                       AS POKOJ,
+        k.NAZWISKO || &apos; &apos; || k.IMIE              AS GOSC,
+        rez.DATA_PRZYJAZDU                                  AS OD,
+        rez.DATA_WYJAZDU                                    AS DO_,
+        (rez.DATA_WYJAZDU - rez.DATA_PRZYJAZDU)              AS DNI_POBYTU,
+        rez.LICZBA_OSOB                                     AS OSOBY,
+        (
+          SELECT COUNT(*)
+          FROM USLUGI_REZERWACJI ur
+          WHERE ur.ID_REZ = rez.ID_REZ
+            AND UPPER(ur.NAZWA_USLUGI) LIKE &apos;%SNIADAN%&apos;
+        )                                                    AS LICZBA_SNIADAN_USLUGA,
+        (rez.DATA_WYJAZDU - rez.DATA_PRZYJAZDU) * rez.LICZBA_OSOB
+                                                             AS SNIADANIA_FALLBACK
+      FROM REZERWACJE rez
+      JOIN KLIENCI k ON k.ID_KLIENTA = rez.ID_KLIENTA
+      WHERE
+        rez.STAN &lt;&gt; &apos;A&apos;
+        AND rez.DATA_PRZYJAZDU &lt;= :DataDo
+        AND rez.DATA_WYJAZDU   &gt;= :DataOd
+      ORDER BY
+        CAST(rez.NR_POKOJU AS INTEGER),
+        rez.DATA_PRZYJAZDU
+    "
+  >
+    <TfrxParamItem Name="DataOd" DataType="dtDateTime" Value="[DataOd]"/>
+    <TfrxParamItem Name="DataDo" DataType="dtDateTime" Value="[DataDo]"/>
+  </TfrxADOQuery>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       STRONA RAPORTU  (A4 poziomo — więcej kolumn niż wyjazdy jutro)
+  ════════════════════════════════════════════════════════════════════ -->
+  <TfrxReportPage Name="Page1"
+    PaperWidth="297" PaperHeight="210"
+    LeftMargin="15" RightMargin="15" TopMargin="15" BottomMargin="15"
+    Orientation="1">
+
+    <!-- ── NAGŁÓWEK STRONY ─────────────────────────────────────── -->
+    <TfrxPageHeader Name="PageHeader1" Height="60">
+
+      <TfrxMemoView Name="mTitle"
+        Left="0" Top="0" Width="267" Height="20"
+        Text="Posiłki — zakres [DataOd] – [DataDo]"
+        Font.Name="Arial" Font.Size="14" Font.Style="[fsBold]"
+        HAlign="haLeft" VAlign="vaCenter"
+        Frame.Typ="0"/>
+
+      <TfrxMemoView Name="mDate"
+        Left="0" Top="20" Width="267" Height="12"
+        Text="Wydruk: [DATE] [TIME]"
+        Font.Name="Arial" Font.Size="9" Font.Style=""
+        Color="clGray" HAlign="haLeft" VAlign="vaCenter"
+        Frame.Typ="0"/>
+
+      <TfrxLineView Name="linHeader"
+        Left="0" Top="34" Width="267" Height="0"
+        Frame.Typ="15" Frame.Color="clBlack" Frame.Width="1.5"/>
+
+      <!-- Nagłówki kolumn: Pokój | Gość | Od | Do | Dni | Osoby | Śniadania -->
+      <TfrxMemoView Name="hPokoj"
+        Left="0" Top="40" Width="18" Height="12"
+        Text="Pokój" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+      <TfrxMemoView Name="hGosc"
+        Left="20" Top="40" Width="70" Height="12"
+        Text="Gość" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haLeft"/>
+      <TfrxMemoView Name="hOd"
+        Left="92" Top="40" Width="26" Height="12"
+        Text="Od" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+      <TfrxMemoView Name="hDo"
+        Left="120" Top="40" Width="26" Height="12"
+        Text="Do" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+      <TfrxMemoView Name="hDni"
+        Left="148" Top="40" Width="16" Height="12"
+        Text="Dni" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+      <TfrxMemoView Name="hOsoby"
+        Left="166" Top="40" Width="20" Height="12"
+        Text="Osoby" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+      <TfrxMemoView Name="hSniad"
+        Left="188" Top="40" Width="30" Height="12"
+        Text="Śniadania" Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+
+      <TfrxLineView Name="linColHeader"
+        Left="0" Top="54" Width="267" Height="0"
+        Frame.Typ="15" Frame.Color="clSilver" Frame.Width="0.5"/>
+    </TfrxPageHeader>
+
+    <!-- ── WIERSZE DANYCH ──────────────────────────────────────── -->
+    <TfrxMasterData Name="MasterData1" DataSet="qPosilki"
+      Top="70" Height="14" Band.PrintIfEmpty="False">
+
+      <TfrxMemoView Name="dPokoj"
+        Left="0" Top="1" Width="18" Height="12"
+        Text="[qPosilki.POKOJ]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+
+      <TfrxMemoView Name="dGosc"
+        Left="20" Top="1" Width="70" Height="12"
+        Text="[qPosilki.GOSC]"
+        Font.Name="Arial" Font.Size="9"/>
+
+      <TfrxMemoView Name="dOd"
+        Left="92" Top="1" Width="26" Height="12"
+        Text="[FormatDateTime(&apos;dd.mm.yyyy&apos;,qPosilki.OD)]"
+        Font.Name="Arial" Font.Size="9" HAlign="haCenter"/>
+
+      <TfrxMemoView Name="dDo"
+        Left="120" Top="1" Width="26" Height="12"
+        Text="[FormatDateTime(&apos;dd.mm.yyyy&apos;,qPosilki.DO_)]"
+        Font.Name="Arial" Font.Size="9" HAlign="haCenter"/>
+
+      <TfrxMemoView Name="dDni"
+        Left="148" Top="1" Width="16" Height="12"
+        Text="[qPosilki.DNI_POBYTU]"
+        Font.Name="Arial" Font.Size="9" HAlign="haCenter"/>
+
+      <TfrxMemoView Name="dOsoby"
+        Left="166" Top="1" Width="20" Height="12"
+        Text="[qPosilki.OSOBY]"
+        Font.Name="Arial" Font.Size="9" HAlign="haCenter"/>
+
+      <!-- Realna liczba śniadań z usług, jeśli JOIN zadziałał (>0);
+           w przeciwnym razie SNIADANIA_FALLBACK (dni × osoby) jako przybliżenie -->
+      <TfrxMemoView Name="dSniad"
+        Left="188" Top="1" Width="30" Height="12"
+        Text="[IIF(qPosilki.LICZBA_SNIADAN_USLUGA&gt;0,qPosilki.LICZBA_SNIADAN_USLUGA,qPosilki.SNIADANIA_FALLBACK)]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haCenter"/>
+
+      <TfrxLineView Name="linRow"
+        Left="0" Top="13" Width="267" Height="0"
+        Frame.Typ="15" Frame.Color="clSilver" Frame.Width="0.3"/>
+    </TfrxMasterData>
+
+    <!-- ── PODSUMOWANIE ────────────────────────────────────────── -->
+    <TfrxGroupFooter Name="GroupFooter1" Top="300" Height="20">
+      <TfrxLineView Name="linSum"
+        Left="0" Top="2" Width="267" Height="0"
+        Frame.Typ="15" Frame.Color="clBlack" Frame.Width="1"/>
+      <TfrxMemoView Name="mSumLabel"
+        Left="0" Top="6" Width="120" Height="12"
+        Text="Łącznie pokoi w zakresie:"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"/>
+      <TfrxMemoView Name="mSumCount"
+        Left="122" Top="6" Width="20" Height="12"
+        Text="[SUM(1,MasterData1)]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haRight"/>
+      <TfrxMemoView Name="mSumSniadLabel"
+        Left="150" Top="6" Width="70" Height="12"
+        Text="Suma śniadań:"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]"/>
+      <TfrxMemoView Name="mSumSniad"
+        Left="222" Top="6" Width="30" Height="12"
+        Text="[SUM(IIF(qPosilki.LICZBA_SNIADAN_USLUGA&gt;0,qPosilki.LICZBA_SNIADAN_USLUGA,qPosilki.SNIADANIA_FALLBACK),MasterData1)]"
+        Font.Name="Arial" Font.Size="9" Font.Style="[fsBold]" HAlign="haRight"/>
+    </TfrxGroupFooter>
+
+    <!-- ── STOPKA STRONY ────────────────────────────────────────── -->
+    <TfrxPageFooter Name="PageFooter1" Height="14">
+      <TfrxMemoView Name="mPage"
+        Left="0" Top="1" Width="267" Height="10"
+        Text="Conrad Comfort — Panel Recepcji   |   Strona [PAGE#] / [PAGES#]"
+        Font.Name="Arial" Font.Size="8" Color="clGray"
+        HAlign="haCenter"/>
+    </TfrxPageFooter>
+
+  </TfrxReportPage>
+</TfrxReport>

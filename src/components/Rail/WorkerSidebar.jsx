@@ -4,7 +4,7 @@ import {
   Home, Sun as SunIcon, AlertTriangle, FileText,
   Users, Star, BookOpen,
   LogOut, FileDown,
-  Car, History, MessageSquare, KeyRound, Package,
+  Car, History, MessageSquare, KeyRound, Package, ShoppingBag,
 } from "lucide-react";
 import { SHIFT_SHORT_LABELS, HOTEL_NAME } from "../../lib/constants";
 import { isModuleEnabled } from "../../lib/modules";
@@ -102,7 +102,7 @@ export default function WorkerSidebar({
         {isModuleEnabled("hk") && nb("hk", <Home size={16} />, "Housekeeping", 0, false, "4")}
         {nb("usterki",<AlertTriangle size={16} />,  "Usterki", faultsCount, false, "5")}
 
-        {(isModuleEnabled("parking") || isModuleEnabled("goscie") || isModuleEnabled("vouchery") || isModuleEnabled("opinie")) && (
+        {(isModuleEnabled("parking") || isModuleEnabled("goscie") || isModuleEnabled("vouchery") || isModuleEnabled("opinie") || isModuleEnabled("sklepik")) && (
           <>
             <div className="nsb-divider" />
             <div className="nsb-section-label">Obsługa</div>
@@ -112,6 +112,7 @@ export default function WorkerSidebar({
         {isModuleEnabled("goscie")   && nb("goscie",  <Users size={16} />,    "Stali goście", 0, false, "7")}
         {isModuleEnabled("vouchery") && nb("vouchery",<FileText size={16} />, "Vouchery", 0, false, "8")}
         {isModuleEnabled("opinie")   && nb("opinie",  <Star size={16} />,     "Opinie gości", 0, false, "9")}
+        {isModuleEnabled("sklepik")  && nb("sklepik", <ShoppingBag size={16} />, "Sklepik")}
         {isModuleEnabled("klucze")   && nb("klucze",  <KeyRound size={16} />, "Klucze / karty")}
         {isModuleEnabled("depozyty") && nb("depozyty",<Package size={16} />,  "Depozyty")}
 

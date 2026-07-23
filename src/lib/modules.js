@@ -46,6 +46,7 @@ export const MODULE_REGISTRY = Object.freeze([
   { key: "goscie",      label: "Stali goście",     scope: "worker" },
   { key: "vouchery",    label: "Vouchery",         scope: "worker" },
   { key: "opinie",      label: "Opinie gości",     scope: "worker" },
+  { key: "sklepik",     label: "Sklepik",          scope: "worker" }, // 4.2 — magazyn: stan/wydania/ceny
   { key: "zadania",     label: "Zadania",          scope: "manager" },
 ]);
 // Uwaga: panel kierownika to OSOBNA web-aplikacja (public/hk-phone/panel.html),

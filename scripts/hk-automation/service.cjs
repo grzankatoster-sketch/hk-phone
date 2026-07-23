@@ -12,6 +12,8 @@ const { writePlans } = require("./lib/plans.cjs");
 const { writeSourceSnapshots } = require("./lib/source-snapshots.cjs");
 const { loadReportHistory, mergeReportHistory, saveReportHistory } = require("./lib/report-history.cjs");
 const { upsertPlansToSupabase } = require("./lib/supabase-sync.cjs");
+const { isPosilkiReport, parsePosilkiGrid } = require("./lib/parser-posilki.cjs");
+const { upsertMealsToSupabase } = require("./lib/meals-sync.cjs");
 
 function getArg(name, fallback = "") {
   const idx = process.argv.indexOf(name);
@@ -29,10 +31,25 @@ function log(message) {
 async function processPdfFiles(pdfFiles, config) {
   const generatedAt = new Date().toISOString();
   const incomingReports = [];
+  const mealsReservations = [];
+  const mealsWarnings = [];
 
   for (const pdfPath of pdfFiles) {
     log(`Czytam PDF: ${pdfPath}`);
     const text = await extractPdfText(pdfPath);
+
+    // "Raport Posiłków" (ReportThreeDayMeals) — zupełnie inne dane (posiłki, nie
+    // status pokoi), zbierane osobno i wysyłane do meal_plans, NIE do hk_plan.
+    if (isPosilkiReport(text, path.basename(pdfPath))) {
+      const positions = await extractPdfPositions(pdfPath);
+      const mealsParsed = parsePosilkiGrid(positions, { tenantId: config.tenantId });
+      log(`  -> raport POSIŁKÓW: ${mealsParsed.reservations.length} rezerwacji, dni: ${mealsParsed.dates.filter(Boolean).join(", ")}`);
+      if (mealsParsed.warnings.length) log(`  -> ostrzezenia posilkow: ${mealsParsed.warnings.length}`);
+      mealsReservations.push(...mealsParsed.reservations);
+      mealsWarnings.push(...mealsParsed.warnings);
+      continue;
+    }
+
     let parsed;
     if (isWeeklyReport(text, path.basename(pdfPath))) {
       // Raport TYGODNIOWY = siatka pokoje × 7 dni → "drugi odczyt" po pozycjach (x,y).
@@ -99,6 +116,21 @@ async function processPdfFiles(pdfFiles, config) {
     } catch (e) {
       log(`Supabase sync BLAD: ${e.message}`);
     }
+  }
+
+  // Raport posiłków (jeśli był w tej paczce maili) — osobny upload do meal_plans.
+  if (mealsWarnings.length) log(`Ostrzezenia posilkow: ${mealsWarnings.length}`);
+  if (mealsReservations.length && !config.dryRun) {
+    try {
+      await upsertMealsToSupabase(mealsReservations, {
+        info: (msg) => log(msg.replace(/^\[hk-auto\]\s*/, "")),
+        warn: (msg) => log(msg.replace(/^\[hk-auto\]\s*/, "")),
+      });
+    } catch (e) {
+      log(`Meals sync BLAD: ${e.message}`);
+    }
+  } else if (mealsReservations.length && config.dryRun) {
+    log(`Meals sync pominiety (dryRun): ${mealsReservations.length} pozycji gotowych do wyslania.`);
   }
 
   return written;

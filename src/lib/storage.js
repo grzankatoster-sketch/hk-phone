@@ -66,6 +66,7 @@ export const STORAGE_KEYS = Object.freeze({
   roomKeys: "reception-room-keys",
   guestDeposits: "reception-guest-deposits",
   pricingConfig: "reception-pricing-config",
+  pricingEvents: "reception-pricing-events",
   testClockOffset: "reception-test-clock-offset",
   // Prefiksy kluczy budowanych dynamicznie (dopisywany sufiks, np. -{data}/-{imię}):
   dismissedRemindersPrefix: "reception-dismissed-reminders",

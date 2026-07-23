@@ -26,6 +26,7 @@ const WikiAdminPanel = lazy(() => import("./modules/Admin/WikiAdminPanel"));
 const KasaAdminPanel = lazy(() => import("./modules/Admin/KasaAdminPanel"));
 const WiadomosciPanel = lazy(() => import("./modules/Admin/WiadomosciPanel"));
 const ParkingPanel = lazy(() => import("./modules/Parking/ParkingPanel"));
+const SklepikPanel = lazy(() => import("./modules/Sklepik/SklepikPanel"));
 import ArrivalsSummary from "./modules/Arrivals/ArrivalsSummary";
 const KeysPanel = lazy(() => import("./modules/Keys/KeysPanel"));
 const DepositsPanel = lazy(() => import("./modules/Deposits/DepositsPanel"));
@@ -3283,6 +3284,11 @@ export default function App(){
         {isModuleEnabled("opinie")&&workerTab==="opinie"&&(
           <motion.div key="opinie" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             <ReviewsPanel dark={workerDark} employeeName={employeeName} isManager={canAccessManagerPanel} showToast={showToast}/>
+          </motion.div>
+        )}
+        {isModuleEnabled("sklepik")&&workerTab==="sklepik"&&(
+          <motion.div key="sklepik" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
+            <SklepikPanel isAdmin={canAccessManagerPanel} showToast={showToast} employeeName={employeeName} selectedShift={selectedShift}/>
           </motion.div>
         )}
         {workerTab==="czat"&&(

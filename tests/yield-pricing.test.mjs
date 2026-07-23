@@ -50,4 +50,14 @@ describe("yieldPrice — sufit → zaniżanie", () => {
   it("nieznana kategoria → null", () => {
     expect(yieldPrice({ category: "XYZ", stayDate: "2026-07-25" })).toBeNull();
   });
+  it("event boost podnosi sufit (do twardego MAX)", () => {
+    const base = yieldPrice({ category: "Standard", stayDate: "2026-07-28", today: "2026-07-28", occupancy: null });
+    const ev = yieldPrice({ category: "Standard", stayDate: "2026-07-28", today: "2026-07-28", occupancy: null, eventBoost: 1.2, maxPrice: 700 });
+    expect(ev.ceil).toBeGreaterThan(base.ceil);
+    expect(ev.price).toBeLessThanOrEqual(700); // MAX twardy
+  });
+  it("zła pogoda lekko obniża, dobra lekko podnosi (w widełkach)", () => {
+    const base = yieldPrice({ category: "Standard", stayDate: "2026-07-28", today: "2026-07-28", occupancy: 0.5 }).price;
+    expect(yieldPrice({ category: "Standard", stayDate: "2026-07-28", today: "2026-07-28", occupancy: 0.5, weatherFactor: 0.96 }).price).toBeLessThanOrEqual(base);
+  });
 });

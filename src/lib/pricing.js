@@ -62,11 +62,12 @@ export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost
 // ZANIŻANIE bliżej terminu, gdy pokoje stoją; podłoga = minPrice. Wysokie obłożenie / daleko
 // od terminu → trzymaj sufit. occupancy = zajętość danej daty (0..1) lub null (nieznana → trzymaj).
 // today/stayDate: "YYYY-MM-DD". avgLeadDays: typowy wyprzedzenie rezerwacji (hotel last-minute → 1).
-export function yieldPrice({ category = null, stayDate, today = null, occupancy = null, minPrice = null, maxPrice = null, avgLeadDays = 1, anchor = null, maxDiscount = 0.30 } = {}) {
+export function yieldPrice({ category = null, stayDate, today = null, occupancy = null, minPrice = null, maxPrice = null, avgLeadDays = 1, anchor = null, maxDiscount = 0.30, eventBoost = null, weatherFactor = null } = {}) {
   const rawAnchor = anchor != null ? Number(anchor) : anchorFor(category, stayDate);
   if (!rawAnchor || !stayDate) return null;
   const holF = holidayFactor(stayDate).factor;
-  const ceilRaw = Math.round(rawAnchor * holF);
+  const evF = eventBoost == null ? 1 : Math.max(1, Number(eventBoost) || 1);        // impreza podbija sufit
+  const ceilRaw = Math.round(rawAnchor * holF * evF);
   const ceil = maxPrice != null ? Math.min(Number(maxPrice), ceilRaw) : ceilRaw;   // sufit (twarde MAX)
   const floor = minPrice != null ? Math.min(Number(minPrice), ceil) : Math.round(ceil * 0.7); // podłoga (twarde MIN)
 
@@ -81,7 +82,8 @@ export function yieldPrice({ category = null, stayDate, today = null, occupancy 
     const urgency = Math.max(0, Math.min(1, (window - daysOut) / window));    // im bliżej, tym mocniej
     discount = emptiness * urgency * maxDiscount;                             // maks. −30%
   }
-  let price = Math.round(ceil * (1 - discount));
+  const wF = weatherFactor == null ? 1 : (Number(weatherFactor) || 1);        // pogoda: mała korekta w obie strony
+  let price = Math.round(ceil * (1 - discount) * wF);
   price = Math.max(floor, Math.min(ceil, price));
-  return { price, ceil, floor, anchor: rawAnchor, daysOut, discount: Math.round(discount * 100) / 100, holidayFactor: holF, hold: discount < 0.005 };
+  return { price, ceil, floor, anchor: rawAnchor, daysOut, discount: Math.round(discount * 100) / 100, holidayFactor: holF, eventFactor: evF, weatherFactor: wF, hold: discount < 0.005 && evF === 1 && wF === 1 };
 }

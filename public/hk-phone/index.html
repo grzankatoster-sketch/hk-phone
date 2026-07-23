@@ -225,6 +225,7 @@ let replyDraft = {};   // { roomNo: "tekst" } — robocza treść własnej odpow
 // Team state
 let allRoomStates  = {}; // { roomNo: roomRow }
 let allLogs        = []; // recent hk_logs
+let checkItems     = []; // aktywne zadania planu kontroli HK (hk_check_items) na dziś
 let hkReminders    = []; // przypomnienia od kierownika HK (hk_reminders)
 let pendingExchanges = []; // parsed from logs
 
@@ -441,8 +442,10 @@ function renderTeamHtml() {
     info_request:     l => `Recepcja pyta o pok. ${escHtml(l.room)}`,
     info_reply:       l => `pok. ${escHtml(l.room)} · ${escHtml(l.worker)}: ${escHtml(l.extra||"")}`,
     late_checkout_left: l => l.extra ? escHtml(l.extra) : `Recepcja: gość wyjechał — pok. ${escHtml(l.room)} do sprzątania teraz`,
+    kontrola_wykonana:    l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} wykonana`,
+    kontrola_niewykonana: l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} niewykonana: ${escHtml(l.extra||"")}`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb", kontrola_wykonana:"#0f7a4a", kontrola_niewykonana:"#a07820" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -507,6 +510,58 @@ function priorityFor(no) {
 function lateCheckoutFor(no) {
   return allLogs.some(l => l.room === no && l.action === "late_checkout_left");
 }
+
+// Zadania planu kontroli HK (hk_check_items) aktywne dziś dla danego pokoju —
+// przypięte do POKOJU, nie do osoby: pokazujemy je każdemu kto akurat sprząta
+// ten pokój, niezależnie od przydziałów. "final" (rano→wykonane) jest read-only.
+function checksFor(no) {
+  return checkItems.filter(c => c.room === no);
+}
+
+function checkBox(no) {
+  const items = checksFor(no);
+  if (!items.length) return "";
+  return items.map(c => {
+    const task = (c.plan && c.plan.task) || "";
+    if (c.is_final || c.status === "done") {
+      return `<div class="mini-toggle" style="cursor:default;color:var(--green);margin-top:8px">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Kontrola „${escHtml(task)}" — sprawdzone${c.done_by?` (${escHtml(c.done_by.split(" ")[0])})`:""}</span>
+      </div>`;
+    }
+    const prevFailed = c.status === "failed"
+      ? `<div style="font-size:11.5px;color:var(--red);margin-bottom:6px">Wcześniej niesprawdzone: ${escHtml(c.fail_reason||"")}</div>`
+      : "";
+    const doneBtn = isPm ? "" : `<button class="btn btn-green" style="margin-bottom:8px" onclick="submitCheck('${c.id}','${no}')">✓ Kontrola „${escHtml(task)}" — wykonana</button>`;
+    return `<div class="fault-box open" style="margin-top:10px;border-top:1px dashed var(--line)">
+      <div class="fault-title" style="color:var(--blue)">🧽 Kontrola: ${escHtml(task)}</div>
+      ${prevFailed}
+      ${doneBtn}
+      <textarea id="ckreason-${c.id}" placeholder="Powód, jeśli nie da się sprawdzić (np. gość poprosił o niewchodzenie)…"></textarea>
+      <button class="btn btn-amber" style="margin-top:8px" onclick="submitCheckFailed('${c.id}','${no}')">Nie udało się sprawdzić</button>
+    </div>`;
+  }).join("");
+}
+
+window.submitCheck = async (itemId, room) => {
+  try {
+    await sb.rpc("hk_check_submit", { p_item_id:itemId, p_shift: isPm?"pm":"morning", p_result:"done", p_worker:WORKER });
+    await addLog("kontrola_wykonana", room, null);
+    toast("Kontrola oznaczona jako wykonana ✓","var(--green)");
+    refreshData();
+  } catch (e) { toast("Nie udało się zapisać kontroli","var(--red)"); }
+};
+window.submitCheckFailed = async (itemId, room) => {
+  const ta = document.getElementById(`ckreason-${itemId}`);
+  const reason = (ta && ta.value || "").trim();
+  if (!reason) { toast("Podaj powód niewykonania","var(--red)"); return; }
+  try {
+    await sb.rpc("hk_check_submit", { p_item_id:itemId, p_shift: isPm?"pm":"morning", p_result:"failed", p_reason:reason, p_worker:WORKER });
+    await addLog("kontrola_niewykonana", room, reason.slice(0,120));
+    toast("Zgłoszono — nie udało się sprawdzić","var(--amber)");
+    refreshData();
+  } catch (e) { toast("Nie udało się zapisać zgłoszenia","var(--red)"); }
+};
 
 // Czy recepcja czeka na odpowiedź o tym pokoju? (info_request bez późniejszego info_reply)
 function pendingAskFor(no) {
@@ -594,7 +649,7 @@ function roomCard(no, status) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
-  buttons = prioBanner + lateBanner + askBanner + buttons + replyUI;
+  buttons = prioBanner + lateBanner + askBanner + buttons + replyUI + checkBox(no);
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
@@ -791,11 +846,12 @@ async function reportFound(room) {
 // ─── Team data load ───────────────────────────────────────────────────────────
 async function loadTeamData() {
   if (!sb) return;
-  const [{ data: plan }, { data: rData }, { data: lData }, remRes] = await Promise.all([
+  const [{ data: plan }, { data: rData }, { data: lData }, remRes, ckRes] = await Promise.all([
     sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single(),
     sb.from("hk_rooms").select("*").eq("date", TODAY),
     sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
     sb.from("hk_reminders").select("body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(20).then(r=>r, ()=>({data:[]})),
+    sb.from("hk_check_items").select("*, plan:hk_check_plans(task,name)").eq("tenant_id", TENANT_ID).lte("valid_from", TODAY).gte("valid_to", TODAY).then(r=>r, ()=>({data:[]})),
   ]);
 
   if (plan) {
@@ -807,6 +863,7 @@ async function loadTeamData() {
   }
   if (lData) allLogs = lData;
   hkReminders = ((remRes && remRes.data) || []).filter(r => r.active !== false);
+  checkItems = (ckRes && ckRes.data) || [];
 }
 
 // ─── Polling fallback ─────────────────────────────────────────────────────────
@@ -835,6 +892,10 @@ async function refreshData() {
     if (tData) tasks = tData;
     const { data: lData } = await sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at");
     if (lData) allLogs = lData;
+    try {
+      const { data: ckData } = await sb.from("hk_check_items").select("*, plan:hk_check_plans(task,name)").eq("tenant_id", TENANT_ID).lte("valid_from", TODAY).gte("valid_to", TODAY);
+      if (ckData) checkItems = ckData;
+    } catch {}
     const y = window.scrollY;
     render();
     window.scrollTo(0, y);

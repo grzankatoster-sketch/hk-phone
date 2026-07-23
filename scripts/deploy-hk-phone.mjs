@@ -22,7 +22,7 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-const ALL_FILES = ["index.html", "wyjazdy.html", "konserwacja.html", "panel.html", "grafik.html", "superadmin.html"];
+const ALL_FILES = ["index.html", "wyjazdy.html", "konserwacja.html", "panel.html", "grafik.html", "superadmin.html", "posilki.html", "posilki-kalendarz.html"];
 const onlyOne = process.argv[2];
 const FILES = onlyOne ? [onlyOne] : ALL_FILES;
 
