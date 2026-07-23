@@ -34,6 +34,12 @@ function ReviewReplyDraft({ review }) {
   const [draft, setDraft] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
+  const [prepared, setPrepared] = React.useState(false);
+  // 4.19: jeśli AI przygotowało draft wcześniej (przy nowej krytycznej opinii) — pokaż od razu.
+  React.useEffect(() => {
+    const pre = (loadJson(STORAGE_KEYS.reviewDrafts, {}) || {})[String(review.id || reviewMergeKey(review))];
+    if (pre) { setDraft(pre); setOpen(true); setPrepared(true); }
+  }, [review]);
   if (!llmReady) return null;
   const lang = (review.country && !/pol/i.test(review.country)) ? "en" : "pl";
   const gen = async () => {
@@ -50,6 +56,7 @@ function ReviewReplyDraft({ review }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button style={btn} onClick={gen} disabled={loading}><Sparkles size={12} /> {loading ? "Generuję…" : draft ? "Przegeneruj" : "Wygeneruj odpowiedź"}</button>
         {open && draft && <button style={btn} onClick={() => navigator.clipboard?.writeText(draft)}>Kopiuj</button>}
+        {prepared && <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 999, background: "#8b5cf622", color: "#a78bfa", alignSelf: "center" }}>AI przygotował</span>}
       </div>
       {open && (
         <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4}
@@ -187,6 +194,32 @@ function ReviewsPanel({ dark, isManager, showToast }) {
     setLastRefresh(new Date());
   }, []);
 
+  // 4.18/4.19: wykryj NOWE opinie względem trwałego zbioru „widzianych", powiadom w aplikacji
+  // i dla krytycznych (≤4/10) przygotuj z góry draft odpowiedzi AI (gotowy, gdy otworzysz opinię).
+  const notifyNewReviews = React.useCallback((incoming) => {
+    const idOf = (r) => String(r.id || reviewMergeKey(r));
+    const seen = loadJson(STORAGE_KEYS.reviewsSeen, null);
+    const seenSet = new Set(Array.isArray(seen) ? seen : []);
+    const fresh = incoming.filter((r) => !seenSet.has(idOf(r)));
+    saveJson(STORAGE_KEYS.reviewsSeen, incoming.map(idOf));
+    if (!seen || !fresh.length) return;            // pierwszy załadunek → nie powiadamiaj o historii
+    const critical = fresh.filter((r) => Number(r.score) <= 4);
+    const word = fresh.length === 1 ? "nowa opinia" : "nowych opinii";
+    showToast && showToast(`Booking: ${fresh.length} ${word}${critical.length ? ` — ${critical.length} wymaga odpowiedzi` : ""}.`, critical.length ? "warning" : "info");
+    if (!llmReady || !critical.length) return;
+    (async () => {                                  // 4.19: drafty AI dla krytycznych, zapisane lokalnie
+      const store = loadJson(STORAGE_KEYS.reviewDrafts, {}) || {};
+      for (const r of critical) {
+        if (store[idOf(r)]) continue;
+        try {
+          const lang = (r.country && !/pol/i.test(r.country)) ? "en" : "pl";
+          store[idOf(r)] = await generateReviewReply({ score: r.score, positives: r.positives, negatives: r.negatives, guest_name: r.guest_name, language: lang });
+        } catch { /* pomiń — draft można wygenerować ręcznie */ }
+      }
+      saveJson(STORAGE_KEYS.reviewDrafts, store);
+    })();
+  }, [showToast]);
+
   const syncBookingReviews = React.useCallback(async ({ manual = false } = {}) => {
     if (syncInFlight.current) return;
     const api = window.electronAPI?.syncBookingReviews;
@@ -207,6 +240,7 @@ function ReviewsPanel({ dark, isManager, showToast }) {
 
       if (incoming.length) {
         setReviews(prev => mergeBookingReviews(prev, incoming));
+        notifyNewReviews(incoming);   // 4.18/4.19: powiadom o nowych + przygotuj draft AI
       } else {
         applyLocalRefresh();
       }
@@ -242,7 +276,7 @@ function ReviewsPanel({ dark, isManager, showToast }) {
     } finally {
       syncInFlight.current = false;
     }
-  }, [applyLocalRefresh, bookingMeta?.officialScore, bookingMeta?.officialTotal, showToast]);
+  }, [applyLocalRefresh, bookingMeta?.officialScore, bookingMeta?.officialTotal, showToast, notifyNewReviews]);
 
   // Live Booking: start + polling co 5 min. Storage event zostaje dla zmian z innych okien.
   React.useEffect(() => {
