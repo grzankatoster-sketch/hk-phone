@@ -60,11 +60,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .hdr .spacer{flex:1}
 .dot{width:7px;height:7px;border-radius:50%;background:#7ad9a8;flex-shrink:0;box-shadow:0 0 6px rgba(122,217,168,.7)}
 .dot.off{background:#f59ea6;box-shadow:0 0 6px rgba(245,158,166,.7)}
+.datewrap{position:relative}
 .datechip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1.5px solid var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit}
 .datechip .dlbl{font-family:'DM Serif Display',Georgia,serif;font-size:14px;color:#fff}
 .datechip .dsub{font-size:8.5px;color:var(--gold);letter-spacing:.05em}
-.calbtn{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
-.calbtn:hover{background:rgba(255,255,255,.16)}
+.datechip .chev{margin-left:2px;transition:transform .2s;color:var(--gold)}
+.datechip.open .chev{transform:rotate(180deg)}
+/* Rozwijana lista dni (zamiast osobnego okna) — 3 dni, tyle ile realnie ma dane raport. */
+.daydrop{position:absolute;top:calc(100% + 8px);right:0;background:var(--paper);border:1.5px solid var(--line-strong);border-radius:14px;box-shadow:0 12px 32px rgba(45,20,34,.22);padding:8px;display:none;flex-direction:column;gap:6px;z-index:20;min-width:220px}
+.daydrop.open{display:flex}
+.dayrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--cream);cursor:pointer;border:1.5px solid transparent}
+.dayrow:hover{border-color:var(--line-strong)}
+.dayrow.sel{background:linear-gradient(155deg,var(--plum-deep),var(--plum));border-color:var(--gold)}
+.dayrow .dname{font-family:'DM Serif Display',Georgia,serif;font-size:15px;color:var(--plum)}
+.dayrow.sel .dname{color:#fff}
+.dayrow .dcnt{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--green)}
+.dayrow.sel .dcnt{color:var(--gold)}
 
 /* ── Przełącznik Śniadanie/Kolacja — pełna szerokość, jedna kategoria naraz ── */
 .tabs{display:flex;gap:10px;padding:12px 20px;background:var(--paper);border-bottom:1.5px solid var(--line);flex-shrink:0}
@@ -146,8 +157,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
   </div>
   <div class="spacer"></div>
   <div class="dot" id="dot"></div>
-  <div class="datechip" id="datechip" onclick="openCalendar()"><span>📅</span><div><div class="dlbl" id="dchipLbl">Dziś</div><div class="dsub">DOTKNIJ, ABY ZMIENIĆ</div></div></div>
-  <div class="calbtn" title="Kalendarz śniadań" onclick="openCalendar()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+  <div class="datewrap">
+    <div class="datechip" id="datechip" onclick="toggleCalendar()">
+      <span>📅</span><div><div class="dlbl" id="dchipLbl">Dziś</div><div class="dsub">DOTKNIJ, ABY ZMIENIĆ</div></div>
+      <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+    </div>
+    <div class="daydrop" id="daydrop"></div>
+  </div>
 </div>
 
 <div class="notoday" id="notoday">
@@ -201,14 +217,66 @@ let viewDate = params.get("date") || todayIso; // dzień oglądany — domyślni
 const escHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
 
+const DOW = ["ND","PON","WT","ŚR","CZW","PT","SO"];
+
 function updateDateChip(){
   const [y,m,d] = viewDate.split("-").map(Number);
   const isToday = viewDate === todayIso;
   document.getElementById("dchipLbl").textContent = isToday ? "Dziś, " + d + " " + MON[m-1] : d + " " + MON[m-1];
   document.getElementById("notoday").classList.toggle("show", !isToday);
 }
-window.openCalendar = () => { window.open("posilki-kalendarz.html" + (DEMO?"?demo=1":""), "_blank"); };
-window.goToday = () => { location.href = "posilki.html" + (DEMO?"?demo=1":""); };
+
+// Rozwijana lista dni (zamiast osobnego okna) — tylko 3 dni, bo raport z KWHotel
+// i tak nigdy nie ma danych na więcej (przychodzi mailem 2x dziennie, zawsze 3 dni do przodu).
+let calendarLoaded = false;
+window.toggleCalendar = async () => {
+  const drop = document.getElementById("daydrop");
+  const chip = document.getElementById("datechip");
+  const opening = !drop.classList.contains("open");
+  drop.classList.toggle("open", opening);
+  chip.classList.toggle("open", opening);
+  if (opening && !calendarLoaded) {
+    calendarLoaded = true;
+    await renderCalendarDrop();
+  }
+};
+
+async function renderCalendarDrop(){
+  const drop = document.getElementById("daydrop");
+  const today = new Date(); today.setHours(0,0,0,0);
+  const days = [0,1,2].map(i => isoDate(new Date(today.getTime() + i*86400000)));
+  let counts = {};
+  if (DEMO) {
+    days.forEach((iso,i) => { counts[iso] = [12,9,14][i]; });
+  } else if (sb) {
+    try {
+      const from = days[0], to = days[days.length-1];
+      const { data } = await sb.from("meal_plans").select("room,arrival,departure").eq("tenant_id", TENANT_ID).lte("arrival", to).gte("departure", from);
+      (data||[]).forEach(p => { days.forEach(iso => { if (p.arrival <= iso && iso <= p.departure) counts[iso] = (counts[iso]||0)+1; }); });
+    } catch (e) { /* pokaż zera */ }
+  }
+  drop.innerHTML = days.map(iso => {
+    const d = new Date(iso + "T00:00:00");
+    const label = iso === todayIso ? "Dziś, " + d.getDate() + " " + MON[d.getMonth()] : DOW[d.getDay()] + ", " + d.getDate() + " " + MON[d.getMonth()];
+    return `<div class="dayrow ${iso===viewDate?"sel":""}" onclick="selectDay('${iso}')"><span class="dname">${label}</span><span class="dcnt">${counts[iso]||0} śniad.</span></div>`;
+  }).join("");
+}
+
+window.selectDay = (iso) => {
+  viewDate = iso;
+  document.getElementById("daydrop").classList.remove("open");
+  document.getElementById("datechip").classList.remove("open");
+  history.replaceState(null, "", location.pathname + "?date=" + iso + (DEMO?"&demo=1":""));
+  loadAll();
+};
+window.goToday = () => selectDay(todayIso);
+document.addEventListener("click", (e) => {
+  const wrap = document.querySelector(".datewrap");
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById("daydrop").classList.remove("open");
+    document.getElementById("datechip").classList.remove("open");
+  }
+});
 
 function tickClock(){
   const d = new Date(), t = pad(d.getHours())+":"+pad(d.getMinutes());
