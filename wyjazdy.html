@@ -452,8 +452,28 @@ async function tick() {
   }
 }
 
-tick();
-setInterval(tick, 5000);
+// ── Bramka dostępu: link musi nieść ?t=<token> ważny dla strony 'wyjazdy'
+// (migracja 0053) — dotąd strona była otwarta dla każdego, kto poznał adres URL
+// (żadnego tokena/roli), mimo że pokazuje realne dane wyjazdów gości.
+const _wyjParams = new URLSearchParams(location.search);
+const PAGE_TOKEN = (_wyjParams.get("t") || "").trim();
+async function boot() {
+  let ok = false;
+  try {
+    if (PAGE_TOKEN && sb) {
+      const { data } = await sb.rpc("check_page_token", { p_token: PAGE_TOKEN, p_page: "wyjazdy" });
+      ok = data === true;
+    }
+  } catch (e) { ok = false; }
+  if (!ok) {
+    document.getElementById("days").innerHTML = '<div class="foot">Brak dostępu. Otwórz stronę z właściwym linkiem (adres musi zawierać ?t=...).</div>';
+    const dot = document.getElementById("dot"); if (dot) dot.className = "dot off";
+    return;
+  }
+  tick();
+  setInterval(tick, 5000);
+}
+boot();
 </script>
 </body>
 </html>
