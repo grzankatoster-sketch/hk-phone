@@ -120,6 +120,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fob .fextra button{width:20px;height:20px;border-radius:6px;border:none;background:rgba(0,0,0,.14);color:rgba(255,255,255,.8);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .fob .fextra span{font-size:9.5px;font-weight:800;color:rgba(255,255,255,.85)}
 
+/* Kafel GRUPY — więcej miejsca (nazwa firmy + duże liczby), stepper zamiast
+   pojedynczych dotknięć (grupy bywają 20-45-osobowe, tap-po-1 byłby niepraktyczny). */
+.fob.group{width:236px;cursor:default;text-align:left;padding:14px 14px 12px}
+.fob.group .fno{font-size:13px;letter-spacing:.08em;text-align:left;margin-top:2px;text-transform:uppercase;opacity:.85}
+.fob.group .fguest{font-size:14px;white-space:normal;text-align:left;margin-top:2px}
+.fob.group .fprog{font-size:12.5px;text-align:left;margin-top:2px}
+.fob.group .gstep{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap}
+.fob.group .gstep button{border:none;border-radius:8px;background:rgba(0,0,0,.16);color:#fff;font-weight:800;font-size:12px;padding:7px 0;cursor:pointer;flex:1;min-width:30px}
+.fob.group .gstep button.gall{flex:2;background:rgba(255,255,255,.22)}
+
 /* Stan wykonany — wstążka w rogu (nie zasłania numeru) + lekkie przygaszenie */
 .fob.done{filter:saturate(.6) brightness(.9)}
 .fob.done::after{
@@ -252,8 +262,8 @@ async function renderCalendarDrop(){
   } else if (sb) {
     try {
       const from = days[0], to = days[days.length-1];
-      const { data } = await sb.from("meal_plans").select("room,arrival,departure").eq("tenant_id", TENANT_ID).lte("arrival", to).gte("departure", from);
-      (data||[]).forEach(p => { days.forEach(iso => { if (p.arrival < iso && iso <= p.departure) counts[iso] = (counts[iso]||0)+1; }); });
+      const { data } = await sb.from("meal_plans").select("room,persons,arrival,departure").eq("tenant_id", TENANT_ID).lte("arrival", to).gte("departure", from);
+      (data||[]).forEach(p => { days.forEach(iso => { if (p.arrival < iso && iso <= p.departure) counts[iso] = (counts[iso]||0)+(p.persons||1); }); });
     } catch (e) { /* pokaż zera */ }
   }
   drop.innerHTML = days.map(iso => {
@@ -348,8 +358,9 @@ const eatsDinner = (p) => p.arrival <= viewDate && viewDate < p.departure;
 
 function render(){
   const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
-  document.getElementById("countBreakfast").textContent = plans.filter(eatsBreakfast).length;
-  document.getElementById("countDinner").textContent = plans.filter(p=>p.category==="HB" && eatsDinner(p)).length;
+  const sumPersons = (arr) => arr.reduce((s,p) => s + (p.persons||1), 0);
+  document.getElementById("countBreakfast").textContent = sumPersons(plans.filter(eatsBreakfast));
+  document.getElementById("countDinner").textContent = sumPersons(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
   const board = document.getElementById("board");
   if (!rows.length) {
     board.innerHTML = `<div class="empty">Brak pokoi na ${meal==="breakfast"?"śniadanie":"kolację (HB)"} ${viewDate===todayIso?"dzisiaj":"tego dnia"}.</div>`;
@@ -360,6 +371,7 @@ function render(){
 }
 
 function fobHtml(p, mealKey){
+  if (p.is_group) return fobHtmlGroup(p, mealKey);
   const catClass = p.category.toLowerCase();
   const c = checkins[`${p.room}|${mealKey}`] || { checked_persons: 0, extra_persons: 0 };
   const checked = c.checked_persons || 0;
@@ -376,6 +388,28 @@ function fobHtml(p, mealKey){
     <div class="fextra" title="Dokupione">
       ${extra>0?`<span>+${extra}</span>`:""}
       <button onclick="event.stopPropagation();extraStep('${p.room}','${mealKey}',1)">+</button>
+    </div>
+  </div>`;
+}
+
+// Grupa: bez pojedynczego pokoju z raportu, headcount bywa 20-45 osób —
+// tap-po-jednej-osobie byłby niepraktyczny, więc stepper +1/+5 i "cała grupa".
+function fobHtmlGroup(p, mealKey){
+  const catClass = p.category.toLowerCase();
+  const c = checkins[`${p.room}|${mealKey}`] || { checked_persons: 0, extra_persons: 0 };
+  const checked = c.checked_persons || 0;
+  const done = checked >= p.persons;
+  return `<div class="fob group ${catClass} ${done?"done":""}">
+    <div class="fno">GRUPA</div>
+    <div class="fguest">${escHtml(p.guest_name || p.room)}</div>
+    <div class="fcat">${CAT_ICON[p.category]||""}${p.category}</div>
+    <div class="fprog">${checked}/${p.persons} osób</div>
+    <div class="gstep">
+      <button onclick="groupStep('${p.room}','${mealKey}',-5,${p.persons})">−5</button>
+      <button onclick="groupStep('${p.room}','${mealKey}',-1,${p.persons})">−1</button>
+      <button onclick="groupStep('${p.room}','${mealKey}',1,${p.persons})">+1</button>
+      <button onclick="groupStep('${p.room}','${mealKey}',5,${p.persons})">+5</button>
+      <button class="gall" onclick="groupStep('${p.room}','${mealKey}',${p.persons},${p.persons})">Cała grupa</button>
     </div>
   </div>`;
 }
@@ -404,6 +438,11 @@ window.undo = (room, mealKey) => {
 window.extraStep = (room, mealKey, delta) => {
   const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
   submit(room, mealKey, c.checked_persons||0, Math.max(0,(c.extra_persons||0)+delta));
+};
+window.groupStep = (room, mealKey, delta, persons) => {
+  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
+  const next = Math.max(0, Math.min(persons, (c.checked_persons||0)+delta));
+  submit(room, mealKey, next, c.extra_persons||0);
 };
 
 loadAll();
