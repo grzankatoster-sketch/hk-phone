@@ -216,7 +216,6 @@ let replyOpen  = null; // roomNo|null — otwarty panel odpowiedzi do recepcji
 let replyDraft = {};   // { roomNo: "tekst" } — robocza treść własnej odpowiedzi
 
 // Team state
-let allAssignments = {}; // { workerName: [roomNo, ...] }
 let allRoomStates  = {}; // { roomNo: roomRow }
 let allLogs        = []; // recent hk_logs
 let hkReminders    = []; // przypomnienia od kierownika HK (hk_reminders)
@@ -768,7 +767,6 @@ async function loadTeamData() {
   ]);
 
   if (plan) {
-    allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
     roomTypes = plan.room_types || roomTypes;
   }
   if (rData) {
@@ -795,7 +793,6 @@ async function refreshData() {
       pmRoomTypes = plan.pm_room_types || {};
       roomTypes = plan.room_types || {};
       isPm = myPmRooms.length > 0 && myRooms.length === 0;
-      allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
     }
     const allRooms = [...myRooms, ...myPmRooms];
     if (allRooms.length) {
@@ -886,7 +883,6 @@ async function init() {
     pmRoomTypes = plan.pm_room_types || {};
     roomTypes = plan.room_types || {};
     isPm = myPmRooms.length > 0 && myRooms.length === 0;
-    allAssignments = {...(plan.assignments||{}), ...(plan.pm_assignments||{})};
   }
 
   const allRooms = [...myRooms, ...myPmRooms];
@@ -928,7 +924,6 @@ async function init() {
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"hk_plan",filter:`date=eq.${TODAY}`}, async ({new:row})=>{
       const newRooms   = (row.assignments   ||{})[WORKER] || [];
       const newPmRooms = (row.pm_assignments||{})[WORKER] || [];
-      allAssignments = {...(row.assignments||{}), ...(row.pm_assignments||{})};
       // Zmiana TYPU pokoju (DBL→TWIN itd.) na MOICH pokojach — to się dotąd
       // działo po cichu (tylko przerysowanie). Wykrywamy diff i alarmujemy.
       const nextTypes = row.room_types || roomTypes;
