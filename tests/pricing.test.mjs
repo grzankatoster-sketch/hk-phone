@@ -49,4 +49,18 @@ describe("suggestPrice", () => {
   it("śmieciowa baza → 0, bez NaN", () => {
     expect(suggestPrice({ basePrice: "abc", stayDate: "2026-07-24" }).suggested).toBe(0);
   });
+
+  it("event boost podnosi cenę i trafia do czynników; nigdy nie obniża (≥1)", () => {
+    const withEvent = suggestPrice({ basePrice: 400, stayDate: "2026-07-21", eventBoost: 1.2 });
+    const noEvent = suggestPrice({ basePrice: 400, stayDate: "2026-07-21" });
+    expect(withEvent.suggested).toBeGreaterThan(noEvent.suggested);
+    expect(withEvent.factors.some(f => f.key === "event")).toBe(true);
+    expect(suggestPrice({ basePrice: 400, stayDate: "2026-07-21", eventBoost: 0.5 }).suggested).toBe(noEvent.suggested); // <1 ignorowane
+  });
+
+  it("pogoda działa w obie strony (mała waga)", () => {
+    const base = suggestPrice({ basePrice: 400, stayDate: "2026-07-21" }).suggested;
+    expect(suggestPrice({ basePrice: 400, stayDate: "2026-07-21", weatherFactor: 0.97 }).suggested).toBeLessThan(base);
+    expect(suggestPrice({ basePrice: 400, stayDate: "2026-07-21", weatherFactor: 1.02 }).suggested).toBeGreaterThan(base);
+  });
 });

@@ -19,15 +19,19 @@ export function occupancyFactor(occ) {
   return 0.9;
 }
 
-// stayDate: "YYYY-MM-DD". occupancy: 0..1 lub null (pomiń czynnik). min/maxPrice: widełki.
-export function suggestPrice({ basePrice, stayDate, occupancy = null, minPrice = null, maxPrice = null } = {}) {
+// stayDate: "YYYY-MM-DD". occupancy: 0..1 lub null (pomiń). eventBoost: mnożnik ≥1 od
+// imprezy w mieście (Ticketmaster 4.21, np. 1.15 za duży koncert) lub null. weatherFactor:
+// mnożnik ~0.97..1.02 od pogody (4.22, mała waga — słaby predyktor) lub null. min/maxPrice: widełki.
+export function suggestPrice({ basePrice, stayDate, occupancy = null, eventBoost = null, weatherFactor = null, minPrice = null, maxPrice = null } = {}) {
   const base = Math.max(0, Number(basePrice) || 0);
   const d = stayDate ? new Date(stayDate + "T12:00:00") : new Date();
   const dow = d.getDay();
   const dowF = DOW_FACTORS[dow] ?? 1;
   const occF = occupancy == null ? 1 : occupancyFactor(occupancy);
+  const evF = eventBoost == null ? 1 : Math.max(1, Number(eventBoost) || 1);   // impreza tylko podbija
+  const wF = weatherFactor == null ? 1 : (Number(weatherFactor) || 1);          // pogoda w obie strony, mała
 
-  let suggested = Math.round(base * dowF * occF);
+  let suggested = Math.round(base * dowF * occF * evF * wF);
   let clamped = null;
   if (minPrice != null && suggested < Number(minPrice)) { suggested = Math.round(Number(minPrice)); clamped = "min"; }
   if (maxPrice != null && suggested > Number(maxPrice)) { suggested = Math.round(Number(maxPrice)); clamped = "max"; }
@@ -37,6 +41,8 @@ export function suggestPrice({ basePrice, stayDate, occupancy = null, minPrice =
     { key: "dow", label: DOW_LABELS[dow], factor: dowF },
   ];
   if (occupancy != null) factors.push({ key: "occ", label: `obłożenie ${Math.round(occupancy * 100)}%`, factor: occF });
+  if (eventBoost != null && evF !== 1) factors.push({ key: "event", label: "impreza w mieście", factor: evF });
+  if (weatherFactor != null && wF !== 1) factors.push({ key: "weather", label: "pogoda", factor: wF });
   if (clamped) factors.push({ key: "clamp", label: `widełki (${clamped})`, value: suggested });
 
   const reason = factors
