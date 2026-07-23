@@ -253,7 +253,7 @@ async function renderCalendarDrop(){
     try {
       const from = days[0], to = days[days.length-1];
       const { data } = await sb.from("meal_plans").select("room,arrival,departure").eq("tenant_id", TENANT_ID).lte("arrival", to).gte("departure", from);
-      (data||[]).forEach(p => { days.forEach(iso => { if (p.arrival <= iso && iso <= p.departure) counts[iso] = (counts[iso]||0)+1; }); });
+      (data||[]).forEach(p => { days.forEach(iso => { if (p.arrival < iso && iso <= p.departure) counts[iso] = (counts[iso]||0)+1; }); });
     } catch (e) { /* pokaż zera */ }
   }
   drop.innerHTML = days.map(iso => {
@@ -299,10 +299,12 @@ let checkins = {}; // `${room}|${meal}` -> {checked_persons, extra_persons}
 const DEMO_GUESTS = ["Kowalski A.","Nowak B.","Wiśniewski C.","Wójcik D.","Kamiński E.","Lewandowski F.","Zieliński G.","Szymański H.","Woźniak I.","Dąbrowski J.","Kozłowski K.","Jankowski L.","Mazur M.","Krawczyk N.","Piotrowski O."];
 function buildDemoPlans(){
   const out = [];
+  const yesterday = isoDate(new Date(Date.now() - 86400000));
+  const dayAfterTomorrow = isoDate(new Date(Date.now() + 2*86400000));
   for (let i=0;i<18;i++){
     const floor = 1+(i%3);
     const room = String(floor*100 + 1 + Math.floor(i/3));
-    out.push({ room, guest_name: DEMO_GUESTS[i%DEMO_GUESTS.length], category: (i%4===0)?"HB":"BB", persons: (i%7===0)?2:1 });
+    out.push({ room, guest_name: DEMO_GUESTS[i%DEMO_GUESTS.length], category: (i%4===0)?"HB":"BB", persons: (i%7===0)?2:1, arrival: yesterday, departure: dayAfterTomorrow });
   }
   return out;
 }
@@ -338,10 +340,16 @@ async function loadAll(){
   render();
 }
 
+// Śniadanie: NIGDY w dzień przyjazdu (potwierdzone realnym raportem — gość
+// jeszcze nie spędził nocy), zawsze w dzień wyjazdu. Kolacja/HB: odwrotnie —
+// noc przyjazdu tak, dzień wyjazdu nie (gość wyjeżdża przed kolacją).
+const eatsBreakfast = (p) => p.arrival < viewDate && viewDate <= p.departure;
+const eatsDinner = (p) => p.arrival <= viewDate && viewDate < p.departure;
+
 function render(){
-  const rows = meal === "breakfast" ? plans : plans.filter(p => p.category === "HB");
-  document.getElementById("countBreakfast").textContent = plans.length;
-  document.getElementById("countDinner").textContent = plans.filter(p=>p.category==="HB").length;
+  const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
+  document.getElementById("countBreakfast").textContent = plans.filter(eatsBreakfast).length;
+  document.getElementById("countDinner").textContent = plans.filter(p=>p.category==="HB" && eatsDinner(p)).length;
   const board = document.getElementById("board");
   if (!rows.length) {
     board.innerHTML = `<div class="empty">Brak pokoi na ${meal==="breakfast"?"śniadanie":"kolację (HB)"} ${viewDate===todayIso?"dzisiaj":"tego dnia"}.</div>`;
