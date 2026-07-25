@@ -247,11 +247,14 @@ ipcMain.handle("hk-get-state", () => hkserver.getState());
 ipcMain.handle("hk-reset-day", (_, date) => { hkserver.resetDay(date); return { ok: true }; });
 
 // ─── Zapis PDF ────────────────────────────────────────────────────────────────
+// Katalog raportów konfigurowalny per instalacja (WYKONANIE 1.4): ustaw REPORTS_DIR
+// w .env obok exe, aby przenieść wszystkie raporty (inny hotel/dysk). Domyślnie jak dotąd.
+const REPORTS_BASE = process.env.REPORTS_DIR || "C:\\zmiany i raporty";
 const PDF_DIRS = {
-  "raporty dzienne":   "C:\\zmiany i raporty\\raporty dzienne",
-  "raporty dobowe":    "C:\\zmiany i raporty\\raporty dobowe",
-  "korekty i raporty": "C:\\zmiany i raporty\\korekty i raporty",
-  "hk":                "C:\\zmiany i raporty\\hk",
+  "raporty dzienne":   path.join(REPORTS_BASE, "raporty dzienne"),
+  "raporty dobowe":    path.join(REPORTS_BASE, "raporty dobowe"),
+  "korekty i raporty": path.join(REPORTS_BASE, "korekty i raporty"),
+  "hk":                path.join(REPORTS_BASE, "hk"),
 };
 ipcMain.handle("save-pdf", async (_, { filename, dataBase64, folder }) => {
   try {
@@ -270,7 +273,7 @@ ipcMain.handle("save-pdf", async (_, { filename, dataBase64, folder }) => {
 
 // ─── QR kody (Supabase Storage) ───────────────────────────────────────────────
 // Automatyczne plany HK z KWHotel
-const HK_AUTOMATION_DIR = process.env.HK_AUTOMATION_DIR || "C:\\zmiany i raporty\\hk-automation";
+const HK_AUTOMATION_DIR = process.env.HK_AUTOMATION_DIR || path.join(REPORTS_BASE, "hk-automation");
 const isDateKey = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
 ipcMain.handle("hk-automation-get-plan", async (_, dateKey) => {
   try {

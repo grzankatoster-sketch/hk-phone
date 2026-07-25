@@ -174,6 +174,11 @@ export default function PricingPanel({ showToast }) {
                       <td style={{ padding: "6px 8px", fontWeight: 800 }}>
                         {proposed != null ? `${fmtMoney(proposed)} zł` : "—"}
                         {p && p.discount > 0 && <span style={{ marginLeft: 5, fontSize: 10, color: "#f87171" }}>−{Math.round(p.discount * 100)}%</span>}
+                        {rec.competitor != null && proposed != null && (
+                          <span style={{ marginLeft: 6, fontSize: 10, color: proposed <= rec.competitor ? "#34d399" : "#f59e0b" }} title="różnica do konkurencji">
+                            {proposed <= rec.competitor ? "≤" : "+"}{fmtMoney(Math.abs(proposed - rec.competitor))} vs konk.
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: "6px 8px" }}>
                         <input style={{ ...inp, width: 48 }} placeholder="%" value={rec.occupancy != null ? Math.round(rec.occupancy * 100) : ""}
