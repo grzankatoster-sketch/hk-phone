@@ -153,11 +153,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fob .fguest{font-size:11px;font-weight:700;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .fob .fcat{display:inline-flex;align-items:center;gap:3px;font-size:8.5px;font-weight:800;letter-spacing:.03em;color:rgba(255,255,255,.85);background:rgba(0,0,0,.14);border-radius:999px;padding:2px 7px;margin-top:5px}
 .fob .fprog{font-size:9.5px;color:rgba(255,255,255,.65);margin-top:4px;font-variant-numeric:tabular-nums}
-/* Cofnij pomyłkowe kliknięcie — zawsze dostępne, przygaszone gdy nic do cofnięcia */
-.fob .fundo{position:absolute;bottom:6px;left:7px;width:24px;height:24px;border-radius:7px;border:none;
-  background:rgba(0,0,0,.16);color:rgba(255,255,255,.85);font-size:12px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:opacity .15s}
-.fob .fundo:disabled{opacity:.25;cursor:default}
 /* Stan "uzbrojony" — pokój 1-osobowy po 1. dotknięciu, czeka na potwierdzenie
    drugim dotknięciem (żeby jedno przypadkowe kliknięcie go nie zamykało). */
 .fob.confirming{animation:confirmPulse 1s ease-in-out infinite}
@@ -493,9 +488,6 @@ function fobHtml(p, mealKey){
   const done = checked >= p.persons;
   const isConfirming = confirming.has(`${p.room}|${mealKey}`);
   return `<div class="fob ${catClass} ${done?"done":""} ${isConfirming?"confirming":""}" data-room="${p.room}" onclick="tap('${p.room}','${mealKey}',${p.persons})">
-    <button class="fundo" title="Cofnij pomyłkowe kliknięcie" onclick="event.stopPropagation();undo('${p.room}','${mealKey}')" ${checked===0 && !isConfirming?"disabled":""}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 7"/></svg>
-    </button>
     <div class="fno">${escHtml(p.room)}</div>
     <div class="fguest">${escHtml(p.guest_name || "—")}</div>
     <div class="fcat">${CAT_ICON[dispCat]||""}${dispCat}</div>
