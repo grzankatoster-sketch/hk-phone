@@ -1249,10 +1249,6 @@ function showReminderModal(r) {
     "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb"
   );
   init();
-  if (WORKER && typeof mountPushButton === "function") {
-    mountPushButton({ sb, tenant: TENANT_ID, worker: WORKER, role: "hk" });
-  }
-  if (!EMBED && WORKER && typeof mountInstallPrompt === "function") setTimeout(mountInstallPrompt, 1500);
 })();
 </script>
 </body>
