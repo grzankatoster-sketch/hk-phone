@@ -5,14 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>HK Panel</title>
 <script>
-/* Motyw ustawiany PRZED pierwszym malowaniem, żeby uniknąć "błysku". Domyślnie
-   CIEMNY — praca w terenie/słabe światło (localStorage "hk_theme"="light" dla jasnego). */
-(function(){
-  try{
-    var t = localStorage.getItem("hk_theme");
-    document.documentElement.classList.toggle("dark", t !== "light");
-  }catch(e){ document.documentElement.classList.add("dark"); }
-})();
+/* Tylko ciemny motyw — praca w terenie/słabe światło, bez przełącznika. */
+document.documentElement.classList.add("dark");
 </script>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
@@ -105,6 +99,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .stat-l{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-top:1px}
 .sections{padding:12px 12px 80px}
 .section-title{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 8px}
+.group-sep{margin-top:14px;padding-top:10px;border-top:1.5px dashed var(--line-strong);font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+.group-sep:first-child{border-top:none;padding-top:0;margin-top:0}
 .room-card{background:var(--paper);border-radius:12px;margin-bottom:8px;overflow:hidden;border:1.5px solid var(--line);box-shadow:0 1px 2px rgba(90,29,74,.04);transition:border-color .2s}
 .room-card.cleaning{border-color:var(--blue)}
 .room-card.done{border-color:var(--green)}
@@ -248,6 +244,7 @@ const MAX_FAULT_PHOTOS = 5;
 let isPm       = false;
 let pmRoomTypes = {};
 let roomTypes  = {}; // { roomNo: "DBL"|"TWIN"|... } — typ fizyczny pokoju (z hk_plan.room_types)
+let roomNotes  = {}; // { roomNo: string[] } — dodatkowe info od recepcji (karta gościa, z hk_plan.room_notes)
 let activeTab  = "rooms";
 let roomRequestSent = false; // czy pracownik wysłał już prośbę o pokój (dziś)
 let replyOpen  = null; // roomNo|null — otwarty panel odpowiedzi do recepcji
@@ -259,14 +256,6 @@ let allLogs        = []; // recent hk_logs
 let checkItems     = []; // aktywne zadania planu kontroli HK (hk_check_items) na dziś
 let hkReminders    = []; // przypomnienia od kierownika HK (hk_reminders)
 let pendingExchanges = []; // parsed from logs
-
-// ─── Motyw jasny/ciemny ────────────────────────────────────────────────────────
-window.toggleTheme = () => {
-  const dark = !document.documentElement.classList.contains("dark");
-  document.documentElement.classList.toggle("dark", dark);
-  try{ localStorage.setItem("hk_theme", dark?"dark":"light"); }catch(e){}
-  render();
-};
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 function toast(msg, color="var(--green)", ms=2200) {
@@ -395,7 +384,6 @@ function render() {
     <div class="avatar" style="background:${WCOLOR}">${WORKER.charAt(0).toUpperCase()}</div>
     <div class="name">${WORKER}</div>
     <div class="shift-badge" style="background:rgba(255,255,255,.16); color:${isPm?"#f0d6e8":"#cdeede"}">${isPm?"PM":"Rano"}</div>
-    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Zmień motyw" title="Zmień motyw">${document.documentElement.classList.contains("dark")?"☀️":"🌙"}</button>
   </div>
   <div class="tabs">
     <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
@@ -437,7 +425,17 @@ function render() {
   }
   if (waiting.length) {
     html += `<div class="section-title">Do sprzątania (${waiting.length})</div>`;
-    waiting.forEach(r => { html += roomCard(r, roomStates[r]?.vacated?"vacated":"W"); });
+    // Rozdzielamy wizualnie (odstęp jak piętra w posilki.html): zwykłe sprzątanie
+    // wyjazdów vs pobyty PG vs pobyty PGZ (zmiana pościeli) — inny rodzaj pracy.
+    const wNormal = waiting.filter(r => pmRoomTypes[r] !== "PG" && pmRoomTypes[r] !== "PGZ");
+    const wPG     = waiting.filter(r => pmRoomTypes[r] === "PG");
+    const wPGZ    = waiting.filter(r => pmRoomTypes[r] === "PGZ");
+    [["", wNormal], ["PG — pobyt", wPG], ["PGZ — pobyt, zmiana pościeli", wPGZ]]
+      .filter(([, list]) => list.length)
+      .forEach(([label, list]) => {
+        if (label) html += `<div class="group-sep">${label}</div>`;
+        list.forEach(r => { html += roomCard(r, roomStates[r]?.vacated?"vacated":"W"); });
+      });
   }
   if (done.length) {
     html += `<div class="section-title">Gotowe (${done.length})</div>`;
@@ -468,8 +466,8 @@ function renderTeamHtml() {
   // ── Przypomnienia od kierownika HK ──
   if (hkReminders && hkReminders.length) {
     html += `<div class="team-section" style="padding:14px;margin-bottom:12px;border-left:3px solid var(--plum)">
-      <div style="font-size:13px;font-weight:800;color:var(--plum-ink);margin-bottom:6px">🔔 Przypomnienia od kierownika</div>
-      ${hkReminders.map(r=>`<div style="font-size:13px;color:#2d1422;padding:6px 0;border-top:1px solid rgba(90,29,74,.08)">${escHtml(r.body)}</div>`).join("")}
+      <div style="font-size:13px;font-weight:800;color:var(--plum-ink);margin-bottom:6px">Przypomnienia od kierownika</div>
+      ${hkReminders.map(r=>`<div style="font-size:13px;color:var(--ink);padding:6px 0;border-top:1px solid var(--line)">${escHtml(r.body)}</div>`).join("")}
     </div>`;
   }
 
@@ -713,6 +711,9 @@ function roomCard(no, status) {
   const isLateCheckout = status==="W" && lateCheckoutFor(no);
   const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
+  // Dodatkowe info od recepcji (karta gościa: prośby, "sprząta codziennie"…).
+  const notes = roomNotes[no] || [];
+  const notesBanner = notes.length ? `<div class="prio-banner" style="color:var(--plum-ink);background:var(--tint);border-color:var(--line-strong);text-align:left">📝 ${notes.map(escHtml).join("<br>")}</div>` : "";
   // Przycisk odpowiedzi (z gotowcami) pokazujemy TYLKO gdy recepcja faktycznie
   // pyta o status pokoju. Bez pytania pracownik widzi sam "Zaczynam sprzątać".
   const replyBtn   = pendingAsk ? `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>` : "";
@@ -727,7 +728,7 @@ function roomCard(no, status) {
     buttons = `<div class="btn-row"><button class="btn btn-blue" style="flex:3" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>${replyBtn}</div>`;
     // Dla pobytów od razu drugi przycisk obok startu (nie po rozpoczęciu sprzątania).
     if (isPobyt) buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
-    if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber-ink);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
+    if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber-ink);font-weight:700;text-align:center;margin-bottom:8px">Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
       <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
@@ -736,18 +737,18 @@ function roomCard(no, status) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
-  buttons = dndBanner + prioBanner + lateBanner + askBanner + buttons + replyUI + checkBox(no);
+  buttons = dndBanner + prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkBox(no);
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
       <div class="room-no" style="color:${col}">${no}</div>
       ${roomTypes[no]?`<div class="room-phystype${_typeChangedRooms.has(no)?" type-changed":""}">${escHtml(roomTypes[no])}${_typeChangedRooms.has(no)?" 🔄":""}</div>`:""}
-      <div class="room-status" style="color:${col}">${lbl}</div>
+      ${(status==="W"||status==="vacated")?"":`<div class="room-status" style="color:${col}">${lbl}</div>`}
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
       <button type="button" title="${isDnd?"Zdejmij: nie przeszkadzać":"Oznacz: nie przeszkadzać"}"
               onclick="event.stopPropagation();toggleDnd('${no}')"
-              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;opacity:${isDnd?1:.35}">🔕</button>
+              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;margin-left:auto;opacity:${isDnd?1:.35}">🔕</button>
     </div>
     ${buttons ? `<div style="padding:0 12px 12px">${buttons}</div>` : ""}
   </div>`;
@@ -937,7 +938,7 @@ async function reportFound(room) {
 async function loadTeamData() {
   if (!sb) return;
   const [{ data: plan }, { data: rData }, { data: lData }, remRes, ckRes] = await Promise.all([
-    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single(),
+    sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types,room_notes").eq("date", TODAY).single(),
     sb.from("hk_rooms").select("*").eq("date", TODAY),
     sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
     sb.from("hk_reminders").select("body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(20).then(r=>r, ()=>({data:[]})),
@@ -946,6 +947,7 @@ async function loadTeamData() {
 
   if (plan) {
     roomTypes = plan.room_types || roomTypes;
+    roomNotes = plan.room_notes || roomNotes;
   }
   if (rData) {
     allRoomStates = {};
@@ -965,12 +967,13 @@ async function refreshData() {
   const ae = document.activeElement;
   if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // nie kasuj wpisywanego tekstu
   try {
-    const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
+    const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types,room_notes").eq("date", TODAY).single();
     if (plan) {
       myRooms   = sortRooms((plan.assignments   || {})[WORKER] || []);
       myPmRooms = sortRooms((plan.pm_assignments|| {})[WORKER] || []);
       pmRoomTypes = plan.pm_room_types || {};
       roomTypes = plan.room_types || {};
+      roomNotes = plan.room_notes || {};
       isPm = myPmRooms.length > 0 && myRooms.length === 0;
     }
     const allRooms = [...myRooms, ...myPmRooms];
@@ -1059,12 +1062,13 @@ async function init() {
   if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red-ink)">Brak konfiguracji Supabase.</div>'; return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
 
-  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
+  const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types,room_notes").eq("date", TODAY).single();
   if (plan) {
     myRooms   = sortRooms((plan.assignments   || {})[WORKER] || []);
     myPmRooms = sortRooms((plan.pm_assignments|| {})[WORKER] || []);
     pmRoomTypes = plan.pm_room_types || {};
     roomTypes = plan.room_types || {};
+    roomNotes = plan.room_notes || {};
     isPm = myPmRooms.length > 0 && myRooms.length === 0;
   }
 
@@ -1120,6 +1124,7 @@ async function init() {
         }
       }
       roomTypes = nextTypes;
+      roomNotes = row.room_notes || {};
       if (JSON.stringify(newRooms)!==JSON.stringify(myRooms)||JSON.stringify(newPmRooms)!==JSON.stringify(myPmRooms)) {
         myRooms=newRooms; myPmRooms=newPmRooms; pmRoomTypes=row.pm_room_types||{};
         isPm=myPmRooms.length>0&&myRooms.length===0;
