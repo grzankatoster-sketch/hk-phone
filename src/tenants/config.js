@@ -12,6 +12,7 @@
 //   VITE_HK_FLOOR2_JSON      — JSON array pokoi 2. piętra
 //   VITE_HK_FLOOR3_JSON      — JSON array pokoi 3. piętra
 //   VITE_HK_APTS             — numery apartamentów rozdzielone przecinkiem
+//   VITE_HK_APT_WEIGHT       — waga apartamentu przy przydziale HK (domyślnie 3)
 //   VITE_HK_SPECIAL_ROOMS    — pokoje specjalne rozdzielone przecinkiem
 //   VITE_HK_SGL_TWIN_ONLY    — pokoje SGL/TWIN-only rozdzielone przecinkiem
 //   VITE_HK_RETENTION_DAYS   — liczba dni przechowywania planów HK (domyślnie 31)
@@ -48,6 +49,7 @@ const hk = {
   floor2:           parseJson("VITE_HK_FLOOR2_JSON",   DEFAULTS.hk.floor2),
   floor3:           parseJson("VITE_HK_FLOOR3_JSON",   DEFAULTS.hk.floor3),
   apts:             parseList("VITE_HK_APTS",           DEFAULTS.hk.apts),
+  aptWeight:        parseInt(import.meta.env.VITE_HK_APT_WEIGHT || "") || DEFAULTS.hk.aptWeight,
   specialRooms:     parseList("VITE_HK_SPECIAL_ROOMS",  DEFAULTS.hk.specialRooms),
   roomsSglTwinOnly: parseList("VITE_HK_SGL_TWIN_ONLY",  DEFAULTS.hk.roomsSglTwinOnly),
   planRetentionDays: parseInt(import.meta.env.VITE_HK_RETENTION_DAYS || "") || DEFAULTS.hk.planRetentionDays,

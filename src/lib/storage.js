@@ -70,6 +70,9 @@ export const STORAGE_KEYS = Object.freeze({
   reviewsSeen: "reception-reviews-seen",
   reviewDrafts: "reception-review-drafts",
   testClockOffset: "reception-test-clock-offset",
+  roomGuests: "reception-room-guests",
+  firstRunDone: "reception-first-run-done",
+  tourSeenBy: "reception-tour-seen-by",
   // Prefiksy kluczy budowanych dynamicznie (dopisywany sufiks, np. -{data}/-{imię}):
   dismissedRemindersPrefix: "reception-dismissed-reminders",
 });

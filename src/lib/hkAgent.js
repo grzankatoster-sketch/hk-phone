@@ -2,6 +2,8 @@
 // Czysta funkcja — bez side-effectów, w pełni testowalna symulacją.
 // Recepcja zatwierdza lub odrzuca sugestie; pracownicy nie zamieniają się sami.
 
+import { hkW } from "./hk";
+
 // Akcje w hk_logs wykonywane PRZEZ sprzątające (z telefonu HK). Tylko one
 // kwalifikują autora logu jako pracownika HK obecnego dziś. Akcje recepcji
 // (reassign, priority, priority_off, info_request, vacate) NIE wchodzą — inaczej
@@ -13,6 +15,21 @@ export const HK_WORKER_ACTIONS = new Set([
   "room_request", "info_reply",
 ]);
 
+// Bierze z listy pokoi (w kolejności) tyle, aż skumulowana waga (hkW) osiągnie
+// targetWeight — zamiast liczby pokoi. Dzięki temu "przenieś połowę różnicy"
+// działa poprawnie także wtedy, gdy wśród przenoszonych są apartamenty
+// (1 apartament = HK_APT_WEIGHT zwykłych pokoi pod względem nakładu pracy).
+function takeByWeight(rooms, targetWeight) {
+  const picked = [];
+  let acc = 0;
+  for (const no of rooms) {
+    if (acc >= targetWeight) break;
+    picked.push(no);
+    acc += hkW(no);
+  }
+  return picked;
+}
+
 // Statystyki obciążenia per pracownik na podstawie przypisań i statusów pokoi.
 // roomStates: { [roomNo]: { status: 'W'|'czyszczenie'|'czyste'|'pominięte', ... } }
 // presentWorkers: lista osób obecnych dziś — dzięki niej do puli trafiają też osoby
@@ -23,15 +40,19 @@ export function workerStats(assignments, roomStates, presentWorkers = []) {
   for (const w of names) {
     const rooms = (assignments || {})[w];
     const list = Array.isArray(rooms) ? rooms : [];
-    let done = 0, cleaning = 0, waiting = 0;
+    let done = 0, cleaning = 0, waiting = 0, waitingWeight = 0, cleaningWeight = 0;
     const waitingRooms = [];
     for (const no of list) {
       const st = roomStates?.[no]?.status;
       if (st === "czyste" || st === "pominięte") done++;
-      else if (st === "czyszczenie") cleaning++;
-      else { waiting++; waitingRooms.push(no); } // 'W' lub brak wpisu = czeka, nietknięty
+      else if (st === "czyszczenie") { cleaning++; cleaningWeight += hkW(no); }
+      else { waiting++; waitingRooms.push(no); waitingWeight += hkW(no); } // 'W' lub brak wpisu = czeka, nietknięty
     }
-    stats[w] = { worker: w, total: list.length, done, cleaning, waiting, waitingRooms };
+    // waitingWeight/cleaningWeight = to samo co waiting/cleaning, ale ważone przez hkW
+    // (apartament = HK_APT_WEIGHT, zwykły pokój = 1) — używane w load() niżej, żeby
+    // rebalansowanie liczyło realną robotę tak samo jak autoAssign w HKPanel.jsx,
+    // a nie samą liczbę pokoi (apartament ≠ zwykły pokój pod względem nakładu pracy).
+    stats[w] = { worker: w, total: list.length, done, cleaning, waiting, waitingRooms, waitingWeight, cleaningWeight };
   }
   return stats;
 }
@@ -66,7 +87,7 @@ export function suggestReassignments({ assignments, roomStates, presentWorkers =
   const pool = Object.values(stats).map(w => ({ ...w }));
   if (pool.length < 2) return [];
 
-  const load = (w) => w.waiting + w.cleaning;  // realna pozostała robota
+  const load = (w) => w.waitingWeight + w.cleaningWeight;  // realna pozostała robota, ważona (apartament ≠ zwykły pokój)
 
   const suggestions = [];
   for (let i = 0; i < maxSuggestions; i++) {
@@ -83,24 +104,29 @@ export function suggestReassignments({ assignments, roomStates, presentWorkers =
     if (!busy || !idle) break;
     if (busy.waiting < minBusy) break;
 
-    const diff = busy.waiting - load(idle);
+    // diff w jednostkach WAGI (nie liczby pokoi) — spójnie z load() powyżej,
+    // inaczej mieszalibyśmy policzone i ważone wartości w jednym równaniu.
+    const diff = load(busy) - load(idle);
     if (diff < minGap) break;                  // za mała różnica → nic nie zmieniaj
 
-    const move = Math.max(1, Math.floor(diff / 2));
-    const rooms = busy.waitingRooms.slice(0, move);
+    const moveWeight = diff / 2;
+    const rooms = takeByWeight(busy.waitingRooms, moveWeight);
     if (!rooms.length) break;
 
     suggestions.push({
       from: busy.worker,
       to: idle.worker,
       rooms,
-      reason: `${idle.worker} ma ${load(idle)} wolnych, a ${busy.worker} ma ${busy.waiting} — przenieś ${rooms.length}, żeby wyrównać.`,
+      reason: `${idle.worker} ma ${idle.waiting} wolnych, a ${busy.worker} ma ${busy.waiting} — przenieś ${rooms.length}, żeby wyrównać.`,
     });
 
     // zaktualizuj pulę, by kolejne sugestie były spójne (nie dublowały pokoi)
+    const movedWeight = rooms.reduce((s, no) => s + hkW(no), 0);
     busy.waiting -= rooms.length;
+    busy.waitingWeight -= movedWeight;
     busy.waitingRooms = busy.waitingRooms.slice(rooms.length);
     idle.waiting += rooms.length;
+    idle.waitingWeight += movedWeight;
     idle.total += rooms.length;
   }
   return suggestions;

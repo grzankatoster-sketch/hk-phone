@@ -71,6 +71,9 @@ export const DEFAULTS = {
     // Numery pokoi będących apartamentami
     apts: ["106","206","218","306","318"],
 
+    // Waga apartamentu przy przydziale HK (ile "zwykłych" pokoi = 1 apartament)
+    aptWeight: 3,
+
     // Pokoje wymagające specjalnego traktowania w HK (np. dodatkowe łóżko)
     specialRooms: ["105","107","117","119"],
 

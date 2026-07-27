@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
     markSeenAfterSuccess: false,
     senderAllowList: [],
     subjectIncludes: [],
+    deleteAfterDays: 4,
   },
   pollIntervalMinutes: 15,
   daysAhead: 5,
@@ -21,6 +22,11 @@ const DEFAULT_CONFIG = {
   useReportHistory: true,
   reportHistoryLimit: 120,
   outputDir: "C:\\zmiany i raporty\\hk-automation",
+  llm: {
+    enabled: false,
+    apiKeyEnv: "HK_AUTOMATION_GROQ_API_KEY",
+    model: "llama-3.3-70b-versatile",
+  },
   statusLogic: {
     stayoverMode: "parity",
     pgzAfterStayNights: 3,
@@ -64,4 +70,9 @@ function getMailPassword(config) {
   return process.env[envName] || config.mailbox.password || "";
 }
 
-module.exports = { loadConfig, getMailPassword };
+function getGroqApiKey(config) {
+  const envName = config.llm?.apiKeyEnv || "HK_AUTOMATION_GROQ_API_KEY";
+  return process.env[envName] || config.llm?.apiKey || "";
+}
+
+module.exports = { loadConfig, getMailPassword, getGroqApiKey };

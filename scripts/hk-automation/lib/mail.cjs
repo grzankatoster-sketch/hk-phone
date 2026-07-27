@@ -115,4 +115,49 @@ async function fetchPdfAttachments(config, outputDir) {
   return saved;
 }
 
-module.exports = { fetchPdfAttachments };
+// Skrzynka raporty@conradcomfort.pl jest dedykowana tylko do odbioru raportow
+// KWHotel — po X dniach maile sa juz przetworzone (PDF-y zapisane lokalnie +
+// uidy w processed-uids.json), wiec mozna je trwale usunac zeby nie puchla skrzynka.
+async function deleteOldMail(config, { logger = console } = {}) {
+  const days = Number(config.mailbox.deleteAfterDays);
+  if (!days || days <= 0) return { deleted: 0, skipped: true };
+
+  let ImapFlow;
+  try {
+    ({ ImapFlow } = require("imapflow"));
+  } catch {
+    throw new Error("Brak zaleznosci imapflow. Uruchom: npm install");
+  }
+
+  const password = getMailPassword(config);
+  if (!config.mailbox.host || !config.mailbox.user || !password) {
+    throw new Error("Brak konfiguracji IMAP lub hasla w zmiennej srodowiskowej.");
+  }
+
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const client = new ImapFlow({
+    host: config.mailbox.host,
+    port: config.mailbox.port || 993,
+    secure: config.mailbox.secure !== false,
+    auth: { user: config.mailbox.user, pass: password },
+    logger: false,
+  });
+
+  await client.connect();
+  const lock = await client.getMailboxLock(config.mailbox.folder || "INBOX");
+  let deleted = 0;
+  try {
+    const uids = await client.search({ before: cutoff }, { uid: true });
+    if (uids && uids.length) {
+      await client.messageDelete(uids, { uid: true });
+      deleted = uids.length;
+      logger.log?.(`Usunieto ${deleted} maili starszych niz ${days} dni (przed ${cutoff.toISOString()}).`);
+    }
+  } finally {
+    lock.release();
+    await client.logout();
+  }
+  return { deleted, skipped: false };
+}
+
+module.exports = { fetchPdfAttachments, deleteOldMail };

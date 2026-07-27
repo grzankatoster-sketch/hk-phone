@@ -10,13 +10,19 @@
     "rememberProcessed": true,
     "markSeenAfterSuccess": false,
     "senderAllowList": [],
-    "subjectIncludes": ["raport", "przyjazd", "wyjazd"]
+    "subjectIncludes": ["raport", "przyjazd", "wyjazd"],
+    "deleteAfterDays": 4
   },
   "pollIntervalMinutes": 15,
   "daysAhead": 5,
   "dryRun": true,
   "writeEmptyPlans": false,
   "outputDir": "C:\\zmiany i raporty\\hk-automation",
+  "llm": {
+    "enabled": false,
+    "apiKeyEnv": "HK_AUTOMATION_GROQ_API_KEY",
+    "model": "llama-3.3-70b-versatile"
+  },
   "statusLogic": {
     "stayoverMode": "parity",
     "pgzAfterStayNights": 3,

@@ -9,6 +9,17 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg"/>
 <link rel="apple-touch-icon" href="icon.svg"/>
 <script>
+/* Motyw ustawiany PRZED pierwszym malowaniem, żeby uniknąć "błysku". Domyślnie
+   JASNY (panel pracuje głównie w biurze/recepcji za dnia) — localStorage
+   "panel_theme"="dark" dla ciemnego. */
+(function(){
+  try{
+    var t = localStorage.getItem("panel_theme");
+    document.documentElement.classList.toggle("dark", t === "dark");
+  }catch(e){}
+})();
+</script>
+<script>
 /* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
    dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
    jej zamykać ani usuwać i dodawać ponownie. */
@@ -188,6 +199,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
   --shadow:0 1px 2px rgba(58,18,48,.05), 0 14px 32px -18px rgba(58,18,48,.32);
   --r:16px;
 }
+/* Ciemny motyw — nadpisuje tylko nazwane tokeny, reszta kaskaduje automatycznie
+   (komponenty odwołują się do var(--x), nie do literałów). Marka (--plum/--gold)
+   dostaje jaśniejsze warianty ("-bright" z theme-conrad.css), bo pełni tu ZARÓWNO
+   rolę wypełnień (przyciski, sidebar) JAK i tekstu (nagłówki, KPI) — rozdzielenie
+   na osobne "-ink" tokeny byłoby zbyt ryzykowną, masową zmianą na pliku tej wielkości. */
+html.dark{
+  color-scheme:dark;
+  --cream:#0B0810; --paper:#17131F; --ink:#F0E8DC; --muted:#A89DAE;
+  --line:#2A2334; --line-strong:#3A3144;
+  --plum:#B065A0; --plum-2:#C888B8; --plum-deep:#1E0A18;
+  --gold:#C8A269; --ok:#2BD4A0; --bad:#FF5471;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 14px 32px -18px rgba(0,0,0,.55);
+}
+html.dark body::before{
+  background:
+    radial-gradient(58% 48% at 13% 6%,  rgba(176,101,160,.22), transparent 70%),
+    radial-gradient(52% 44% at 90% 12%, rgba(200,136,184,.16), transparent 70%),
+    radial-gradient(60% 54% at 86% 92%, rgba(200,162,105,.14), transparent 72%),
+    radial-gradient(64% 58% at 14% 94%, rgba(176,101,160,.20), transparent 72%),
+    radial-gradient(135% 120% at 50% 40%, transparent 52%, rgba(0,0,0,.4) 100%),
+    linear-gradient(168deg,#0B0810 0%, #150C18 50%, #1A0F1C 100%);
+}
+html.dark .scell{background:var(--paper)}
+html.dark .scell.can{background:rgba(43,212,160,.14)}
+html.dark .scell.off{background:rgba(255,84,113,.12)}
+html.dark .topbar{background:rgba(23,19,31,.82)}
+html.dark .tabs.mob{background:rgba(23,19,31,.97)}
+@media(min-width:920px){ html.dark .topbar{background:rgba(23,19,31,.7)} }
 body{font-family:var(--ui);background:
   radial-gradient(1100px 480px at 100% -10%, rgba(122,58,106,.10), transparent 60%),
   radial-gradient(900px 420px at -10% 0%, rgba(176,134,58,.07), transparent 55%),
@@ -295,6 +334,8 @@ body{font-family:var(--ui);background:
 .top-bell{position:relative;background:rgba(90,29,74,.07);border:1px solid var(--line);border-radius:10px;width:38px;height:34px;font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--plum)}
 .top-bell:hover{background:rgba(90,29,74,.12)}
 .top-bell .navbadge{position:absolute;top:-6px;right:-6px;min-width:16px;height:16px;font-size:10px}
+.top-theme{background:rgba(90,29,74,.07);border:1px solid var(--line);border-radius:10px;width:38px;height:34px;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--plum);flex-shrink:0}
+.top-theme:hover{background:rgba(90,29,74,.12)}
 .notif-menu{position:absolute;top:42px;right:0;z-index:1200;width:284px;max-height:72vh;overflow:auto;background:var(--paper);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 16px 48px rgba(90,29,74,.22);padding:6px}
 .notif-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 6px;font-weight:800;color:var(--plum);font-size:13px}
 .notif-gear{background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:8px;line-height:1}
@@ -394,6 +435,8 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .sched-tbl .dcol{text-align:left;font-weight:800;font-size:12px;white-space:nowrap;position:sticky;left:0;background:var(--paper);z-index:1}
 .sched-tbl tr.wknd .dcol{background:rgba(90,29,74,.05)}
 .sched-tbl tfoot td{background:var(--cream);font-weight:900;font-size:12px}
+.sched-rm{margin-left:4px;border:none;background:transparent;color:var(--bad);font-weight:900;font-size:13px;line-height:1;cursor:pointer;padding:0 2px;vertical-align:middle}
+.sched-rm:hover{color:#fff;background:var(--bad);border-radius:4px}
 .scell{width:60px;max-width:64px;padding:7px 4px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;color:var(--ink);font-size:13px;font-weight:700;font-family:inherit;text-align:center;outline:none}
 .scell:focus{border-color:var(--plum);box-shadow:0 0 0 2px rgba(90,29,74,.14)}
 .scell.can{background:#eef7f1}
@@ -1277,6 +1320,7 @@ function renderHkDashboard(role, name) {
       <main class="main">
         <header class="topbar">
           <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
+          <button class="top-theme" id="themeBtn" onclick="toggleTheme()" aria-label="Zmień motyw" title="Zmień motyw">${document.documentElement.classList.contains("dark")?"☀️":"🌙"}</button>
           <div class="notif-wrap">
             <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" aria-haspopup="true" aria-expanded="false" title="Powiadomienia">🔔<span id="notifBellCount" class="navbadge" hidden></span></button>
             <div id="notifMenu" class="notif-menu" hidden></div>
@@ -2541,6 +2585,15 @@ function notifPaint(){
   if (NOTIF_OPEN) notifRenderMenu();
 }
 
+// ── Motyw jasny/ciemny ──
+window.toggleTheme = () => {
+  const dark = !document.documentElement.classList.contains("dark");
+  document.documentElement.classList.toggle("dark", dark);
+  try{ localStorage.setItem("panel_theme", dark?"dark":"light"); }catch(e){}
+  const b = document.getElementById("themeBtn");
+  if (b) b.textContent = dark ? "☀️" : "🌙";
+};
+
 // ── Dropdown dzwonka ──
 function setBellExpanded(open){ const b = document.querySelector(".top-bell"); if (b) b.setAttribute("aria-expanded", open ? "true" : "false"); }
 function closeNotif(){ NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true; setBellExpanded(false); }
@@ -3604,14 +3657,19 @@ window.openSchedule = async (reqId) => {
     else if (r.choice) decl[key]={off:false,txt:r.choice};
   });
   const cells = (saved && saved.cells && typeof saved.cells==="object") ? {...saved.cells} : {};
+  // Osoby trwale usunięte przez koordynatora z TEJ zbiórki (zapisane w schedules.excluded_persons).
+  // Bez tego każde ponowne otwarcie odtwarzało pełną listę z surowych odpowiedzi ankiety
+  // (persons niżej) i usunięcie z tabeli było tylko chwilowe — wracali przy kolejnym wejściu.
+  const excludedPersons = (saved && Array.isArray(saved.excluded_persons)) ? [...saved.excluded_persons] : [];
+  const excludedSet = new Set(excludedPersons.map(zmNorm));
   // Kolumny = UNIA: respondenci zbiórki + osoby już obecne w zapisanym grafiku (np. menedżer
   // dopisany ręcznie, który sam dobiera sobie wolne dni i nie dostał linku). Dzięki temu
   // ręcznie dodana osoba NIE znika po zapisaniu i ponownym wejściu — jej komórki są w cells.
   const fromCells = Object.keys(cells).map(k=>k.split("|")[0]).filter(Boolean);
   const seenP=new Set(); const allPersons=[];
-  [...persons, ...fromCells].forEach(p=>{ const n=zmNorm(p); if(n && !seenP.has(n)){ seenP.add(n); allPersons.push(p); } });
+  [...persons, ...fromCells].forEach(p=>{ const n=zmNorm(p); if(n && !seenP.has(n) && !excludedSet.has(n)){ seenP.add(n); allPersons.push(p); } });
   allPersons.sort((a,b)=>a.localeCompare(b,"pl"));
-  SCHED = { reqId, persons:allPersons, days, prefOf, decl, cells, status:(saved&&saved.status)||"draft", dirty:false };
+  SCHED = { reqId, persons:allPersons, days, prefOf, decl, cells, excludedPersons, status:(saved&&saved.status)||"draft", dirty:false };
   renderSchedule();
 };
 
@@ -3620,7 +3678,7 @@ function renderSchedule(){
   const meta = REQ_META[S.reqId]||{};
   const periodLbl = meta.period_type==="month" ? "miesiąc" : "tydzień";
   const head = `<th class="dcol" style="text-align:left">Dzień</th>` +
-    S.persons.map(p=>`<th>${esc(p)}${S.prefOf[p]!=null?`<div style="font-size:9px;color:var(--plum);font-weight:700">chce ${S.prefOf[p]}h</div>`:""}</th>`).join("") +
+    S.persons.map((p,pi)=>`<th>${esc(p)}<button class="sched-rm" onclick="schedRemovePerson(${pi})" title="Usuń ${esc(p)} z grafiku">×</button>${S.prefOf[p]!=null?`<div style="font-size:9px;color:var(--plum);font-weight:700">chce ${S.prefOf[p]}h</div>`:""}</th>`).join("") +
     `<th>Obsada</th>`;
   const bodyRows = S.days.map((d,di)=>{
     const [y,m,dd]=d.split("-"); const dt=new Date(+y,+m-1,+dd); const dow=DOW[dt.getDay()];
@@ -3671,7 +3729,26 @@ window.schedAddPerson = async ()=>{
   if(!name) return;
   const n=zmNorm(name);
   if(S.persons.some(p=>zmNorm(p)===n)){ toast("Ta osoba już jest w grafiku.","bad"); return; }
+  // Dodanie kogoś kto był wcześniej trwale usunięty z tej zbiórki cofa usunięcie —
+  // inaczej po zapisie wróciliby na listę wykluczonych i zniknęliby przy kolejnym otwarciu.
+  S.excludedPersons = S.excludedPersons.filter(p=>zmNorm(p)!==n);
   S.persons=[...S.persons, name].sort((a,b)=>a.localeCompare(b,"pl"));
+  S.dirty = true;
+  renderSchedule();
+};
+// Usuwa kolumnę osoby z ułożonego grafiku wraz z jej wpisanymi komórkami — TRWALE (zapisywane
+// w schedules.excluded_persons), bo openSchedule() inaczej odtwarza pełną listę z surowych
+// odpowiedzi zbiórki przy każdym otwarciu i usunięta osoba by wracała. Zapis (i usunięcie
+// z bazy) dopiero przyciskiem „Zapisz grafik".
+window.schedRemovePerson = async (pi)=>{
+  const S=SCHED; if(!S) return;
+  const p=S.persons[pi]; if(p==null) return;
+  if(!(await uiConfirm(`Usunąć „${p}" z grafiku? Jej wpisane godziny w tym widoku zostaną utracone.`, { okLabel:"Usuń", danger:true }))) return;
+  S.days.forEach(d=>{ delete S.cells[p+"|"+d]; });
+  S.persons = S.persons.filter((_,i)=>i!==pi);
+  const n=zmNorm(p);
+  if(!S.excludedPersons.some(x=>zmNorm(x)===n)) S.excludedPersons.push(p);
+  S.dirty = true;
   renderSchedule();
 };
 window.schedFill = async ()=>{
@@ -3689,7 +3766,7 @@ window.schedSave = async (btn)=>{
   const msg=document.getElementById("schedMsg");
   try {
     // 1) zapisz/opublikuj ułożony grafik (źródło prawdy do druku/odczytu)
-    const { error } = await sb.rpc("save_schedule", { p_request_id:S.reqId, p_cells:S.cells, p_status:"published" });
+    const { error } = await sb.rpc("save_schedule", { p_request_id:S.reqId, p_cells:S.cells, p_status:"published", p_excluded_persons:S.excludedPersons });
     if(error) throw error;
     S.dirty=false; S.status="published";
     // 2) most → Zmiany + recepcja: mapowanie imion na rejestr recepcji i wypchnięcie przez schedule_merge
@@ -4404,7 +4481,7 @@ function zmDesktop(todayIso){
                onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
         ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</td>`;
     }).join("");
-    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line);z-index:1">${esc(emp)}</td>${cells}</tr>`;
+    return `<tr><td style="padding:6px 9px;font-weight:700;font-size:13px;position:sticky;left:0;background:var(--paper);border-right:1px solid var(--line);z-index:1">${esc(emp)}<button class="sched-rm" onclick="zmRemovePerson(${ei})" title="Usuń ${esc(emp)} z tego tygodnia">×</button></td>${cells}</tr>`;
   }).join("");
   return `<div class="zm-grid zm-scroll">
     <table style="border-collapse:collapse;min-width:100%"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -4420,7 +4497,7 @@ function zmMobile(todayIso){
     const c = zmCellOf(dk, emp);
     const hid=`zm_h_${di}_${ei}`, sid=`zm_s_${di}_${ei}`;
     return `<div class="zm-row">
-      <div class="zm-name">${esc(emp)}</div>
+      <div class="zm-name">${esc(emp)}<button class="sched-rm" onclick="zmRemovePerson(${ei})" title="Usuń ${esc(emp)} z tego tygodnia">×</button></div>
       <input id="${hid}" class="zm-h" value="${esc(zmHours(c))}" placeholder="7-15" inputmode="numeric"
              onkeydown="if(event.key==='Enter')this.blur()" onblur="zmEdit(this)"/>
       ${zmShiftSel(sid, c&&c.shift?c.shift:"")}</div>`;
@@ -4446,6 +4523,24 @@ window.zmAddPerson = async ()=>{
   if(ZM_EMPS.some(e=>zmNorm(e)===n)){ toast("Ta osoba jest już w grafiku.","bad"); return; }
   if(!ZM_EXTRA) ZM_EXTRA=[];
   ZM_EXTRA.push(name);
+  zmRender();
+};
+// Usuwa osobę z grafiku tego tygodnia: czyści jej wpisane komórki (zapis przez schedule_merge,
+// widoczny od razu na recepcji) i zdejmuje ją z ręcznie dodanych (ZM_EXTRA). Jeśli osoba jest
+// w rejestrze recepcji, jej pusty wiersz może wrócić przy kolejnym wejściu — to źródło prawdy
+// zarządza recepcja, tu usuwamy tylko zmiany na ten tydzień.
+window.zmRemovePerson = async (ei)=>{
+  const emp = ZM_EMPS[ei]; if(emp==null) return;
+  if(!(await uiConfirm(`Usunąć „${emp}" z tego tygodnia grafiku? Jej wpisane zmiany w tym tygodniu zostaną wyczyszczone.`, { okLabel:"Usuń", danger:true }))) return;
+  const patch = {};
+  ZM_DAYS.forEach(dk=>{
+    const day = ZM_SCHED[dk]; if(!day) return;
+    if(day[emp]!=null){ delete day[emp]; patch[dk] = { ...(patch[dk]||{}), [emp]: null }; }
+    const variant = zmVariantKey(dk, emp);
+    if(variant){ delete day[variant]; patch[dk] = { ...(patch[dk]||{}), [variant]: null }; }
+  });
+  if(ZM_EXTRA) ZM_EXTRA = ZM_EXTRA.filter(e=>zmNorm(e)!==zmNorm(emp));
+  if(Object.keys(patch).length) await zmMerge(patch);
   zmRender();
 };
 window.zmEdit = async (el)=>{

@@ -6888,6 +6888,16 @@ body.app-dark ::selection { background: rgba(176,101,160,.35); color: var(--crea
 .cc-hk-lateout-btn:hover { transform: scale(1.15); }
 .cc-hk-lateout-btn:focus-visible { outline: 2px solid var(--cc-focus); outline-offset: 2px; }
 
+/* Plakietka "SC" — gość życzy sobie codziennego sprzątania */
+.cc-hk-sc-badge {
+  display: inline-block; width: fit-content; margin-top: 2px;
+  font-size: 9px; font-weight: 800; letter-spacing: .03em;
+  padding: 1px 6px; border-radius: 999px;
+  color: var(--cc-accent-gold);
+  background: color-mix(in srgb, var(--cc-accent-gold) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cc-accent-gold) 45%, transparent);
+}
+
 /* Apartment note input (mini inline editor w apt-room card) */
 .cc-hk-apt-note {
   flex: 1;

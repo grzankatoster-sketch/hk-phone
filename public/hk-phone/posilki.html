@@ -35,6 +35,15 @@
 })();
 </script>
 <title>Posiłki • Restauracja</title>
+<script>
+/* Motyw ustawiany PRZED pierwszym malowaniem, żeby uniknąć "błysku". Domyślnie
+   JASNY (sala restauracyjna zwykle dobrze oświetlona) — ciemny to świadoma opcja
+   na wieczorną obsługę (localStorage "posilki_theme"="dark"). */
+(function(){
+  try{ if (localStorage.getItem("posilki_theme") === "dark") document.documentElement.classList.add("dark"); }
+  catch(e){}
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&display=swap');
@@ -45,8 +54,23 @@
   --green:#0f7a4a; --green-deep:#0b5c38; --green-bg:rgba(15,122,74,.09);
   --amber:#a07820; --amber-deep:#7a5c17; --amber-bg:rgba(160,120,32,.11);
   --gold:#c8a269;
+  /* "-ink" = plum jako TEKST na jasnej powierzchni (etykiety, liczniki) — w ciemnym
+     motywie dostaje jaśniejszy wariant (patrz html.dark). --plum/--plum-deep same
+     w sobie (nagłówek, wybrany dzień, kafle-zawieszki) zostają BEZ ZMIAN w obu
+     motywach — to już wystarczająco ciemne wypełnienia dla białego tekstu. */
+  --plum-ink:#5a1d4a;
 }
-html,body{background:var(--cream);height:100%;overflow:hidden}
+html.dark{
+  color-scheme:dark;
+  --cream:#0B0810;
+  --paper:#17131F;
+  --ink:#F0E8DC;
+  --muted:#A89DAE;
+  --line:#2A2334;
+  --line-strong:#3A3144;
+  --plum-ink:#B065A0;
+}
+html,body{background:var(--cream);height:100%;overflow:hidden;transition:background .2s ease}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);overscroll-behavior:none;display:flex;flex-direction:column}
 
 /* ── Nagłówek — subtelna poświata (echo brand-panelu z ekranu logowania) ── */
@@ -60,6 +84,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .hdr .spacer{flex:1}
 .dot{width:7px;height:7px;border-radius:50%;background:#7ad9a8;flex-shrink:0;box-shadow:0 0 6px rgba(122,217,168,.7)}
 .dot.off{background:#f59ea6;box-shadow:0 0 6px rgba(245,158,166,.7)}
+.theme-btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;flex-shrink:0;font-family:inherit}
+.theme-btn:hover{background:rgba(255,255,255,.22)}
 .datewrap{position:relative}
 .datechip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1.5px solid var(--gold);border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit}
 .datechip .dlbl{font-family:'DM Serif Display',Georgia,serif;font-size:14px;color:#fff}
@@ -72,7 +98,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .dayrow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;background:var(--cream);cursor:pointer;border:1.5px solid transparent}
 .dayrow:hover{border-color:var(--line-strong)}
 .dayrow.sel{background:linear-gradient(155deg,var(--plum-deep),var(--plum));border-color:var(--gold)}
-.dayrow .dname{font-family:'DM Serif Display',Georgia,serif;font-size:15px;color:var(--plum)}
+.dayrow .dname{font-family:'DM Serif Display',Georgia,serif;font-size:15px;color:var(--plum-ink)}
 .dayrow.sel .dname{color:#fff}
 .dayrow .dcnt{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:12.5px;color:var(--green)}
 .dayrow.sel .dcnt{color:var(--gold)}
@@ -83,9 +109,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .tab .ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .tab.bb .ic{background:var(--green-bg);color:var(--green)}
 .tab.hb .ic{background:var(--amber-bg);color:var(--amber)}
-.tab .lbl{font-family:'DM Serif Display',Georgia,serif;font-size:16px;color:var(--plum);line-height:1.1}
+.tab .lbl{font-family:'DM Serif Display',Georgia,serif;font-size:16px;color:var(--plum-ink);line-height:1.1}
 .tab .sub{font-size:10px;color:var(--muted)}
-.tab .count{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:var(--plum);background:var(--paper);border:1px solid var(--line-strong);border-radius:999px;padding:3px 11px}
+.tab .count{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:800;font-size:13px;color:var(--plum-ink);background:var(--paper);border:1px solid var(--line-strong);border-radius:999px;padding:3px 11px}
 .tab.active{border-color:var(--gold);background:var(--paper);box-shadow:0 2px 8px rgba(90,29,74,.1)}
 .tab.active.bb{background:linear-gradient(180deg,var(--paper),var(--green-bg))}
 .tab.active.hb{background:linear-gradient(180deg,var(--paper),var(--amber-bg))}
@@ -94,6 +120,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .board{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:14px;
   background:radial-gradient(ellipse 1200px 400px at 50% 0%, rgba(90,29,74,.05) 0%, transparent 70%), var(--cream)}
 .empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:13.5px;line-height:1.6;width:100%}
+
+/* Przerwa/nagłówek między piętrami — pełna szerokość, zaczyna nowy "rząd" we flex-wrap */
+.floor-sep{flex-basis:100%;height:0;margin-top:6px;padding-top:14px;border-top:1.5px dashed var(--line-strong);
+  font-family:'DM Serif Display',Georgia,serif;font-size:13px;color:var(--muted);letter-spacing:.04em}
+.floor-sep:first-child{border-top:none;padding-top:0;margin-top:0}
+
+/* Sekcja "Gotowe" — zwijana, pod tablicą, żeby ukończone pokoje nie zaśmiecały głównego widoku */
+.done-wrap{flex-shrink:0;padding:0 18px 14px}
+.done-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;
+  border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--green);
+  font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.done-toggle .chev{transition:transform .2s;color:var(--muted)}
+.done-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.done-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.done-chip{padding:7px 13px;border-radius:999px;border:1.5px solid var(--green-bg);background:var(--green-bg);
+  color:var(--green-deep);font-family:'DM Serif Display',Georgia,serif;font-size:13px;font-weight:400;cursor:pointer}
+.done-chip:active{opacity:.7}
 
 .fob{position:relative;width:128px;padding:15px 10px 10px;border-radius:17px 17px 13px 13px;cursor:pointer;overflow:hidden;
   box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25);
@@ -110,15 +153,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fob .fguest{font-size:11px;font-weight:700;color:rgba(255,255,255,.92);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .fob .fcat{display:inline-flex;align-items:center;gap:3px;font-size:8.5px;font-weight:800;letter-spacing:.03em;color:rgba(255,255,255,.85);background:rgba(0,0,0,.14);border-radius:999px;padding:2px 7px;margin-top:5px}
 .fob .fprog{font-size:9.5px;color:rgba(255,255,255,.65);margin-top:4px;font-variant-numeric:tabular-nums}
-/* Cofnij pomyłkowe kliknięcie — zawsze dostępne, przygaszone gdy nic do cofnięcia */
-.fob .fundo{position:absolute;bottom:6px;left:7px;width:24px;height:24px;border-radius:7px;border:none;
-  background:rgba(0,0,0,.16);color:rgba(255,255,255,.85);font-size:12px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:opacity .15s}
-.fob .fundo:disabled{opacity:.25;cursor:default}
-/* Dokupione — mały licznik w drugim rogu */
-.fob .fextra{position:absolute;bottom:6px;right:7px;display:flex;align-items:center;gap:3px}
-.fob .fextra button{width:20px;height:20px;border-radius:6px;border:none;background:rgba(0,0,0,.14);color:rgba(255,255,255,.8);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.fob .fextra span{font-size:9.5px;font-weight:800;color:rgba(255,255,255,.85)}
+/* Stan "uzbrojony" — pokój 1-osobowy po 1. dotknięciu, czeka na potwierdzenie
+   drugim dotknięciem (żeby jedno przypadkowe kliknięcie go nie zamykało). */
+.fob.confirming{animation:confirmPulse 1s ease-in-out infinite}
+.fob.confirming .fprog{font-weight:800;letter-spacing:.02em}
+@keyframes confirmPulse{0%,100%{box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25), 0 0 0 0 rgba(255,255,255,.5)}50%{box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25), 0 0 0 5px rgba(255,255,255,0)}}
 
 /* Kafel GRUPY — więcej miejsca (nazwa firmy + duże liczby), stepper zamiast
    pojedynczych dotknięć (grupy bywają 20-45-osobowe, tap-po-1 byłby niepraktyczny). */
@@ -133,8 +172,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 /* Stan wykonany — wstążka w rogu (nie zasłania numeru) + lekkie przygaszenie */
 .fob.done{filter:saturate(.6) brightness(.9)}
 .fob.done::after{
+  /* Wstążka ma STAŁE jasne tło (fizyczna metka), więc kolor tekstu też jest
+     stały (#2d1422) — nie zmienia się z motywem strony w tle. */
   content:'GOTOWE';position:absolute;top:16px;right:-32px;width:130px;padding:3px 0;
-  background:rgba(245,237,224,.95);color:var(--ink);
+  background:rgba(245,237,224,.95);color:#2d1422;
   font-size:9px;font-weight:900;letter-spacing:.06em;text-align:center;
   transform:rotate(42deg);box-shadow:0 1px 4px rgba(0,0,0,.2);
   animation:ribbon .3s ease}
@@ -167,6 +208,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
   </div>
   <div class="spacer"></div>
   <div class="dot" id="dot"></div>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Zmień motyw" title="Zmień motyw"></button>
   <div class="datewrap">
     <div class="datechip" id="datechip" onclick="toggleCalendar()">
       <span>📅</span><div><div class="dlbl" id="dchipLbl">Dziś</div><div class="dsub">DOTKNIJ, ABY ZMIENIĆ</div></div>
@@ -194,6 +236,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 </div>
 
 <div class="board" id="board"><div class="empty">Wczytywanie…</div></div>
+<div class="done-wrap" id="doneWrap"></div>
 
 <div class="idle-screen" id="idleScreen">
   <div class="idle-inner">
@@ -289,6 +332,15 @@ document.addEventListener("click", (e) => {
   }
 });
 
+function applyTheme(t){
+  document.documentElement.classList.toggle("dark", t==="dark");
+  try{ localStorage.setItem("posilki_theme", t); }catch(e){}
+  const btn=document.getElementById("themeBtn");
+  if (btn) btn.textContent = t==="dark" ? "☀️" : "🌙";
+}
+window.toggleTheme = ()=> applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
+applyTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+
 function tickClock(){
   const d = new Date(), t = pad(d.getHours())+":"+pad(d.getMinutes());
   const idleClockEl = document.getElementById("idleClock");
@@ -355,40 +407,91 @@ async function loadAll(){
 // noc przyjazdu tak, dzień wyjazdu nie (gość wyjeżdża przed kolacją).
 const eatsBreakfast = (p) => p.arrival < viewDate && viewDate <= p.departure;
 const eatsDinner = (p) => p.arrival <= viewDate && viewDate < p.departure;
+// W dzień wyjazdu gość HB i tak nie dostaje kolacji (patrz eatsDinner powyżej)
+// — pokazywanie mu wtedy plakietki "HB" myli personel ("czemu tego HB nie ma
+// na kolacji?"). Na widoku dnia wymeldowania pokazujemy więc efektywnie "BB".
+const displayCategory = (p) => (p.category === "HB" && p.departure === viewDate) ? "BB" : p.category;
+
+// Piętro = pierwsza cyfra numeru pokoju ("118A"→1, "306"→3). Grupy (bez
+// pojedynczego numeru) lądują w osobnym, bezpiętrowym koszyku na końcu.
+function floorOf(room){
+  const m = String(room).match(/^(\d)/);
+  return m ? m[1] : "?";
+}
+function isRoomDone(p, mealKey){
+  const c = checkins[`${p.room}|${mealKey}`];
+  return (c?.checked_persons||0) >= p.persons;
+}
+
+let doneOpen = false;
+window.toggleDone = () => { doneOpen = !doneOpen; render(); };
 
 function render(){
   const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
-  const sumPersons = (arr) => arr.reduce((s,p) => s + (p.persons||1), 0);
-  document.getElementById("countBreakfast").textContent = sumPersons(plans.filter(eatsBreakfast));
-  document.getElementById("countDinner").textContent = sumPersons(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
+  // Licznik pokazuje liczbę POKOI (nie osób) — sam numer bez jednostki mylił
+  // personel, a osoby+pokoje razem było zbyt gęste na małym pill-u.
+  const fmtCount = (arr) => `${arr.length} pok.`;
+  const bfRows = plans.filter(eatsBreakfast);
+  const dnRows = plans.filter(p=>p.category==="HB" && eatsDinner(p));
+  document.getElementById("countBreakfast").textContent = fmtCount(bfRows);
+  document.getElementById("countDinner").textContent = fmtCount(dnRows);
   const board = document.getElementById("board");
   if (!rows.length) {
     board.innerHTML = `<div class="empty">Brak pokoi na ${meal==="breakfast"?"śniadanie":"kolację (HB)"} ${viewDate===todayIso?"dzisiaj":"tego dnia"}.</div>`;
     return;
   }
-  const sorted = rows.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
-  board.innerHTML = sorted.map(p => fobHtml(p, meal)).join("");
+  // Gotowe pokoje znikają z głównej tablicy (żeby nie robiło się tłoku) i
+  // trafiają do zwijanej listy poniżej — nadal klikalne, żeby dało się cofnąć pomyłkę.
+  const pending = rows.filter(p => p.is_group || !isRoomDone(p, meal));
+  const done = rows.filter(p => !p.is_group && isRoomDone(p, meal));
+
+  const sorted = pending.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
+  const groups = sorted.filter(p => p.is_group);
+  const singles = sorted.filter(p => !p.is_group);
+
+  let html = "";
+  let lastFloor = null;
+  for (const p of singles) {
+    const f = floorOf(p.room);
+    if (f !== lastFloor) {
+      html += `<div class="floor-sep">Piętro ${f}</div>`;
+      lastFloor = f;
+    }
+    html += fobHtml(p, meal);
+  }
+  if (groups.length) {
+    html += `<div class="floor-sep">Grupy</div>` + groups.map(p => fobHtml(p, meal)).join("");
+  }
+  if (!singles.length && !groups.length) {
+    html = `<div class="empty">Wszystkie pokoje gotowe ✓</div>`;
+  }
+  board.innerHTML = html;
+
+  const doneWrap = document.getElementById("doneWrap");
+  if (!done.length) { doneWrap.innerHTML = ""; return; }
+  const doneSorted = done.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
+  doneWrap.innerHTML = `
+    <button class="done-toggle" onclick="toggleDone()" aria-expanded="${doneOpen}">
+      <span>✓ Gotowe (${done.length})</span>
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    ${doneOpen ? `<div class="done-list">${doneSorted.map(p => `<button class="done-chip" onclick="undo('${p.room}','${meal}')" title="Dotknij, aby cofnąć">${escHtml(p.room)}</button>`).join("")}</div>` : ""}
+  `;
 }
 
 function fobHtml(p, mealKey){
   if (p.is_group) return fobHtmlGroup(p, mealKey);
-  const catClass = p.category.toLowerCase();
+  const dispCat = displayCategory(p);
+  const catClass = dispCat.toLowerCase();
   const c = checkins[`${p.room}|${mealKey}`] || { checked_persons: 0, extra_persons: 0 };
   const checked = c.checked_persons || 0;
-  const extra = c.extra_persons || 0;
   const done = checked >= p.persons;
-  return `<div class="fob ${catClass} ${done?"done":""}" data-room="${p.room}" onclick="tap('${p.room}','${mealKey}',${p.persons})">
-    <button class="fundo" title="Cofnij pomyłkowe kliknięcie" onclick="event.stopPropagation();undo('${p.room}','${mealKey}')" ${checked===0?"disabled":""}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 7"/></svg>
-    </button>
+  const isConfirming = confirming.has(`${p.room}|${mealKey}`);
+  return `<div class="fob ${catClass} ${done?"done":""} ${isConfirming?"confirming":""}" data-room="${p.room}" onclick="tap('${p.room}','${mealKey}',${p.persons})">
     <div class="fno">${escHtml(p.room)}</div>
     <div class="fguest">${escHtml(p.guest_name || "—")}</div>
-    <div class="fcat">${CAT_ICON[p.category]||""}${p.category}</div>
-    <div class="fprog">${checked}/${p.persons} ${p.persons>1?"osób":"osoba"}</div>
-    <div class="fextra" title="Dokupione">
-      ${extra>0?`<span>+${extra}</span>`:""}
-      <button onclick="event.stopPropagation();extraStep('${p.room}','${mealKey}',1)">+</button>
-    </div>
+    <div class="fcat">${CAT_ICON[dispCat]||""}${dispCat}</div>
+    <div class="fprog">${isConfirming?"Dotknij ponownie":`${checked}/${p.persons} ${p.persons>1?"osób":"osoba"}`}</div>
   </div>`;
 }
 
@@ -425,19 +528,29 @@ async function submit(room, mealKey, checkedPersons, extraPersons){
     });
   } catch (e) { /* offline — kolejny poll odświeży realny stan */ }
 }
-// Tap = +1 osoba (1-osobowy pokój zamyka się za 1 dotknięciem, 2-osobowy za 2). Po limicie — nic.
+// Tap = +1 osoba (2+ os. pokój zamyka się naturalnie dopiero po 2+ dotknięciach).
+// Pokój 1-osobowy jest wyjątkiem: JEDNO dotknięcie zamknęłoby go od razu, co
+// ułatwia przypadkowe zamknięcie — więc dla persons===1 pierwsze dotknięcie
+// tylko "uzbraja" zamknięcie (wizualny stan "dotknij ponownie"), a dopiero
+// DRUGIE je potwierdza. Pokoje 2+ os. nie są tym dotknięte (już wymagają 2+ dotknięć).
+const confirming = new Set();
 window.tap = (room, mealKey, persons) => {
-  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
-  if ((c.checked_persons||0) >= persons) return;
-  submit(room, mealKey, (c.checked_persons||0)+1, c.extra_persons||0);
+  const key = `${room}|${mealKey}`;
+  const c = checkins[key] || { checked_persons:0, extra_persons:0 };
+  const current = c.checked_persons||0;
+  if (current >= persons) return;
+  if (persons === 1 && current === 0 && !confirming.has(key)) {
+    confirming.add(key);
+    render();
+    return;
+  }
+  confirming.delete(key);
+  submit(room, mealKey, current+1, c.extra_persons||0);
 };
 window.undo = (room, mealKey) => {
+  confirming.delete(`${room}|${mealKey}`);
   const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
   submit(room, mealKey, Math.max(0,(c.checked_persons||0)-1), c.extra_persons||0);
-};
-window.extraStep = (room, mealKey, delta) => {
-  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
-  submit(room, mealKey, c.checked_persons||0, Math.max(0,(c.extra_persons||0)+delta));
 };
 window.groupStep = (room, mealKey, delta, persons) => {
   const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };

@@ -133,8 +133,14 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
     })
     .slice()
     .sort((a, b) => {
+      // SLA (due_at, migracja 0043/0044) już eskaluje przeterminowane do managera —
+      // tu dodatkowo podbijamy je w liście recepcji, żeby były widoczne bez czekania na alert.
+      const isOverdue = (f) => f.status !== "done" && f.due_at && new Date(f.due_at).getTime() < Date.now();
+      const aOverdue = isOverdue(a), bOverdue = isOverdue(b);
       if (a.priority === "urgent" && b.priority !== "urgent") return -1;
       if (b.priority === "urgent" && a.priority !== "urgent") return 1;
+      if (aOverdue && !bOverdue) return -1;
+      if (bOverdue && !aOverdue) return 1;
       return new Date(b.reported_at) - new Date(a.reported_at);
     });
 
@@ -288,6 +294,9 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
             const reportedShort = new Date(f.reported_at).toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
             const elapsedMin = Math.floor((Date.now() - new Date(f.reported_at).getTime()) / 60000);
             const elapsedLabel = elapsedMin < 60 ? `${elapsedMin}m` : elapsedMin < 1440 ? `${Math.floor(elapsedMin/60)}h ${elapsedMin%60}m` : `${Math.floor(elapsedMin/1440)}d`;
+            // SLA: due_at liczony automatycznie w bazie (0043) z priorytetu — pokazujemy
+            // "po terminie" tu, w recepcji, zamiast tylko w panelu kierownika (loadSLA).
+            const isOverdue = !done && f.due_at && new Date(f.due_at).getTime() < Date.now();
             return (
               <li
                 key={f.id}
@@ -309,6 +318,11 @@ function FaultsPanel({ dark, employeeName, showToast, floors1, floors2, floors3,
                 <div className="cc-fault-status">
                   <span className={`cc-fault-badge cc-fault-badge--${done ? "done" : f.status === "in_progress" ? "progress" : "open"}`}>{statusLabel}</span>
                   <span className="cc-fault-time">{elapsedLabel}</span>
+                  {isOverdue && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#dc2626", borderRadius: 999, padding: "2px 7px", marginTop: 2 }}>
+                      ⚠ po terminie
+                    </span>
+                  )}
                 </div>
                 <div className="cc-fault-assigned">
                   <span className="cc-fault-avatar">{initials}</span>

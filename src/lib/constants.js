@@ -25,6 +25,7 @@ export const HK_FLOOR2             = Object.freeze(tenantConfig.hk.floor2);
 export const HK_FLOOR3             = Object.freeze(tenantConfig.hk.floor3);
 export const HK_ALL                = Object.freeze([...tenantConfig.hk.floor1, ...tenantConfig.hk.floor2, ...tenantConfig.hk.floor3]);
 export const HK_APTS               = Object.freeze(tenantConfig.hk.apts);
+export const HK_APT_WEIGHT         = tenantConfig.hk.aptWeight;
 export const HK_SPECIAL_ROOMS      = Object.freeze(tenantConfig.hk.specialRooms);
 export const HK_ROOMS_SGL_TWIN_ONLY = Object.freeze(tenantConfig.hk.roomsSglTwinOnly);
 

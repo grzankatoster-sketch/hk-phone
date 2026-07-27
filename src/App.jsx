@@ -28,10 +28,10 @@ const WiadomosciPanel = lazy(() => import("./modules/Admin/WiadomosciPanel"));
 const ParkingPanel = lazy(() => import("./modules/Parking/ParkingPanel"));
 const SklepikPanel = lazy(() => import("./modules/Sklepik/SklepikPanel"));
 import ArrivalsSummary from "./modules/Arrivals/ArrivalsSummary";
+import FirstRunWizard from "./components/onboarding/FirstRunWizard";
+import TourOverlay from "./components/onboarding/TourOverlay";
 const KeysPanel = lazy(() => import("./modules/Keys/KeysPanel"));
 const DepositsPanel = lazy(() => import("./modules/Deposits/DepositsPanel"));
-import WakeUpsCard from "./modules/WakeUps/WakeUpsCard";
-import UpsellCard from "./modules/Upsell/UpsellCard";
 const HistoriaWorkerPanel = lazy(() => import("./modules/Historia/HistoriaPanel"));
 const StaliGosciePanel = lazy(() => import("./modules/StaliGoscie/StaliGosciePanel"));
 import ConfirmModal from "./components/modals/ConfirmModal";
@@ -382,6 +382,21 @@ export default function App(){
     if(employeeName&&started)saveJson(dismissStoreKey(employeeName),dismissedReminderKeys);
   },[dismissedReminderKeys,employeeName,started,dismissStoreKey]);
   const [workerTab,setWorkerTab]=useState("zmiana");
+  const [firstRunDone,setFirstRunDone]=useState(()=>!!loadJson(STORAGE_KEYS.firstRunDone,false));
+  const [tourActive,setTourActive]=useState(false);
+  // Tour pierwszego logowania — PER OSOBA, nie per instalacja: każdy nowy
+  // pracownik dostaje go przy swoim pierwszym starcie zmiany na tym stanowisku.
+  useEffect(()=>{
+    if(!started||!employeeName)return;
+    const seenBy=loadJson(STORAGE_KEYS.tourSeenBy,{});
+    if(!seenBy[employeeName.trim().toLowerCase()])setTourActive(true);
+  },[started,employeeName]);
+  const markTourSeen=()=>{
+    const seenBy=loadJson(STORAGE_KEYS.tourSeenBy,{});
+    seenBy[employeeName.trim().toLowerCase()]=true;
+    saveJson(STORAGE_KEYS.tourSeenBy,seenBy);
+    setTourActive(false);
+  };
   // Licencja SaaS: jeśli aktywna zakładka wskazuje na moduł wyłączony w tej
   // licencji (np. po zmianie VITE_MODULES), wróć na rdzeniowy „Przegląd zmiany".
   useEffect(()=>{ if(!isModuleEnabled(workerTab)) setWorkerTab("zmiana"); },[workerTab]);
@@ -2301,7 +2316,7 @@ export default function App(){
             </div>
           </div>
       <Suspense fallback={<PanelFallback/>}>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {adminTab==="ewidencja"&&(
           <EwidencjaPanel
             evidenceMonth={evidenceMonth} setEvidenceMonth={setEvidenceMonth}
@@ -2468,7 +2483,7 @@ export default function App(){
   const workerView=(
     <div>
       <Suspense fallback={<PanelFallback/>}>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {workerTab==="zmiana"&&(
           <motion.div key="zm" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}}>
             {llmReady&&started&&(
@@ -2482,7 +2497,6 @@ export default function App(){
               </div>
             )}
             {started && <ArrivalsSummary/>}
-            {started && <UpsellCard employeeName={employeeName} showToast={showToast}/>}
             {!started?(
               <div className="stack">
                 {IS_DEV_TEST&&(
@@ -3251,7 +3265,6 @@ export default function App(){
         )}
         {workerTab==="informacje"&&(
           <motion.div key="informacje" initial={{opacity:0,y:6}} animate={{opacity:1,y:0}} exit={{opacity:0}} className="stack">
-            <WakeUpsCard employeeName={employeeName} showToast={showToast}/>
             <InboxPanel dark={workerDark} employeeName={employeeName} selectedShift={selectedShift} wikiEntries={wikiEntries} isManager={canAccessManagerPanel} onOpenWiki={()=>setShowWiki(true)} onMarkedRead={()=>setInboxVersion(v=>v+1)}/>
           </motion.div>
         )}
@@ -3643,6 +3656,10 @@ export default function App(){
 
   const appShellClass="app-shell";
   const isWideWorkerPanel=!(canAccessManagerPanel&&showAdminPanel)&&workerTab==="hk";
+
+  if(!firstRunDone){
+    return <FirstRunWizard onFinish={()=>setFirstRunDone(true)}/>;
+  }
 
   if(lockedScreen){
     const unlock=(e)=>{
@@ -4089,6 +4106,27 @@ export default function App(){
       {shiftEndReminderModal}
       {safeGuardModal}
       {testClockWidget}
+      {tourActive&&started&&(
+        <TourOverlay
+          steps={[
+            {key:"zmiana",label:"Przegląd zmiany",desc:"Twój dashboard: zadania zmiany, briefing, kasa. Dopłaty i budziki znajdziesz po kliknięciu w konkretny pokój w Housekeeping."},
+            {key:"przekazanie",label:"Przekaż zmianę",desc:"Tu kończysz zmianę: notatka dla następnej osoby, KW końcowa, podsumowanie dnia."},
+            {key:"informacje",label:"Informacje",desc:"Pilne wiadomości od kierownika i zespołu — sprawdzaj na początku zmiany."},
+            ...(isModuleEnabled("hk")?[{key:"hk",label:"Housekeeping",desc:"Plan sprzątania pokoi. Kliknij dowolny pokój, żeby otworzyć jego Kartę gościa — tam wpisujesz preferencje, budzenie i dopłaty."}]:[]),
+            {key:"usterki",label:"Usterki",desc:"Zgłaszaj i śledź usterki techniczne — trafiają do konserwatora."},
+            ...(isModuleEnabled("parking")?[{key:"parking",label:"Parking",desc:"Rejestr miejsc parkingowych gości."}]:[]),
+            ...(isModuleEnabled("goscie")?[{key:"goscie",label:"Stali goście",desc:"Notatki i indywidualne ustalenia dla gości powracających."}]:[]),
+            ...(isModuleEnabled("vouchery")?[{key:"vouchery",label:"Vouchery",desc:"Wystawianie voucherów i cashbacków."}]:[]),
+            ...(isModuleEnabled("opinie")?[{key:"opinie",label:"Opinie gości",desc:"Opinie z Booking i propozycje odpowiedzi."}]:[]),
+            ...(isModuleEnabled("sklepik")?[{key:"sklepik",label:"Sklepik",desc:"Sprzedaż drobnych produktów na recepcji."}]:[]),
+            {key:"klucze",label:"Klucze / karty",desc:"Rejestr wydanych kart pokojowych i kaucji."},
+            {key:"depozyty",label:"Depozyty",desc:"Depozyty gości z podpisem."},
+            {key:"historia",label:"Historia",desc:"Archiwum zakończonych zmian."},
+          ]}
+          onNavigate={setWorkerTab}
+          onEnd={markTourSeen}
+        />
+      )}
       <AnimatePresence>{showPreShiftModal&&<PreShiftModal key="preshift" employeeName={employeeName} selectedShift={selectedShift} shiftLabel={shiftFullLabel(selectedShift)} onCancel={()=>{setShowPreShiftModal(false);setLoginStep("name");setEmployeeName("");setSelectedShift("");setPendingAutoStart(false);setLoginShiftSource("clock");if(canAccessManagerPanel)clearManagerSession();}} onConfirm={actualStartShift}/>}</AnimatePresence>
       {identityConfirm&&<IdentityConfirmModal {...identityConfirm} onConfirm={()=>{const n=identityConfirm.employeeName;setIdentityConfirm(null);completeLogin(n);}} onCancel={()=>setIdentityConfirm(null)}/>}
       <AnimatePresence>{showAuditLog&&<AuditLogModal key="audit" onClose={()=>setShowAuditLog(false)}/>}</AnimatePresence>

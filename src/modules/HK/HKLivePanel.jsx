@@ -48,6 +48,8 @@ const LOG_CFG = {
   priority_off:     { color: "#8b949e", bg: "rgba(139,148,158,.08)",  bc: "rgba(139,148,158,.25)",  icon: "○", text: (l) => l.extra || `Recepcja: anulowano priorytet pokoju ${l.room}` },
   info_request:     { color: "#60a5fa", bg: "rgba(96,165,250,.08)",   bc: "rgba(96,165,250,.25)",   icon: "❓", text: (l) => l.extra || `Recepcja pyta o status pokoju ${l.room}` },
   info_reply:       { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "💬", text: (l) => `Pokój ${l.room} · ${l.worker}: ${l.extra || ""}` },
+  dnd:              { color: "#f87171", bg: "rgba(248,113,113,.08)",  bc: "rgba(248,113,113,.25)",  icon: "🔕", text: (l) => `${l.worker} — pokój ${l.room} oznaczony "nie przeszkadzać"` },
+  dnd_off:          { color: "#8b949e", bg: "rgba(139,148,158,.08)",  bc: "rgba(139,148,158,.25)",  icon: "🔔", text: (l) => `${l.worker} — zdjęto "nie przeszkadzać" z pokoju ${l.room}` },
 };
 
 const LINEN_FIELDS = [
@@ -592,6 +594,13 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
     Object.entries(assignments).forEach(([w, rms]) => rms.forEach(r => { roomWorkerMap[r] = { worker: w, pm: false }; }));
     Object.entries(pmAssignments).forEach(([w, rms]) => rms.forEach(r => { roomWorkerMap[r] = { worker: w, pm: true }; }));
 
+    // Kontrola jakości oczekująca (hk_quality_checks, już fetchowane dla zakładki
+    // Kontrole) — cross-referencujemy na kafelek pokoju, żeby było widać bez
+    // przełączania zakładki.
+    const qcPendingRooms = new Set(
+      qualityChecks.filter(c => (c.status || "pending") !== "done").map(c => c.room)
+    );
+
     const gDone    = roomVals.filter(r => r.status === "czyste").length;
     const gClean   = roomVals.filter(r => r.status === "czyszczenie").length;
     const gSkipped = roomVals.filter(r => r.status === "pominięte").length;
@@ -698,6 +707,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
           <span style={{ fontWeight: 900, fontSize: 18, minWidth: 40, color: c.color, letterSpacing: "-.02em" }}>{r.no}</span>
           <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, color: text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.worker ? r.worker.split(" ")[0] : "—"}</span>
           {r.pm && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 999, background: "rgba(167,139,250,.15)", color: "#a78bfa", fontWeight: 700, flexShrink: 0 }}>{pmRoomTypes[r.no] || "PM"}</span>}
+          {qcPendingRooms.has(r.no) && <span title="Oczekuje kontrola jakości" style={{ fontSize: 9, padding: "1px 6px", borderRadius: 999, background: "rgba(96,165,250,.15)", color: "#60a5fa", fontWeight: 700, flexShrink: 0, whiteSpace: "nowrap" }}>🔍 kontrola</span>}
           <span style={{ fontSize: 10, fontWeight: 800, color: c.color, textTransform: "uppercase", letterSpacing: ".04em", padding: "2px 8px", borderRadius: 999, background: softBg(c), border: `1px solid ${c.bc}`, whiteSpace: "nowrap", flexShrink: 0 }}>{c.label}</span>
           {r.vt && <span style={{ fontSize: 10, color: muted, flexShrink: 0 }}>{r.vt}</span>}
           {actionBtn(r)}
@@ -755,6 +765,9 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
                         {wName && <span style={{ fontSize: 10, fontWeight: 700, color: muted, lineHeight: 1, maxWidth: 66, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{wName.split(" ")[0]}</span>}
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: cfg.color, marginTop: 1 }} />
                       </div>
+                      {qcPendingRooms.has(no) && (
+                        <span title="Oczekuje kontrola jakości" style={{ position: "absolute", top: -5, right: -5, width: 17, height: 17, borderRadius: "50%", background: "#60a5fa", color: "#fff", fontSize: 9, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, boxShadow: "0 1px 4px rgba(0,0,0,.35)" }}>🔍</span>
+                      )}
                       {isSelected && (
                         <div style={{ position: "absolute", top: 64, left: "50%", transform: "translateX(-50%)", zIndex: 10, background: dark ? "#1c2128" : "#fff", border: `1px solid ${dark ? "#30363d" : "var(--border-light)"}`, borderRadius: 9, padding: "8px 10px", boxShadow: "0 4px 20px rgba(0,0,0,.25)", minWidth: 130, display: "flex", flexDirection: "column", gap: 5 }}>
                           <div style={{ fontSize: 11, fontWeight: 700, color: muted, marginBottom: 2 }}>Pokój {no}{wName ? ` · ${wName}` : ""}</div>
@@ -812,6 +825,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
         return (
           <div key={r.no} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 8, background: softBg(c), border: `1.5px solid ${c.bc}` }}>
             <span style={{ fontSize: 14, fontWeight: 900, color: c.color }}>{r.no}</span>
+            {qcPendingRooms.has(r.no) && <span title="Oczekuje kontrola jakości" style={{ fontSize: 11 }}>🔍</span>}
             {actionBtn(r)}
           </div>
         );

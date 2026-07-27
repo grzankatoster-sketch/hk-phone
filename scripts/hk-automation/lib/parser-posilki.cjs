@@ -123,13 +123,21 @@ function parsePosilkiGrid(items, options = {}) {
     const arrival = dateFrags[0] || null;
     const departure = dateFrags[dateFrags.length - 1] || null;
 
-    // Liczba os. i nr pok. — dwie liczby całkowite na tej samej linii, między
-    // numerem rezerwacji a pierwszą kolumną kodów posiłków.
-    const numsBeforeMeals = rowItems
-      .filter((i) => i.x > a.x && /^-?\d+$/.test(i.s) && i.x < firstMealColX - 10)
+    // Liczba os. i nr pok. — dwie wartości na tej samej linii, między numerem
+    // rezerwacji a pierwszą kolumną kodów posiłków. "Liczba os." jest ZAWSZE
+    // czystą cyfrą, ale "nr pok." bywa aneksowy z literą (np. "118A"/"118B"/
+    // "106n") — BUG znaleziony 2026-07-27: filtr akceptował tylko czyste
+    // cyfry, więc taki pokój w ogóle nie trafiał do `room`, co automatycznie
+    // kwalifikowało rezerwację jako "grupę" (patrz `!room` w warunku isGroup
+    // niżej) i myliło pojedynczych gości biznesowych (Dudziński Paweł/118B,
+    // Papież Piotr/118A) z prawdziwymi grupami.
+    const zoneItems = rowItems
+      .filter((i) => i.x > a.x && i.x < firstMealColX - 10)
       .sort((x, y2) => x.x - y2.x);
-    const persons = numsBeforeMeals[0] ? parseInt(numsBeforeMeals[0].s, 10) : 1;
-    const room = numsBeforeMeals[1] ? numsBeforeMeals[1].s : null;
+    const personsTok = zoneItems.find((i) => /^-?\d+$/.test(i.s));
+    let persons = personsTok ? parseInt(personsTok.s, 10) : 1;
+    const roomTok = zoneItems.find((i) => i !== personsTok && /^-?\d+[A-Za-z]{0,2}$/.test(i.s));
+    const room = roomTok ? roomTok.s : null;
 
     const perDay = DATES.map(() => ({ S: 0, K: 0, OK: 0 }));
     colMap.forEach((cm) => {
@@ -155,7 +163,13 @@ function parsePosilkiGrid(items, options = {}) {
         finalArrival = range.arrival;
         finalDeparture = range.departure;
       }
-      result.warnings.push(`Rezerwacja grupowa bez pojedynczego pokoju: ${a.s} (${name || "?"}, ${persons} os.) — dodana jako pozycja zbiorcza.`);
+      // Pole "Liczba os." obok numeru rezerwacji grupowej bywa błędne (zawyżone
+      // względem realnej frekwencji — zaobserwowane 43 vs 42 dla identycznej grupy
+      // policzonej ze śniadań). Liczba śniadań (S) jest realnym manifestem gości,
+      // więc dla grup ZAWSZE nadpisuje "Liczba os." z rezerwacji.
+      const breakfastCounts = perDay.map((d) => d.S).filter((n) => n > 0);
+      if (breakfastCounts.length) persons = Math.max(...breakfastCounts);
+      result.warnings.push(`Rezerwacja grupowa bez pojedynczego pokoju: ${a.s} (${name || "?"}, ${persons} os. ze śniadań) — dodana jako pozycja zbiorcza.`);
     }
     if (!finalArrival || !finalDeparture) {
       result.warnings.push(`Pominięto rezerwację bez daty przyjazdu/wyjazdu: ${a.s} (${name || "?"})`);

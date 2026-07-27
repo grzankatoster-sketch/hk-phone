@@ -847,3 +847,176 @@ offline. Odrzucono blokowanie po IP (trywialne do obejścia VPN-em) i samo
 zaciemnianie/hashowanie kodu klienckiego jako jedyną ochronę (podnosi próg
 wejścia, nie zatrzymuje — powtórka ryzyka z incydentu wycieku `.env`
 w instalatorach, patrz Etap 0).
+
+---
+
+## 2026-07-25 — Karta gościa w widoku pokoi HK (nowa pozycja, poza 83-pozycyjnym planem)
+
+Pomysł usera: klik w pokój na widoku HK ma pokazywać kto tam mieszka i do
+kiedy (docelowo z osobnego raportu KWHotel: pokój+nazwisko+do kiedy —
+potwierdzone przez usera, że raport będzie miał wszystkie trzy pola) +
+stałe preferencje operacyjne (codzienne sprzątanie, wyżywienie, budzenie,
+prośby na później) korelujące z HK/Budzikami/briefingiem zmiany.
+
+**Zaimplementowane w tej sesji (MVP, ręczny wpis tożsamości — import
+z raportu KWHotel to osobna, kolejna pozycja, patrz niżej):**
+- `[x]` [ICE 60] `src/lib/roomGuests.js` — model karty per pokój
+  (`guestName`, `checkOutDate`, `dailyCleaning`, `meal`, `wakeUp`,
+  `laterRequests`), z auto-purge `checkOutDate`+2 dni przy każdym odczycie
+  (higiena RODO od dnia zero — nie powtórka błędu ze StaliGoscie/0.3) i
+  rekoncyliacją: zmiana `guestName` w tym samym pokoju czyści preferencje
+  poprzedniego gościa (wzorzec identyczny jak w HKPanel przy zniknięciu
+  pokoju z planu).
+- `[x]` [ICE 60] `src/modules/RoomGuest/RoomGuestModal.jsx` — modal karty
+  gościa (wzorzec `VoucherFormModal`/`cc-preshift-*`), z przyciskiem
+  „Dodaj do budzików na dziś" piszącym bezpośrednio do `STORAGE_KEYS.wakeUps`
+  (ten sam kształt rekordu co `WakeUpsCard`, żeby nie dublować wpisu ręcznie
+  w dwóch miejscach).
+- `[x]` [ICE 55] Plakietka „SC" w `HKPanel.jsx` (`renderRoomCard`) — pokazuje
+  się na karcie pokoju, gdy `dailyCleaning=true`; wzorzec jak istniejące
+  plakietki BR/ZS, zero nowego statusu HK (nie dotyka `autoAssign`/`hkW`,
+  strefa zamrożona nietknięta).
+- `[x]` Interakcja poprawiona po feedbacku usera (25.07, ta sama sesja):
+  pierwsza wersja miała osobny mały guzik do otwierania karty — user chciał
+  ogólne kliknięcie w kartę pokoju. Sprawdzone w `handleRoomCardClick`:
+  domyślny tryb (żaden z brMode/zsMode/editMode) był no-opem — wolne miejsce,
+  teraz otwiera kartę gościa. Klik na przycisk/select/input wewnątrz karty
+  (status, priorytet, typ pokoju) nadal działa bez zmian (istniejący guard
+  `target.closest("button,select,input,textarea")`).
+- Walidacja: `npm test` (96/96), `npm run lint` (security-lint), `vite build`
+  — wszystko zielone.
+
+**Świadomie NIE zrobione teraz — zostaje w opisie, nie w kodzie:**
+- `[ ]` [ICE 65] Parser nowego raportu KWHotel (`pokój+nazwisko+do kiedy`) →
+  auto-fill karty. Format raportu nieznany w tej sesji (user potwierdził
+  tylko, że będzie miał te 3 pola, nie dał próbki treści) — pisanie regexu
+  bez próbki to dokładnie błąd, który już raz skrytykowano w tym projekcie
+  (`electron/kwhotel.cjs` zgaduje endpointy i cicho failuje). Do zrobienia
+  jako osobny plik `scripts/hk-automation/lib/guestReportParser.cjs`
+  (dodatkowy, nie modyfikuje strefy zamrożonej `parser.cjs`) + IPC jak
+  `hkAutomationGetPlan`, gdy będzie próbka realnego maila/raportu.
+- `[ ]` [ICE 45] `laterRequests` jako kontekst wejściowy dla
+  `generateBriefing`/`pushHandoverLog` w `App.jsx` — nie ruszone w tej
+  sesji, wymaga zrozumienia pełnego przepływu budowania briefingu w
+  App.jsx (>4000 linii) zanim się w niego wepnie kolejne źródło danych.
+- `[ ]` [ICE 20] Link StaliGoście ↔ Karta gościa po nazwisku (podpowiedź).
+
+## 2026-07-26 — KRYTYCZNY bug znaleziony przy okazji: nawigacja nie usuwała starych zakładek
+
+User zgłosił „widzę wszystkie karty na jednej stronie, wszędzie widzę budziki
+i informacje" po realnym teście w Electronie. Zdiagnozowane Playwrightem
+(zrzuty DOM, nie zgadywanie): każde przejście między zakładkami pracownika
+(`workerTab`) DOKŁADAŁO nową sekcję pod poprzednią zamiast ją zastępować —
+`.fault-layout` (Usterki) i `.hk-design-view` (Housekeeping) zostawały
+w DOM (w pełni widoczne, `display:flex`, `opacity:1`, `position:static`,
+nie ukryte) na zawsze po każdej kolejnej nawigacji. `container.innerHTML`
+rosło monotonicznie (2256 → 6828 → 53349 → 63620 znaków) przy kolejnych
+kliknięciach zamiast fluktuować przy zmianie zakładki. Diagnostyka
+`console.log(workerTab)` potwierdziła, że stan Reacta i renderowanie
+komponentu były poprawne (jedna, aktualna wartość na każdy render) — winny
+był **brak `mode="wait"` na `<AnimatePresence>`** (domyślny tryb "sync"
+w tym konkretnym układzie nie kończył animacji wyjścia, więc React nigdy
+nie usuwał starej zakładki z drzewa). To NIE był efekt Karty gościa — bug
+istniał w App.jsx niezależnie, ujawnił się dopiero przy realnym,
+wielokrotnym przełączaniu zakładek w jednej sesji.
+
+- `[x]` [ICE 100] `src/App.jsx` — dodano `mode="wait"` do obu głównych
+  `<AnimatePresence>` (workerView ~linia 2472, adminPanel ~linia 2304).
+  Zweryfikowane Playwrightem: po fixie `.fault-layout`/`.hk-design-view`
+  poprawnie znikają z DOM po zmianie zakładki, `container.innerHTML`
+  maleje przy powrocie do lżejszej zakładki zamiast rosnąć.
+- Walidacja: `npm test` (96/96), `npm run lint`, `vite build` — zielone.
+- ⚠️ Nie zweryfikowano identycznie w panelu kierownika (adminTab) —
+  fix zastosowany analogicznie (ten sam wzorzec kodu), ale bez osobnego
+  przebiegu Playwrighta przez logowanie managera. Do potwierdzenia przy
+  najbliższej okazji testowania panelu kierownika.
+
+## 2026-07-26 — Dopłaty i Budziki przeniesione z ogólnych widoków do Karty gościa
+
+User (po obejrzeniu realnego Electrona): „dopłaty i budziki to powinno być
+tylko jak się kliknie pokój, a nie na normalnych kartach". Decyzja
+(zapytany wprost, wybrał wariant bez połowicznych rozwiązań): usunąć
+z ogólnych miejsc, zostawić WYŁĄCZNIE w Karcie gościa.
+
+- `[x]` `src/App.jsx` — usunięto `<UpsellCard/>` z dashboardu „Przegląd
+  zmiany" (był tuż pod `<ArrivalsSummary/>`) i `<WakeUpsCard/>` z zakładki
+  „Informacje" (zostaje tam `InboxPanel` — to osobna, prawdziwa treść
+  zakładki). Usunięte też martwe importy obu komponentów.
+- `[x]` `src/modules/RoomGuest/RoomGuestModal.jsx` — dodano pełną
+  funkcjonalność obu wprost do karty pokoju: sekcja „Budzenie" pokazuje
+  teraz też listę już dodanych budzeń na dziś dla TEGO pokoju (odznacz/
+  usuń), sekcja „Dopłaty (upsell)" to kompletny formularz (typ + kwota +
+  Dodaj) plus lista dzisiejszych dopłat dla tego pokoju z usuwaniem —
+  identyczny model danych co oryginalne komponenty (`STORAGE_KEYS.wakeUps`,
+  `STORAGE_KEYS.upsellCharges`), więc raport dobowy (`ManualDailyReportPanel.jsx`,
+  czyta `upsellCharges` niezależnie od UI) **nic nie stracił**.
+- Zweryfikowane Playwrightem: 0 wystąpień „Dopłaty (upsell)" na dashboardzie,
+  0 „Budziki" w Informacje, 1+1 obu sekcji wewnątrz Karty gościa po kliknięciu
+  numeru pokoju.
+- ⚠️ **Świadomy kompromis, zaakceptowany przez usera**: nie ma już jednego
+  miejsca z listą WSZYSTKICH dzisiejszych budzeń/dopłat ze wszystkich pokoi
+  naraz (dawne `WakeUpsCard`/`UpsellCard` to dawały) — trzeba wejść pokój po
+  pokoju. Jeśli to się okaże niewygodne w praktyce, naturalne rozwiązanie to
+  domknięcie korelacji z ROADMAP „prośby → briefing zmiany" (nadal odłożone)
+  — jeden widok zbiorczy zamiast klikania każdego pokoju z osobna.
+- `src/modules/WakeUps/WakeUpsCard.jsx` i `src/modules/Upsell/UpsellCard.jsx`
+  zostają w repo jako osierocone (bez importera) — nie skasowane, na wypadek
+  gdyby decyzja się odwróciła. Do usunięcia przy najbliższych porządkach,
+  jeśli podejście się przyjmie.
+- Walidacja: `npm test` (96/96), `npm run lint`, `vite build` — zielone.
+
+## 2026-07-26 — Kreator pierwszego uruchomienia + prawdziwy tour (MVP pozycji 4.13)
+
+User: "pierwsze uruchomienie na recepcji, dodajesz co chcesz mieć w widoku,
+dodanie pracowników" + doprecyzowanie: opis ma być "wirtualną instrukcją" —
+klikasz Dalej i appka faktycznie Cię przenosi między oknami, nie statyczna
+lista. Zapytany o zakres: pokazuje się WYŁĄCZNIE raz, przy zupełnie
+pierwszym uruchomieniu appki (flaga trwała, nie per-pracownik).
+
+**Ustalona architektura po researchu:** krok "wybór modułów" NIE zapisuje
+live do `tenant_features`, bo RLS tej tabeli wymaga `to authenticated`
+(prawdziwa sesja Supabase Auth), a recepcja loguje się dziś lokalnym hasłem
+— zapis by się cicho wywalił na produkcji. Krok generuje checklistę do
+ręcznego wdrożenia zamiast tego. Docelowo odblokowane przez 2.17.
+
+- `[x]` [ICE 40] `src/components/onboarding/FirstRunWizard.jsx` — 4 kroki:
+  powitanie → pracownicy (pisze prawdziwie do `STORAGE_KEYS.employees`,
+  współdzielone z resztą appki) → moduły (checklist, generuje tekst do
+  wdrożenia) → podsumowanie z wyborem "Pomiń" / "Pokaż mi jak to działa".
+- `[x]` `src/components/onboarding/TourOverlay.jsx` — pływająca karta
+  (prawy dolny róg) z "Wstecz"/"Dalej", która NAPRAWDĘ wywołuje
+  `setWorkerTab(...)` — Dalej przenosi na kolejną realną zakładkę appki
+  (Przegląd zmiany → Przekaż zmianę → Informacje → Housekeeping →
+  Usterki → moduły licencjonowalne wg `isModuleEnabled` → Klucze →
+  Depozyty → Historia).
+- `[x]` `src/App.jsx` — brama `if(!firstRunDone) return <FirstRunWizard/>`
+  przed ekranem logowania (nowy klucz `STORAGE_KEYS.firstRunDone`); tour
+  renderuje się dopiero po realnym starcie zmiany (`tourActive&&started`),
+  bo wcześniej większość zakładek jest pusta (`workerTab==="x"&&started&&...`).
+- Zweryfikowane Playwrightem od zera (świeży localStorage): wszystkie 4 kroki
+  kreatora renderują się poprawnie, pracownik trwale zapisany
+  (`localStorage: ["Jan Testowy"]`), tour realnie zmienia widoczną zakładkę
+  po kliknięciu Dalej (potwierdzone zmianą nagłówka strony), zero błędów
+  konsoli w całym przebiegu.
+- Walidacja: `npm test` (96/96), `npm run lint`, `vite build` — zielone.
+- `[ ]` [ICE 25] Docelowo: gdy 2.17 (Supabase Auth) gotowe, podmienić krok
+  modułów z checklisty na live-zapis do `tenant_features`.
+- `[ ]` [ICE 15] Tour dziś nie obejmuje panelu admina/kierownika (`adminTab`)
+  — świadomie pominięte w MVP, panel kierownika ma już swój (inny, statyczny)
+  onboarding w `panel.html` (4.25).
+
+**Poprawka tego samego dnia — tour PER OSOBA, nie per instalacja:** user
+doprecyzował, że tour ma się pokazywać każdemu pracownikowi przy JEGO
+pierwszym logowaniu, nie tylko raz dla całej appki (kreator z krokami
+pracownicy/moduły zostaje jednorazowy — zmienia się tylko tour).
+- `[x]` Nowy klucz `STORAGE_KEYS.tourSeenBy` — mapa `{imię_lowercase: true}`.
+  `App.jsx`: `useEffect` na `[started,employeeName]` uruchamia tour, jeśli
+  danego imienia nie ma jeszcze w mapie; `markTourSeen()` dopisuje je po
+  zakończeniu touru. Kreator (`FirstRunWizard`) już nie wymusza touru sam —
+  uproszczony do jednego przycisku "Zakończ, przejdź do logowania".
+- Zweryfikowane Playwrightem (3 kolejne "logowania" w jednym kontekście
+  przeglądarki, żeby localStorage się dzielił): Anna 1. logowanie → tour
+  (1), po zamknięciu `tourSeenBy: {"anna pierwsza":true}`, Anna 2. logowanie
+  (to samo imię) → brak touru (0), Bartek (nowe imię) → tour (1). Dokładnie
+  wg specyfikacji.
+- Walidacja: `npm test` (96/96), `npm run lint`, `vite build` — zielone.

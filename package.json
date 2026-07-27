@@ -23,7 +23,7 @@
     "test:live:roomtype": "node scripts/test-roomtype-live-sync.mjs",
     "hk:auto": "node scripts/hk-automation/service.cjs",
     "hk:auto:once": "node scripts/hk-automation/service.cjs --once",
-    "hk:auto:test": "node scripts/hk-automation/test-parser.cjs",
+    "hk:auto:test": "node scripts/hk-automation/test-parser.cjs && node scripts/hk-automation/test-parser-guests.cjs",
     "whatsapp:bot": "node scripts/whatsapp-bot/bot.mjs",
     "build": "vite build",
     "electron:dev": "concurrently -k \"vite --force\" \"wait-on http://localhost:5173 && cross-env ELECTRON_IS_DEV=true electron .\"",

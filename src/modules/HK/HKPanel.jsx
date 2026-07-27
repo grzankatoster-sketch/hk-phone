@@ -12,6 +12,9 @@ import {
 } from "../../lib/pdf-hk";
 import HKLivePanel from "./HKLivePanel";
 import { supabase } from "../../lib/supabase";
+import { hkW, avgCleaningMinutes } from "../../lib/hk";
+import { loadRoomGuests } from "../../lib/roomGuests";
+import RoomGuestModal from "../RoomGuest/RoomGuestModal";
 
 // Paleta kolorów dla chipów pracowników
 const CHIP_COLORS = [
@@ -410,12 +413,71 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
   const [editMode,setEditMode]=React.useState(false);
   const [floorFilter,setFloorFilter]=React.useState("all");
   const [assignModal,setAssignModal]=React.useState(null); // roomNo lub null
+  const [guestModalRoom,setGuestModalRoom]=React.useState(null); // roomNo lub null — karta gościa
+  const [roomGuests,setRoomGuests]=React.useState(()=>loadRoomGuests());
+  const refreshRoomGuests=React.useCallback(()=>setRoomGuests(loadRoomGuests()),[]);
+
+  // ── Grupy (wiadomość zbiorcza do wszystkich pokoi jednej rezerwacji grupowej) ──
+  // Grupę wykrywamy z meal_plans.reservation_id (te same dane co raporty
+  // śniadaniowe/kolacyjne) — jeśli jedna rezerwacja obejmuje ≥2 pokoje, to grupa.
+  // Pojedynczy goście (reservation_id na 1 pokój) w ogóle się tu nie pojawiają.
+  const [mealGroups,setMealGroups]=React.useState([]);
+  const [groupDrafts,setGroupDrafts]=React.useState({});
+  React.useEffect(()=>{
+    if(!hkDate)return;
+    let active=true;
+    supabase.from("meal_plans").select("reservation_id,room,guest_name")
+      .eq("tenant_id",TENANT_ID).lte("arrival",hkDate).gte("departure",hkDate)
+      .then(({data,error})=>{
+        if(!active||error||!data)return;
+        const byRes=new Map();
+        data.forEach(r=>{
+          if(!r.reservation_id||!r.room)return;
+          if(!byRes.has(r.reservation_id))byRes.set(r.reservation_id,{reservationId:r.reservation_id,groupName:r.guest_name,rooms:new Set()});
+          byRes.get(r.reservation_id).rooms.add(r.room);
+        });
+        setMealGroups([...byRes.values()].filter(g=>g.rooms.size>=2).map(g=>({...g,rooms:[...g.rooms].sort()})));
+      });
+    return()=>{active=false;};
+  },[hkDate]);
+  const saveGroupNote=React.useCallback(async(group)=>{
+    const text=(groupDrafts[group.reservationId]||"").trim();
+    if(!text)return;
+    try{
+      const{data:row}=await supabase.from("hk_plan").select("room_notes").eq("date",hkDate).maybeSingle();
+      const room_notes={...(row?.room_notes||{})};
+      group.rooms.forEach(room=>{room_notes[room]=[text];});
+      const{error}=await supabase.from("hk_plan").upsert({date:hkDate,room_notes,updated_at:new Date().toISOString()},{onConflict:"date"});
+      if(error)throw error;
+      showToast?.(`Wiadomość wysłana do grupy (${group.rooms.length} pok.)`,"success");
+      setGroupDrafts(prev=>({...prev,[group.reservationId]:""}));
+    }catch(e){
+      showToast?.("Nie udało się wysłać wiadomości do grupy","error");
+    }
+  },[groupDrafts,hkDate,showToast]);
+
   const [autoSource,setAutoSource]=React.useState(null);
   const [vacatedRooms,setVacatedRooms]=React.useState({}); // { roomNo: { vacated:true, time:string } }
   const [priorityRooms,setPriorityRooms]=React.useState(()=>loadJson(priorityKey(hkDate),{})); // { roomNo: { at:number } } — recepcja poprosiła HK o pilne
   const [priorityMenu,setPriorityMenu]=React.useState(null); // roomNo|null — otwarte menu „!" (Pilne / Zapytaj o status)
   const [priorityMenuSide,setPriorityMenuSide]=React.useState("right"); // strona otwarcia menu (flip przy krawędzi okna)
   const [liveStatus,setLiveStatus]=React.useState({});     // { roomNo: "czyszczenie"|"czyste"|"pominięte" } — postęp HK z telefonów
+  const [cleaningStats,setCleaningStats]=React.useState(null); // avgCleaningMinutes(hk_rooms, 30 dni) — heurystyka, nie ML
+  const [cleaningStatsLoading,setCleaningStatsLoading]=React.useState(false);
+  const loadCleaningStats=React.useCallback(async()=>{
+    if(!supabase)return;
+    setCleaningStatsLoading(true);
+    try{
+      const from=new Date();from.setDate(from.getDate()-30);
+      const fromKey=from.toISOString().slice(0,10);
+      // Bez filtra tenant_id — hk_rooms (tabela dzienna stanów, nie katalog z 0001_init)
+      // nie ma tej kolumny w realnym schemacie; ta sama konwencja co w StatystykiPanel.
+      const{data,error}=await supabase.from("hk_rooms").select("room,started_at,done_at").gte("date",fromKey);
+      if(error){showToast("Błąd pobierania statystyk sprzątania: "+error.message,"error");return;}
+      setCleaningStats(avgCleaningMinutes(data||[]));
+    } finally { setCleaningStatsLoading(false); }
+  },[showToast]);
+  React.useEffect(()=>{loadCleaningStats();},[loadCleaningStats]);
   const didLoadInitialPlan=React.useRef(false);
   const skipFirstPlanSave=React.useRef(true);
   const autoImportInFlight=React.useRef(false);
@@ -473,6 +535,10 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       }).subscribe();
     return()=>{active=false;supabase.removeChannel(ch);};
   },[hkDate]);
+
+  const setRoom=React.useCallback((no,field,val)=>{
+    setHkData(prev=>({...prev,[no]:{...(prev[no]||{}),[field]:val}}));
+  },[setHkData]);
 
   // Recepcja prosi HK o pilne sprzątnięcie pokoju (W/WP) w pierwszej kolejności.
   // Klik wysyła powiadomienie push na telefon przypisanej osoby (lub wszystkich, gdy brak przypisania)
@@ -688,10 +754,6 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     showToast("Dane HK zresetowane dla wybranej daty.","info");
   };
 
-  const setRoom=React.useCallback((no,field,val)=>{
-    setHkData(prev=>({...prev,[no]:{...(prev[no]||{}),[field]:val}}));
-  },[setHkData]);
-
   const wRegular=React.useMemo(()=>HK_ALL.filter(r=>!r.apt&&(hkData[r.no]?.status==="W"||hkData[r.no]?.status==="WP")).length,[hkData]);
   const wApt=React.useMemo(()=>HK_ALL.filter(r=>r.apt&&(hkData[r.no]?.status==="W"||hkData[r.no]?.status==="WP")).length,[hkData]);
   const totalW=wRegular+wApt;
@@ -729,7 +791,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       const PG_LIMIT=20;
       const pgAfternoon=[];const pgOverflow=[];let pgWeight=0;
       for(const r of pgRooms){
-        const w=HK_APTS.includes(r.no)?3:1;
+        const w=hkW(r.no);
         if(pgWeight+w<=PG_LIMIT){pgAfternoon.push(r);pgWeight+=w;}
         else pgOverflow.push(r);
       }
@@ -746,8 +808,8 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       const DUTY_OFFSET=2.5; // dyżurna dostaje ~2-3 pokoje MNIEJ niż reszta (obsługuje też front desk + telefon)
       const aptRooms=wRooms.filter(r=>HK_APTS.includes(r.no));
       const regRooms=wRooms.filter(r=>!HK_APTS.includes(r.no));
-      // Weight-based targets: apt = 3, reg = 1 — prevents over-assigning reg rooms to apt holders
-      const totalWeight=wRooms.reduce((s,r)=>s+(HK_APTS.includes(r.no)?3:1),0);
+      // Weight-based targets (hkW: apt=HK_APT_WEIGHT, reg=1) — prevents over-assigning reg rooms to apt holders
+      const totalWeight=wRooms.reduce((s,r)=>s+hkW(r.no),0);
       // Dyżur dostaje STAŁĄ zniżkę ~2-3 pokoi względem reszty (a nie procentową —
       // procent (0.85) ginął przy zaokrąglaniu i dyżurna wychodziła cięższa niż poranne).
       // Z równania d·n = T − OFFSET·(n−1): dyżur = (T−OFFSET·(n−1))/n, reszta = (T+OFFSET)/n,
@@ -763,7 +825,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       aptRooms.forEach((r,ri)=>{
         const pi=aptQueue[ri%aptQueue.length]??0;
         assigned[r.no]=morningStaff[pi].name;
-        aptWeights[pi]+=3;
+        aptWeights[pi]+=hkW(r.no);
       });
       const regTargets=morningStaff.map((_,i)=>Math.max(0,weightTargets[i]-aptWeights[i]));
       const regSum=regTargets.reduce((s,v)=>s+v,0);
@@ -786,8 +848,9 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         assigned[r.no]=morningStaff[pIdx].name;
         filled++;
       });
-      const TRPL_ROOMS=["105","107","117","119"];
-      const trplAssigned=TRPL_ROOMS.filter(no=>assigned[no]);
+      // HK_SPECIAL_ROOMS = pokoje mogące pełnić rolę TRPL (config tenanta) — zamiast osobnej,
+      // zduplikowanej listy literałów, która wcześniej musiała być ręcznie synchronizowana.
+      const trplAssigned=HK_SPECIAL_ROOMS.filter(no=>assigned[no]);
       if(trplAssigned.length){
         const counts={};
         morningStaff.forEach(s=>counts[s.name]=0);
@@ -799,7 +862,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           if(!candidates.length)break;
           const nonDutyCand=candidates.filter(s=>s.name!==dutyPerson);
           const target=(nonDutyCand[0]||candidates[0]).name;
-          const targetRegRoom=regRooms.find(r=>assigned[r.no]===target&&!TRPL_ROOMS.includes(r.no));
+          const targetRegRoom=regRooms.find(r=>assigned[r.no]===target&&!HK_SPECIAL_ROOMS.includes(r.no));
           if(targetRegRoom){assigned[targetRegRoom.no]=owner;}
           assigned[no]=target;
           counts[owner]--;counts[target]++;
@@ -1085,7 +1148,8 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       setRoom(roomNo,"status",next);
       return;
     }
-    if(editMode)setAssignModal(roomNo);
+    if(editMode){setAssignModal(roomNo);return;}
+    setGuestModalRoom(roomNo);
   },[brMode,zsMode,editMode,hkData,toggleRoomFlag,setRoom]);
   const renderRoomCard=React.useCallback((room)=>{
     const rd=hkData?.[room.no]||{};
@@ -1096,8 +1160,9 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
     const wIdx=rd.person?hkStaff.findIndex(s=>s.name===rd.person):-1;
     const wColor=wIdx>=0?CHIP_COLORS[wIdx%CHIP_COLORS.length]:"#94a3b8";
     const menuOpen=isCheckout&&priorityMenu===room.no;
+    const guestCard=roomGuests[room.no];
     return(
-      <div key={room.no} className={`room-card ${cls}`} onClick={(e)=>handleRoomCardClick(room.no,e)} style={{position:"relative",...(menuOpen?{overflow:"visible",zIndex:30}:null)}}>
+      <div key={room.no} className={`room-card ${cls}`} title="Kliknij, by otworzyć kartę gościa" onClick={(e)=>handleRoomCardClick(room.no,e)} style={{position:"relative",...(menuOpen?{overflow:"visible",zIndex:30}:null)}}>
         {isCheckout?(
           <>
             <button
@@ -1142,6 +1207,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           <div className={`room-status-dot ${cls}`}/>
         )}
         <div className="room-num">{room.no}</div>
+        {guestCard?.dailyCleaning&&<div className="cc-hk-sc-badge" title="Gość życzy sobie codziennego sprzątania">SC</div>}
         {rd.person&&<div className="cc-hk-room-worker" style={{color:wColor,borderColor:wColor}} title={rd.person}>{rd.person.split(" ")[0]}</div>}
         <div className="room-card-actions">
           {room.apt?(
@@ -1157,7 +1223,7 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
         </div>
       </div>
     );
-  },[hkData,vacatedRooms,priorityRooms,priorityMenu,priorityMenuSide,liveStatus,handleRoomCardClick,setRoom,requestPriority,askStatus,markLateCheckoutLeft,hkStaff]);
+  },[hkData,vacatedRooms,priorityRooms,priorityMenu,priorityMenuSide,liveStatus,handleRoomCardClick,setRoom,requestPriority,askStatus,markLateCheckoutLeft,hkStaff,roomGuests]);
   const renderFloorCards=React.useCallback((rooms,label,range)=>(
     <div className="floor-section" key={label}>
       <div className="floor-label">
@@ -1202,6 +1268,43 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
       </div>
       {hkTab==="live"&&<HKLivePanel dark={dark} hkData={hkData} setHkData={setHkData} hkDate={hkDate} showToast={showToast} askConfirm={askConfirm} askPrompt={askPrompt} isManager={!!isManager} employeeName={employeeName||""}/>}
       {hkTab==="plan"&&(<>
+
+      {/* ── Grupy — wiadomość zbiorcza do wszystkich pokoi grupy (widoczne tylko gdy dziś jest grupa) ── */}
+      {mealGroups.length>0&&(
+        <div style={{marginBottom:12,padding:"10px 12px",borderRadius:10,border:"1px solid var(--line)",background:dark?"rgba(255,255,255,.04)":"rgba(0,0,0,.03)"}}>
+          <div style={{fontSize:12,fontWeight:800,textTransform:"uppercase",letterSpacing:".04em",color:"var(--text-muted)",marginBottom:8}}>Grupy — wiadomość dla wszystkich pokoi</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {mealGroups.map(g=>(
+              <div key={g.reservationId} style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontSize:12.5,fontWeight:700,color:"var(--text-primary)",minWidth:0}}>
+                  {g.groupName||"Grupa"} <span style={{color:"var(--text-muted)",fontWeight:500}}>({g.rooms.join(", ")})</span>
+                </span>
+                <input type="text" placeholder="np. kapcie do pokoi, pobudka 7:00…"
+                  value={groupDrafts[g.reservationId]||""}
+                  onChange={e=>setGroupDrafts(prev=>({...prev,[g.reservationId]:e.target.value}))}
+                  onKeyDown={e=>{if(e.key==="Enter")saveGroupNote(g);}}
+                  style={{flex:1,minWidth:160,padding:"6px 10px",borderRadius:7,border:"1px solid var(--line)",fontSize:12.5}}/>
+                <button onClick={()=>saveGroupNote(g)} disabled={!(groupDrafts[g.reservationId]||"").trim()}
+                  style={{padding:"6px 14px",borderRadius:7,border:"none",background:"var(--plum)",color:"#fff",fontWeight:700,fontSize:12.5,cursor:"pointer",opacity:(groupDrafts[g.reservationId]||"").trim()?1:.5}}>
+                  Wyślij
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Karta gościa ─────────────────────────────────────────────────── */}
+      {guestModalRoom&&(
+        <RoomGuestModal
+          room={guestModalRoom}
+          dark={dark}
+          employeeName={employeeName}
+          showToast={showToast}
+          onClose={()=>setGuestModalRoom(null)}
+          onSaved={refreshRoomGuests}
+        />
+      )}
 
       {/* ── Assign modal ─────────────────────────────────────────────────── */}
       {assignModal&&(
@@ -1380,6 +1483,21 @@ function HKPanel({dark,hkDate,setHkDate,hkStaff,setHkStaff,hkData,setHkData,show
           <button className="btn btn-emerald" onClick={genAll}>
             <Download size={14}/> Raporty PDF
           </button>
+          {cleaningStats&&cleaningStats.overallCount>0&&(
+            <div style={{lineHeight:1.4}} title={`Na podstawie ${cleaningStats.overallCount} sprzątań z ostatnich 30 dni`}>
+              <div style={{fontSize:11.5,fontWeight:800,color:dark?"var(--dark-text)":"var(--text-primary)"}}>
+                Śr. czas sprzątania: <span style={{color:"#0891b2"}}>{cleaningStats.overallAvg} min</span>
+              </div>
+              <div style={{fontSize:10,fontWeight:600,color:dark?"var(--dark-text-secondary)":"var(--text-secondary)",display:"flex",gap:8}}>
+                {cleaningStats.regAvg!=null&&<span>zwykły: {cleaningStats.regAvg} min</span>}
+                {cleaningStats.aptAvg!=null&&<span>apartament: {cleaningStats.aptAvg} min</span>}
+                <button type="button" onClick={loadCleaningStats} disabled={cleaningStatsLoading}
+                        style={{border:"none",background:"none",padding:0,cursor:"pointer",color:"inherit",textDecoration:"underline"}}>
+                  {cleaningStatsLoading?"…":"odśwież"}
+                </button>
+              </div>
+            </div>
+          )}
           {autoSource&&(()=>{
             const s=autoSource.summary||{};
             const mailRoomCount=(Array.isArray(autoSource.rows)?autoSource.rows.filter(r=>r?.status).length:0)
