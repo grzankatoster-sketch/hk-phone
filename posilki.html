@@ -434,8 +434,13 @@ window.toggleDone = () => { doneOpen = !doneOpen; render(); };
 function render(){
   const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
   const sumPersons = (arr) => arr.reduce((s,p) => s + (p.persons||1), 0);
-  document.getElementById("countBreakfast").textContent = sumPersons(plans.filter(eatsBreakfast));
-  document.getElementById("countDinner").textContent = sumPersons(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
+  // Licznik pokazuje OSOBY i POKOJE osobno ("N os. · M pok.") — sam numer bez
+  // jednostki mylił personel (myśleli że to liczba pokoi, nie osób).
+  const fmtCount = (arr) => `${sumPersons(arr)} os. · ${arr.length} pok.`;
+  const bfRows = plans.filter(eatsBreakfast);
+  const dnRows = plans.filter(p=>p.category==="HB" && eatsDinner(p));
+  document.getElementById("countBreakfast").textContent = fmtCount(bfRows);
+  document.getElementById("countDinner").textContent = fmtCount(dnRows);
   const board = document.getElementById("board");
   if (!rows.length) {
     board.innerHTML = `<div class="empty">Brak pokoi na ${meal==="breakfast"?"śniadanie":"kolację (HB)"} ${viewDate===todayIso?"dzisiaj":"tego dnia"}.</div>`;
