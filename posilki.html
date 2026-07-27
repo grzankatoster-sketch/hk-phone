@@ -121,6 +121,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
   background:radial-gradient(ellipse 1200px 400px at 50% 0%, rgba(90,29,74,.05) 0%, transparent 70%), var(--cream)}
 .empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:13.5px;line-height:1.6;width:100%}
 
+/* Przerwa/nagłówek między piętrami — pełna szerokość, zaczyna nowy "rząd" we flex-wrap */
+.floor-sep{flex-basis:100%;height:0;margin-top:6px;padding-top:14px;border-top:1.5px dashed var(--line-strong);
+  font-family:'DM Serif Display',Georgia,serif;font-size:13px;color:var(--muted);letter-spacing:.04em}
+.floor-sep:first-child{border-top:none;padding-top:0;margin-top:0}
+
+/* Sekcja "Gotowe" — zwijana, pod tablicą, żeby ukończone pokoje nie zaśmiecały głównego widoku */
+.done-wrap{flex-shrink:0;padding:0 18px 14px}
+.done-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;
+  border-radius:12px;border:1.5px solid var(--line);background:var(--paper);color:var(--green);
+  font-family:inherit;font-size:13px;font-weight:800;cursor:pointer}
+.done-toggle .chev{transition:transform .2s;color:var(--muted)}
+.done-toggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.done-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.done-chip{padding:7px 13px;border-radius:999px;border:1.5px solid var(--green-bg);background:var(--green-bg);
+  color:var(--green-deep);font-family:'DM Serif Display',Georgia,serif;font-size:13px;font-weight:400;cursor:pointer}
+.done-chip:active{opacity:.7}
+
 .fob{position:relative;width:128px;padding:15px 10px 10px;border-radius:17px 17px 13px 13px;cursor:pointer;overflow:hidden;
   box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25);
   transition:transform .15s ease, box-shadow .15s ease, filter .3s ease;
@@ -141,10 +158,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
   background:rgba(0,0,0,.16);color:rgba(255,255,255,.85);font-size:12px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;transition:opacity .15s}
 .fob .fundo:disabled{opacity:.25;cursor:default}
-/* Dokupione — mały licznik w drugim rogu */
-.fob .fextra{position:absolute;bottom:6px;right:7px;display:flex;align-items:center;gap:3px}
-.fob .fextra button{width:20px;height:20px;border-radius:6px;border:none;background:rgba(0,0,0,.14);color:rgba(255,255,255,.8);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.fob .fextra span{font-size:9.5px;font-weight:800;color:rgba(255,255,255,.85)}
+/* Stan "uzbrojony" — pokój 1-osobowy po 1. dotknięciu, czeka na potwierdzenie
+   drugim dotknięciem (żeby jedno przypadkowe kliknięcie go nie zamykało). */
+.fob.confirming{animation:confirmPulse 1s ease-in-out infinite}
+.fob.confirming .fprog{font-weight:800;letter-spacing:.02em}
+@keyframes confirmPulse{0%,100%{box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25), 0 0 0 0 rgba(255,255,255,.5)}50%{box-shadow:0 3px 8px rgba(45,20,34,.18), inset 0 1px 0 rgba(255,255,255,.25), 0 0 0 5px rgba(255,255,255,0)}}
 
 /* Kafel GRUPY — więcej miejsca (nazwa firmy + duże liczby), stepper zamiast
    pojedynczych dotknięć (grupy bywają 20-45-osobowe, tap-po-1 byłby niepraktyczny). */
@@ -223,6 +241,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 </div>
 
 <div class="board" id="board"><div class="empty">Wczytywanie…</div></div>
+<div class="done-wrap" id="doneWrap"></div>
 
 <div class="idle-screen" id="idleScreen">
   <div class="idle-inner">
@@ -393,6 +412,24 @@ async function loadAll(){
 // noc przyjazdu tak, dzień wyjazdu nie (gość wyjeżdża przed kolacją).
 const eatsBreakfast = (p) => p.arrival < viewDate && viewDate <= p.departure;
 const eatsDinner = (p) => p.arrival <= viewDate && viewDate < p.departure;
+// W dzień wyjazdu gość HB i tak nie dostaje kolacji (patrz eatsDinner powyżej)
+// — pokazywanie mu wtedy plakietki "HB" myli personel ("czemu tego HB nie ma
+// na kolacji?"). Na widoku dnia wymeldowania pokazujemy więc efektywnie "BB".
+const displayCategory = (p) => (p.category === "HB" && p.departure === viewDate) ? "BB" : p.category;
+
+// Piętro = pierwsza cyfra numeru pokoju ("118A"→1, "306"→3). Grupy (bez
+// pojedynczego numeru) lądują w osobnym, bezpiętrowym koszyku na końcu.
+function floorOf(room){
+  const m = String(room).match(/^(\d)/);
+  return m ? m[1] : "?";
+}
+function isRoomDone(p, mealKey){
+  const c = checkins[`${p.room}|${mealKey}`];
+  return (c?.checked_persons||0) >= p.persons;
+}
+
+let doneOpen = false;
+window.toggleDone = () => { doneOpen = !doneOpen; render(); };
 
 function render(){
   const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
@@ -404,29 +441,61 @@ function render(){
     board.innerHTML = `<div class="empty">Brak pokoi na ${meal==="breakfast"?"śniadanie":"kolację (HB)"} ${viewDate===todayIso?"dzisiaj":"tego dnia"}.</div>`;
     return;
   }
-  const sorted = rows.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
-  board.innerHTML = sorted.map(p => fobHtml(p, meal)).join("");
+  // Gotowe pokoje znikają z głównej tablicy (żeby nie robiło się tłoku) i
+  // trafiają do zwijanej listy poniżej — nadal klikalne, żeby dało się cofnąć pomyłkę.
+  const pending = rows.filter(p => p.is_group || !isRoomDone(p, meal));
+  const done = rows.filter(p => !p.is_group && isRoomDone(p, meal));
+
+  const sorted = pending.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
+  const groups = sorted.filter(p => p.is_group);
+  const singles = sorted.filter(p => !p.is_group);
+
+  let html = "";
+  let lastFloor = null;
+  for (const p of singles) {
+    const f = floorOf(p.room);
+    if (f !== lastFloor) {
+      html += `<div class="floor-sep">Piętro ${f}</div>`;
+      lastFloor = f;
+    }
+    html += fobHtml(p, meal);
+  }
+  if (groups.length) {
+    html += `<div class="floor-sep">Grupy</div>` + groups.map(p => fobHtml(p, meal)).join("");
+  }
+  if (!singles.length && !groups.length) {
+    html = `<div class="empty">Wszystkie pokoje gotowe ✓</div>`;
+  }
+  board.innerHTML = html;
+
+  const doneWrap = document.getElementById("doneWrap");
+  if (!done.length) { doneWrap.innerHTML = ""; return; }
+  const doneSorted = done.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), "pl", {numeric:true}));
+  doneWrap.innerHTML = `
+    <button class="done-toggle" onclick="toggleDone()" aria-expanded="${doneOpen}">
+      <span>✓ Gotowe (${done.length})</span>
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    ${doneOpen ? `<div class="done-list">${doneSorted.map(p => `<button class="done-chip" onclick="undo('${p.room}','${meal}')" title="Dotknij, aby cofnąć">${escHtml(p.room)}</button>`).join("")}</div>` : ""}
+  `;
 }
 
 function fobHtml(p, mealKey){
   if (p.is_group) return fobHtmlGroup(p, mealKey);
-  const catClass = p.category.toLowerCase();
+  const dispCat = displayCategory(p);
+  const catClass = dispCat.toLowerCase();
   const c = checkins[`${p.room}|${mealKey}`] || { checked_persons: 0, extra_persons: 0 };
   const checked = c.checked_persons || 0;
-  const extra = c.extra_persons || 0;
   const done = checked >= p.persons;
-  return `<div class="fob ${catClass} ${done?"done":""}" data-room="${p.room}" onclick="tap('${p.room}','${mealKey}',${p.persons})">
-    <button class="fundo" title="Cofnij pomyłkowe kliknięcie" onclick="event.stopPropagation();undo('${p.room}','${mealKey}')" ${checked===0?"disabled":""}>
+  const isConfirming = confirming.has(`${p.room}|${mealKey}`);
+  return `<div class="fob ${catClass} ${done?"done":""} ${isConfirming?"confirming":""}" data-room="${p.room}" onclick="tap('${p.room}','${mealKey}',${p.persons})">
+    <button class="fundo" title="Cofnij pomyłkowe kliknięcie" onclick="event.stopPropagation();undo('${p.room}','${mealKey}')" ${checked===0 && !isConfirming?"disabled":""}>
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 7"/></svg>
     </button>
     <div class="fno">${escHtml(p.room)}</div>
     <div class="fguest">${escHtml(p.guest_name || "—")}</div>
-    <div class="fcat">${CAT_ICON[p.category]||""}${p.category}</div>
-    <div class="fprog">${checked}/${p.persons} ${p.persons>1?"osób":"osoba"}</div>
-    <div class="fextra" title="Dokupione">
-      ${extra>0?`<span>+${extra}</span>`:""}
-      <button onclick="event.stopPropagation();extraStep('${p.room}','${mealKey}',1)">+</button>
-    </div>
+    <div class="fcat">${CAT_ICON[dispCat]||""}${dispCat}</div>
+    <div class="fprog">${isConfirming?"Dotknij ponownie":`${checked}/${p.persons} ${p.persons>1?"osób":"osoba"}`}</div>
   </div>`;
 }
 
@@ -463,19 +532,29 @@ async function submit(room, mealKey, checkedPersons, extraPersons){
     });
   } catch (e) { /* offline — kolejny poll odświeży realny stan */ }
 }
-// Tap = +1 osoba (1-osobowy pokój zamyka się za 1 dotknięciem, 2-osobowy za 2). Po limicie — nic.
+// Tap = +1 osoba (2+ os. pokój zamyka się naturalnie dopiero po 2+ dotknięciach).
+// Pokój 1-osobowy jest wyjątkiem: JEDNO dotknięcie zamknęłoby go od razu, co
+// ułatwia przypadkowe zamknięcie — więc dla persons===1 pierwsze dotknięcie
+// tylko "uzbraja" zamknięcie (wizualny stan "dotknij ponownie"), a dopiero
+// DRUGIE je potwierdza. Pokoje 2+ os. nie są tym dotknięte (już wymagają 2+ dotknięć).
+const confirming = new Set();
 window.tap = (room, mealKey, persons) => {
-  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
-  if ((c.checked_persons||0) >= persons) return;
-  submit(room, mealKey, (c.checked_persons||0)+1, c.extra_persons||0);
+  const key = `${room}|${mealKey}`;
+  const c = checkins[key] || { checked_persons:0, extra_persons:0 };
+  const current = c.checked_persons||0;
+  if (current >= persons) return;
+  if (persons === 1 && current === 0 && !confirming.has(key)) {
+    confirming.add(key);
+    render();
+    return;
+  }
+  confirming.delete(key);
+  submit(room, mealKey, current+1, c.extra_persons||0);
 };
 window.undo = (room, mealKey) => {
+  confirming.delete(`${room}|${mealKey}`);
   const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
   submit(room, mealKey, Math.max(0,(c.checked_persons||0)-1), c.extra_persons||0);
-};
-window.extraStep = (room, mealKey, delta) => {
-  const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
-  submit(room, mealKey, c.checked_persons||0, Math.max(0,(c.extra_persons||0)+delta));
 };
 window.groupStep = (room, mealKey, delta, persons) => {
   const c = checkins[`${room}|${mealKey}`] || { checked_persons:0, extra_persons:0 };
