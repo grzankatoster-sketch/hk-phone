@@ -71,7 +71,7 @@ function mountPushButton(opts) {
   if (__isIos() && !__isStandalone()) return; // iOS: najpierw „Dodaj do ekranu" (osobny panel)
   if (Notification.permission === "granted") return;
   const btn = document.createElement("button");
-  btn.textContent = "🔔 Włącz powiadomienia";
+  btn.textContent = "Włącz powiadomienia";
   btn.style.cssText =
     "position:fixed;bottom:14px;left:50%;transform:translateX(-50%);z-index:998;" +
     "background:#6366f1;color:#fff;border:none;border-radius:999px;padding:11px 18px;" +
