@@ -707,7 +707,7 @@ function roomCard(no, status) {
   const isPriority  = priorityFor(no);
   const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
   const isDnd = dndFor(no);
-  const dndBanner = isDnd ? `<div class="prio-banner" style="color:var(--red-ink);background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.32)">🔕 Nie przeszkadzać — nie wchodzić bez sprawdzenia</div>` : "";
+  const dndBanner = isDnd ? `<div class="prio-banner" style="color:var(--red-ink);background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.32)">🚫 Nie przeszkadzać — nie wchodzić bez sprawdzenia</div>` : "";
   const isLateCheckout = status==="W" && lateCheckoutFor(no);
   const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
@@ -748,7 +748,7 @@ function roomCard(no, status) {
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
       <button type="button" title="${isDnd?"Zdejmij: nie przeszkadzać":"Oznacz: nie przeszkadzać"}"
               onclick="event.stopPropagation();toggleDnd('${no}')"
-              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;margin-left:auto;opacity:${isDnd?1:.35}">🔕</button>
+              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;margin-left:auto;opacity:${isDnd?1:.35}">🚫</button>
     </div>
     ${buttons ? `<div style="padding:0 12px 12px">${buttons}</div>` : ""}
   </div>`;
