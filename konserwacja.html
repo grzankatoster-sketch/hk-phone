@@ -99,6 +99,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .tab-btn.active{background:var(--plum);border-color:var(--plum);color:#fff}
 .tab-btn.sec{font-weight:800}
 .tab-btn.sec.active{box-shadow:0 0 0 2px rgba(90,29,74,.2)}
+.tab-btn.tab-urgent{color:var(--red-ink);border-color:rgba(255,84,113,.4)}
+.tab-btn.tab-urgent.active{background:var(--red);border-color:var(--red);color:#fff}
 .tab-sep{flex:0 0 auto;width:1px;align-self:stretch;background:var(--line-strong);margin:2px 5px}
 .list{padding:12px 12px 60px}
 .card{background:var(--paper);border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;border-left-width:4px;box-shadow:0 1px 2px rgba(90,29,74,.04)}
@@ -115,6 +117,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .sla.ok{background:var(--tint);color:var(--muted)}
 .sla.soon{background:rgba(160,120,32,.14);color:var(--amber-ink)}
 .sla.over{background:rgba(179,38,30,.16);color:var(--red-ink)}
+/* Pasek postępu SLA — wizualne odwzorowanie upływu czasu do terminu (obok tekstu). */
+.sla-bar{height:3px;border-radius:2px;background:var(--tint);overflow:hidden;margin:0 0 9px}
+.sla-bar-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.sla-bar-fill.over,.sla-bar-fill.soon{background:var(--red-ink)}
+.sla-bar-fill.ok{background:var(--green-ink)}
+/* Karta "błyska" po zmianie statusu — natychmiastowa, widoczna reakcja na akcję. */
+.card.flash{animation:cardFlash .9s ease}
+@keyframes cardFlash{0%{box-shadow:0 0 0 0 var(--plum-ink)}70%{box-shadow:0 0 0 8px transparent}100%{box-shadow:none}}
+@media (prefers-reduced-motion:reduce){ .card.flash{animation:none} }
+/* Pigułka "N pilne" w headerze + rozwijana lista */
+.urgent-pill{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;background:rgba(255,84,113,.18);border:1px solid rgba(255,84,113,.4);color:#fff;font-size:11.5px;font-weight:800;cursor:pointer;flex-shrink:0}
+.urgent-pill.bump{animation:pillBump .3s ease}
+@keyframes pillBump{50%{transform:scale(1.15)}}
+.alertlist{display:none;flex-direction:column;gap:6px;padding:10px 12px 0}
+.alertlist.show{display:flex}
+.alert-row{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;background:rgba(255,84,113,.1);border:1px solid rgba(255,84,113,.3);color:var(--red-ink);border-radius:10px;padding:9px 11px;font-size:12.5px;font-weight:700;cursor:pointer}
 .theme-btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;font-family:inherit}
 .theme-btn:hover{background:rgba(255,255,255,.22)}
 .src{font-size:10px;font-weight:700;color:var(--muted);background:var(--tint);padding:2px 7px;border-radius:999px;margin-left:auto}
@@ -150,6 +168,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 </head>
 <body>
 <div class="header" id="konsHeader"><h1>🔧 Usterki — Konserwacja</h1></div>
+<div class="alertlist" id="alertlist"></div>
 <div class="tabs" id="tabs"></div>
 <div id="app"><div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div></div>
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('open')"><img id="lightbox-img" src=""/></div>
@@ -194,11 +213,61 @@ let section = "faults";   // faults | plan
 let filter = "open";      // sub-filtr usterek
 let planFilter = "open";  // sub-filtr zadań w otwartym planie
 let planOpenId = null;    // null = lista planów; id = otwarty plan
+let flashId = null;       // id karty do "błyśnięcia" po ostatniej akcji zmiany statusu
 const app = document.getElementById("app");
 
 const STATUS = { open:"Otwarta", in_progress:"W toku", done:"Naprawiona" };
-const FILTERS = [["open","Otwarte"],["in_progress","W toku"],["done","Naprawione"],["all","Wszystkie"]];
+const FILTERS = [["urgent","Pilne"],["open","Otwarte"],["in_progress","W toku"],["done","Naprawione"],["all","Wszystkie"]];
 const PLAN_FILTERS = [["open","Do zrobienia"],["done","Wykonane"],["all","Wszystkie"]];
+let alertsOpen = false;
+let prevUrgentCount = null;
+
+// ── Pilność SLA — bucket + sortowanie, żeby najpilniejsze zawsze były na górze. ──
+const H_MS = 3600000;
+function urgencyOf(f){
+  const st = f.status||"open";
+  if (st==="done") return { bucket:"done", ms:Infinity };
+  if (!f.due_at) return { bucket:"none", ms:Infinity };
+  const diff = new Date(f.due_at).getTime() - Date.now();
+  if (diff<=0) return { bucket:"overdue", ms:diff };
+  if (diff<=H_MS) return { bucket:"critical", ms:diff };
+  if (diff<=4*H_MS) return { bucket:"warn", ms:diff };
+  return { bucket:"ok", ms:diff };
+}
+const BUCKET_ORDER = { overdue:0, critical:1, warn:2, ok:3, none:4, done:5 };
+function sortByUrgency(list){
+  return list.slice().sort((a,b)=>{
+    const ua=urgencyOf(a), ub=urgencyOf(b);
+    if (BUCKET_ORDER[ua.bucket]!==BUCKET_ORDER[ub.bucket]) return BUCKET_ORDER[ua.bucket]-BUCKET_ORDER[ub.bucket];
+    if (ua.bucket==="none") return new Date(b.reported_at||0)-new Date(a.reported_at||0);
+    return ua.ms-ub.ms;
+  });
+}
+function isUrgent(f){ const b=urgencyOf(f).bucket; return b==="overdue"||b==="critical"; }
+function urgentFaults(){ return faults.filter(isUrgent); }
+
+// ── FLIP: płynne przesunięcie kart przy zmianie kolejności (sortowanie wg pilności). ──
+function withFlip(paintFn){
+  const before = new Map();
+  document.querySelectorAll('#app [data-fid]').forEach(el=>{ before.set(el.dataset.fid, el.getBoundingClientRect()); });
+  paintFn();
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('#app [data-fid]').forEach(el=>{
+      const old = before.get(el.dataset.fid);
+      if (!old) return;
+      const now = el.getBoundingClientRect();
+      const dy = old.top - now.top;
+      if (Math.abs(dy) < 1) return;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(()=>{
+        el.style.transition = "transform .35s cubic-bezier(.22,1,.36,1)";
+        el.style.transform = "";
+      });
+    });
+  });
+}
 
 // Czy ten plan dotyczy zalogowanej osoby: przypisany do niej lub jeszcze nieprzypisany (widzą obaj).
 function planForMe(p){
@@ -221,13 +290,22 @@ function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;")
 function fmtDate(iso){ try{ return new Date(iso).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}); }catch{ return ""; } }
 function fmtDay(iso){ try{ return new Date(iso+"T00:00:00").toLocaleDateString("pl-PL",{weekday:"short",day:"2-digit",month:"2-digit"}); }catch{ return String(iso||""); } }
 function fmtDur(min){ if (min<60) return min+" min"; const h=Math.floor(min/60), m=min%60; return h+" godz"+(m?" "+m+" min":""); }
-// SLA (due_at, migracja 0043) — dotąd nigdzie niewidoczne, tylko zapisane w bazie.
+// SLA (due_at, migracja 0043) — badge tekstowy + pasek wizualny upływu czasu.
 function slaBadge(f){
   if (!f.due_at || f.status==="done") return "";
   const diffMin = Math.round((new Date(f.due_at).getTime() - Date.now())/60000);
   if (diffMin < 0)   return `<span class="sla over">Po terminie o ${esc(fmtDur(-diffMin))}</span>`;
   if (diffMin < 60)  return `<span class="sla soon">Zostało ${diffMin} min</span>`;
   return `<span class="sla ok">Termin: ${esc(fmtDate(f.due_at))}</span>`;
+}
+function slaBar(f){
+  if (!f.due_at || f.status==="done") return "";
+  const start = new Date(f.reported_at||f.created_at||Date.now()).getTime();
+  const due = new Date(f.due_at).getTime();
+  const total = due - start;
+  const pct = total>0 ? Math.max(4, Math.min(100, ((Date.now()-start)/total)*100)) : 100;
+  const cls = urgencyOf(f).bucket==="overdue" ? "over" : (urgencyOf(f).bucket==="critical" ? "soon" : "ok");
+  return `<div class="sla-bar"><div class="sla-bar-fill ${cls}" style="width:${pct}%"></div></div>`;
 }
 function openImg(url){ document.getElementById("lightbox-img").src=url; document.getElementById("lightbox").classList.add("open"); }
 function photosOf(f){ const a=[...(f.photos||[])]; if(f.photo_url&&!a.includes(f.photo_url)) a.unshift(f.photo_url); return a; }
@@ -253,8 +331,8 @@ function renderTabs(){
   let subBtns = "";
   if (section==="faults"){
     subBtns = FILTERS.map(([k,l])=>{
-      const n = k==="all" ? faults.length : faults.filter(f=>(f.status||"open")===k).length;
-      return `<button class="tab-btn${filter===k?" active":""}" onclick="setFilter('${k}')">${l}${n?` (${n})`:""}</button>`;
+      const n = k==="all" ? faults.length : (k==="urgent" ? urgentFaults().length : faults.filter(f=>(f.status||"open")===k).length);
+      return `<button class="tab-btn${filter===k?" active":""}${k==="urgent"?" tab-urgent":""}" onclick="setFilter('${k}')">${l}${n?` (${n})`:""}</button>`;
     }).join("");
   } else if (planOpenId){
     const mine = tasksOf(planOpenId);
@@ -264,7 +342,39 @@ function renderTabs(){
     }).join("");
   }
   document.getElementById("tabs").innerHTML = secBtns + `<span class="tab-sep"></span>` + subBtns;
+  renderUrgentHeader();
 }
+
+// Pigułka "N pilne" w headerze — klik rozwija skróconą listę, tap w wiersz filtruje do "Pilne".
+function renderUrgentHeader(){
+  const n = urgentFaults().length;
+  let pill = document.getElementById("urgentPill");
+  if (n>0){
+    if (!pill){
+      pill = document.createElement("button");
+      pill.id = "urgentPill"; pill.className = "urgent-pill"; pill.onclick = toggleAlerts;
+      document.getElementById("konsHeader").appendChild(pill);
+    }
+    const changed = prevUrgentCount!==null && prevUrgentCount!==n;
+    pill.textContent = `⚠ ${n} pilne`;
+    if (changed){ pill.classList.remove("bump"); void pill.offsetWidth; pill.classList.add("bump"); }
+  } else if (pill){
+    pill.remove();
+  }
+  prevUrgentCount = n;
+  const list = document.getElementById("alertlist");
+  list.classList.toggle("show", alertsOpen && n>0);
+  if (alertsOpen && n>0){
+    list.innerHTML = sortByUrgency(urgentFaults()).map(f =>
+      `<button class="alert-row" onclick="jumpToUrgent('${f.id}')">${esc(locOf(f))} — ${esc(urgencyOf(f).bucket==="overdue"?"po terminie":"pilne")}</button>`
+    ).join("");
+  }
+}
+window.toggleAlerts = () => { alertsOpen = !alertsOpen; renderUrgentHeader(); };
+window.jumpToUrgent = (id) => {
+  alertsOpen = false; section = "faults"; filter = "urgent"; render();
+  requestAnimationFrame(() => document.querySelector(`[data-fid="${id}"]`)?.scrollIntoView({behavior:"smooth", block:"center"}));
+};
 function setSection(k){ section=k; render(); }
 function setFilter(k){ filter=k; render(); }
 function setPlanFilter(k){ planFilter=k; render(); }
@@ -272,32 +382,37 @@ function setPlanFilter(k){ planFilter=k; render(); }
 function render(){
   renderTabs();
   if (section==="plan") return renderPlan();
-  const list = filter==="all" ? faults : faults.filter(f=>(f.status||"open")===filter);
-  if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div>Brak usterek w tej kategorii.</div></div>`; return; }
-  let html = `<div class="list">`;
-  list.forEach(f=>{
-    const st = f.status||"open";
-    const photos = photosOf(f);
-    html += `<div class="card ${st}">
-      <div class="card-top">
-        <div class="room">${esc(locOf(f))}</div>
-        <span class="badge ${st}">${STATUS[st]||st}</span>
-        ${slaBadge(f)}
-        <span class="src">${f.source==="hk"?"HK":"recepcja"}</span>
-      </div>
-      <div class="desc">${esc(f.description)}</div>
-      <div class="assign-row">${assignChip(f)}${f.category?`<span class="cat-chip">${esc(f.category)}</span>`:""}</div>
-      <div class="meta">${esc(f.reported_by||"—")} · ${fmtDate(f.reported_at||f.created_at)}${f.resolved_by?` · naprawił: ${esc(f.resolved_by)}`:""}</div>`;
-    if (photos.length){
-      html += `<div class="thumbs">` + photos.map(p=>`<div class="thumb" onclick="openImg('${esc(p)}')"><img src="${esc(p)}" loading="lazy"/></div>`).join("") + `</div>`;
-    }
-    html += `<div class="actions">`;
-    if (st==="open")     html += `<button class="act act-toku" onclick="setStatus('${f.id}','in_progress')">▶ Zaczynam naprawę</button>`;
-    if (st!=="done")     html += `<button class="act act-done" onclick="setStatus('${f.id}','done')">✓ Naprawione — zakończ</button>`;
-    html += `</div></div>`;
+  withFlip(() => {
+    const base = filter==="all" ? faults : (filter==="urgent" ? urgentFaults() : faults.filter(f=>(f.status||"open")===filter));
+    const list = sortByUrgency(base);
+    if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div>Brak usterek w tej kategorii.</div></div>`; return; }
+    let html = `<div class="list">`;
+    list.forEach(f=>{
+      const st = f.status||"open";
+      const photos = photosOf(f);
+      html += `<div class="card ${st}${flashId===f.id?" flash":""}" data-fid="${f.id}">
+        <div class="card-top">
+          <div class="room">${esc(locOf(f))}</div>
+          <span class="badge ${st}">${STATUS[st]||st}</span>
+          ${slaBadge(f)}
+          <span class="src">${f.source==="hk"?"HK":"recepcja"}</span>
+        </div>
+        ${slaBar(f)}
+        <div class="desc">${esc(f.description)}</div>
+        <div class="assign-row">${assignChip(f)}${f.category?`<span class="cat-chip">${esc(f.category)}</span>`:""}</div>
+        <div class="meta">${esc(f.reported_by||"—")} · ${fmtDate(f.reported_at||f.created_at)}${f.resolved_by?` · naprawił: ${esc(f.resolved_by)}`:""}</div>`;
+      if (photos.length){
+        html += `<div class="thumbs">` + photos.map(p=>`<div class="thumb" onclick="openImg('${esc(p)}')"><img src="${esc(p)}" loading="lazy"/></div>`).join("") + `</div>`;
+      }
+      html += `<div class="actions">`;
+      if (st==="open")     html += `<button class="act act-toku" onclick="setStatus('${f.id}','in_progress')">▶ Zaczynam naprawę</button>`;
+      if (st!=="done")     html += `<button class="act act-done" onclick="setStatus('${f.id}','done')">✓ Naprawione — zakończ</button>`;
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+    app.innerHTML = html;
+    flashId = null;
   });
-  html += `</div>`;
-  app.innerHTML = html;
 }
 
 async function setStatus(id, status){
@@ -307,6 +422,7 @@ async function setStatus(id, status){
   if (error){ toast("Błąd: "+error.message,"var(--red)"); return; }
   const f = faults.find(x=>x.id===id); if (f) Object.assign(f, patch);
   toast(status==="done"?"Oznaczono jako naprawione ✓":"Status: w toku","var(--green)");
+  flashId = id;
   render();
 }
 
