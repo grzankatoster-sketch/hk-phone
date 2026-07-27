@@ -4,6 +4,16 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>HK Panel</title>
+<script>
+/* Motyw ustawiany PRZED pierwszym malowaniem, żeby uniknąć "błysku". Domyślnie
+   CIEMNY — praca w terenie/słabe światło (localStorage "hk_theme"="light" dla jasnego). */
+(function(){
+  try{
+    var t = localStorage.getItem("hk_theme");
+    document.documentElement.classList.toggle("dark", t !== "light");
+  }catch(e){ document.documentElement.classList.add("dark"); }
+})();
+</script>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
 <script>
@@ -57,16 +67,37 @@
   --amber:#a07820;
   --lilac:#784b8e;
   --red:#b3261e;
+  /* "-ink" = kolor TEKSTU na przyciemnionym/przezroczystym tle (plakietki,
+     banery, nagłówki sekcji). W jasnym motywie to te same barwy co
+     wypełnienia — w ciemnym dostają jaśniejsze warianty (patrz html.dark).
+     Wypełnienia przycisków (--blue/--green/--amber/--red/--plum, używane z
+     białym tekstem) i obwódki kart statusu zostają BEZ ZMIAN w obu motywach. */
+  --plum-ink:#5a1d4a; --blue-ink:#2563eb; --green-ink:#0f7a4a;
+  --amber-ink:#a07820; --lilac-ink:#784b8e; --red-ink:#b3261e;
 }
-html,body{background:var(--cream)}
+html.dark{
+  color-scheme:dark;
+  --cream:#0B0810;
+  --paper:#17131F;
+  --ink:#F0E8DC;
+  --muted:#A89DAE;
+  --line:#2A2334;
+  --line-strong:#3A3144;
+  --tint:rgba(176,101,160,.12);
+  --plum-ink:#B065A0; --blue-ink:#5BA8E8; --green-ink:#2BD4A0;
+  --amber-ink:#F4C055; --lilac-ink:#B49AFF; --red-ink:#FF5471;
+}
+html,body{background:var(--cream);transition:background .2s ease}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
 .header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
 .avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .name{font-size:17px;font-weight:800;flex:1;color:#fff}
 .shift-badge{font-size:10px;padding:3px 8px;border-radius:999px;font-weight:700}
+.theme-btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;font-family:inherit}
+.theme-btn:hover{background:rgba(255,255,255,.22)}
 .tabs{display:flex;background:var(--paper);border-bottom:2px solid var(--line-strong);position:sticky;top:66px;z-index:9}
 .tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
-.tab-btn.active{color:var(--plum);border-bottom-color:var(--plum)}
+.tab-btn.active{color:var(--plum-ink);border-bottom-color:var(--plum)}
 .tab-badge{display:inline-block;background:var(--amber);color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
 .stats{display:flex;gap:6px;padding:12px 14px;background:var(--paper);border-bottom:1px solid var(--line);flex-wrap:wrap}
 .stat{background:var(--tint);border-radius:8px;padding:6px 12px;text-align:center;min-width:56px}
@@ -83,21 +114,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .room-status{font-size:12px;font-weight:700;flex:1;text-transform:uppercase;letter-spacing:.04em}
 .room-dur{font-size:11px;font-weight:700}
 .room-type{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--tint);color:var(--muted);font-weight:700}
-.room-phystype{font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:rgba(37,99,235,.1);color:var(--blue);letter-spacing:.02em;flex-shrink:0}
-.room-phystype.type-changed{background:rgba(217,119,6,.16);color:var(--amber);box-shadow:0 0 0 2px rgba(217,119,6,.5);animation:typePulse 1.1s ease-in-out infinite}
+.room-phystype{font-size:11px;font-weight:800;padding:2px 8px;border-radius:7px;background:rgba(37,99,235,.1);color:var(--blue-ink);letter-spacing:.02em;flex-shrink:0}
+.room-phystype.type-changed{background:rgba(217,119,6,.16);color:var(--amber-ink);box-shadow:0 0 0 2px rgba(217,119,6,.5);animation:typePulse 1.1s ease-in-out infinite}
 @keyframes typePulse{0%,100%{box-shadow:0 0 0 2px rgba(217,119,6,.5)}50%{box-shadow:0 0 0 4px rgba(217,119,6,.15)}}
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;border:none;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;transition:opacity .15s;font-family:inherit}
 .btn:active{opacity:.75}
 .btn-blue{background:var(--blue);color:#fff}
 .btn-green{background:var(--green);color:#fff}
 .btn-amber{background:var(--amber);color:#fff}
-.btn-gray{background:var(--tint);color:var(--plum);border:1px solid var(--line)}
+.btn-gray{background:var(--tint);color:var(--plum-ink);border:1px solid var(--line)}
 .btn-row{display:flex;gap:8px}
-.ask-banner{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.32);border-radius:8px;padding:10px;font-size:12px;color:var(--blue);font-weight:800;text-align:center;margin-bottom:8px}
-.prio-banner{background:rgba(179,38,30,.1);border:1px solid rgba(179,38,30,.35);border-radius:8px;padding:10px;font-size:12.5px;color:var(--red);font-weight:900;text-align:center;margin-bottom:8px}
+.ask-banner{background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.32);border-radius:8px;padding:10px;font-size:12px;color:var(--blue-ink);font-weight:800;text-align:center;margin-bottom:8px}
+.prio-banner{background:rgba(179,38,30,.1);border:1px solid rgba(179,38,30,.35);border-radius:8px;padding:10px;font-size:12.5px;color:var(--red-ink);font-weight:900;text-align:center;margin-bottom:8px}
 .reply-panel{margin-top:8px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--tint)}
 .reply-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.reply-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--plum);cursor:pointer;font-family:inherit}
+.reply-chip{background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700;color:var(--plum-ink);cursor:pointer;font-family:inherit}
 .reply-chip:active{opacity:.7}
 .reply-custom{display:flex;gap:8px}
 .reply-custom input{flex:1;min-width:0;padding:12px;border:1px solid var(--line);border-radius:10px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink)}
@@ -108,15 +139,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .report-item{background:var(--tint);border-radius:8px;padding:10px 8px;text-align:center}
 .report-label{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:6px}
 .report-ctrl{display:flex;align-items:center;justify-content:center;gap:8px}
-.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:var(--tint);color:var(--plum);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.report-ctrl button{width:28px;height:28px;border-radius:50%;border:none;background:var(--tint);color:var(--plum-ink);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .report-ctrl span{font-size:18px;font-weight:900;min-width:22px;text-align:center}
 .extra-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .extra-row input{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:7px 10px;color:var(--ink);font-size:13px;font-family:inherit}
-.add-extra{background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:7px 14px;color:var(--plum);font-size:12px;cursor:pointer;font-family:inherit}
+.add-extra{background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:7px 14px;color:var(--plum-ink);font-size:12px;cursor:pointer;font-family:inherit}
 .num-input{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:8px 6px;color:var(--ink);font-size:16px;font-weight:800;text-align:center;font-family:inherit}
 .num-input:focus{outline:none;border-color:var(--plum)}
-.fault-box{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
-.fault-title{font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.mini-toggle{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:10px 12px;margin-top:8px;border:1px solid var(--line);border-radius:10px;background:var(--tint);font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit;text-align:left}
+.mini-toggle svg{flex-shrink:0}
+.mini-toggle.fault-toggle{color:var(--red-ink)}
+.mini-toggle.found-toggle{color:var(--green-ink)}
+.mini-toggle .chevron{margin-left:auto;transition:transform .15s}
+.mini-toggle.open .chevron{transform:rotate(180deg)}
+.fault-box{display:none;margin-top:8px;border-top:1px solid var(--line);padding-top:12px}
+.fault-box.open{display:block}
+.fault-title{font-size:11px;font-weight:800;color:var(--red-ink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .fault-box textarea{width:100%;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;color:var(--ink);font-size:13px;font-family:inherit;min-height:64px;resize:vertical}
 .fault-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
@@ -125,7 +163,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .fault-add{display:block;width:100%;background:var(--tint);border:1px dashed var(--line-strong);border-radius:8px;padding:11px;color:var(--muted);font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
 .fault-add input{display:none}
 .btn-fault{background:var(--red);color:#fff}
-.found-title{font-size:11px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.found-title{font-size:11px;font-weight:800;color:var(--green-ink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .btn-found{background:var(--green);color:#fff}
 .task-card{background:var(--paper);border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid var(--amber)}
 .task-text{font-size:14px;font-weight:700;margin-bottom:6px}
@@ -151,15 +189,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .log-text{font-size:12px;font-weight:600;line-height:1.4}
 .log-time{font-size:10px;color:var(--muted);margin-top:2px}
 .ex-card{background:var(--paper);border:2px solid var(--amber);border-radius:12px;padding:13px 14px;margin-bottom:10px}
-.ex-title{font-size:13px;font-weight:800;color:var(--amber);margin-bottom:6px}
+.ex-title{font-size:13px;font-weight:800;color:var(--amber-ink);margin-bottom:6px}
 .ex-btns{display:flex;gap:8px;margin-top:10px}
 .ex-accept{flex:1;padding:11px;border-radius:9px;border:none;background:var(--green);color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
-.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(179,38,30,.35);background:rgba(179,38,30,.06);color:var(--red);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.ex-reject{flex:1;padding:11px;border-radius:9px;border:1.5px solid rgba(179,38,30,.35);background:rgba(179,38,30,.06);color:var(--red-ink);font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
 .ex-accept:active,.ex-reject:active{opacity:.7}
-.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--tint);color:var(--plum);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
-.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(37,99,235,.3);background:rgba(37,99,235,.07);color:var(--blue);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.transfer-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--tint);color:var(--plum-ink);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
+.request-btn{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid rgba(37,99,235,.3);background:rgba(37,99,235,.07);color:var(--blue-ink);font-size:13px;font-weight:800;cursor:pointer;margin-top:6px;text-align:left;font-family:inherit}
 .transfer-btn:active,.request-btn:active{opacity:.7}
-.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);color:var(--amber);font-size:12px;font-weight:700;margin:3px}
+.vac-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);color:var(--amber-ink);font-size:12px;font-weight:700;margin:3px}
 </style>
 </head>
 <body>
@@ -218,8 +256,17 @@ let replyDraft = {};   // { roomNo: "tekst" } — robocza treść własnej odpow
 // Team state
 let allRoomStates  = {}; // { roomNo: roomRow }
 let allLogs        = []; // recent hk_logs
+let checkItems     = []; // aktywne zadania planu kontroli HK (hk_check_items) na dziś
 let hkReminders    = []; // przypomnienia od kierownika HK (hk_reminders)
 let pendingExchanges = []; // parsed from logs
+
+// ─── Motyw jasny/ciemny ────────────────────────────────────────────────────────
+window.toggleTheme = () => {
+  const dark = !document.documentElement.classList.contains("dark");
+  document.documentElement.classList.toggle("dark", dark);
+  try{ localStorage.setItem("hk_theme", dark?"dark":"light"); }catch(e){}
+  render();
+};
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
 function toast(msg, color="var(--green)", ms=2200) {
@@ -310,12 +357,33 @@ function removeExtraRow(room, idx) {
 // Wymiana pokoi między pracownikami została USUNIĘTA — przypisaniami zarządza
 // wyłącznie recepcja (z pomocą agenta sugestii). Telefon tylko odzwierciedla plan.
 
+// ─── Routing-lite: sortowanie listy pokoi wg piętra/numeru ────────────────────
+// Numery pokoi 1xx/2xx/3xx = piętro, więc sort rosnąco po numerze = sort wg trasy
+// (piętro, potem numer). Rozbija sufiks literowy (np. "118A") osobno, bo jako
+// zwykły string "118A" nie sortowałby się liczbowo z "119".
+function roomSortKey(no) {
+  const m = String(no).match(/^(\d+)(.*)$/);
+  return m ? [parseInt(m[1], 10), m[2]] : [Infinity, String(no)];
+}
+function sortRooms(rooms) {
+  return [...rooms].sort((a, b) => {
+    const [an, as] = roomSortKey(a);
+    const [bn, bs] = roomSortKey(b);
+    return an - bn || as.localeCompare(bs);
+  });
+}
+
 // ─── Rooms tab render ─────────────────────────────────────────────────────────
 function render() {
   if (!WORKER) { app.innerHTML = `<div class="loading"><div class="empty-icon">⚠️</div><div>Brak parametru ?w= w URL</div></div>`; return; }
 
   const allRooms = [...myRooms, ...myPmRooms];
-  const waiting   = allRooms.filter(r => { const s=roomStates[r]; return !s||s.status==="W"; });
+  // Routing: pokoje oznaczone przez recepcję jako PILNE idą na początek kolejki
+  // "Do sprzątania" (poza kolejnością piętro/numer); reszta zachowuje sort z allRooms
+  // (Array.prototype.sort jest stabilny — bez zmian kolejności między dwoma nie-pilnymi).
+  const waiting   = allRooms
+    .filter(r => { const s=roomStates[r]; return !s||s.status==="W"; })
+    .sort((a, b) => (priorityFor(b)?1:0) - (priorityFor(a)?1:0));
   const cleaning  = allRooms.filter(r => roomStates[r]?.status==="czyszczenie");
   const done      = allRooms.filter(r => roomStates[r]?.status==="czyste");
   const skipped   = allRooms.filter(r => roomStates[r]?.status==="pominięte");
@@ -327,6 +395,7 @@ function render() {
     <div class="avatar" style="background:${WCOLOR}">${WORKER.charAt(0).toUpperCase()}</div>
     <div class="name">${WORKER}</div>
     <div class="shift-badge" style="background:rgba(255,255,255,.16); color:${isPm?"#f0d6e8":"#cdeede"}">${isPm?"PM":"Rano"}</div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" aria-label="Zmień motyw" title="Zmień motyw">${document.documentElement.classList.contains("dark")?"☀️":"🌙"}</button>
   </div>
   <div class="tabs">
     <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
@@ -343,11 +412,11 @@ function render() {
   html += `
   <div class="stats">
     <div class="stat"><div class="stat-n" style="color:var(--muted)">${waiting.length}</div><div class="stat-l">Czeka</div></div>
-    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:var(--blue)">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
-    <div class="stat"><div class="stat-n" style="color:var(--green)">${done.length}</div><div class="stat-l">Gotowe</div></div>
-    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:var(--lilac)">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
-    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:var(--amber)">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
-    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:var(--amber)">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
+    ${cleaning.length?`<div class="stat"><div class="stat-n" style="color:var(--blue-ink)">${cleaning.length}</div><div class="stat-l">Sprząta</div></div>`:""}
+    <div class="stat"><div class="stat-n" style="color:var(--green-ink)">${done.length}</div><div class="stat-l">Gotowe</div></div>
+    ${skipped.length?`<div class="stat"><div class="stat-n" style="color:var(--lilac-ink)">${skipped.length}</div><div class="stat-l">Pominięte</div></div>`:""}
+    ${vacated.length?`<div class="stat"><div class="stat-n" style="color:var(--amber-ink)">${vacated.length}</div><div class="stat-l">Pusty</div></div>`:""}
+    ${myTasks.length?`<div class="stat"><div class="stat-n" style="color:var(--amber-ink)">${myTasks.length}</div><div class="stat-l">Zadania</div></div>`:""}
   </div>
   <div class="sections">`;
 
@@ -399,7 +468,7 @@ function renderTeamHtml() {
   // ── Przypomnienia od kierownika HK ──
   if (hkReminders && hkReminders.length) {
     html += `<div class="team-section" style="padding:14px;margin-bottom:12px;border-left:3px solid var(--plum)">
-      <div style="font-size:13px;font-weight:800;color:var(--plum);margin-bottom:6px">🔔 Przypomnienia od kierownika</div>
+      <div style="font-size:13px;font-weight:800;color:var(--plum-ink);margin-bottom:6px">🔔 Przypomnienia od kierownika</div>
       ${hkReminders.map(r=>`<div style="font-size:13px;color:#2d1422;padding:6px 0;border-top:1px solid rgba(90,29,74,.08)">${escHtml(r.body)}</div>`).join("")}
     </div>`;
   }
@@ -410,10 +479,10 @@ function renderTeamHtml() {
   // i może użyć sugestii zamiany (agent/AI).
   const myRemaining = [...myRooms, ...myPmRooms].filter(r => { const s=roomStates[r]; return !s||s.status==="W"; }).length;
   html += `<div class="team-section" style="padding:14px;margin-bottom:12px">
-    <div style="font-size:13px;font-weight:800;color:var(--plum);margin-bottom:4px">🙋 Prośba o pokój</div>
+    <div style="font-size:13px;font-weight:800;color:var(--plum-ink);margin-bottom:4px">🙋 Prośba o pokój</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${myRemaining>0?`Masz jeszcze ${myRemaining} do sprzątania.`:"Skończyłaś swoje pokoje?"} Poproś recepcję o kolejny pokój — zobaczą to od razu.</div>
     ${roomRequestSent
-      ? `<div style="text-align:center;padding:10px;border-radius:10px;background:rgba(15,122,74,.1);color:var(--green);font-size:13px;font-weight:700">✓ Prośba wysłana do recepcji</div>`
+      ? `<div style="text-align:center;padding:10px;border-radius:10px;background:rgba(15,122,74,.1);color:var(--green-ink);font-size:13px;font-weight:700">✓ Prośba wysłana do recepcji</div>`
       : `<button class="btn btn-blue" onclick="requestRoom()" style="width:100%">🙋 Poproś o pokój</button>`}
   </div>`;
 
@@ -433,8 +502,13 @@ function renderTeamHtml() {
     priority_off:     l => `Recepcja: anulowano priorytet pok. ${escHtml(l.room)}`,
     info_request:     l => `Recepcja pyta o pok. ${escHtml(l.room)}`,
     info_reply:       l => `pok. ${escHtml(l.room)} · ${escHtml(l.worker)}: ${escHtml(l.extra||"")}`,
+    late_checkout_left: l => l.extra ? escHtml(l.extra) : `Recepcja: gość wyjechał — pok. ${escHtml(l.room)} do sprzątania teraz`,
+    kontrola_wykonana:    l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} wykonana`,
+    kontrola_niewykonana: l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} niewykonana: ${escHtml(l.extra||"")}`,
+    dnd:              l => `${escHtml(l.worker)} — pok. ${escHtml(l.room)} oznaczony "nie przeszkadzać"`,
+    dnd_off:          l => `${escHtml(l.worker)} — zdjęto "nie przeszkadzać" z pok. ${escHtml(l.room)}`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb", kontrola_wykonana:"#0f7a4a", kontrola_niewykonana:"#a07820", dnd:"#b3261e", dnd_off:"#8a6a7e" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -493,6 +567,86 @@ function priorityFor(no) {
   }
   return on;
 }
+
+// Ręczny DND (bez IoT/czujników drzwi) — pokojówka lub gość zgłasza "nie wchodzić",
+// ktokolwiek akurat obsługuje pokój dziś oznacza to sam z telefonu (log w hk_logs,
+// widoczny też w Monitorze HK recepcji dzięki LOG_CFG). dnd bez późniejszego dnd_off.
+function dndFor(no) {
+  let on = false;
+  for (const l of allLogs) {
+    if (l.room !== no) continue;
+    if (l.action === "dnd") on = true;
+    else if (l.action === "dnd_off") on = false;
+  }
+  return on;
+}
+
+window.toggleDnd = async (no) => {
+  const on = dndFor(no);
+  try {
+    await addLog(on ? "dnd_off" : "dnd", no, null);
+    toast(on ? `Pokój ${no} — zdjęto "nie przeszkadzać"` : `Pokój ${no} — oznaczono "nie przeszkadzać"`, on ? "var(--muted)" : "var(--amber)");
+    render();
+  } catch (e) { toast("Nie udało się zapisać", "var(--red)"); }
+};
+
+// Czy recepcja właśnie zaalarmowała, że gość z late checkout wyjechał (zdarzenie jednorazowe,
+// pokazujemy dopóki pokój czeka na sprzątanie — po starcie/zakończeniu komunikat jest już nieaktualny).
+function lateCheckoutFor(no) {
+  return allLogs.some(l => l.room === no && l.action === "late_checkout_left");
+}
+
+// Zadania planu kontroli HK (hk_check_items) aktywne dziś dla danego pokoju —
+// przypięte do POKOJU, nie do osoby: pokazujemy je każdemu kto akurat sprząta
+// ten pokój, niezależnie od przydziałów. "final" (rano→wykonane) jest read-only.
+function checksFor(no) {
+  return checkItems.filter(c => c.room === no);
+}
+
+function checkBox(no) {
+  const items = checksFor(no);
+  if (!items.length) return "";
+  return items.map(c => {
+    const task = (c.plan && c.plan.task) || "";
+    if (c.is_final || c.status === "done") {
+      return `<div class="mini-toggle" style="cursor:default;color:var(--green-ink);margin-top:8px">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Kontrola „${escHtml(task)}" — sprawdzone${c.done_by?` (${escHtml(c.done_by.split(" ")[0])})`:""}${c.done_at?` · ${new Date(c.done_at).toLocaleString("pl-PL",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}`:""}</span>
+      </div>`;
+    }
+    const prevFailed = c.status === "failed"
+      ? `<div style="font-size:11.5px;color:var(--red-ink);margin-bottom:6px">Wcześniej niesprawdzone: ${escHtml(c.fail_reason||"")}</div>`
+      : "";
+    const doneBtn = isPm ? "" : `<button class="btn btn-green" style="margin-bottom:8px" onclick="submitCheck('${c.id}','${no}')">✓ Kontrola „${escHtml(task)}" — wykonana</button>`;
+    return `<div class="fault-box open" style="margin-top:10px;border-top:1px dashed var(--line)">
+      <div class="fault-title" style="color:var(--blue-ink)">🧽 Kontrola: ${escHtml(task)}</div>
+      ${prevFailed}
+      ${doneBtn}
+      <textarea id="ckreason-${c.id}" placeholder="Powód, jeśli nie da się sprawdzić (np. gość poprosił o niewchodzenie)…"></textarea>
+      <button class="btn btn-amber" style="margin-top:8px" onclick="submitCheckFailed('${c.id}','${no}')">Nie udało się sprawdzić</button>
+    </div>`;
+  }).join("");
+}
+
+window.submitCheck = async (itemId, room) => {
+  try {
+    await sb.rpc("hk_check_submit", { p_item_id:itemId, p_shift: isPm?"pm":"morning", p_result:"done", p_worker:WORKER });
+    await addLog("kontrola_wykonana", room, null);
+    toast("Kontrola oznaczona jako wykonana ✓","var(--green)");
+    refreshData();
+  } catch (e) { toast("Nie udało się zapisać kontroli","var(--red)"); }
+};
+window.submitCheckFailed = async (itemId, room) => {
+  const ta = document.getElementById(`ckreason-${itemId}`);
+  const reason = (ta && ta.value || "").trim();
+  if (!reason) { toast("Podaj powód niewykonania","var(--red)"); return; }
+  try {
+    await sb.rpc("hk_check_submit", { p_item_id:itemId, p_shift: isPm?"pm":"morning", p_result:"failed", p_reason:reason, p_worker:WORKER });
+    await addLog("kontrola_niewykonana", room, reason.slice(0,120));
+    toast("Zgłoszono — nie udało się sprawdzić","var(--amber)");
+    refreshData();
+  } catch (e) { toast("Nie udało się zapisać zgłoszenia","var(--red)"); }
+};
 
 // Czy recepcja czeka na odpowiedź o tym pokoju? (info_request bez późniejszego info_reply)
 function pendingAskFor(no) {
@@ -554,6 +708,10 @@ function roomCard(no, status) {
   const pendingAsk = pendingAskFor(no);
   const isPriority  = priorityFor(no);
   const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
+  const isDnd = dndFor(no);
+  const dndBanner = isDnd ? `<div class="prio-banner" style="color:var(--red-ink);background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.32)">🔕 Nie przeszkadzać — nie wchodzić bez sprawdzenia</div>` : "";
+  const isLateCheckout = status==="W" && lateCheckoutFor(no);
+  const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
   // Przycisk odpowiedzi (z gotowcami) pokazujemy TYLKO gdy recepcja faktycznie
   // pyta o status pokoju. Bez pytania pracownik widzi sam "Zaczynam sprzątać".
@@ -569,7 +727,7 @@ function roomCard(no, status) {
     buttons = `<div class="btn-row"><button class="btn btn-blue" style="flex:3" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>${replyBtn}</div>`;
     // Dla pobytów od razu drugi przycisk obok startu (nie po rozpoczęciu sprzątania).
     if (isPobyt) buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
-    if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
+    if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber-ink);font-weight:700;text-align:center;margin-bottom:8px">🔔 Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
       <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
@@ -578,7 +736,7 @@ function roomCard(no, status) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
-  buttons = prioBanner + askBanner + buttons + replyUI;
+  buttons = dndBanner + prioBanner + lateBanner + askBanner + buttons + replyUI + checkBox(no);
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
@@ -587,6 +745,9 @@ function roomCard(no, status) {
       <div class="room-status" style="color:${col}">${lbl}</div>
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
+      <button type="button" title="${isDnd?"Zdejmij: nie przeszkadzać":"Oznacz: nie przeszkadzać"}"
+              onclick="event.stopPropagation();toggleDnd('${no}')"
+              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;opacity:${isDnd?1:.35}">🔕</button>
     </div>
     ${buttons ? `<div style="padding:0 12px 12px">${buttons}</div>` : ""}
   </div>`;
@@ -628,14 +789,19 @@ function renderReportPanel(room) {
       <input placeholder="Nazwa…" value="${escHtml(it.name)}" oninput="getExtra('${room}')[${idx}].name=this.value"/>
       <input class="num-input" style="flex:0 0 70px" type="number" inputmode="numeric" min="0" value="${it.count||0}"
         onfocus="this.select()" oninput="getExtra('${room}')[${idx}].count=Math.max(0,parseInt(this.value)||0)">
-      <button onclick="removeExtraRow('${room}',${idx})" style="background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--red);cursor:pointer">✕</button>
+      <button onclick="removeExtraRow('${room}',${idx})" style="background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--red-ink);cursor:pointer">✕</button>
     </div>`;
   });
   html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
   html += `<button class="btn btn-green" onclick="doneRoom('${room}')">✓ Gotowe — zatwierdź raport</button>`;
 
-  // ── Usterka (na dole pokoju) ──
-  html += `<div class="fault-box">
+  // ── Usterka (zwinięta domyślnie — kafel + rozwijana treść) ──
+  html += `<button class="mini-toggle fault-toggle" onclick="toggleMiniBox(this)">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+    <span>Zgłoś usterkę</span>
+    <svg class="chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+  <div class="fault-box">
     <div class="fault-title">⚠ Zgłoś usterkę</div>
     <textarea placeholder="Co się stało? Opisz usterkę…" oninput="getFaultDraft('${room}').desc=this.value">${escHtml(fd.desc)}</textarea>
     <div class="fault-thumbs">`;
@@ -649,9 +815,14 @@ function renderReportPanel(room) {
     <button class="btn btn-fault" onclick="reportFault('${room}')">⚠ Wyślij zgłoszenie usterki</button>
   </div>`;
 
-  // ── Znaleziony przedmiot (na dole pokoju, działa jak usterka) ──
+  // ── Znaleziony przedmiot (zwinięty domyślnie — kafel + rozwijana treść) ──
   const found = getFoundDraft(room);
-  html += `<div class="fault-box">
+  html += `<button class="mini-toggle found-toggle" onclick="toggleMiniBox(this)">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M16.5 9.4 7.55 4.24"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.29 7 12 12l8.71-5"/><path d="M12 22V12"/></svg>
+    <span>Znaleziony przedmiot</span>
+    <svg class="chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+  </button>
+  <div class="fault-box">
     <div class="found-title">📦 Znaleziony przedmiot</div>
     <textarea placeholder="Co znalazłaś? Opisz przedmiot…" oninput="getFoundDraft('${room}').desc=this.value">${escHtml(found.desc)}</textarea>
     <div class="fault-thumbs">`;
@@ -666,6 +837,12 @@ function renderReportPanel(room) {
   </div>`;
 
   panel.innerHTML = html;
+}
+
+function toggleMiniBox(btn) {
+  btn.classList.toggle("open");
+  const box = btn.nextElementSibling;
+  if (box) box.classList.toggle("open");
 }
 
 // ─── Usterki (zdjęcia → Supabase Storage, wpis → tabela faults) ─────────────────
@@ -759,11 +936,12 @@ async function reportFound(room) {
 // ─── Team data load ───────────────────────────────────────────────────────────
 async function loadTeamData() {
   if (!sb) return;
-  const [{ data: plan }, { data: rData }, { data: lData }, remRes] = await Promise.all([
+  const [{ data: plan }, { data: rData }, { data: lData }, remRes, ckRes] = await Promise.all([
     sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single(),
     sb.from("hk_rooms").select("*").eq("date", TODAY),
     sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at"),
     sb.from("hk_reminders").select("body,active,created_at").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }).limit(20).then(r=>r, ()=>({data:[]})),
+    sb.from("hk_check_items").select("*, plan:hk_check_plans(task,name)").eq("tenant_id", TENANT_ID).lte("valid_from", TODAY).gte("valid_to", TODAY).then(r=>r, ()=>({data:[]})),
   ]);
 
   if (plan) {
@@ -775,6 +953,7 @@ async function loadTeamData() {
   }
   if (lData) allLogs = lData;
   hkReminders = ((remRes && remRes.data) || []).filter(r => r.active !== false);
+  checkItems = (ckRes && ckRes.data) || [];
 }
 
 // ─── Polling fallback ─────────────────────────────────────────────────────────
@@ -788,8 +967,8 @@ async function refreshData() {
   try {
     const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
     if (plan) {
-      myRooms   = (plan.assignments   || {})[WORKER] || [];
-      myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
+      myRooms   = sortRooms((plan.assignments   || {})[WORKER] || []);
+      myPmRooms = sortRooms((plan.pm_assignments|| {})[WORKER] || []);
       pmRoomTypes = plan.pm_room_types || {};
       roomTypes = plan.room_types || {};
       isPm = myPmRooms.length > 0 && myRooms.length === 0;
@@ -803,6 +982,10 @@ async function refreshData() {
     if (tData) tasks = tData;
     const { data: lData } = await sb.from("hk_logs").select("*").eq("date", TODAY).order("created_at");
     if (lData) allLogs = lData;
+    try {
+      const { data: ckData } = await sb.from("hk_check_items").select("*, plan:hk_check_plans(task,name)").eq("tenant_id", TENANT_ID).lte("valid_from", TODAY).gte("valid_to", TODAY);
+      if (ckData) checkItems = ckData;
+    } catch {}
     const y = window.scrollY;
     render();
     window.scrollTo(0, y);
@@ -842,7 +1025,7 @@ async function pickWorker() {
     // kim jesteśmy (ma własny localStorage, osobny od Safari). Dajemy wpisać imię
     // ręcznie; zapamiętamy je na tym telefonie i ikona zacznie działać na stałe.
     app.innerHTML = `<div style="padding:24px 16px;max-width:480px;margin:0 auto">
-      <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum)">Kto sprząta?</div>
+      <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum-ink)">Kto sprząta?</div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Nie ma jeszcze rozpiski na dziś. Wpisz swoje imię — zapamiętamy je na tym telefonie i nie trzeba będzie tego powtarzać.</div>
       <input id="wname" type="text" autocomplete="name" placeholder="Twoje imię"
         style="width:100%;padding:14px 16px;margin-bottom:12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;color:var(--ink);font-size:16px;box-sizing:border-box"/>
@@ -857,7 +1040,7 @@ async function pickWorker() {
   }
 
   let html = `<div style="padding:24px 16px;max-width:480px;margin:0 auto">
-    <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum)">Kto sprząta?</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:6px;color:var(--plum-ink)">Kto sprząta?</div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:18px">Wybierz swoje imię — zapamiętamy je na tym telefonie.</div>`;
   names.forEach(n => {
     html += `<button data-name="${escHtml(n)}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:10px;background:var(--paper);border:1px solid var(--line);border-radius:14px;color:var(--ink);font-size:16px;font-weight:700;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgba(90,29,74,.04)">
@@ -873,13 +1056,13 @@ async function pickWorker() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
   if (!WORKER) { await pickWorker(); return; }
-  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red)">Brak konfiguracji Supabase.</div>'; return; }
+  if (!sb) { app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red-ink)">Brak konfiguracji Supabase.</div>'; return; }
   app.innerHTML = `<div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div>`;
 
   const { data: plan } = await sb.from("hk_plan").select("assignments,pm_assignments,pm_room_types,room_types").eq("date", TODAY).single();
   if (plan) {
-    myRooms   = (plan.assignments   || {})[WORKER] || [];
-    myPmRooms = (plan.pm_assignments|| {})[WORKER] || [];
+    myRooms   = sortRooms((plan.assignments   || {})[WORKER] || []);
+    myPmRooms = sortRooms((plan.pm_assignments|| {})[WORKER] || []);
     pmRoomTypes = plan.pm_room_types || {};
     roomTypes = plan.room_types || {};
     isPm = myPmRooms.length > 0 && myRooms.length === 0;
@@ -908,7 +1091,7 @@ async function init() {
     .on("postgres_changes",{event:"*",schema:"public",table:"hk_rooms",filter:`date=eq.${TODAY}`}, ({new:row})=>{
       if (!row) return;
       if (row.worker === WORKER && !allMyRooms.includes(row.room)) {
-        myRooms.push(row.room);
+        myRooms = sortRooms([...myRooms, row.room]);
         allMyRooms.push(row.room);
       }
       roomStates[row.room]    = row;
@@ -922,8 +1105,8 @@ async function init() {
       render();
     })
     .on("postgres_changes",{event:"UPDATE",schema:"public",table:"hk_plan",filter:`date=eq.${TODAY}`}, async ({new:row})=>{
-      const newRooms   = (row.assignments   ||{})[WORKER] || [];
-      const newPmRooms = (row.pm_assignments||{})[WORKER] || [];
+      const newRooms   = sortRooms((row.assignments   ||{})[WORKER] || []);
+      const newPmRooms = sortRooms((row.pm_assignments||{})[WORKER] || []);
       // Zmiana TYPU pokoju (DBL→TWIN itd.) na MOICH pokojach — to się dotąd
       // działo po cichu (tylko przerysowanie). Wykrywamy diff i alarmujemy.
       const nextTypes = row.room_types || roomTypes;
@@ -1018,7 +1201,7 @@ function showQcModal(c) {
   const o = _ackOverlay(`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
       <span style="font-size:22px">🔍</span>
-      <div style="font-size:18px;font-weight:800;color:var(--plum)">Kontrola pokoju ${escHtml(c.room)}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--plum-ink)">Kontrola pokoju ${escHtml(c.room)}</div>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${c.cleaned_by?("Sprzątał(a): "+escHtml(c.cleaned_by)+". "):""}Sprawdź pokój i potwierdź każdy punkt.</div>
     <div id="qcItems">${rows||'<div style="color:var(--muted);font-size:13px">Brak pytań w checkliście.</div>'}</div>
@@ -1044,7 +1227,7 @@ function showReminderModal(r) {
   const o = _ackOverlay(`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <span style="font-size:22px">📌</span>
-      <div style="font-size:18px;font-weight:800;color:var(--plum)">Przypomnienie</div>
+      <div style="font-size:18px;font-weight:800;color:var(--plum-ink)">Przypomnienie</div>
     </div>
     <div style="font-size:15px;color:var(--ink);line-height:1.55;background:rgba(90,29,74,.05);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">${escHtml(r.body)}</div>
     <button id="remOk" style="width:100%;padding:14px;border:none;border-radius:12px;background:var(--plum);color:#fff;font-size:15px;font-weight:800;cursor:pointer">Przeczytałam — OK</button>`);
