@@ -457,9 +457,10 @@ function mergeByRoom(rows){
 
 function render(){
   const rows = mergeByRoom(meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p)));
-  // Licznik pokazuje liczbę POKOI (nie osób) — sam numer bez jednostki mylił
-  // personel, a osoby+pokoje razem było zbyt gęste na małym pill-u.
-  const fmtCount = (arr) => `${arr.length} pok.`;
+  // Licznik pokazuje liczbę POKOI i OSÓB — sama liczba pokoi myliła personel
+  // przy porównaniu z raportem KWHotel (ten liczy osoby, nie pokoje; pokój
+  // 2-osobowy to 1 "pok." ale 2 "os." — stąd różnica typu 66 pok. / 106 os.).
+  const fmtCount = (arr) => `${arr.length} pok. / ${arr.reduce((s,p)=>s+(p.persons||0),0)} os.`;
   const bfRows = mergeByRoom(plans.filter(eatsBreakfast));
   const dnRows = mergeByRoom(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
   document.getElementById("countBreakfast").textContent = fmtCount(bfRows);
