@@ -608,6 +608,9 @@ function makeMockClient(){
     {name:"Menedżer operacyjny",email:"oper@conrad-panel.com",role:"mgr_operacyjny",claimed:false,active:true,created_at:today},
     {name:"Menedżer gastronomii",email:"gastro@conrad-panel.com",role:"mgr_gastro",claimed:false,active:true,created_at:today},
   ];
+  const DEMO_DEPTS = [
+    {id:"dept-recepcja", name:"Recepcja"}, {id:"dept-hk", name:"Sprzątanie"}, {id:"dept-gastro", name:"Gastronomia"},
+  ];
   const DEMO_EMAIL = (ACC.find(a=>a.role===DEMO_ROLE)||ACC[0]).email;
   const DATA = {
     app_accounts: ACC,
@@ -710,6 +713,10 @@ function makeMockClient(){
     admin_set_role: ()=> null, admin_set_active: ()=> null,
     admin_reset_account: ()=> "acc_new@conrad-panel.com", admin_set_password: ()=> true, admin_set_name: ()=> null,
     precheck_claim: ()=> true, regenerate_token: ()=> "NEW123", set_token_active: ()=> null,
+    admin_list_departments: ()=> DEMO_DEPTS,
+    admin_add_department: (args)=> { const name=(args&&args.p_name||"").trim(); if(!name) throw new Error("Brak nazwy działu."); const id="dept-"+Date.now(); DEMO_DEPTS.push({id,name}); return id; },
+    admin_delete_department: (args)=> { const i=DEMO_DEPTS.findIndex(d=>d.id===(args&&args.p_id)); if(i>=0) DEMO_DEPTS.splice(i,1); return null; },
+    admin_set_department: ()=> null, admin_set_tabs: ()=> null,
   };
   function builder(name){
     let rows = (DATA[name]||[]).map(r=>({...r}));
@@ -732,6 +739,18 @@ function makeMockClient(){
     rpc: (n,a)=> Promise.resolve({ data: RPC[n] ? RPC[n](a) : null, error: null }),
     functions: { invoke: (n,opt)=>{
       const b=(opt&&opt.body)||{};
+      if(b.task==="roletabs"){
+        const title=((b.payload&&b.payload.title)||"").toLowerCase();
+        const catalogKeys=((b.payload&&b.payload.catalog)||[]).map(c=>c.key);
+        let tabs;
+        if(/recepcj|koordyn/.test(title)) tabs=["pulpit","live","wyjazdy","tablica","zmiany","zadania","kasa","poczta"];
+        else if(/hk|sprząt|pokojow/.test(title)) tabs=["live","praca","jakosc","kontrole","znalezione","grafik","poczta"];
+        else if(/gastro|kuchni|restaurac/.test(title)) tabs=["grafik","zadania","tablica","akcje","poczta"];
+        else if(/konserw|techni/.test(title)) tabs=["konserw","sla","plan","poczta"];
+        else tabs=["poczta","live","zadania"];
+        tabs = tabs.filter(k=>catalogKeys.includes(k));
+        return Promise.resolve({ data:{ data:{ tabs }, text:"" }, error:null });
+      }
       if(b.task==="grafik"){
         const days=(b.payload&&b.payload.days)||[]; const ppl=(b.payload&&b.payload.persons)||[];
         const sched={}; days.forEach((d,di)=>{ sched[d]={}; ppl.forEach((p,pi)=>{ const av=(p.available||[]).some(a=>a.date===d); if(av && (di+pi)%2===0) sched[d][p.name]={start:"7",end:"15",shift:"poranna"}; }); });
@@ -1126,7 +1145,7 @@ window.submitAuth = async (i, first) => {
   }
 };
 
-let CURRENT = { role: null, name: "" };
+let CURRENT = { role: null, name: "", tabs: null };
 
 async function showPanelFromSession(fresh) {
   app.innerHTML = '<div class="spin">Wczytywanie panelu…</div>';
@@ -1146,14 +1165,14 @@ async function showPanelFromSession(fresh) {
   }
   let { data: roleData } = await sb.rpc("current_app_role");
   role = roleData || null;
-  let { data: me } = await sb.from("app_accounts").select("name,role,onboarded_at").eq("email", user.email).maybeSingle();
+  let { data: me } = await sb.from("app_accounts").select("name,role,onboarded_at,tabs").eq("email", user.email).maybeSingle();
   if (me) { name = me.name; if (!role) role = me.role; }
   // Jeszcze brak roli? Token mógł dopiero co dojść — odśwież sesję i spróbuj raz jeszcze.
   if (!role) {
     try { await sb.auth.refreshSession(); } catch(_) {}
     ({ data: roleData } = await sb.rpc("current_app_role"));
     role = roleData || null;
-    ({ data: me } = await sb.from("app_accounts").select("name,role,onboarded_at").eq("email", user.email).maybeSingle());
+    ({ data: me } = await sb.from("app_accounts").select("name,role,onboarded_at,tabs").eq("email", user.email).maybeSingle());
     if (me) { name = me.name || name; if (!role) role = me.role; }
   }
   logoutBtn.style.display = "";
@@ -1161,7 +1180,7 @@ async function showPanelFromSession(fresh) {
     app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Twoje konto nie ma jeszcze przypisanej roli. Skontaktuj się z adminem.</div></div>`;
     return;
   }
-  CURRENT = { role, name, email: user.email, onboardedAt: me ? me.onboarded_at : null };
+  CURRENT = { role, name, email: user.email, onboardedAt: me ? me.onboarded_at : null, tabs: me ? me.tabs : null };
   // Rejestruj tylko realne wejście (kliknięcie „Zaloguj"), nie odświeżenie/wznowienie PWA —
   // dzięki temu admin widzi w „Logach" kto faktycznie wszedł i czy coś potem zrobił.
   if (fresh) { try { await sb.rpc("log_action", { p_action:"logowanie", p_detail: role||"" }); } catch {} }
@@ -1182,7 +1201,7 @@ const ONB_DESC = {
   staty: "Statystyki pracy zespołu.",
   praca: "Tryb pracy — sprzątanie pokoi krok po kroku.",
   jakosc: "Losowe kontrole jakości sprzątania.",
-  kontrole: "Plan kontroli pokoi (np. silikony) — wykonuje kto akurat sprząta.",
+  kontrole: "Checklisty pokojowe — wyślij do HK, konserwacji albo obu naraz, śledź postęp.",
   tablica: "Ogłoszenia i przypomnienia dla zespołu.",
   znalezione: "Rejestr rzeczy znalezionych przez gości.",
   grafik: "Zbiórka dyspozyczności / grafik zmian.",
@@ -1234,6 +1253,11 @@ function renderPlaceholder(role, name) {
 // ─────────────────────────── Dashboard HK ───────────────────────────
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const APT_ROOMS = ["106","206","218","306","318"];
+// Pełna lista numerów pokoi (piętra 1-3) — kopia scripts/hk-automation/lib/rooms.cjs (ROOM_NUMBERS).
+// To plik Node/CJS, niedostępny w przeglądarce — jeśli tam dojdzie/ubędzie pokój, zsynchronizuj ręcznie.
+const ALL_ROOMS = ["101","102","103","104","105","106","107","108","109","110","111","112","114","115","116","117","118A","118B","119","120","121","122","123",
+  "201","202","203","204","205","206","207","208","209","210","211","212","214","215","216","217","218","219","220","221","222","223",
+  "301","302","303","304","305","306","307","308","309","310","311","312","314","315","316","317","318","319","320","321","322","323"];
 const DOW = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
 const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
 const pad = n => n<10 ? "0"+n : ""+n;
@@ -1263,11 +1287,30 @@ let liveTimer = null;
 
 function stopLive(){ if (liveTimer){ clearInterval(liveTimer); liveTimer=null; } }
 
+// Katalog wszystkich funkcji/zakładek panelu — jedno źródło prawdy używane zarówno przez
+// domyślny (per-rola) routing niżej, jak i przez edytor "Funkcje" w zakładce Konta (GM
+// dobiera jawną listę per-konto, opcjonalnie z podpowiedzią AI — patrz loadKonta/roletabs).
+// UWAGA: klucze muszą pokrywać się z panel_valid_tab_keys() w SQL (0069_panel_struktura.sql) —
+// to on ostatecznie waliduje zapis, ten katalog to tylko UI.
+const TAB_CATALOG = [
+  ["poczta","Poczta"], ["pulpit","Pulpit"], ["live","Na żywo"], ["wyjazdy","Wyjazdy"],
+  ["staty","Statystyki"], ["praca","Praca"], ["jakosc","Jakość"], ["kontrole","Kontrole"],
+  ["tablica","Tablica"], ["znalezione","Znalezione"], ["grafik","Grafik"], ["zmiany","Zmiany"],
+  ["zadania","Zadania"], ["kasa","Kasa"], ["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"],
+  ["akcje","Akcje"], ["konta","Konta"], ["logi","Logi"],
+];
+
 // Role recepcyjne widzą dodatkowo Zadania + Kasę; grafik widzą HK + recepcyjne.
 const RECEPCJA_ROLES = new Set(["koordynator","mgr_recepcja","mgr_glowny","mgr_operacyjny"]);
 const GRAFIK_ROLES   = new Set(["mgr_hk","koordynator","mgr_recepcja","mgr_glowny","mgr_operacyjny"]);
 const KONSERW_ROLES  = new Set(["mgr_glowny","mgr_operacyjny"]);
 function tabsFor(role){
+  // Jawna lista funkcji (dobrana przez GM, opcjonalnie z podpowiedzią AI — zakładka Konta)
+  // nadpisuje domyślny dobór po roli. admin widzi zawsze wszystko, niezależnie od tabs.
+  if (role !== "admin" && Array.isArray(CURRENT.tabs) && CURRENT.tabs.length) {
+    const keep = new Set(CURRENT.tabs);
+    return TAB_CATALOG.filter(([k]) => keep.has(k));
+  }
   // Gastro: osobny, węższy zestaw (bez modułów HK).
   if (role === "mgr_gastro") return [["poczta","Poczta"],["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
@@ -1279,7 +1322,7 @@ function tabsFor(role){
   t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || role === "mgr_hk") t.push(["jakosc","Jakość"]); // pulpit losowych kontroli pokoi
-  if (A || role === "mgr_hk") t.push(["kontrole","Kontrole"]); // plan kontroli pokoi (np. silikony) — wykonuje kto akurat sprząta
+  if (A || role === "mgr_hk" || role === "koordynator" || KONSERW_ROLES.has(role)) t.push(["kontrole","Kontrole"]); // checklisty pokojowe — cel HK i/lub konserwacja
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || RECEPCJA_ROLES.has(role) || role === "mgr_hk") t.push(["znalezione","Znalezione"]); // rzeczy znalezione (recepcja + HK)
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
@@ -4052,8 +4095,10 @@ window.addKonserwTask = async () => {
 // Konserwator na każde zadanie może odpowiedzieć i dołączyć zdjęcie zmian.
 let PLAN_OPEN_ID = null;   // null = lista planów; id = otwarty plan
 let PLAN_SHOW_DONE = false; // czy pokazywać zakończone plany na liście
-let CHK_OPEN_ID = null;    // null = lista planów kontroli; id = otwarty plan
-let CHK_SHOW_DONE = false; // czy pokazywać zakończone plany kontroli
+let CHK_OPEN_ID = null;    // null = lista checklist; id = otwarta checklista (checklist_groups.id)
+let CHK_SHOW_DONE = false; // czy pokazywać zakończone checklisty
+let CHK_OPEN_HP_ID = null; // id powiązanego hk_check_plans dla otwartej checklisty (albo null)
+let CHK_OPEN_MP_ID = null; // id powiązanego maintenance_plans dla otwartej checklisty (albo null)
 async function loadPlan() {
   let plans = [], tasks = [];
   try {
@@ -4145,14 +4190,16 @@ function renderPlanDetail(p, items) {
     <div class="soon" style="margin-top:0">Dodaj zadanie</div>
     <div class="field"><label>Co wykonać</label><input id="ptTask" class="inp" placeholder="np. Sprawdzić oświetlenie parkingu"/></div>
     <div class="field"><label>Termin (opcjonalnie)</label><input id="ptDate" class="inp" type="date"/></div>
+    <div class="field"><label>Pokoje (opcjonalnie, oddziel przecinkami — jedno zadanie na pokój)</label><input id="ptRooms" class="inp" placeholder="np. 201,202,304 — puste = zadanie ogólne"/></div>
     <button id="ptBtn" class="btn" onclick="addPlanTask('${p.id}')">Dodaj zadanie</button>
     <div id="ptMsg" class="msg"></div>
   </div>`;
-  // Zadania: z terminem wg dnia (rosnąco), bez terminu na końcu.
+  // Zadania: z terminem wg dnia (rosnąco), bez terminu na końcu; przy równych datach — wg pokoju.
   const sorted = items.slice().sort((a,b) => {
-    if (!a.date && !b.date) return 0;
+    if (!a.date && !b.date) return String(a.room||"").localeCompare(String(b.room||""), undefined, { numeric:true });
     if (!a.date) return 1; if (!b.date) return -1;
-    return String(a.date).localeCompare(String(b.date));
+    const d = String(a.date).localeCompare(String(b.date));
+    return d !== 0 ? d : String(a.room||"").localeCompare(String(b.room||""), undefined, { numeric:true });
   });
   const tasksHtml = sorted.length ? sorted.map(planTaskRow).join("") : '<div class="empty">Brak zadań — dodaj pierwsze powyżej.</div>';
   const isDone = p.status === "done";
@@ -4168,6 +4215,7 @@ function planTaskRow(r) {
   return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:5px;${done?"opacity:.7":""}">
     <div style="display:flex;align-items:center;gap:8px">
       <span class="k" style="flex:1;${done?"text-decoration:line-through":""}">${esc(r.task||"")}</span>
+      ${r.room?`<span class="chip">🚪 ${esc(r.room)}</span>`:""}
       ${r.date?`<span class="chip">📅 ${esc(r.date)}</span>`:`<span class="chip" style="color:var(--muted)">bez terminu</span>`}
       <span class="chip" style="color:${done?"var(--ok)":"var(--muted)"}">${done?"wykonane":"do zrobienia"}</span>
     </div>
@@ -4198,16 +4246,20 @@ window.assignBoth = async (planId) => {
 window.addPlanTask = async (planId) => {
   const task = ((document.getElementById("ptTask")||{}).value || "").trim();
   const date = (document.getElementById("ptDate")||{}).value || null;
+  const rooms = ((document.getElementById("ptRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
   const msg = document.getElementById("ptMsg"), btn = document.getElementById("ptBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
   if (!task) return setM("Wpisz treść zadania.", "err");
   if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
   try {
     const { data:pl } = await sb.from("maintenance_plans").select("name").eq("id", planId).single();
-    const { error } = await sb.from("panel_plan").insert({ tenant_id:TENANT_ID, plan_id:planId, plan:(pl&&pl.name)||"Plan", date, task, status:"open", created_by:CURRENT.name||"Panel" });
+    const base = { tenant_id:TENANT_ID, plan_id:planId, plan:(pl&&pl.name)||"Plan", date, task, status:"open", created_by:CURRENT.name||"Panel" };
+    const rows = rooms.length ? rooms.map(room => ({ ...base, room })) : [base];
+    const { error } = await sb.from("panel_plan").insert(rows);
     if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"plan_zadanie_dodane", p_detail:`${(pl&&pl.name)||""}: ${task}` }); } catch {}
-    const ti=document.getElementById("ptTask"); if(ti) ti.value=""; const di=document.getElementById("ptDate"); if(di) di.value="";
+    const detail = rooms.length ? `${(pl&&pl.name)||""}: ${task} (${rooms.length} pok.)` : `${(pl&&pl.name)||""}: ${task}`;
+    try { await sb.rpc("log_action", { p_action:"plan_zadanie_dodane", p_detail:detail }); } catch {}
+    const ti=document.getElementById("ptTask"); if(ti) ti.value=""; const di=document.getElementById("ptDate"); if(di) di.value=""; const ri=document.getElementById("ptRooms"); if(ri) ri.value="";
     loadPlan();
   } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj zadanie"; } }
 };
@@ -4225,69 +4277,105 @@ window.setPlanStatus = async (id, st) => {
   catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
-// ── Kontrole HK: plan kontroli PRZYPISANY DO POKOJU (nie do osoby) — wykonuje
-// kto akurat sprząta dany pokój danego dnia (przydział z hk_plan.assignments).
-// Jeśli dana pokojówka nie ma tego pokoju, zadanie NIE znika — czeka na kolejny
-// dzień/osobę. Rano "wykonane" zamyka na stałe (is_final w bazie, egzekwowane
-// przez RPC hk_check_submit); popołudnie może tylko zgłosić "nie udało się" z
-// powodem. Panel to READ-ONLY oversight — samo oznaczanie robi telefon HK.
+// ── Kontrole: ujednolicona checklista pokojowa — kierownik wybiera cel (HK,
+// Konserwacja, albo oba) i listę pokoi. checklist_groups to lekki łącznik nad
+// dwoma NIEZALEŻNYMI, już istniejącymi mechanizmami:
+//   HK:          hk_check_plans/hk_check_items — zadanie PRZYPISANE DO POKOJU,
+//                wykonuje kto akurat sprząta dany pokój danego dnia (przydział
+//                z hk_plan.assignments). Rano "wykonane" zamyka na stałe
+//                (is_final, RPC hk_check_submit); popołudnie może tylko
+//                zgłosić "nie udało się" z powodem. READ-ONLY oversight w
+//                panelu — samo oznaczanie robi telefon HK (index.html).
+//   Konserwacja: maintenance_plans/panel_plan — zadanie przypisane do osoby,
+//                bez logiki zmian AM/PM; kierownik może tu bezpośrednio
+//                odznaczać (jak w zakładce „Plan"). Telefon konserwacji
+//                (konserwacja.html) czyta panel_plan bez żadnych zmian.
 async function loadKontrole() {
-  let plans = [], items = [];
+  let groups = [], hkPlans = [], hkItems = [], mtPlans = [], mtItems = [];
   try {
-    const [{ data:pl }, { data:it }] = await Promise.all([
-      sb.from("hk_check_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+    const [{ data:gr }, { data:hp }, { data:hi }, { data:mp }, { data:mi }] = await Promise.all([
+      sb.from("checklist_groups").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+      sb.from("hk_check_plans").select("*").eq("tenant_id", TENANT_ID).not("group_id","is",null),
       sb.from("hk_check_items").select("*").eq("tenant_id", TENANT_ID),
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).not("group_id","is",null),
+      sb.from("panel_plan").select("id,plan_id,room,task,date,status,response,photos").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
-    plans = pl || []; items = it || [];
-  } catch { return body('<div class="empty">Nie udało się pobrać planów kontroli.</div>'); }
+    groups = gr || []; hkPlans = hp || []; hkItems = hi || []; mtPlans = mp || []; mtItems = mi || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać checklist.</div>'); }
 
   if (CHK_OPEN_ID) {
-    const p = plans.find(x => x.id === CHK_OPEN_ID);
-    if (!p) { CHK_OPEN_ID = null; return loadKontrole(); }
-    return renderKontroleDetail(p, items.filter(x => x.plan_id === p.id));
+    const g = groups.find(x => x.id === CHK_OPEN_ID);
+    if (!g) { CHK_OPEN_ID = null; return loadKontrole(); }
+    const hp = hkPlans.find(x => x.group_id === g.id) || null;
+    const mp = mtPlans.find(x => x.group_id === g.id) || null;
+    CHK_OPEN_HP_ID = hp ? hp.id : null;
+    CHK_OPEN_MP_ID = mp ? mp.id : null;
+    return renderKontroleDetail(g, hp, hp ? hkItems.filter(x => x.plan_id === hp.id) : [], mp, mp ? mtItems.filter(x => x.plan_id === mp.id) : []);
   }
 
   const today = new Date().toISOString().slice(0,10);
   const create = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Nowy plan kontroli</div>
-    <div class="field"><label>Nazwa</label><input id="nckName" class="inp" placeholder="np. Kontrola silikonów - lipiec"/></div>
-    <div class="field"><label>Zadanie dla sprzątającej</label><input id="nckTask" class="inp" placeholder="np. Sprawdź stan silikonów przy prysznicu"/></div>
-    <div class="field"><label>Pokoje (oddziel przecinkami)</label><input id="nckRooms" class="inp" placeholder="np. 201,202,304"/></div>
+    <div class="soon" style="margin-top:0">Nowa checklista</div>
+    <div class="field"><label>Nazwa</label><input id="nckName" class="inp" placeholder="np. Kontrola kabli - lipiec"/></div>
+    <div class="field"><label>Zadanie</label><input id="nckTask" class="inp" placeholder="np. Sprawdź stan kabli"/></div>
+    <div class="field"><label>Wyślij do</label>
+      <div style="display:flex;gap:8px">
+        <label class="qc-mode" style="flex:1;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+          <input type="checkbox" id="nckHk" checked style="width:18px;height:18px;accent-color:var(--plum)"/> 🧽 HK</label>
+        <label class="qc-mode" style="flex:1;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+          <input type="checkbox" id="nckKonserw" style="width:18px;height:18px;accent-color:var(--plum)"/> 🔧 Konserwacja</label>
+      </div>
+    </div>
+    <div class="field"><label>Pokoje (oddziel przecinkami)</label>
+      <input id="nckRooms" class="inp" placeholder="np. 201,202,304"/>
+      <button type="button" class="rost-addbtn" style="margin-top:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="nckSelectAllRooms()">Zaznacz wszystkie pokoje (${ALL_ROOMS.length})</button>
+    </div>
     <div style="display:flex;gap:8px">
       <div class="field" style="flex:1"><label>Od</label><input id="nckFrom" class="inp" type="date" value="${today}"/></div>
       <div class="field" style="flex:1"><label>Do</label><input id="nckTo" class="inp" type="date" value="${today}"/></div>
     </div>
-    <button id="nckBtn" class="btn" onclick="createKontrolePlan()">Utwórz plan</button>
+    <button id="nckBtn" class="btn" onclick="createKontrolePlan()">Utwórz checklistę</button>
     <div id="nckMsg" class="msg"></div>
   </div>`;
 
-  const active = plans.filter(p => p.status !== "done");
-  const done   = plans.filter(p => p.status === "done");
-  const list   = CHK_SHOW_DONE ? plans : active;
-  const counts = id => {
-    const t = items.filter(x => x.plan_id === id);
-    return { total:t.length, done:t.filter(x => x.status === "done").length, failed:t.filter(x => x.status === "failed").length };
+  const active = groups.filter(g => g.status !== "done");
+  const done   = groups.filter(g => g.status === "done");
+  const list   = CHK_SHOW_DONE ? groups : active;
+  const progress = g => {
+    const parts = [];
+    if (g.targets === "hk" || g.targets === "both") {
+      const hp = hkPlans.find(x => x.group_id === g.id);
+      const t = hp ? hkItems.filter(x => x.plan_id === hp.id) : [];
+      parts.push({ icon:"🧽", done:t.filter(x=>x.status==="done").length, total:t.length, failed:t.filter(x=>x.status==="failed").length });
+    }
+    if (g.targets === "konserw" || g.targets === "both") {
+      const mp = mtPlans.find(x => x.group_id === g.id);
+      const t = mp ? mtItems.filter(x => x.plan_id === mp.id) : [];
+      parts.push({ icon:"🔧", done:t.filter(x=>x.status==="done").length, total:t.length, failed:0 });
+    }
+    return parts;
   };
-  const card = p => {
-    const c = counts(p.id);
-    const isDone = p.status === "done";
-    return `<div class="card" style="margin-bottom:10px;cursor:pointer;${isDone?"opacity:.7":""}" onclick="openKontrole('${p.id}')">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:15px;font-weight:800;flex:1">🧽 ${esc(p.name)}</span>
-        <span class="chip" style="color:${c.total&&c.done===c.total?"var(--ok)":"var(--muted)"}">${c.done}/${c.total}</span>
-        ${c.failed?`<span class="chip" style="color:#b3261e">${c.failed} nieudane</span>`:""}
+  const card = g => {
+    const parts = progress(g);
+    const isDone = g.status === "done";
+    const chips = parts.map(p => `<span class="chip" style="color:${p.total&&p.done===p.total?"var(--ok)":"var(--muted)"}">${p.icon} ${p.done}/${p.total}</span>${p.failed?`<span class="chip" style="color:#b3261e">${p.failed} nieudane</span>`:""}`).join("");
+    return `<div class="card" style="margin-bottom:10px;cursor:pointer;${isDone?"opacity:.7":""}" onclick="openKontrole('${g.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:15px;font-weight:800;flex:1">📋 ${esc(g.name)}</span>
+        ${chips}
       </div>
-      <div style="font-size:12.5px;color:var(--muted)">${esc(p.task)}</div>
+      <div style="font-size:12.5px;color:var(--muted)">${esc(g.task)}</div>
     </div>`;
   };
-  const listHtml = list.length ? list.map(card).join("") : '<div class="empty">Brak aktywnych planów kontroli — utwórz pierwszy powyżej.</div>';
+  const listHtml = list.length ? list.map(card).join("") : '<div class="empty">Brak aktywnych checklist — utwórz pierwszą powyżej.</div>';
   const toggle = done.length
     ? `<button class="rost-addbtn" style="margin:2px 0 10px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="toggleKontroleDone()">${CHK_SHOW_DONE?"Ukryj zakończone":`Pokaż zakończone (${done.length})`}</button>`
     : "";
-  body(create + `<div class="soon">Aktywne plany kontroli</div>` + toggle + listHtml);
+  body(create + `<div class="soon">Aktywne checklisty</div>` + toggle + listHtml);
 }
+window.nckSelectAllRooms  = () => { const el = document.getElementById("nckRooms"); if (el) el.value = ALL_ROOMS.join(","); };
 window.openKontrole       = (id) => { CHK_OPEN_ID = id; loadKontrole(); };
-window.backToKontrole     = ()   => { CHK_OPEN_ID = null; loadKontrole(); };
+window.backToKontrole     = ()   => { CHK_OPEN_ID = null; CHK_OPEN_HP_ID = null; CHK_OPEN_MP_ID = null; loadKontrole(); };
 window.toggleKontroleDone = ()   => { CHK_SHOW_DONE = !CHK_SHOW_DONE; loadKontrole(); };
 
 window.createKontrolePlan = async () => {
@@ -4296,47 +4384,77 @@ window.createKontrolePlan = async () => {
   const rooms = ((document.getElementById("nckRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
   const from  = (document.getElementById("nckFrom")||{}).value || "";
   const to    = (document.getElementById("nckTo")||{}).value || from;
+  const wantHk      = !!(document.getElementById("nckHk")||{}).checked;
+  const wantKonserw = !!(document.getElementById("nckKonserw")||{}).checked;
   const msg = document.getElementById("nckMsg"), btn = document.getElementById("nckBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!name) return setM("Wpisz nazwę planu.", "err");
+  if (!name) return setM("Wpisz nazwę.", "err");
   if (!task) return setM("Wpisz zadanie.", "err");
+  if (!wantHk && !wantKonserw) return setM("Wybierz cel: HK, konserwacja albo oba.", "err");
   if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
   if (!from) return setM('Wybierz datę "od".', "err");
   if (btn){ btn.disabled=true; btn.textContent="Tworzę…"; }
   try {
-    const { data, error } = await sb.from("hk_check_plans")
-      .insert({ tenant_id:TENANT_ID, name, task, status:"active", created_by:CURRENT.name||"Panel" })
+    const targets = wantHk && wantKonserw ? "both" : (wantHk ? "hk" : "konserw");
+    const { data:grp, error:grpErr } = await sb.from("checklist_groups")
+      .insert({ tenant_id:TENANT_ID, name, task, targets, status:"active", created_by:CURRENT.name||"Panel" })
       .select("id").single();
-    if (error) throw error;
-    const planId = data.id;
-    const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
-    const { error:itemsErr } = await sb.from("hk_check_items").insert(rows);
-    if (itemsErr) throw itemsErr;
-    try { await sb.rpc("log_action", { p_action:"kontrola_plan_utworzony", p_detail:`${name}: ${rooms.length} pok.` }); } catch {}
-    CHK_OPEN_ID = planId;
+    if (grpErr) throw grpErr;
+    const groupId = grp.id;
+    if (wantHk) {
+      const { data:hp, error:hpErr } = await sb.from("hk_check_plans")
+        .insert({ tenant_id:TENANT_ID, group_id:groupId, name, task, status:"active", created_by:CURRENT.name||"Panel" })
+        .select("id").single();
+      if (hpErr) throw hpErr;
+      const hkRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:hp.id, room, valid_from:from, valid_to:to, status:"pending" }));
+      const { error:hiErr } = await sb.from("hk_check_items").insert(hkRows);
+      if (hiErr) throw hiErr;
+    }
+    if (wantKonserw) {
+      const { data:mp, error:mpErr } = await sb.from("maintenance_plans")
+        .insert({ tenant_id:TENANT_ID, group_id:groupId, name, status:"active", created_by:CURRENT.name||"Panel" })
+        .select("id").single();
+      if (mpErr) throw mpErr;
+      const mtRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:mp.id, plan:name, room, task, date:from, status:"open", created_by:CURRENT.name||"Panel" }));
+      const { error:miErr } = await sb.from("panel_plan").insert(mtRows);
+      if (miErr) throw miErr;
+    }
+    try { await sb.rpc("log_action", { p_action:"kontrola_plan_utworzony", p_detail:`${name}: ${rooms.length} pok. (${targets})` }); } catch {}
+    CHK_OPEN_ID = groupId;
     loadKontrole();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Utwórz plan"; } }
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Utwórz checklistę"; } }
 };
 
-function renderKontroleDetail(p, items) {
+function renderKontroleDetail(g, hp, hi, mp, mi) {
   const head = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-    <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="backToKontrole()">← Plany</button>
-    <span style="font-size:16px;font-weight:800;flex:1">🧽 ${esc(p.name)}</span>
+    <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="backToKontrole()">← Checklisty</button>
+    <span style="font-size:16px;font-weight:800;flex:1">📋 ${esc(g.name)}</span>
   </div>
   <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;color:var(--ink)">${esc(p.task)}</div>
+    <div style="font-size:13px;color:var(--ink)">${esc(g.task)}</div>
   </div>`;
-  const addCard = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Dodaj pokoje do planu</div>
-    <div class="field"><label>Pokoje (oddziel przecinkami)</label><input id="ckAddRooms" class="inp" placeholder="np. 305,306"/></div>
-    <button id="ckAddBtn" class="btn" onclick="addKontroleRooms('${p.id}')">Dodaj pokoje</button>
-    <div id="ckAddMsg" class="msg"></div>
-  </div>`;
-  const sorted = items.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), undefined, {numeric:true}));
-  const rows = sorted.length ? sorted.map(kontroleItemRow).join("") : '<div class="empty">Brak pokoi w tym planie.</div>';
-  const isDone = p.status === "done";
-  const finishBtn = `<button class="rost-addbtn" style="margin-top:6px;padding:8px 13px;border-radius:8px;border:1px solid ${isDone?"var(--line-strong)":"rgba(31,122,82,.4)"};background:${isDone?"var(--paper)":"rgba(31,122,82,.08)"};color:${isDone?"var(--muted)":"var(--ok)"};font-weight:800;font-size:12px;cursor:pointer" onclick="setKontrolePlanStatus('${p.id}','${isDone?"active":"done"}')">${isDone?"↩ Wznów plan":"✓ Zakończ plan"}</button>`;
-  body(head + addCard + `<div class="soon">Pokoje</div>` + rows + finishBtn);
+  let sections = "";
+  if (hp) {
+    const sorted = hi.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), undefined, {numeric:true}));
+    const rows = sorted.length ? sorted.map(kontroleItemRow).join("") : '<div class="empty">Brak pokoi.</div>';
+    const addCard = `<div class="card" style="margin-bottom:10px">
+      <div class="field" style="margin-bottom:8px"><label>Dodaj pokoje (HK)</label><input id="ckAddRoomsHk" class="inp" placeholder="np. 305,306"/></div>
+      <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="addKontroleRooms('hk')">Dodaj</button>
+    </div>`;
+    sections += `<div class="soon">🧽 HK</div>${addCard}${rows}`;
+  }
+  if (mp) {
+    const sorted = mi.slice().sort((a,b) => String(a.room||"").localeCompare(String(b.room||""), undefined, {numeric:true}));
+    const rows = sorted.length ? sorted.map(maintKontroleRow).join("") : '<div class="empty">Brak pokoi.</div>';
+    const addCard = `<div class="card" style="margin-bottom:10px">
+      <div class="field" style="margin-bottom:8px"><label>Dodaj pokoje (konserwacja)</label><input id="ckAddRoomsKon" class="inp" placeholder="np. 305,306"/></div>
+      <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="addKontroleRooms('konserw')">Dodaj</button>
+    </div>`;
+    sections += `<div class="soon" style="margin-top:16px">🔧 Konserwacja</div>${addCard}${rows}`;
+  }
+  const isDone = g.status === "done";
+  const finishBtn = `<button class="rost-addbtn" style="margin-top:14px;padding:8px 13px;border-radius:8px;border:1px solid ${isDone?"var(--line-strong)":"rgba(31,122,82,.4)"};background:${isDone?"var(--paper)":"rgba(31,122,82,.08)"};color:${isDone?"var(--muted)":"var(--ok)"};font-weight:800;font-size:12px;cursor:pointer" onclick="setKontrolePlanStatus('${g.id}','${isDone?"active":"done"}')">${isDone?"↩ Wznów checklistę":"✓ Zakończ checklistę"}</button>`;
+  body(head + sections + finishBtn);
 }
 function kontroleItemRow(r) {
   const col = r.status === "done" ? "var(--ok)" : (r.status === "failed" ? "#b3261e" : "var(--muted)");
@@ -4351,26 +4469,63 @@ function kontroleItemRow(r) {
     ${r.fail_reason?`<div style="font-size:12.5px;color:#b3261e;background:rgba(179,38,30,.06);border:1px solid rgba(179,38,30,.25);border-radius:8px;padding:7px 9px">⚠ ${esc(r.fail_reason)}</div>`:""}
   </div>`;
 }
-window.addKontroleRooms = async (planId) => {
-  const rooms = ((document.getElementById("ckAddRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
-  const msg = document.getElementById("ckAddMsg"), btn = document.getElementById("ckAddBtn");
-  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
-  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+function maintKontroleRow(r) {
+  const done = r.status === "done";
+  const photos = Array.isArray(r.photos) ? r.photos : [];
+  const thumbs = photos.length
+    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px">` + photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener" style="display:block;width:44px;height:44px;border-radius:7px;overflow:hidden;border:1px solid var(--line)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></a>`).join("") + `</div>`
+    : "";
+  return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:4px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="k" style="flex:1">Pokój ${esc(r.room||"—")}</span>
+      <span class="chip" style="color:${done?"var(--ok)":"var(--muted)"}">${done?"wykonane":"do zrobienia"}</span>
+    </div>
+    ${r.response?`<div style="font-size:12.5px;color:var(--ink);background:rgba(31,122,82,.06);border:1px solid rgba(31,122,82,.25);border-radius:8px;padding:7px 9px">💬 ${esc(r.response)}</div>`:""}
+    ${thumbs}
+    <div style="display:flex;gap:7px">
+      ${done?`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11.5px;cursor:pointer" onclick="setKontroleTaskStatus('${r.id}','open')">Cofnij</button>`
+            :`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer" onclick="setKontroleTaskStatus('${r.id}','done')">✓ Wykonane</button>`}
+    </div>
+  </div>`;
+}
+window.setKontroleTaskStatus = async (id, st) => {
+  try { const { error } = await sb.from("panel_plan").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadKontrole(); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+};
+window.addKontroleRooms = async (kind) => {
+  const planId = kind === "hk" ? CHK_OPEN_HP_ID : CHK_OPEN_MP_ID;
+  const inputId = kind === "hk" ? "ckAddRoomsHk" : "ckAddRoomsKon";
+  const rooms = ((document.getElementById(inputId)||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
+  if (!planId || !rooms.length) return toast("Wpisz przynajmniej jeden pokój.","bad");
   try {
-    const { data:existing } = await sb.from("hk_check_items").select("valid_from,valid_to").eq("plan_id", planId).limit(1);
-    const today = new Date().toISOString().slice(0,10);
-    const from = (existing && existing[0] && existing[0].valid_from) || today;
-    const to   = (existing && existing[0] && existing[0].valid_to) || from;
-    const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
-    const { error } = await sb.from("hk_check_items").insert(rows);
-    if (error) throw error;
+    if (kind === "hk") {
+      const { data:existing } = await sb.from("hk_check_items").select("valid_from,valid_to").eq("plan_id", planId).limit(1);
+      const today = new Date().toISOString().slice(0,10);
+      const from = (existing && existing[0] && existing[0].valid_from) || today;
+      const to   = (existing && existing[0] && existing[0].valid_to) || from;
+      const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
+      const { error } = await sb.from("hk_check_items").insert(rows);
+      if (error) throw error;
+    } else {
+      const { data:plRow } = await sb.from("panel_plan").select("task,date,plan").eq("plan_id", planId).limit(1).maybeSingle();
+      const today = new Date().toISOString().slice(0,10);
+      const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, plan:(plRow&&plRow.plan)||"Plan", room, task:(plRow&&plRow.task)||"", date:(plRow&&plRow.date)||today, status:"open", created_by:CURRENT.name||"Panel" }));
+      const { error } = await sb.from("panel_plan").insert(rows);
+      if (error) throw error;
+    }
     loadKontrole();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj pokoje"; } }
+  } catch (e) { toast((e&&e.message)||"Nie udało się.","bad"); }
 };
 window.setKontrolePlanStatus = async (id, st) => {
-  try { const { error } = await sb.from("hk_check_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadKontrole(); }
-  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+  try {
+    const { error } = await sb.from("checklist_groups").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id);
+    if (error) throw error;
+    const jobs = [];
+    if (CHK_OPEN_HP_ID) jobs.push(sb.from("hk_check_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", CHK_OPEN_HP_ID));
+    if (CHK_OPEN_MP_ID) jobs.push(sb.from("maintenance_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", CHK_OPEN_MP_ID));
+    if (jobs.length) await Promise.all(jobs);
+    loadKontrole();
+  } catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
 // ── Zmiany: grafik EDYTOWALNY z dwukierunkowym sync NA ŻYWO do recepcji ──
@@ -4772,20 +4927,53 @@ async function loadAkcje() {
   body(`<div class="note" style="margin-top:0;margin-bottom:8px">Ostatnie akcje w panelu — kto co zrobił lub edytował.</div><div class="feed">${html}</div>`);
 }
 
-// ── Konta (admin): dodawanie kont + role + aktywacja ──
+// ── Konta (admin): dodawanie kont + role + aktywacja + struktura (działy/funkcje) ──
 const ROLE_OPTIONS = [["mgr_hk","Menedżer HK"],["koordynator","Koordynator"],["mgr_recepcja","Menedżer recepcji"],
   ["mgr_glowny","Menedżer główny"],["mgr_operacyjny","Menedżer operacyjny"],["mgr_gastro","Menedżer gastronomii"],["admin","Admin"]];
 const roleSelect = (id, sel) => `<select id="${id}" class="inp">${ROLE_OPTIONS.map(([v,l])=>`<option value="${v}"${sel===v?" selected":""}>${l}</option>`).join("")}</select>`;
+let KONTA_DEPTS = [];
+const deptSelect = (id, selId) => `<select id="${id}" class="inp">
+  <option value="">— bez działu —</option>
+  ${KONTA_DEPTS.map(d => `<option value="${esc(d.id)}"${selId===d.id?" selected":""}>${esc(d.name)}</option>`).join("")}
+</select>`;
+// Siatka checkboxów funkcji/zakładek (TAB_CATALOG) — używana i przy dodawaniu konta
+// (podpowiedź AI wg stanowiska), i przy edycji istniejącego. prefix odróżnia id-ki w DOM.
+const tabsCheckboxes = (prefix, checkedKeys) => {
+  const checked = new Set(checkedKeys || []);
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${
+    TAB_CATALOG.map(([k,l]) => `<label style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid var(--line-strong);font-size:12px;cursor:pointer">
+      <input type="checkbox" id="tab_${prefix}_${k}" style="margin:0" ${checked.has(k)?"checked":""}/>${esc(l)}</label>`).join("")
+  }</div>`;
+};
+const readTabsChecked = (prefix) => TAB_CATALOG.map(([k]) => k).filter(k => ((document.getElementById(`tab_${prefix}_${k}`)||{}).checked));
 async function loadKonta() {
   let rows = [];
   try { const { data } = await sb.rpc("admin_list_accounts"); rows = data || []; }
   catch { return body('<div class="empty">Brak uprawnień lub błąd.</div>'); }
+  try { const { data } = await sb.rpc("admin_list_departments"); KONTA_DEPTS = data || []; } catch { KONTA_DEPTS = []; }
+  const deptsBlock = `
+    <div class="card" style="margin-bottom:12px">
+      <div class="soon" style="margin-top:0">Działy</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        ${KONTA_DEPTS.length ? KONTA_DEPTS.map(d => `<span class="chip" style="display:inline-flex;align-items:center;gap:6px">${esc(d.name)}
+          <button type="button" onclick="delDzial('${esc(d.id)}','${esc(d.name)}')" style="background:none;border:none;cursor:pointer;color:var(--bad);font-weight:800">×</button></span>`).join("")
+          : '<span class="note" style="margin:0">Brak działów — dodaj pierwszy (np. Recepcja, Sprzątanie, Gastronomia).</span>'}
+      </div>
+      <button class="btn btn-outline" type="button" onclick="addDzial()">+ Nowy dział</button>
+    </div>`;
   const form = `
     <div class="card" style="margin-bottom:12px">
       <div class="soon" style="margin-top:0">Dodaj konto</div>
       <div class="field"><label>Imię (widoczne na liście logowania)</label>
         <input id="aName" class="inp" placeholder="np. Tetiana"/></div>
       <div class="field"><label>Rola</label>${roleSelect("aRole","mgr_hk")}</div>
+      <div class="field"><label>Dział</label>${deptSelect("aDept", null)}</div>
+      <div class="field"><label>Stanowisko (do doboru funkcji przez AI — nie jest zapisywane)</label>
+        <input id="aTitle" class="inp" placeholder="np. Kierownik recepcji"/></div>
+      <button class="btn btn-outline" type="button" id="aSuggestBtn" onclick="suggestTabsNew()">✨ Dobierz funkcje (AI)</button>
+      <div class="field" style="margin-top:8px"><label>Funkcje (zakładki widoczne tej osobie)</label>
+        ${tabsCheckboxes("new", [])}
+        <div class="note" style="margin:0">Nic niezaznaczone = domyślny zestaw dla wybranej roli (jak dotąd).</div></div>
       <div class="field"><label>Kod 1. logowania (opcjonalny)</label>
         <input id="aCode" class="inp" placeholder="np. 4821 — chroni przed przejęciem konta"/></div>
       <button id="aBtn" class="btn" onclick="addKonto()">Dodaj konto</button>
@@ -4795,6 +4983,7 @@ async function loadKonta() {
   const list = rows.map(r => {
     const st = r.active === false ? "nieaktywne" : (r.claimed ? "aktywne · ma hasło" : "czeka na 1. logowanie");
     const stc = r.active === false ? "var(--bad)" : (r.claimed ? "var(--ok)" : "var(--muted)");
+    const fid = "fn_" + r.email.replace(/[^a-z0-9]/gi, "_");
     return `<div class="wcard" style="cursor:default">
       <div class="wtop"><span class="av">${esc(initials(r.name))}</span>
         <span class="nm">${esc(r.name)}</span>
@@ -4803,6 +4992,11 @@ async function loadKonta() {
         ${roleSelect("role_"+esc(r.email), r.role)}
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
           onclick="saveKontoRole('${esc(r.email)}')">Zapisz rolę</button>
+        ${deptSelect("dept_"+esc(r.email), r.department_id)}
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
+          onclick="saveKontoDept('${esc(r.email)}')">Zapisz dział</button>
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
+          onclick="document.getElementById('${fid}').style.display=document.getElementById('${fid}').style.display==='none'?'':'none'">Funkcje${r.tabs&&r.tabs.length?` (${r.tabs.length})`:""}</button>
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:${r.active===false?"var(--ok)":"var(--bad)"};font-weight:800;font-size:12px;cursor:pointer"
           onclick="toggleKonto('${esc(r.email)}', ${r.active===false})">${r.active===false?"Aktywuj":"Dezaktywuj"}</button>
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
@@ -4810,19 +5004,71 @@ async function loadKonta() {
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
           onclick="renameKonto('${esc(r.email)}','${esc(r.name)}')">Zmień login</button>
       </div>
+      <div id="${fid}" style="display:none;margin-top:9px">
+        ${tabsCheckboxes(fid, r.tabs)}
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
+          onclick="saveKontoTabs('${esc(r.email)}','${fid}')">Zapisz funkcje</button>
+      </div>
     </div>`;
   }).join("");
-  body(form + `<div class="soon">Konta (${rows.length})</div>` + (list || '<div class="empty">Brak kont.</div>'));
+  body(deptsBlock + form + `<div class="soon">Konta (${rows.length})</div>` + (list || '<div class="empty">Brak kont.</div>'));
 }
+window.addDzial = async () => {
+  const name = await uiPrompt("Nazwa nowego działu (np. Recepcja):");
+  if (name == null || !name.trim()) return;
+  try { const { error } = await sb.rpc("admin_add_department", { p_name: name.trim() }); if (error) throw error; loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd dodawania działu.","bad"); }
+};
+window.delDzial = async (id, name) => {
+  const ok = await uiConfirm(`Usunąć dział „${name}"? (tylko gdy nikt nie jest do niego przypisany)`, { danger:true, okLabel:"Usuń" });
+  if (!ok) return;
+  try { const { error } = await sb.rpc("admin_delete_department", { p_id: id }); if (error) throw error; loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd usuwania działu.","bad"); }
+};
+window.suggestTabsNew = async () => {
+  const title = (document.getElementById("aTitle")||{}).value || "";
+  if (!title.trim()) return toast("Wpisz najpierw stanowisko.","bad");
+  const deptSel = document.getElementById("aDept");
+  const department = deptSel && deptSel.selectedIndex >= 0 ? deptSel.options[deptSel.selectedIndex].text : "";
+  const btn = document.getElementById("aSuggestBtn");
+  if (btn){ btn.disabled=true; btn.textContent="Dobieram…"; }
+  try {
+    const catalog = TAB_CATALOG.map(([key,label]) => ({ key, label }));
+    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"roletabs", tenant_id:TENANT_ID, payload:{ title:title.trim(), department, catalog } } });
+    if (error) throw error;
+    const suggested = (data && data.data && Array.isArray(data.data.tabs)) ? data.data.tabs : [];
+    TAB_CATALOG.forEach(([k]) => { const el = document.getElementById("tab_new_"+k); if (el) el.checked = suggested.includes(k); });
+    toast(suggested.length ? `AI zaproponowało ${suggested.length} funkcji — dostosuj i zapisz.` : "AI nie zaproponowało żadnych funkcji — zaznacz ręcznie.", "ok");
+  } catch (e) { toast((e&&e.message)||"AI niedostępne.","bad"); }
+  if (btn){ btn.disabled=false; btn.textContent="✨ Dobierz funkcje (AI)"; }
+};
+window.saveKontoDept = async (email) => {
+  const sel = document.getElementById("dept_"+email);
+  const val = sel ? sel.value : "";
+  try { const { error } = await sb.rpc("admin_set_department", { p_email: email, p_department_id: val || null }); if (error) throw error; loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd zmiany działu.","bad"); }
+};
+window.saveKontoTabs = async (email, fid) => {
+  const tabs = readTabsChecked(fid);
+  try { const { error } = await sb.rpc("admin_set_tabs", { p_email: email, p_tabs: tabs.length ? tabs : null }); if (error) throw error; toast("Funkcje zapisane ✓","ok"); loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd zapisu funkcji.","bad"); }
+};
 window.addKonto = async () => {
   const name = (document.getElementById("aName")||{}).value || "";
   const role = (document.getElementById("aRole")||{}).value || "mgr_hk";
   const codeV = (document.getElementById("aCode")||{}).value || "";
+  const deptSel = document.getElementById("aDept");
+  const departmentId = deptSel && deptSel.value ? deptSel.value : null;
+  const tabs = readTabsChecked("new");
   const msg = document.getElementById("aMsg"); const btn = document.getElementById("aBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
   if (!name.trim()) return setM("Wpisz imię.", "err");
   if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
-  try { const { error } = await sb.rpc("admin_add_account", { p_name: name.trim(), p_role: role, p_code: codeV.trim() });
+  try {
+    const { error } = await sb.rpc("admin_add_account", {
+      p_name: name.trim(), p_role: role, p_code: codeV.trim(),
+      p_department_id: departmentId, p_tabs: tabs.length ? tabs : null,
+    });
     if (error) throw error;
     setM(codeV.trim() ? `Konto dodane. Kod 1. logowania: ${codeV.trim()} — przekaż osobie.` : "Konto dodane.", "info");
     setTimeout(loadKonta, 1400);
