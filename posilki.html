@@ -430,9 +430,19 @@ window.toggleDone = () => { doneOpen = !doneOpen; render(); };
 // grupy na pokoje (np. pokój współdzielony) — bez scalenia pojawiłyby się
 // dwa osobne kafle dla jednego numeru pokoju i sprzeczny stan odhaczenia
 // (checkin jest trzymany per numer pokoju, nie per wiersz).
+// Zbiorczy wiersz grupy (is_group=true) czasem wraca w kolejnym imporcie mimo
+// że jej pokoje są już dawno rozbite na pojedyncze kafle (backend nie zawsze
+// ma czym dopasować/skasować stary wiersz — patrz meals-group-expand.cjs) —
+// jeśli wśród pojedynczych pokoi jest już ta sama rezerwacja, zbiorczy kafel
+// jest zbędnym duchem i go ukrywamy.
+function stripExpandedGroupGhosts(rows){
+  const expandedIds = new Set(rows.filter(p => !p.is_group).map(p => p.reservation_id));
+  return rows.filter(p => !p.is_group || !expandedIds.has(p.reservation_id));
+}
+
 function mergeByRoom(rows){
   const map = new Map();
-  for (const p of rows) {
+  for (const p of stripExpandedGroupGhosts(rows)) {
     const key = p.is_group ? `g:${p.room}` : `r:${p.room}`;
     const existing = map.get(key);
     if (!existing) { map.set(key, { ...p }); continue; }
