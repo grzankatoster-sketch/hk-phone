@@ -473,7 +473,7 @@ function planTaskCard(t){
       <div class="desc" style="flex:1;margin:0;font-weight:700;${done?"text-decoration:line-through":""}">${esc(t.task)}</div>
       <span class="badge ${done?"done":"open"}">${done?"Wykonane":"Do zrobienia"}</span>
     </div>
-    <div class="assign-row"><span class="cat-chip">${t.date?"📅 "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
+    <div class="assign-row">${t.room?`<span class="cat-chip">🚪 ${esc(t.room)}</span>`:""}<span class="cat-chip">${t.date?"📅 "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
     ${t.response?`<div class="desc" style="background:rgba(15,122,74,.06);border:1px solid rgba(15,122,74,.25);border-radius:8px;padding:8px 10px;font-size:13px">💬 ${esc(t.response)}</div>`:""}
     ${photos.length?`<div class="thumbs">`+photos.map(u=>`<div class="thumb" onclick="openImg('${esc(u)}')"><img src="${esc(u)}" loading="lazy"/></div>`).join("")+`</div>`:""}
     <div class="actions">
