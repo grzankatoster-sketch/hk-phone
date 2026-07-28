@@ -426,13 +426,32 @@ function isRoomDone(p, mealKey){
 let doneOpen = false;
 window.toggleDone = () => { doneOpen = !doneOpen; render(); };
 
+// Ten sam pokój bywa jednocześnie w indywidualnej rezerwacji i w rozbiciu
+// grupy na pokoje (np. pokój współdzielony) — bez scalenia pojawiłyby się
+// dwa osobne kafle dla jednego numeru pokoju i sprzeczny stan odhaczenia
+// (checkin jest trzymany per numer pokoju, nie per wiersz).
+function mergeByRoom(rows){
+  const map = new Map();
+  for (const p of rows) {
+    const key = p.is_group ? `g:${p.room}` : `r:${p.room}`;
+    const existing = map.get(key);
+    if (!existing) { map.set(key, { ...p }); continue; }
+    existing.persons = (existing.persons||0) + (p.persons||0);
+    if (p.guest_name && p.guest_name !== existing.guest_name) {
+      existing.guest_name = existing.guest_name ? `${existing.guest_name} + ${p.guest_name}` : p.guest_name;
+    }
+    if (p.category === "HB") existing.category = "HB";
+  }
+  return Array.from(map.values());
+}
+
 function render(){
-  const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
+  const rows = mergeByRoom(meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p)));
   // Licznik pokazuje liczbę POKOI (nie osób) — sam numer bez jednostki mylił
   // personel, a osoby+pokoje razem było zbyt gęste na małym pill-u.
   const fmtCount = (arr) => `${arr.length} pok.`;
-  const bfRows = plans.filter(eatsBreakfast);
-  const dnRows = plans.filter(p=>p.category==="HB" && eatsDinner(p));
+  const bfRows = mergeByRoom(plans.filter(eatsBreakfast));
+  const dnRows = mergeByRoom(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
   document.getElementById("countBreakfast").textContent = fmtCount(bfRows);
   document.getElementById("countDinner").textContent = fmtCount(dnRows);
   const board = document.getElementById("board");
