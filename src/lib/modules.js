@@ -17,6 +17,7 @@
 // ewentualna reklasyfikacja na licencjonowalne to decyzja produktowa (5.1), nie ta pozycja.
 
 import { tenantConfig } from "../tenants/config";
+import { getModuleOverrides, setModuleOverrides } from "./storage";
 
 export const MODULE_REGISTRY = Object.freeze([
   // Rdzeń pracownika — zawsze włączony
@@ -24,8 +25,8 @@ export const MODULE_REGISTRY = Object.freeze([
   { key: "przekazanie", label: "Przekaż zmianę",   scope: "worker",  core: true },
   { key: "informacje",  label: "Informacje",       scope: "worker",  core: true },
   { key: "usterki",     label: "Usterki",          scope: "worker",  core: true },
-  { key: "klucze",      label: "Klucze / karty",   scope: "worker",  core: true }, // 4.7; tier→5.1
-  { key: "depozyty",    label: "Depozyty",         scope: "worker",  core: true }, // 4.8; tier→5.1
+  { key: "klucze",      label: "Klucze / karty",   scope: "worker" }, // 4.7; licencjonowalne od 5.1 — steruje kreator pierwszego uruchomienia
+  { key: "depozyty",    label: "Depozyty",         scope: "worker" }, // 4.8; licencjonowalne od 5.1 — steruje kreator pierwszego uruchomienia
   { key: "historia",    label: "Historia",         scope: "worker",  core: true },
   // Rdzeń administratora recepcji — zawsze włączony (dziś bez flagi)
   { key: "kasa",        label: "Kasa",             scope: "admin",   core: true },
@@ -62,6 +63,24 @@ const REGISTRY_BY_KEY = Object.freeze(
 // padnie, aplikacja działa jak dotąd (nie blokujemy wszystkiego).
 let featureCache = null;
 
+// Nadpisania lokalne (localStorage) ustawiane przez kreator pierwszego uruchomienia
+// (FirstRunWizard). Działają BEZ sesji Supabase Auth — w przeciwieństwie do
+// tenant_features, który wymaga zalogowanego admina i jest wdrażany ręcznie.
+// Priorytet: core > featureCache (DB) > localOverrides (ten komputer) > tenantConfig (build).
+let localOverrides = null;
+
+function getLocalOverrides() {
+  if (localOverrides === null) localOverrides = getModuleOverrides();
+  return localOverrides;
+}
+
+// Zapisuje wybór modułów z kreatora — od razu widoczne w tej przeglądarce,
+// niezależnie od tego czy/kiedy ktoś wdroży tenant_features w bazie.
+export function setLocalModuleOverrides(map) {
+  localOverrides = { ...getLocalOverrides(), ...map };
+  setModuleOverrides(localOverrides);
+}
+
 // Ładuje licencję modułów tenanta z Supabase (tenant_features). Bezpieczne:
 // przy błędzie/braku wierszy zostaje fallback (featureCache = null).
 export async function loadTenantFeatures(supabase, tenantId) {
@@ -88,6 +107,8 @@ export function isModuleEnabled(key) {
   if (!m) return false;
   if (m.core) return true;
   if (featureCache) return featureCache[key] === true;
+  const overrides = getLocalOverrides();
+  if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key] === true;
   return tenantConfig.modules?.[key] !== false;
 }
 

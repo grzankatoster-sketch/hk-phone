@@ -234,19 +234,50 @@ body{font-family:var(--ui);background:
 .hdr,.foot{display:none!important}
 .h2,.role-ttl,.ddate,.kpi .v,.topbar h1,.brand .b1{font-family:var(--serif);font-weight:500;letter-spacing:-.01em}
 
-/* ── Logowanie (wyśrodkowane) ── */
+/* ── Logowanie: kameralna recepcja o zmierzchu ── */
 #app.wrap.auth{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:40px 20px}
-.wrap.auth::before{content:"CONRAD COMFORT";display:block;text-align:center;font-family:var(--serif);letter-spacing:.24em;color:var(--plum);font-size:15px}
-.wrap.auth::after{content:"Panel menedżerski";display:block;text-align:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:3px 0 22px}
-/* WYKONANIE 1.15: mniej centrowania — branding (::before/::after) zostaje
-   wyśrodkowany jak logo, ale sekcja formularza (nagłówek + opis + stopka)
-   wyrównana do lewej, spójnie z polami formularza w .card poniżej. */
-.wrap.auth .h2{font-size:23px;text-align:left}
-.wrap.auth .sub{text-align:left}
+
+/* Pieczęć-monogram nad wordmarkiem — jedyny naprawdę ozdobny akcent na ekranie logowania */
+.auth-seal{width:50px;height:50px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 26%, #ecd19b, var(--gold) 55%, #7c5d26 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 10px 22px -10px rgba(176,134,58,.55), 0 0 0 1px rgba(176,134,58,.3);
+  font-family:var(--serif);font-size:17px;color:#3a2a08;letter-spacing:.01em;
+  opacity:0;animation:fadeup .55s cubic-bezier(.2,.9,.25,1) .04s forwards}
+html.dark .auth-seal{box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px -8px rgba(0,0,0,.6), 0 0 0 1px rgba(200,162,105,.35)}
+
+.auth-brand{display:block;text-align:center;font-family:var(--serif);letter-spacing:.28em;color:var(--plum);font-size:14px;
+  opacity:0;animation:fadeup .5s ease .12s forwards}
+.auth-brand-sub{display:block;text-align:center;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:4px 0 28px;
+  opacity:0;animation:fadeup .5s ease .18s forwards}
+/* Cały „intro" blok (pieczęć → wordmark → nagłówek → opis) trzyma jedną oś —
+   wyśrodkowaną — żeby nie gryzło się z wyśrodkowanym monogramem nad nim.
+   Pola formularza w .card zostają naturalnie wyrównane do lewej (tak czyta się
+   etykieta+input), stopka pod kartą wraca do tej samej centralnej osi. */
+.wrap.auth .h2{font-size:23px;text-align:center;opacity:0;animation:fadeup .5s ease .24s forwards}
+.wrap.auth .sub{text-align:center;opacity:0;animation:fadeup .5s ease .28s forwards}
 .card{border-radius:var(--r);box-shadow:var(--shadow);border-color:var(--line)}
+.wrap.auth .card{position:relative;overflow:hidden;opacity:0;animation:fadeup .55s ease .34s forwards}
+.wrap.auth .card::before{content:"";position:absolute;top:0;left:16%;right:16%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.7}
+.wrap.auth .auth-foot{text-align:center;opacity:0;animation:fadeup .5s ease .46s forwards}
+.wrap.auth .field label{display:inline-flex;align-items:center;gap:6px}
+.wrap.auth .field label svg{color:var(--gold);opacity:.75;flex-shrink:0}
+/* Duże ekrany: karta nie ma pływać samotnie w czerni — miękka poświata za nią
+   zakotwicza kompozycję na środku, zamiast zostawiać pustkę. */
+@media(min-width:900px){
+  .wrap.auth{position:relative}
+  .wrap.auth::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:820px;height:820px;border-radius:50%;pointer-events:none;z-index:-1;
+    background:radial-gradient(circle, rgba(176,134,58,.09), transparent 62%)}
+}
 .btn{background:linear-gradient(180deg,var(--plum-2),var(--plum));box-shadow:0 8px 20px -8px rgba(90,29,74,.6);border-radius:13px;letter-spacing:.01em}
 .btn:hover{filter:brightness(1.06)}
+.wrap.auth .btn{position:relative;overflow:hidden}
+.wrap.auth .btn::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(115deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);transition:left .55s ease}
+.wrap.auth .btn:hover::after{left:130%}
 .inp{border-radius:12px}.inp:focus{box-shadow:0 0 0 3px rgba(90,29,74,.12)}
+.wrap.auth .inp:focus{box-shadow:0 0 0 3px rgba(90,29,74,.12),0 0 0 1px rgba(176,134,58,.35)}
 .remember{display:flex;align-items:center;gap:9px;margin:2px 0 12px;cursor:pointer;user-select:none}
 .remember input{width:18px;height:18px;accent-color:var(--plum);cursor:pointer;flex-shrink:0}
 .remember span{font-size:13px;color:var(--muted)}
@@ -908,15 +939,18 @@ async function showLogin() {
   accounts = (data || []).filter(a => a.active !== false);
   const savedName = (()=>{ try { return localStorage.getItem("panel_remember_name") || ""; } catch(_) { return ""; } })();
   app.innerHTML = `
+    <div class="auth-seal">CC</div>
+    <div class="auth-brand">CONRAD COMFORT</div>
+    <div class="auth-brand-sub">Panel menedżerski</div>
     <div class="h2">Logowanie</div>
     <div class="sub">Wpisz swoje imię i hasło.</div>
     <div class="card">
       <form id="loginForm" autocomplete="on" onsubmit="submitLogin();return false;">
-        <div class="field"><label>Login (imię)</label>
+        <div class="field"><label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Login (imię)</label>
           <input id="lname" class="inp" autocomplete="username" autocapitalize="words" placeholder="np. Tetiana" value="${esc(savedName)}" oninput="loginNameHint()"/></div>
-        <div id="codeWrap" class="field" style="display:none"><label>Kod od administratora</label>
+        <div id="codeWrap" class="field" style="display:none"><label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="9" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="2" y1="15" x2="20" y2="15"/></svg>Kod od administratora</label>
           <input id="lcode" class="inp" autocomplete="off" placeholder="np. 4821"/></div>
-        <div class="field"><label>Hasło</label>
+        <div class="field"><label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m0 0h-4m4 0v4m-7 3l2 2"/></svg>Hasło</label>
           <input id="lpw" class="inp" type="password" autocomplete="current-password" placeholder="••••••••"/></div>
         <div id="lhint" class="note" style="display:none"></div>
         <label class="remember"><input id="lremember" type="checkbox" ${savedName ? "checked" : ""}/><span>Zapamiętaj mnie na tym urządzeniu</span></label>
@@ -1148,7 +1182,7 @@ const ONB_DESC = {
   staty: "Statystyki pracy zespołu.",
   praca: "Tryb pracy — sprzątanie pokoi krok po kroku.",
   jakosc: "Losowe kontrole jakości sprzątania.",
-  kontrole: "Plan kontroli pokoi (np. silikony) — wykonuje kto akurat sprząta.",
+  kontrole: "Checklisty pokojowe — wyślij do HK, konserwacji albo obu naraz, śledź postęp.",
   tablica: "Ogłoszenia i przypomnienia dla zespołu.",
   znalezione: "Rejestr rzeczy znalezionych przez gości.",
   grafik: "Zbiórka dyspozyczności / grafik zmian.",
@@ -1200,6 +1234,11 @@ function renderPlaceholder(role, name) {
 // ─────────────────────────── Dashboard HK ───────────────────────────
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const APT_ROOMS = ["106","206","218","306","318"];
+// Pełna lista numerów pokoi (piętra 1-3) — kopia scripts/hk-automation/lib/rooms.cjs (ROOM_NUMBERS).
+// To plik Node/CJS, niedostępny w przeglądarce — jeśli tam dojdzie/ubędzie pokój, zsynchronizuj ręcznie.
+const ALL_ROOMS = ["101","102","103","104","105","106","107","108","109","110","111","112","114","115","116","117","118A","118B","119","120","121","122","123",
+  "201","202","203","204","205","206","207","208","209","210","211","212","214","215","216","217","218","219","220","221","222","223",
+  "301","302","303","304","305","306","307","308","309","310","311","312","314","315","316","317","318","319","320","321","322","323"];
 const DOW = ["niedziela","poniedziałek","wtorek","środa","czwartek","piątek","sobota"];
 const MON = ["stycznia","lutego","marca","kwietnia","maja","czerwca","lipca","sierpnia","września","października","listopada","grudnia"];
 const pad = n => n<10 ? "0"+n : ""+n;
@@ -1245,7 +1284,7 @@ function tabsFor(role){
   t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || role === "mgr_hk") t.push(["jakosc","Jakość"]); // pulpit losowych kontroli pokoi
-  if (A || role === "mgr_hk") t.push(["kontrole","Kontrole"]); // plan kontroli pokoi (np. silikony) — wykonuje kto akurat sprząta
+  if (A || role === "mgr_hk" || KONSERW_ROLES.has(role)) t.push(["kontrole","Kontrole"]); // checklisty pokojowe — cel HK i/lub konserwacja
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || RECEPCJA_ROLES.has(role) || role === "mgr_hk") t.push(["znalezione","Znalezione"]); // rzeczy znalezione (recepcja + HK)
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
@@ -4018,8 +4057,10 @@ window.addKonserwTask = async () => {
 // Konserwator na każde zadanie może odpowiedzieć i dołączyć zdjęcie zmian.
 let PLAN_OPEN_ID = null;   // null = lista planów; id = otwarty plan
 let PLAN_SHOW_DONE = false; // czy pokazywać zakończone plany na liście
-let CHK_OPEN_ID = null;    // null = lista planów kontroli; id = otwarty plan
-let CHK_SHOW_DONE = false; // czy pokazywać zakończone plany kontroli
+let CHK_OPEN_ID = null;    // null = lista checklist; id = otwarta checklista (checklist_groups.id)
+let CHK_SHOW_DONE = false; // czy pokazywać zakończone checklisty
+let CHK_OPEN_HP_ID = null; // id powiązanego hk_check_plans dla otwartej checklisty (albo null)
+let CHK_OPEN_MP_ID = null; // id powiązanego maintenance_plans dla otwartej checklisty (albo null)
 async function loadPlan() {
   let plans = [], tasks = [];
   try {
@@ -4111,14 +4152,16 @@ function renderPlanDetail(p, items) {
     <div class="soon" style="margin-top:0">Dodaj zadanie</div>
     <div class="field"><label>Co wykonać</label><input id="ptTask" class="inp" placeholder="np. Sprawdzić oświetlenie parkingu"/></div>
     <div class="field"><label>Termin (opcjonalnie)</label><input id="ptDate" class="inp" type="date"/></div>
+    <div class="field"><label>Pokoje (opcjonalnie, oddziel przecinkami — jedno zadanie na pokój)</label><input id="ptRooms" class="inp" placeholder="np. 201,202,304 — puste = zadanie ogólne"/></div>
     <button id="ptBtn" class="btn" onclick="addPlanTask('${p.id}')">Dodaj zadanie</button>
     <div id="ptMsg" class="msg"></div>
   </div>`;
-  // Zadania: z terminem wg dnia (rosnąco), bez terminu na końcu.
+  // Zadania: z terminem wg dnia (rosnąco), bez terminu na końcu; przy równych datach — wg pokoju.
   const sorted = items.slice().sort((a,b) => {
-    if (!a.date && !b.date) return 0;
+    if (!a.date && !b.date) return String(a.room||"").localeCompare(String(b.room||""), undefined, { numeric:true });
     if (!a.date) return 1; if (!b.date) return -1;
-    return String(a.date).localeCompare(String(b.date));
+    const d = String(a.date).localeCompare(String(b.date));
+    return d !== 0 ? d : String(a.room||"").localeCompare(String(b.room||""), undefined, { numeric:true });
   });
   const tasksHtml = sorted.length ? sorted.map(planTaskRow).join("") : '<div class="empty">Brak zadań — dodaj pierwsze powyżej.</div>';
   const isDone = p.status === "done";
@@ -4134,6 +4177,7 @@ function planTaskRow(r) {
   return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:5px;${done?"opacity:.7":""}">
     <div style="display:flex;align-items:center;gap:8px">
       <span class="k" style="flex:1;${done?"text-decoration:line-through":""}">${esc(r.task||"")}</span>
+      ${r.room?`<span class="chip">🚪 ${esc(r.room)}</span>`:""}
       ${r.date?`<span class="chip">📅 ${esc(r.date)}</span>`:`<span class="chip" style="color:var(--muted)">bez terminu</span>`}
       <span class="chip" style="color:${done?"var(--ok)":"var(--muted)"}">${done?"wykonane":"do zrobienia"}</span>
     </div>
@@ -4164,16 +4208,20 @@ window.assignBoth = async (planId) => {
 window.addPlanTask = async (planId) => {
   const task = ((document.getElementById("ptTask")||{}).value || "").trim();
   const date = (document.getElementById("ptDate")||{}).value || null;
+  const rooms = ((document.getElementById("ptRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
   const msg = document.getElementById("ptMsg"), btn = document.getElementById("ptBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
   if (!task) return setM("Wpisz treść zadania.", "err");
   if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
   try {
     const { data:pl } = await sb.from("maintenance_plans").select("name").eq("id", planId).single();
-    const { error } = await sb.from("panel_plan").insert({ tenant_id:TENANT_ID, plan_id:planId, plan:(pl&&pl.name)||"Plan", date, task, status:"open", created_by:CURRENT.name||"Panel" });
+    const base = { tenant_id:TENANT_ID, plan_id:planId, plan:(pl&&pl.name)||"Plan", date, task, status:"open", created_by:CURRENT.name||"Panel" };
+    const rows = rooms.length ? rooms.map(room => ({ ...base, room })) : [base];
+    const { error } = await sb.from("panel_plan").insert(rows);
     if (error) throw error;
-    try { await sb.rpc("log_action", { p_action:"plan_zadanie_dodane", p_detail:`${(pl&&pl.name)||""}: ${task}` }); } catch {}
-    const ti=document.getElementById("ptTask"); if(ti) ti.value=""; const di=document.getElementById("ptDate"); if(di) di.value="";
+    const detail = rooms.length ? `${(pl&&pl.name)||""}: ${task} (${rooms.length} pok.)` : `${(pl&&pl.name)||""}: ${task}`;
+    try { await sb.rpc("log_action", { p_action:"plan_zadanie_dodane", p_detail:detail }); } catch {}
+    const ti=document.getElementById("ptTask"); if(ti) ti.value=""; const di=document.getElementById("ptDate"); if(di) di.value=""; const ri=document.getElementById("ptRooms"); if(ri) ri.value="";
     loadPlan();
   } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj zadanie"; } }
 };

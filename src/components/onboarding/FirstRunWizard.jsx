@@ -1,16 +1,21 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, ArrowLeft, Plus, Trash2, Check, Sparkles } from "lucide-react";
-import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
+import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers, setCustomManagers } from "../../lib/storage";
+import { canonicalizePersonName } from "../../lib/names";
+import { setLocalModuleOverrides } from "../../lib/modules";
 
 // Kreator pierwszego uruchomienia (WYKONANIE 4.13, wersja MVP). Pokazuje się raz,
 // przy zupełnie pierwszym starcie appki na nowej recepcji. Trzy kroki: powitanie,
 // dodanie pracowników (od razu trwałe — ten sam STORAGE_KEYS.employees co reszta
-// appki), i checklist modułów. Checklist NIE zapisuje do tenant_features na żywo —
-// zapis wymaga sesji Supabase Auth (RLS "to authenticated"), a recepcja loguje się
-// dziś lokalnym hasłem (patrz 2.17, jeszcze niezrobione) — więc krok generuje
-// gotową listę do ręcznego wdrożenia zamiast udawać zapis, który by cicho padł.
-const LICENSABLE_MODULES = [
+// appki, plus oznaczenie kierowników przez customManagers), i checklist modułów.
+// Wybór modułów zapisuje się LOKALNIE (localStorage, isModuleEnabled w modules.js)
+// i działa od razu w tej przeglądarce — bez potrzeby sesji Supabase Auth. Realne
+// tenant_features w bazie to osobny, ręczny krok wdrożenia (żeby zadziałało też
+// na innych stanowiskach/urządzeniach) i ma pierwszeństwo nad lokalnym wyborem.
+export const LICENSABLE_MODULES = [
+  { key: "klucze", label: "Klucze / karty", desc: "Wydawanie i odbiór kluczy oraz kart pokojowych" },
+  { key: "depozyty", label: "Depozyty", desc: "Rejestr depozytów gości (gotówka, karta, kaucja)" },
   { key: "hk", label: "Housekeeping", desc: "Plan sprzątania, przypisania, kontakt z pokojówkami" },
   { key: "parking", label: "Parking", desc: "Rejestr miejsc parkingowych gości" },
   { key: "goscie", label: "Stali goście", desc: "Notatki i negocjowane stawki dla gości powracających" },
@@ -18,12 +23,15 @@ const LICENSABLE_MODULES = [
   { key: "opinie", label: "Opinie gości", desc: "Śledzenie opinii Booking + drafty odpowiedzi AI" },
   { key: "sklepik", label: "Sklepik", desc: "Magazyn i sprzedaż drobnych produktów na recepcji" },
 ];
+// Ceny i Zadania NIE są tu — to funkcje bazowe (podstawa planu), nie opt-in.
+// Ceny docelowo trafią wyłącznie do panelu kierownika (tier PREMIUM→5.1), nie do tego checklistu.
 
 export default function FirstRunWizard({ onFinish }) {
   const [step, setStep] = React.useState(0);
   const [employees, setEmployees] = React.useState(() => loadJson(STORAGE_KEYS.employees, []));
   const [newName, setNewName] = React.useState("");
   const [selectedModules, setSelectedModules] = React.useState({});
+  const [managers, setManagers] = React.useState(() => getCustomManagers());
 
   const addEmployee = () => {
     const name = newName.trim();
@@ -35,13 +43,28 @@ export default function FirstRunWizard({ onFinish }) {
     setNewName("");
   };
   const removeEmployee = (i) => {
+    const removed = employees[i];
     const next = employees.filter((_, idx) => idx !== i);
     setEmployees(next);
     saveJson(STORAGE_KEYS.employees, next);
+    if (removed) {
+      const nextManagers = managers.filter(m => m !== removed);
+      setManagers(nextManagers);
+      setCustomManagers(nextManagers);
+    }
+  };
+  const toggleManager = (name) => {
+    const n = canonicalizePersonName(name);
+    const next = managers.includes(n) ? managers.filter(m => m !== n) : [...managers, n];
+    setManagers(next);
+    setCustomManagers(next);
   };
   const toggleModule = (key) => setSelectedModules(prev => ({ ...prev, [key]: !prev[key] }));
 
   const finish = () => {
+    const overrides = {};
+    LICENSABLE_MODULES.forEach(m => { overrides[m.key] = !!selectedModules[m.key]; });
+    setLocalModuleOverrides(overrides);
     saveJson(STORAGE_KEYS.firstRunDone, true);
     onFinish?.();
   };
@@ -76,7 +99,7 @@ export default function FirstRunWizard({ onFinish }) {
           {step === 1 && (<>
             <span style={stepLabel}>Krok 2 z 3 &middot; Pracownicy</span>
             <div style={h1}>Kto pracuje na recepcji?</div>
-            <div style={p}>Dodaj imiona — pojawią się od razu na liście logowania. Możesz dopisać więcej osób później w panelu kierownika.</div>
+            <div style={p}>Dodaj imiona — pojawią się od razu na liście logowania. Zaznacz "Kierownik" przy osobach, które mają dostęp do panelu kierownika (wspólne hasło, ustawiane przy ich pierwszym logowaniu). Możesz dopisać więcej osób później w panelu kierownika.</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
               <input className={inp} value={newName} onChange={e => setNewName(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addEmployee(); } }}
@@ -88,6 +111,10 @@ export default function FirstRunWizard({ onFinish }) {
                 {employees.map((e, i) => (
                   <div key={e + i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 11px", background: "rgba(255,255,255,.04)", borderRadius: 8, fontSize: 13 }}>
                     <span style={{ flex: 1 }}>{e}</span>
+                    <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: "var(--dark-text-muted)", cursor: "pointer" }}>
+                      <input type="checkbox" checked={managers.includes(canonicalizePersonName(e))} onChange={() => toggleManager(e)} />
+                      Kierownik
+                    </label>
                     <button type="button" onClick={() => removeEmployee(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--dark-text-muted)", display: "flex" }}><Trash2 size={13} /></button>
                   </div>
                 ))}
@@ -102,7 +129,7 @@ export default function FirstRunWizard({ onFinish }) {
           {step === 2 && (<>
             <span style={stepLabel}>Krok 3 z 3 &middot; Moduły</span>
             <div style={h1}>Czego potrzebuje ten hotel?</div>
-            <div style={p}>Zaznacz moduły, które mają być widoczne. To dziś tylko checklist do wdrożenia — realne włączenie modułu robi się po stronie bazy (poproś o to przy wdrożeniu), żeby dobrze zadziałało z licencją.</div>
+            <div style={p}>Zaznacz moduły, które mają być widoczne — zadziała od razu na tym stanowisku. Żeby to samo obowiązywało na wszystkich stanowiskach/urządzeniach, przekaż listę z ostatniego kroku przy wdrożeniu (włączenie po stronie bazy nadpisze wybór lokalny).</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
               {LICENSABLE_MODULES.map(m => (
                 <label key={m.key} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 10px", background: selectedModules[m.key] ? "rgba(201,153,80,.1)" : "rgba(255,255,255,.03)", border: `1px solid ${selectedModules[m.key] ? "var(--plum-bright, #c99950)" : "transparent"}`, borderRadius: 8, cursor: "pointer" }}>
@@ -123,7 +150,7 @@ export default function FirstRunWizard({ onFinish }) {
           {step === 3 && (<>
             <span style={stepLabel}>Gotowe</span>
             <div style={h1}>Zestaw do wdrożenia</div>
-            <div style={p}>Skopiuj i prześlij tę listę przy wdrożeniu — moduły zostaną włączone po stronie bazy.</div>
+            <div style={p}>Wybór już działa na tym stanowisku. Skopiuj i prześlij tę listę przy wdrożeniu, żeby te same moduły były włączone też w bazie (dla innych stanowisk/urządzeń).</div>
             <pre style={{ background: "rgba(0,0,0,.3)", padding: "12px 14px", borderRadius: 8, fontSize: 12.5, whiteSpace: "pre-wrap", marginBottom: 18 }}>{checklistText}</pre>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--dark-text-muted)", marginBottom: 4 }}><Sparkles size={13} /> Każda osoba przy swoim pierwszym logowaniu dostanie krótki tour po oknach aplikacji.</div>
             <div style={{ ...footRow, justifyContent: "flex-end" }}>

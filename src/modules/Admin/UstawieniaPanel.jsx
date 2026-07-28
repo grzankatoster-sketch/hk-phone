@@ -4,6 +4,39 @@ import { Settings, Download, RefreshCw, Mail, CheckCircle2, AlertTriangle, KeyRo
 import UpdateBanner from "../../UpdateBanner";
 import { SETTINGS_REGISTRY, SETTINGS_GROUP_ORDER } from "../../lib/settingsRegistry";
 import { getAllSettings, setSetting, loadTenantSettings } from "../../lib/settings";
+import { isModuleEnabled, setLocalModuleOverrides } from "../../lib/modules";
+import { LICENSABLE_MODULES } from "../../components/onboarding/FirstRunWizard";
+
+// Moduły, które hotel wybrał (lub nie) w kreatorze pierwszego uruchomienia — tu
+// można je zmienić bez przechodzenia kreatora od nowa. Działa lokalnie na tym
+// stanowisku (localStorage); jeśli w bazie jest wdrożona licencja (tenant_features),
+// ona ma pierwszeństwo — patrz isModuleEnabled w lib/modules.js.
+function ModulesCard() {
+  const [, forceUpdate] = useState(0);
+  const toggle = (key) => {
+    setLocalModuleOverrides({ [key]: !isModuleEnabled(key) });
+    forceUpdate(x => x + 1);
+  };
+  return (
+    <div className="panel glass dark-panel">
+      <div className="panel-title"><Settings size={16}/> Moduły recepcji</div>
+      <div className="tiny muted-light" style={{marginBottom:12,marginTop:-6}}>
+        Włącz lub wyłącz dodatki widoczne w pasku recepcji na tym stanowisku.
+      </div>
+      <div className="stack">
+        {LICENSABLE_MODULES.map(m => (
+          <label key={m.key} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,padding:"10px 13px",background:"rgba(255,255,255,.04)",border:"1px solid var(--dark-border)",borderRadius:"var(--radius-md)"}}>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:"var(--dark-text)"}}>{m.label}</div>
+              <div style={{fontSize:11.5,color:"var(--dark-text-muted)",marginTop:2}}>{m.desc}</div>
+            </div>
+            <input type="checkbox" checked={isModuleEnabled(m.key)} onChange={()=>toggle(m.key)}/>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Generyczny formularz ustawień per hotel (WYKONANIE 2.19). Renderuje SETTINGS_REGISTRY
 // pogrupowane; dodanie nowego przełącznika = wiersz w rejestrze, bez zmian tutaj.
@@ -163,6 +196,8 @@ export default function UstawieniaPanel({
       {!!window.electronAPI && <AutomationCard/>}
 
       <TenantSettingsCard/>
+
+      <ModulesCard/>
 
       <div className="panel glass dark-panel">
         <div className="panel-title"><Download size={16}/> Backup i przywracanie danych</div>

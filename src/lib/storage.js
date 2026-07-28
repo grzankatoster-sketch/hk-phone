@@ -73,6 +73,7 @@ export const STORAGE_KEYS = Object.freeze({
   roomGuests: "reception-room-guests",
   firstRunDone: "reception-first-run-done",
   tourSeenBy: "reception-tour-seen-by",
+  moduleOverrides: "reception-module-overrides",
   // Prefiksy kluczy budowanych dynamicznie (dopisywany sufiks, np. -{data}/-{imię}):
   dismissedRemindersPrefix: "reception-dismissed-reminders",
 });
@@ -86,3 +87,6 @@ export const saveJson = (key, value) => localStorage.setItem(key, JSON.stringify
 
 export const getCustomManagers = () => loadJson(STORAGE_KEYS.customManagers, []);
 export const setCustomManagers = (list) => saveJson(STORAGE_KEYS.customManagers, list);
+
+export const getModuleOverrides = () => loadJson(STORAGE_KEYS.moduleOverrides, {});
+export const setModuleOverrides = (map) => saveJson(STORAGE_KEYS.moduleOverrides, map);
