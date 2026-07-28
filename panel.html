@@ -234,19 +234,50 @@ body{font-family:var(--ui);background:
 .hdr,.foot{display:none!important}
 .h2,.role-ttl,.ddate,.kpi .v,.topbar h1,.brand .b1{font-family:var(--serif);font-weight:500;letter-spacing:-.01em}
 
-/* ── Logowanie (wyśrodkowane) ── */
+/* ── Logowanie: kameralna recepcja o zmierzchu ── */
 #app.wrap.auth{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:40px 20px}
-.wrap.auth::before{content:"CONRAD COMFORT";display:block;text-align:center;font-family:var(--serif);letter-spacing:.24em;color:var(--plum);font-size:15px}
-.wrap.auth::after{content:"Panel menedżerski";display:block;text-align:center;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:3px 0 22px}
-/* WYKONANIE 1.15: mniej centrowania — branding (::before/::after) zostaje
-   wyśrodkowany jak logo, ale sekcja formularza (nagłówek + opis + stopka)
-   wyrównana do lewej, spójnie z polami formularza w .card poniżej. */
-.wrap.auth .h2{font-size:23px;text-align:left}
-.wrap.auth .sub{text-align:left}
+
+/* Pieczęć-monogram nad wordmarkiem — jedyny naprawdę ozdobny akcent na ekranie logowania */
+.auth-seal{width:50px;height:50px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 26%, #ecd19b, var(--gold) 55%, #7c5d26 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 10px 22px -10px rgba(176,134,58,.55), 0 0 0 1px rgba(176,134,58,.3);
+  font-family:var(--serif);font-size:17px;color:#3a2a08;letter-spacing:.01em;
+  opacity:0;animation:fadeup .55s cubic-bezier(.2,.9,.25,1) .04s forwards}
+html.dark .auth-seal{box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px -8px rgba(0,0,0,.6), 0 0 0 1px rgba(200,162,105,.35)}
+
+.auth-brand{display:block;text-align:center;font-family:var(--serif);letter-spacing:.28em;color:var(--plum);font-size:14px;
+  opacity:0;animation:fadeup .5s ease .12s forwards}
+.auth-brand-sub{display:block;text-align:center;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:4px 0 28px;
+  opacity:0;animation:fadeup .5s ease .18s forwards}
+/* Cały „intro" blok (pieczęć → wordmark → nagłówek → opis) trzyma jedną oś —
+   wyśrodkowaną — żeby nie gryzło się z wyśrodkowanym monogramem nad nim.
+   Pola formularza w .card zostają naturalnie wyrównane do lewej (tak czyta się
+   etykieta+input), stopka pod kartą wraca do tej samej centralnej osi. */
+.wrap.auth .h2{font-size:23px;text-align:center;opacity:0;animation:fadeup .5s ease .24s forwards}
+.wrap.auth .sub{text-align:center;opacity:0;animation:fadeup .5s ease .28s forwards}
 .card{border-radius:var(--r);box-shadow:var(--shadow);border-color:var(--line)}
+.wrap.auth .card{position:relative;overflow:hidden;opacity:0;animation:fadeup .55s ease .34s forwards}
+.wrap.auth .card::before{content:"";position:absolute;top:0;left:16%;right:16%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:.7}
+.wrap.auth .auth-foot{text-align:center;opacity:0;animation:fadeup .5s ease .46s forwards}
+.wrap.auth .field label{display:inline-flex;align-items:center;gap:6px}
+.wrap.auth .field label svg{color:var(--gold);opacity:.75;flex-shrink:0}
+/* Duże ekrany: karta nie ma pływać samotnie w czerni — miękka poświata za nią
+   zakotwicza kompozycję na środku, zamiast zostawiać pustkę. */
+@media(min-width:900px){
+  .wrap.auth{position:relative}
+  .wrap.auth::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:820px;height:820px;border-radius:50%;pointer-events:none;z-index:-1;
+    background:radial-gradient(circle, rgba(176,134,58,.09), transparent 62%)}
+}
 .btn{background:linear-gradient(180deg,var(--plum-2),var(--plum));box-shadow:0 8px 20px -8px rgba(90,29,74,.6);border-radius:13px;letter-spacing:.01em}
 .btn:hover{filter:brightness(1.06)}
+.wrap.auth .btn{position:relative;overflow:hidden}
+.wrap.auth .btn::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;
+  background:linear-gradient(115deg,transparent,rgba(255,255,255,.4),transparent);transform:skewX(-18deg);transition:left .55s ease}
+.wrap.auth .btn:hover::after{left:130%}
 .inp{border-radius:12px}.inp:focus{box-shadow:0 0 0 3px rgba(90,29,74,.12)}
+.wrap.auth .inp:focus{box-shadow:0 0 0 3px rgba(90,29,74,.12),0 0 0 1px rgba(176,134,58,.35)}
 .remember{display:flex;align-items:center;gap:9px;margin:2px 0 12px;cursor:pointer;user-select:none}
 .remember input{width:18px;height:18px;accent-color:var(--plum);cursor:pointer;flex-shrink:0}
 .remember span{font-size:13px;color:var(--muted)}
@@ -908,15 +939,18 @@ async function showLogin() {
   accounts = (data || []).filter(a => a.active !== false);
   const savedName = (()=>{ try { return localStorage.getItem("panel_remember_name") || ""; } catch(_) { return ""; } })();
   app.innerHTML = `
+    <div class="auth-seal">CC</div>
+    <div class="auth-brand">CONRAD COMFORT</div>
+    <div class="auth-brand-sub">Panel menedżerski</div>
     <div class="h2">Logowanie</div>
     <div class="sub">Wpisz swoje imię i hasło.</div>
     <div class="card">
       <form id="loginForm" autocomplete="on" onsubmit="submitLogin();return false;">
-        <div class="field"><label>Login (imię)</label>
+        <div class="field"><label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Login (imię)</label>
           <input id="lname" class="inp" autocomplete="username" autocapitalize="words" placeholder="np. Tetiana" value="${esc(savedName)}" oninput="loginNameHint()"/></div>
-        <div id="codeWrap" class="field" style="display:none"><label>Kod od administratora</label>
+        <div id="codeWrap" class="field" style="display:none"><label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="9" y1="3" x2="7" y2="21"/><line x1="17" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="2" y1="15" x2="20" y2="15"/></svg>Kod od administratora</label>
           <input id="lcode" class="inp" autocomplete="off" placeholder="np. 4821"/></div>
-        <div class="field"><label>Hasło</label>
+        <div class="field"><label><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m0 0h-4m4 0v4m-7 3l2 2"/></svg>Hasło</label>
           <input id="lpw" class="inp" type="password" autocomplete="current-password" placeholder="••••••••"/></div>
         <div id="lhint" class="note" style="display:none"></div>
         <label class="remember"><input id="lremember" type="checkbox" ${savedName ? "checked" : ""}/><span>Zapamiętaj mnie na tym urządzeniu</span></label>
