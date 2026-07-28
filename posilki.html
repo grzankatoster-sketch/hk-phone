@@ -579,7 +579,7 @@ window.groupStep = (room, mealKey, delta, persons) => {
 
 loadAll();
 if (!DEMO) {
-  setInterval(loadAll, 20000); // polling fallback (jak reszta hk-phone)
+  setInterval(loadAll, 15000); // polling fallback
   if (sb) {
     sb.channel(`posilki-${TENANT_ID}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "meal_checkins", filter: `tenant_id=eq.${TENANT_ID}` }, loadAll)
