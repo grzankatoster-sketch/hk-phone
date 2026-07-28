@@ -569,6 +569,40 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .confirm-input{width:100%;box-sizing:border-box;font-family:var(--ui);font-size:14px;padding:10px 12px;margin:-6px 0 18px;border:1px solid var(--line-strong);border-radius:10px;background:var(--cream);color:var(--ink)}
 .confirm-input:focus{outline:none;border-color:var(--plum);background:var(--paper)}
 @media (prefers-reduced-motion:reduce){.confirm-ov,.confirm-box{transition:none}}
+
+/* ── "Skrzydła hotelu" — wizualny widok struktury (zakładka Konta) ──
+   Rząd plakietek jak tablica informacyjna w lobby: każdy dział to "skrzydło"
+   z pieczęcią-monogramem (echo .auth-seal z ekranu logowania), pod spodem
+   przypisani kierownicy jako identyfikatory. Celowo NIE jest to dosłowny plan
+   pięter/pokoi — to organizacyjny, "premium" odpowiednik listy chipów. */
+.wings{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.wing{scroll-snap-align:start;flex:0 0 208px;position:relative;background:linear-gradient(180deg,var(--paper),var(--cream));
+  border:1.5px solid var(--line);border-radius:18px;padding:20px 16px 16px;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.wing:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 4px 10px rgba(58,18,48,.08),0 20px 38px -18px rgba(176,134,58,.35)}
+.wing-seal{width:44px;height:44px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 26%,#ecd19b,var(--gold) 55%,#7c5d26 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 6px 14px -6px rgba(176,134,58,.55);
+  font-family:var(--serif);font-size:15px;color:#3a2a08;letter-spacing:.01em;flex-shrink:0}
+.wing-name{font-family:var(--serif);font-size:15.5px;text-align:center;color:var(--ink);line-height:1.25;font-weight:500}
+.wing-div{width:34px;height:2px;margin:9px auto 13px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.wing-staff{display:flex;flex-direction:column;gap:8px;min-height:20px}
+.wing-person{display:flex;align-items:center;gap:8px}
+.wing-person .av{width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:10.5px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.wing-person .pinfo{min-width:0;flex:1}
+.wing-person .pname{font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wing-person .prole{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wing-empty{font-size:11.5px;color:var(--muted);font-style:italic;text-align:center;padding:6px 0 2px}
+.wing-del{position:absolute;top:9px;right:11px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(194,65,90,.1);
+  color:var(--bad);font-weight:900;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s ease;display:flex;align-items:center;justify-content:center}
+.wing:hover .wing-del{opacity:1}
+.wing-add{scroll-snap-align:start;flex:0 0 208px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  border:1.5px dashed var(--line-strong);border-radius:18px;padding:20px 16px;cursor:pointer;color:var(--muted);
+  background:transparent;transition:border-color .15s ease,color .15s ease,background .15s ease;min-height:150px}
+.wing-add:hover{border-color:var(--gold);color:var(--plum);background:rgba(176,134,58,.05)}
+.wing-add .plus{width:34px;height:34px;border-radius:50%;border:1.5px dashed var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:300}
+.wing-add:hover .plus{border-color:var(--gold)}
+.wing-add span{font-family:var(--serif);font-size:13px}
 </style>
 </head>
 <body>
@@ -602,11 +636,11 @@ function makeMockClient(){
   const ACC = [
     {name:"Admin",email:"admin@conrad-panel.com",role:"admin",claimed:true,active:true,created_at:today},
     {name:"Koordynator",email:"koord@conrad-panel.com",role:"koordynator",claimed:true,active:true,created_at:today},
-    {name:"Menedżer recepcji",email:"recep@conrad-panel.com",role:"mgr_recepcja",claimed:false,active:true,requires_code:true,created_at:today},
-    {name:"Tetiana (HK)",email:"tet@conrad-panel.com",role:"mgr_hk",claimed:true,active:true,created_at:today},
+    {name:"Menedżer recepcji",email:"recep@conrad-panel.com",role:"mgr_recepcja",claimed:false,active:true,requires_code:true,created_at:today,department_id:"dept-recepcja"},
+    {name:"Tetiana (HK)",email:"tet@conrad-panel.com",role:"mgr_hk",claimed:true,active:true,created_at:today,department_id:"dept-hk"},
     {name:"Menedżer główny",email:"glow@conrad-panel.com",role:"mgr_glowny",claimed:true,active:true,created_at:today},
     {name:"Menedżer operacyjny",email:"oper@conrad-panel.com",role:"mgr_operacyjny",claimed:false,active:true,created_at:today},
-    {name:"Menedżer gastronomii",email:"gastro@conrad-panel.com",role:"mgr_gastro",claimed:false,active:true,created_at:today},
+    {name:"Menedżer gastronomii",email:"gastro@conrad-panel.com",role:"mgr_gastro",claimed:false,active:true,created_at:today,department_id:"dept-gastro"},
   ];
   const DEMO_DEPTS = [
     {id:"dept-recepcja", name:"Recepcja"}, {id:"dept-hk", name:"Sprzątanie"}, {id:"dept-gastro", name:"Gastronomia"},
@@ -4951,15 +4985,32 @@ async function loadKonta() {
   try { const { data } = await sb.rpc("admin_list_accounts"); rows = data || []; }
   catch { return body('<div class="empty">Brak uprawnień lub błąd.</div>'); }
   try { const { data } = await sb.rpc("admin_list_departments"); KONTA_DEPTS = data || []; } catch { KONTA_DEPTS = []; }
+  // "Skrzydła hotelu" — dział jako plakietka z pieczęcią-monogramem, pod spodem
+  // przypisani kierownicy (z tego samego admin_list_accounts, grupowani po dziale).
+  const deptSeal = (name) => String(name||"").trim().slice(0,2).toUpperCase() || "?";
+  const staffOf = (deptId) => rows.filter(r => r.department_id === deptId);
+  const wingHtml = (d) => {
+    const staff = staffOf(d.id);
+    return `<div class="wing">
+      ${staff.length ? "" : `<button type="button" class="wing-del" title="Usuń dział" onclick="delDzial('${esc(d.id)}','${esc(d.name)}')">×</button>`}
+      <div class="wing-seal">${esc(deptSeal(d.name))}</div>
+      <div class="wing-name">${esc(d.name)}</div>
+      <div class="wing-div"></div>
+      <div class="wing-staff">${staff.length
+        ? staff.map(r => `<div class="wing-person"><span class="av" style="background:${avatarBg(r.name)}">${esc(initials(r.name))}</span>
+            <div class="pinfo"><div class="pname">${esc(r.name)}</div><div class="prole">${esc(ROLE_LABEL(r.role))}</div></div></div>`).join("")
+        : `<div class="wing-empty">Brak przypisanych osób</div>`}
+      </div>
+    </div>`;
+  };
   const deptsBlock = `
     <div class="card" style="margin-bottom:12px">
-      <div class="soon" style="margin-top:0">Działy</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-        ${KONTA_DEPTS.length ? KONTA_DEPTS.map(d => `<span class="chip" style="display:inline-flex;align-items:center;gap:6px">${esc(d.name)}
-          <button type="button" onclick="delDzial('${esc(d.id)}','${esc(d.name)}')" style="background:none;border:none;cursor:pointer;color:var(--bad);font-weight:800">×</button></span>`).join("")
-          : '<span class="note" style="margin:0">Brak działów — dodaj pierwszy (np. Recepcja, Sprzątanie, Gastronomia).</span>'}
+      <div class="soon" style="margin-top:0">Struktura hotelu</div>
+      <div class="wings">
+        ${KONTA_DEPTS.map(wingHtml).join("")}
+        <button type="button" class="wing-add" onclick="addDzial()"><span class="plus">+</span><span>Nowy dział</span></button>
       </div>
-      <button class="btn btn-outline" type="button" onclick="addDzial()">+ Nowy dział</button>
+      ${KONTA_DEPTS.length ? "" : '<div class="note" style="margin-top:2px">Zacznij od pierwszego działu — np. Recepcja, Sprzątanie, Gastronomia.</div>'}
     </div>`;
   const form = `
     <div class="card" style="margin-bottom:12px">
