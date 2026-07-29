@@ -237,16 +237,15 @@ body{font-family:var(--ui);background:
 /* ── Logowanie: kameralna recepcja o zmierzchu ── */
 #app.wrap.auth{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:40px 20px}
 
-/* Pieczęć-monogram nad wordmarkiem — jedyny naprawdę ozdobny akcent na ekranie logowania */
-.auth-seal{width:50px;height:50px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 32% 26%, #ecd19b, var(--gold) 55%, #7c5d26 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 10px 22px -10px rgba(176,134,58,.55), 0 0 0 1px rgba(176,134,58,.3);
-  font-family:var(--serif);font-size:17px;color:#3a2a08;letter-spacing:.01em;
+/* Logo animowane (te same pulsujące kropki + wordmark co idle-screen posilki.html
+   i prawdziwe logowanie recepcji — Logo.jsx variant="full") — jedyny naprawdę
+   ozdobny akcent na ekranie logowania panelu. */
+.auth-logo-wrap{display:flex;justify-content:center;margin:0 0 6px;
   opacity:0;animation:fadeup .55s cubic-bezier(.2,.9,.25,1) .04s forwards}
-html.dark .auth-seal{box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px -8px rgba(0,0,0,.6), 0 0 0 1px rgba(200,162,105,.35)}
+.auth-logo{filter:drop-shadow(0 8px 20px rgba(90,29,74,.16));max-width:100%;height:auto}
+.auth-logo .lg-fg{fill:var(--plum)}
+html.dark .auth-logo{filter:drop-shadow(0 8px 22px rgba(0,0,0,.5))}
 
-.auth-brand{display:block;text-align:center;font-family:var(--serif);letter-spacing:.28em;color:var(--plum);font-size:14px;
-  opacity:0;animation:fadeup .5s ease .12s forwards}
 .auth-brand-sub{display:block;text-align:center;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:4px 0 28px;
   opacity:0;animation:fadeup .5s ease .18s forwards}
 /* Cały „intro" blok (pieczęć → wordmark → nagłówek → opis) trzyma jedną oś —
@@ -311,22 +310,28 @@ html.dark .auth-seal{box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px
 /* ════════ KOMPUTER (≥ 920px): sidebar + szeroka treść + siatka ════════ */
 @media(min-width:920px){
   .shell{display:grid;grid-template-columns:264px 1fr}
-  .side{display:flex;flex-direction:column;gap:16px;padding:22px 16px;color:#fff;position:sticky;top:0;height:100vh;
+  .side{display:flex;flex-direction:column;gap:16px;padding:22px 16px;color:#fff;position:sticky;top:0;height:100vh;overflow:hidden;
     background:linear-gradient(170deg,var(--plum) 0%,var(--plum-deep) 100%);box-shadow:inset -1px 0 0 rgba(255,255,255,.06)}
-  .brand{display:flex;align-items:center;gap:11px;padding:4px 6px 6px}
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 6px 6px;flex-shrink:0}
   .brand .b1{font-size:14px;letter-spacing:.16em;color:#fff}
   .brand .b2{font-size:9.5px;letter-spacing:.06em;color:rgba(255,255,255,.6);margin-top:2px}
-  .me{display:flex;align-items:center;gap:11px;padding:11px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+  .me{display:flex;align-items:center;gap:11px;padding:11px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);flex-shrink:0}
   .me-av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.2)}
   .me-n{font-weight:800;font-size:14px;color:#fff;line-height:1.2}
   .me-r{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
-  .nav{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+  /* Role z wieloma zakładkami (admin/GM ma ~20) potrafią przekroczyć 100vh —
+     bez własnego scrolla ostatnie pozycje wypadały poza ekran i były niedostępne. */
+  .nav{display:flex;flex-direction:column;gap:3px;margin-top:2px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+  .nav::-webkit-scrollbar{width:6px}
+  .nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:3px}
+  .nav::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.35)}
   .navbtn{display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;background:transparent;color:rgba(255,255,255,.8);
-    border-radius:11px;font:700 13.5px var(--ui);cursor:pointer;text-align:left;transition:background .14s,color .14s}
+    border-radius:11px;font:700 13.5px var(--ui);cursor:pointer;text-align:left;transition:background .14s,color .14s;flex-shrink:0}
   .navbtn svg{width:18px;height:18px;flex-shrink:0;opacity:.9}
   .navbtn:hover{background:rgba(255,255,255,.09);color:#fff}
   .navbtn.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-  .side-out{margin-top:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;
+  .side-out{margin-top:auto;flex-shrink:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;
     border-radius:11px;padding:11px;font:800 13px var(--ui);cursor:pointer}
   .side-out:hover{background:rgba(255,255,255,.16)}
   .tabs.mob,.top-out{display:none}
@@ -569,6 +574,40 @@ body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opa
 .confirm-input{width:100%;box-sizing:border-box;font-family:var(--ui);font-size:14px;padding:10px 12px;margin:-6px 0 18px;border:1px solid var(--line-strong);border-radius:10px;background:var(--cream);color:var(--ink)}
 .confirm-input:focus{outline:none;border-color:var(--plum);background:var(--paper)}
 @media (prefers-reduced-motion:reduce){.confirm-ov,.confirm-box{transition:none}}
+
+/* ── "Skrzydła hotelu" — wizualny widok struktury (zakładka Konta) ──
+   Rząd plakietek jak tablica informacyjna w lobby: każdy dział to "skrzydło"
+   z pieczęcią-monogramem (echo .auth-seal z ekranu logowania), pod spodem
+   przypisani kierownicy jako identyfikatory. Celowo NIE jest to dosłowny plan
+   pięter/pokoi — to organizacyjny, "premium" odpowiednik listy chipów. */
+.wings{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 14px;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.wing{scroll-snap-align:start;flex:0 0 208px;position:relative;background:linear-gradient(180deg,var(--paper),var(--cream));
+  border:1.5px solid var(--line);border-radius:18px;padding:20px 16px 16px;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.wing:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 4px 10px rgba(58,18,48,.08),0 20px 38px -18px rgba(176,134,58,.35)}
+.wing-seal{width:44px;height:44px;margin:0 auto 12px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 32% 26%,#ecd19b,var(--gold) 55%,#7c5d26 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 6px 14px -6px rgba(176,134,58,.55);
+  font-family:var(--serif);font-size:15px;color:#3a2a08;letter-spacing:.01em;flex-shrink:0}
+.wing-name{font-family:var(--serif);font-size:15.5px;text-align:center;color:var(--ink);line-height:1.25;font-weight:500}
+.wing-div{width:34px;height:2px;margin:9px auto 13px;border-radius:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.wing-staff{display:flex;flex-direction:column;gap:8px;min-height:20px}
+.wing-person{display:flex;align-items:center;gap:8px}
+.wing-person .av{width:26px;height:26px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:10.5px;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.wing-person .pinfo{min-width:0;flex:1}
+.wing-person .pname{font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wing-person .prole{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wing-empty{font-size:11.5px;color:var(--muted);font-style:italic;text-align:center;padding:6px 0 2px}
+.wing-del{position:absolute;top:9px;right:11px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(194,65,90,.1);
+  color:var(--bad);font-weight:900;font-size:12px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s ease;display:flex;align-items:center;justify-content:center}
+.wing:hover .wing-del{opacity:1}
+.wing-add{scroll-snap-align:start;flex:0 0 208px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  border:1.5px dashed var(--line-strong);border-radius:18px;padding:20px 16px;cursor:pointer;color:var(--muted);
+  background:transparent;transition:border-color .15s ease,color .15s ease,background .15s ease;min-height:150px}
+.wing-add:hover{border-color:var(--gold);color:var(--plum);background:rgba(176,134,58,.05)}
+.wing-add .plus{width:34px;height:34px;border-radius:50%;border:1.5px dashed var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:300}
+.wing-add:hover .plus{border-color:var(--gold)}
+.wing-add span{font-family:var(--serif);font-size:13px}
 </style>
 </head>
 <body>
@@ -602,11 +641,14 @@ function makeMockClient(){
   const ACC = [
     {name:"Admin",email:"admin@conrad-panel.com",role:"admin",claimed:true,active:true,created_at:today},
     {name:"Koordynator",email:"koord@conrad-panel.com",role:"koordynator",claimed:true,active:true,created_at:today},
-    {name:"Menedżer recepcji",email:"recep@conrad-panel.com",role:"mgr_recepcja",claimed:false,active:true,requires_code:true,created_at:today},
-    {name:"Tetiana (HK)",email:"tet@conrad-panel.com",role:"mgr_hk",claimed:true,active:true,created_at:today},
+    {name:"Menedżer recepcji",email:"recep@conrad-panel.com",role:"mgr_recepcja",claimed:false,active:true,requires_code:true,created_at:today,department_id:"dept-recepcja"},
+    {name:"Tetiana (HK)",email:"tet@conrad-panel.com",role:"mgr_hk",claimed:true,active:true,created_at:today,department_id:"dept-hk"},
     {name:"Menedżer główny",email:"glow@conrad-panel.com",role:"mgr_glowny",claimed:true,active:true,created_at:today},
     {name:"Menedżer operacyjny",email:"oper@conrad-panel.com",role:"mgr_operacyjny",claimed:false,active:true,created_at:today},
-    {name:"Menedżer gastronomii",email:"gastro@conrad-panel.com",role:"mgr_gastro",claimed:false,active:true,created_at:today},
+    {name:"Menedżer gastronomii",email:"gastro@conrad-panel.com",role:"mgr_gastro",claimed:false,active:true,created_at:today,department_id:"dept-gastro"},
+  ];
+  const DEMO_DEPTS = [
+    {id:"dept-recepcja", name:"Recepcja"}, {id:"dept-hk", name:"Sprzątanie"}, {id:"dept-gastro", name:"Gastronomia"},
   ];
   const DEMO_EMAIL = (ACC.find(a=>a.role===DEMO_ROLE)||ACC[0]).email;
   const DATA = {
@@ -710,6 +752,10 @@ function makeMockClient(){
     admin_set_role: ()=> null, admin_set_active: ()=> null,
     admin_reset_account: ()=> "acc_new@conrad-panel.com", admin_set_password: ()=> true, admin_set_name: ()=> null,
     precheck_claim: ()=> true, regenerate_token: ()=> "NEW123", set_token_active: ()=> null,
+    admin_list_departments: ()=> DEMO_DEPTS,
+    admin_add_department: (args)=> { const name=(args&&args.p_name||"").trim(); if(!name) throw new Error("Brak nazwy działu."); const id="dept-"+Date.now(); DEMO_DEPTS.push({id,name}); return id; },
+    admin_delete_department: (args)=> { const i=DEMO_DEPTS.findIndex(d=>d.id===(args&&args.p_id)); if(i>=0) DEMO_DEPTS.splice(i,1); return null; },
+    admin_set_department: ()=> null, admin_set_tabs: ()=> null,
   };
   function builder(name){
     let rows = (DATA[name]||[]).map(r=>({...r}));
@@ -732,6 +778,18 @@ function makeMockClient(){
     rpc: (n,a)=> Promise.resolve({ data: RPC[n] ? RPC[n](a) : null, error: null }),
     functions: { invoke: (n,opt)=>{
       const b=(opt&&opt.body)||{};
+      if(b.task==="roletabs"){
+        const title=((b.payload&&b.payload.title)||"").toLowerCase();
+        const catalogKeys=((b.payload&&b.payload.catalog)||[]).map(c=>c.key);
+        let tabs;
+        if(/recepcj|koordyn/.test(title)) tabs=["pulpit","live","wyjazdy","tablica","zmiany","zadania","kasa","poczta"];
+        else if(/hk|sprząt|pokojow/.test(title)) tabs=["live","praca","jakosc","kontrole","znalezione","grafik","poczta"];
+        else if(/gastro|kuchni|restaurac/.test(title)) tabs=["grafik","zadania","tablica","akcje","poczta"];
+        else if(/konserw|techni/.test(title)) tabs=["konserw","sla","plan","poczta"];
+        else tabs=["poczta","live","zadania"];
+        tabs = tabs.filter(k=>catalogKeys.includes(k));
+        return Promise.resolve({ data:{ data:{ tabs }, text:"" }, error:null });
+      }
       if(b.task==="grafik"){
         const days=(b.payload&&b.payload.days)||[]; const ppl=(b.payload&&b.payload.persons)||[];
         const sched={}; days.forEach((d,di)=>{ sched[d]={}; ppl.forEach((p,pi)=>{ const av=(p.available||[]).some(a=>a.date===d); if(av && (di+pi)%2===0) sched[d][p.name]={start:"7",end:"15",shift:"poranna"}; }); });
@@ -939,8 +997,16 @@ async function showLogin() {
   accounts = (data || []).filter(a => a.active !== false);
   const savedName = (()=>{ try { return localStorage.getItem("panel_remember_name") || ""; } catch(_) { return ""; } })();
   app.innerHTML = `
-    <div class="auth-seal">CC</div>
-    <div class="auth-brand">CONRAD COMFORT</div>
+    <div class="auth-logo-wrap">
+      <svg class="auth-logo" viewBox="0 0 220 110" width="570" height="285" role="img" aria-label="Conrad Comfort">
+        <circle class="lg-fg" cx="92" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <circle class="lg-fg" cx="100" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <circle class="lg-fg" cx="120" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <circle class="lg-fg" cx="128" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <text class="lg-fg" x="110" y="62" font-family="'DM Serif Display',Georgia,serif" font-size="22" font-weight="400" letter-spacing="0.18em" text-anchor="middle">CONRAD</text>
+        <text class="lg-fg" x="110" y="86" font-family="-apple-system,sans-serif" font-size="11" font-weight="500" letter-spacing="0.55em" text-anchor="middle">COMFORT</text>
+      </svg>
+    </div>
     <div class="auth-brand-sub">Panel menedżerski</div>
     <div class="h2">Logowanie</div>
     <div class="sub">Wpisz swoje imię i hasło.</div>
@@ -1126,7 +1192,7 @@ window.submitAuth = async (i, first) => {
   }
 };
 
-let CURRENT = { role: null, name: "" };
+let CURRENT = { role: null, name: "", tabs: null };
 
 async function showPanelFromSession(fresh) {
   app.innerHTML = '<div class="spin">Wczytywanie panelu…</div>';
@@ -1146,14 +1212,14 @@ async function showPanelFromSession(fresh) {
   }
   let { data: roleData } = await sb.rpc("current_app_role");
   role = roleData || null;
-  let { data: me } = await sb.from("app_accounts").select("name,role,onboarded_at").eq("email", user.email).maybeSingle();
+  let { data: me } = await sb.from("app_accounts").select("name,role,onboarded_at,tabs").eq("email", user.email).maybeSingle();
   if (me) { name = me.name; if (!role) role = me.role; }
   // Jeszcze brak roli? Token mógł dopiero co dojść — odśwież sesję i spróbuj raz jeszcze.
   if (!role) {
     try { await sb.auth.refreshSession(); } catch(_) {}
     ({ data: roleData } = await sb.rpc("current_app_role"));
     role = roleData || null;
-    ({ data: me } = await sb.from("app_accounts").select("name,role,onboarded_at").eq("email", user.email).maybeSingle());
+    ({ data: me } = await sb.from("app_accounts").select("name,role,onboarded_at,tabs").eq("email", user.email).maybeSingle());
     if (me) { name = me.name || name; if (!role) role = me.role; }
   }
   logoutBtn.style.display = "";
@@ -1161,7 +1227,7 @@ async function showPanelFromSession(fresh) {
     app.innerHTML = `<div class="card"><div class="msg err" style="display:block">Twoje konto nie ma jeszcze przypisanej roli. Skontaktuj się z adminem.</div></div>`;
     return;
   }
-  CURRENT = { role, name, email: user.email, onboardedAt: me ? me.onboarded_at : null };
+  CURRENT = { role, name, email: user.email, onboardedAt: me ? me.onboarded_at : null, tabs: me ? me.tabs : null };
   // Rejestruj tylko realne wejście (kliknięcie „Zaloguj"), nie odświeżenie/wznowienie PWA —
   // dzięki temu admin widzi w „Logach" kto faktycznie wszedł i czy coś potem zrobił.
   if (fresh) { try { await sb.rpc("log_action", { p_action:"logowanie", p_detail: role||"" }); } catch {} }
@@ -1268,11 +1334,30 @@ let liveTimer = null;
 
 function stopLive(){ if (liveTimer){ clearInterval(liveTimer); liveTimer=null; } }
 
+// Katalog wszystkich funkcji/zakładek panelu — jedno źródło prawdy używane zarówno przez
+// domyślny (per-rola) routing niżej, jak i przez edytor "Funkcje" w zakładce Konta (GM
+// dobiera jawną listę per-konto, opcjonalnie z podpowiedzią AI — patrz loadKonta/roletabs).
+// UWAGA: klucze muszą pokrywać się z panel_valid_tab_keys() w SQL (0069_panel_struktura.sql) —
+// to on ostatecznie waliduje zapis, ten katalog to tylko UI.
+const TAB_CATALOG = [
+  ["poczta","Poczta"], ["pulpit","Pulpit"], ["live","Na żywo"], ["wyjazdy","Wyjazdy"],
+  ["staty","Statystyki"], ["praca","Praca"], ["jakosc","Jakość"], ["kontrole","Kontrole"],
+  ["tablica","Tablica"], ["znalezione","Znalezione"], ["grafik","Grafik"], ["zmiany","Zmiany"],
+  ["zadania","Zadania"], ["kasa","Kasa"], ["konserw","Konserw."], ["sla","SLA"], ["plan","Plan"],
+  ["akcje","Akcje"], ["konta","Konta"], ["logi","Logi"],
+];
+
 // Role recepcyjne widzą dodatkowo Zadania + Kasę; grafik widzą HK + recepcyjne.
 const RECEPCJA_ROLES = new Set(["koordynator","mgr_recepcja","mgr_glowny","mgr_operacyjny"]);
 const GRAFIK_ROLES   = new Set(["mgr_hk","koordynator","mgr_recepcja","mgr_glowny","mgr_operacyjny"]);
 const KONSERW_ROLES  = new Set(["mgr_glowny","mgr_operacyjny"]);
 function tabsFor(role){
+  // Jawna lista funkcji (dobrana przez GM, opcjonalnie z podpowiedzią AI — zakładka Konta)
+  // nadpisuje domyślny dobór po roli. admin widzi zawsze wszystko, niezależnie od tabs.
+  if (role !== "admin" && Array.isArray(CURRENT.tabs) && CURRENT.tabs.length) {
+    const keep = new Set(CURRENT.tabs);
+    return TAB_CATALOG.filter(([k]) => keep.has(k));
+  }
   // Gastro: osobny, węższy zestaw (bez modułów HK).
   if (role === "mgr_gastro") return [["poczta","Poczta"],["grafik","Grafik"],["zadania","Zadania"],["tablica","Tablica"],["akcje","Akcje"]];
   const A = role === "admin";  // admin widzi wszystko
@@ -1284,7 +1369,7 @@ function tabsFor(role){
   t.push(["live","Na żywo"],["wyjazdy","Wyjazdy"],["staty","Statystyki"]);
   if (A || role === "mgr_hk") t.push(["praca","Praca"]);   // tryb pracy: sprzątanie pokoi (jak telefon HK)
   if (A || role === "mgr_hk") t.push(["jakosc","Jakość"]); // pulpit losowych kontroli pokoi
-  if (A || role === "mgr_hk" || KONSERW_ROLES.has(role)) t.push(["kontrole","Kontrole"]); // checklisty pokojowe — cel HK i/lub konserwacja
+  if (A || role === "mgr_hk" || role === "koordynator" || KONSERW_ROLES.has(role)) t.push(["kontrole","Kontrole"]); // checklisty pokojowe — cel HK i/lub konserwacja
   if (A || RECEPCJA_ROLES.has(role)) t.push(["tablica","Tablica"]);          // Tablica nie dla HK
   if (A || RECEPCJA_ROLES.has(role) || role === "mgr_hk") t.push(["znalezione","Znalezione"]); // rzeczy znalezione (recepcja + HK)
   if (A || GRAFIK_ROLES.has(role))   t.push(["grafik","Grafik"]);
@@ -2797,14 +2882,11 @@ function mailComposer(){
   const me = CURRENT.email;
   const people = MAIL_ACCOUNTS.filter(a => a.email !== me)
     .map(a => `<option value="email:${esc(a.email)}">${esc(a.name)} — ${esc(ROLE_LABEL(a.role))}</option>`).join("");
-  const roles = [...new Set(MAIL_ACCOUNTS.map(a=>a.role))]
-    .map(rr => `<option value="role:${rr}">Wszyscy: ${esc(ROLE_LABEL(rr))}</option>`).join("");
   return `<div class="card" style="margin-top:16px">
     <div class="soon" style="margin-top:0">Poproś kogoś o coś</div>
     <div class="field"><select id="mTo" class="inp">
       <option value="">— do kogo? —</option>
       <optgroup label="Osoby">${people}</optgroup>
-      <optgroup label="Działy / role">${roles}</optgroup>
     </select></div>
     <div class="field"><textarea id="mBody" class="inp" rows="2" placeholder="Czego potrzebujesz? np. sprawdź proszę grafik na piątek"></textarea></div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
@@ -4065,7 +4147,8 @@ async function loadPlan() {
   let plans = [], tasks = [];
   try {
     const [{ data:pl }, { data:tk }] = await Promise.all([
-      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+      // group_id=null: plany z checklist (Kontrole) mają zostać TYLKO tam, nie dublować się tu.
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).is("group_id", null).order("created_at", { ascending:false }),
       sb.from("panel_plan").select("id,plan_id,plan,date,task,response,status,photos").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
     plans = pl || []; tasks = tk || [];
@@ -4239,118 +4322,183 @@ window.setPlanStatus = async (id, st) => {
   catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
-// ── Kontrole HK: plan kontroli PRZYPISANY DO POKOJU (nie do osoby) — wykonuje
-// kto akurat sprząta dany pokój danego dnia (przydział z hk_plan.assignments).
-// Jeśli dana pokojówka nie ma tego pokoju, zadanie NIE znika — czeka na kolejny
-// dzień/osobę. Rano "wykonane" zamyka na stałe (is_final w bazie, egzekwowane
-// przez RPC hk_check_submit); popołudnie może tylko zgłosić "nie udało się" z
-// powodem. Panel to READ-ONLY oversight — samo oznaczanie robi telefon HK.
+// ── Kontrole: ujednolicona checklista pokojowa — kierownik wybiera cel (HK,
+// Konserwacja, albo oba) i listę pokoi. checklist_groups to lekki łącznik nad
+// dwoma NIEZALEŻNYMI, już istniejącymi mechanizmami:
+// valid_to "na zawsze" dla hk_check_items — kolumna jest NOT NULL w schemacie,
+// więc zamiast usuwać ją, ustawiamy datę daleko w przyszłości (checklista znika
+// dopiero gdy kierownik ją zakończy, nie sama po jednym dniu).
+const CHK_FAR_FUTURE = "2099-12-31";
+//   HK:          hk_check_plans/hk_check_items — zadanie PRZYPISANE DO POKOJU,
+//                wykonuje kto akurat sprząta dany pokój danego dnia (przydział
+//                z hk_plan.assignments). Rano "wykonane" zamyka na stałe
+//                (is_final, RPC hk_check_submit); popołudnie może tylko
+//                zgłosić "nie udało się" z powodem. READ-ONLY oversight w
+//                panelu — samo oznaczanie robi telefon HK (index.html).
+//   Konserwacja: maintenance_plans/panel_plan — zadanie przypisane do osoby,
+//                bez logiki zmian AM/PM; kierownik może tu bezpośrednio
+//                odznaczać (jak w zakładce „Plan"). Telefon konserwacji
+//                (konserwacja.html) czyta panel_plan bez żadnych zmian.
 async function loadKontrole() {
-  let plans = [], items = [];
+  let groups = [], hkPlans = [], hkItems = [], mtPlans = [], mtItems = [];
   try {
-    const [{ data:pl }, { data:it }] = await Promise.all([
-      sb.from("hk_check_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+    const [{ data:gr }, { data:hp }, { data:hi }, { data:mp }, { data:mi }] = await Promise.all([
+      sb.from("checklist_groups").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+      sb.from("hk_check_plans").select("*").eq("tenant_id", TENANT_ID).not("group_id","is",null),
       sb.from("hk_check_items").select("*").eq("tenant_id", TENANT_ID),
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).not("group_id","is",null),
+      sb.from("panel_plan").select("id,plan_id,room,task,date,status,response,photos").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
-    plans = pl || []; items = it || [];
-  } catch { return body('<div class="empty">Nie udało się pobrać planów kontroli.</div>'); }
+    groups = gr || []; hkPlans = hp || []; hkItems = hi || []; mtPlans = mp || []; mtItems = mi || [];
+  } catch { return body('<div class="empty">Nie udało się pobrać checklist.</div>'); }
 
   if (CHK_OPEN_ID) {
-    const p = plans.find(x => x.id === CHK_OPEN_ID);
-    if (!p) { CHK_OPEN_ID = null; return loadKontrole(); }
-    return renderKontroleDetail(p, items.filter(x => x.plan_id === p.id));
+    const g = groups.find(x => x.id === CHK_OPEN_ID);
+    if (!g) { CHK_OPEN_ID = null; return loadKontrole(); }
+    const hp = hkPlans.find(x => x.group_id === g.id) || null;
+    const mp = mtPlans.find(x => x.group_id === g.id) || null;
+    CHK_OPEN_HP_ID = hp ? hp.id : null;
+    CHK_OPEN_MP_ID = mp ? mp.id : null;
+    return renderKontroleDetail(g, hp, hp ? hkItems.filter(x => x.plan_id === hp.id) : [], mp, mp ? mtItems.filter(x => x.plan_id === mp.id) : []);
   }
 
-  const today = new Date().toISOString().slice(0,10);
   const create = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Nowy plan kontroli</div>
-    <div class="field"><label>Nazwa</label><input id="nckName" class="inp" placeholder="np. Kontrola silikonów - lipiec"/></div>
-    <div class="field"><label>Zadanie dla sprzątającej</label><input id="nckTask" class="inp" placeholder="np. Sprawdź stan silikonów przy prysznicu"/></div>
-    <div class="field"><label>Pokoje (oddziel przecinkami)</label><input id="nckRooms" class="inp" placeholder="np. 201,202,304"/></div>
-    <div style="display:flex;gap:8px">
-      <div class="field" style="flex:1"><label>Od</label><input id="nckFrom" class="inp" type="date" value="${today}"/></div>
-      <div class="field" style="flex:1"><label>Do</label><input id="nckTo" class="inp" type="date" value="${today}"/></div>
+    <div class="soon" style="margin-top:0">Nowa checklista</div>
+    <div class="field"><label>Nazwa</label><input id="nckName" class="inp" placeholder="np. Kontrola kabli - lipiec"/></div>
+    <div class="field"><label>Zadanie</label><input id="nckTask" class="inp" placeholder="np. Sprawdź stan kabli"/></div>
+    <div class="field"><label>Wyślij do</label>
+      <div style="display:flex;gap:8px">
+        <label class="qc-mode" style="flex:1;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+          <input type="checkbox" id="nckHk" checked style="width:18px;height:18px;accent-color:var(--plum)"/> 🧽 HK</label>
+        <label class="qc-mode" style="flex:1;display:flex;align-items:center;gap:7px;border:1.5px solid var(--line);border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer">
+          <input type="checkbox" id="nckKonserw" style="width:18px;height:18px;accent-color:var(--plum)"/> 🔧 Konserwacja</label>
+      </div>
     </div>
-    <button id="nckBtn" class="btn" onclick="createKontrolePlan()">Utwórz plan</button>
+    <div class="field"><label>Pokoje (oddziel przecinkami)</label>
+      <input id="nckRooms" class="inp" placeholder="np. 201,202,304"/>
+      <button type="button" class="rost-addbtn" style="margin-top:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="nckSelectAllRooms()">Zaznacz wszystkie pokoje (${ALL_ROOMS.length})</button>
+    </div>
+    <button id="nckBtn" class="btn" onclick="createKontrolePlan()">Utwórz checklistę</button>
     <div id="nckMsg" class="msg"></div>
   </div>`;
 
-  const active = plans.filter(p => p.status !== "done");
-  const done   = plans.filter(p => p.status === "done");
-  const list   = CHK_SHOW_DONE ? plans : active;
-  const counts = id => {
-    const t = items.filter(x => x.plan_id === id);
-    return { total:t.length, done:t.filter(x => x.status === "done").length, failed:t.filter(x => x.status === "failed").length };
+  const active = groups.filter(g => g.status !== "done");
+  const done   = groups.filter(g => g.status === "done");
+  const list   = CHK_SHOW_DONE ? groups : active;
+  const progress = g => {
+    const parts = [];
+    if (g.targets === "hk" || g.targets === "both") {
+      const hp = hkPlans.find(x => x.group_id === g.id);
+      const t = hp ? hkItems.filter(x => x.plan_id === hp.id) : [];
+      parts.push({ icon:"🧽", done:t.filter(x=>x.status==="done").length, total:t.length, failed:t.filter(x=>x.status==="failed").length });
+    }
+    if (g.targets === "konserw" || g.targets === "both") {
+      const mp = mtPlans.find(x => x.group_id === g.id);
+      const t = mp ? mtItems.filter(x => x.plan_id === mp.id) : [];
+      parts.push({ icon:"🔧", done:t.filter(x=>x.status==="done").length, total:t.length, failed:0 });
+    }
+    return parts;
   };
-  const card = p => {
-    const c = counts(p.id);
-    const isDone = p.status === "done";
-    return `<div class="card" style="margin-bottom:10px;cursor:pointer;${isDone?"opacity:.7":""}" onclick="openKontrole('${p.id}')">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:15px;font-weight:800;flex:1">🧽 ${esc(p.name)}</span>
-        <span class="chip" style="color:${c.total&&c.done===c.total?"var(--ok)":"var(--muted)"}">${c.done}/${c.total}</span>
-        ${c.failed?`<span class="chip" style="color:#b3261e">${c.failed} nieudane</span>`:""}
+  const card = g => {
+    const parts = progress(g);
+    const isDone = g.status === "done";
+    const chips = parts.map(p => `<span class="chip" style="color:${p.total&&p.done===p.total?"var(--ok)":"var(--muted)"}">${p.icon} ${p.done}/${p.total}</span>${p.failed?`<span class="chip" style="color:#b3261e">${p.failed} nieudane</span>`:""}`).join("");
+    return `<div class="card" style="margin-bottom:10px;cursor:pointer;${isDone?"opacity:.7":""}" onclick="openKontrole('${g.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:15px;font-weight:800;flex:1">📋 ${esc(g.name)}</span>
+        ${chips}
       </div>
-      <div style="font-size:12.5px;color:var(--muted)">${esc(p.task)}</div>
+      <div style="font-size:12.5px;color:var(--muted)">${esc(g.task)}</div>
     </div>`;
   };
-  const listHtml = list.length ? list.map(card).join("") : '<div class="empty">Brak aktywnych planów kontroli — utwórz pierwszy powyżej.</div>';
+  const listHtml = list.length ? list.map(card).join("") : '<div class="empty">Brak aktywnych checklist — utwórz pierwszą powyżej.</div>';
   const toggle = done.length
     ? `<button class="rost-addbtn" style="margin:2px 0 10px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="toggleKontroleDone()">${CHK_SHOW_DONE?"Ukryj zakończone":`Pokaż zakończone (${done.length})`}</button>`
     : "";
-  body(create + `<div class="soon">Aktywne plany kontroli</div>` + toggle + listHtml);
+  body(create + `<div class="soon">Aktywne checklisty</div>` + toggle + listHtml);
 }
+window.nckSelectAllRooms  = () => { const el = document.getElementById("nckRooms"); if (el) el.value = ALL_ROOMS.join(","); };
 window.openKontrole       = (id) => { CHK_OPEN_ID = id; loadKontrole(); };
-window.backToKontrole     = ()   => { CHK_OPEN_ID = null; loadKontrole(); };
+window.backToKontrole     = ()   => { CHK_OPEN_ID = null; CHK_OPEN_HP_ID = null; CHK_OPEN_MP_ID = null; loadKontrole(); };
 window.toggleKontroleDone = ()   => { CHK_SHOW_DONE = !CHK_SHOW_DONE; loadKontrole(); };
 
 window.createKontrolePlan = async () => {
   const name  = ((document.getElementById("nckName")||{}).value || "").trim();
   const task  = ((document.getElementById("nckTask")||{}).value || "").trim();
   const rooms = ((document.getElementById("nckRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
-  const from  = (document.getElementById("nckFrom")||{}).value || "";
-  const to    = (document.getElementById("nckTo")||{}).value || from;
+  const wantHk      = !!(document.getElementById("nckHk")||{}).checked;
+  const wantKonserw = !!(document.getElementById("nckKonserw")||{}).checked;
   const msg = document.getElementById("nckMsg"), btn = document.getElementById("nckBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!name) return setM("Wpisz nazwę planu.", "err");
+  if (!name) return setM("Wpisz nazwę.", "err");
   if (!task) return setM("Wpisz zadanie.", "err");
+  if (!wantHk && !wantKonserw) return setM("Wybierz cel: HK, konserwacja albo oba.", "err");
   if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
-  if (!from) return setM('Wybierz datę "od".', "err");
   if (btn){ btn.disabled=true; btn.textContent="Tworzę…"; }
   try {
-    const { data, error } = await sb.from("hk_check_plans")
-      .insert({ tenant_id:TENANT_ID, name, task, status:"active", created_by:CURRENT.name||"Panel" })
+    const nowDate = new Date().toISOString().slice(0,10);
+    const targets = wantHk && wantKonserw ? "both" : (wantHk ? "hk" : "konserw");
+    const { data:grp, error:grpErr } = await sb.from("checklist_groups")
+      .insert({ tenant_id:TENANT_ID, name, task, targets, status:"active", created_by:CURRENT.name||"Panel" })
       .select("id").single();
-    if (error) throw error;
-    const planId = data.id;
-    const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
-    const { error:itemsErr } = await sb.from("hk_check_items").insert(rows);
-    if (itemsErr) throw itemsErr;
-    try { await sb.rpc("log_action", { p_action:"kontrola_plan_utworzony", p_detail:`${name}: ${rooms.length} pok.` }); } catch {}
-    CHK_OPEN_ID = planId;
+    if (grpErr) throw grpErr;
+    const groupId = grp.id;
+    if (wantHk) {
+      const { data:hp, error:hpErr } = await sb.from("hk_check_plans")
+        .insert({ tenant_id:TENANT_ID, group_id:groupId, name, task, status:"active", created_by:CURRENT.name||"Panel" })
+        .select("id").single();
+      if (hpErr) throw hpErr;
+      // Checklista trwa dopóki kierownik jej nie zakończy (bez wygasania po dacie) —
+      // valid_from/valid_to zostają w schemacie, ale nie ograniczają już widoczności.
+      const hkRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:hp.id, room, valid_from:nowDate, valid_to:CHK_FAR_FUTURE, status:"pending" }));
+      const { error:hiErr } = await sb.from("hk_check_items").insert(hkRows);
+      if (hiErr) throw hiErr;
+    }
+    if (wantKonserw) {
+      const { data:mp, error:mpErr } = await sb.from("maintenance_plans")
+        .insert({ tenant_id:TENANT_ID, group_id:groupId, name, status:"active", created_by:CURRENT.name||"Panel" })
+        .select("id").single();
+      if (mpErr) throw mpErr;
+      const mtRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:mp.id, plan:name, room, task, date:nowDate, status:"open", created_by:CURRENT.name||"Panel" }));
+      const { error:miErr } = await sb.from("panel_plan").insert(mtRows);
+      if (miErr) throw miErr;
+    }
+    try { await sb.rpc("log_action", { p_action:"kontrola_plan_utworzony", p_detail:`${name}: ${rooms.length} pok. (${targets})` }); } catch {}
+    CHK_OPEN_ID = groupId;
     loadKontrole();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Utwórz plan"; } }
+  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Utwórz checklistę"; } }
 };
 
-function renderKontroleDetail(p, items) {
+function renderKontroleDetail(g, hp, hi, mp, mi) {
   const head = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-    <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="backToKontrole()">← Plany</button>
-    <span style="font-size:16px;font-weight:800;flex:1">🧽 ${esc(p.name)}</span>
+    <button class="rost-addbtn" style="padding:6px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="backToKontrole()">← Checklisty</button>
+    <span style="font-size:16px;font-weight:800;flex:1">📋 ${esc(g.name)}</span>
   </div>
   <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;color:var(--ink)">${esc(p.task)}</div>
+    <div style="font-size:13px;color:var(--ink)">${esc(g.task)}</div>
   </div>`;
-  const addCard = `<div class="card" style="margin-bottom:12px">
-    <div class="soon" style="margin-top:0">Dodaj pokoje do planu</div>
-    <div class="field"><label>Pokoje (oddziel przecinkami)</label><input id="ckAddRooms" class="inp" placeholder="np. 305,306"/></div>
-    <button id="ckAddBtn" class="btn" onclick="addKontroleRooms('${p.id}')">Dodaj pokoje</button>
-    <div id="ckAddMsg" class="msg"></div>
-  </div>`;
-  const sorted = items.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), undefined, {numeric:true}));
-  const rows = sorted.length ? sorted.map(kontroleItemRow).join("") : '<div class="empty">Brak pokoi w tym planie.</div>';
-  const isDone = p.status === "done";
-  const finishBtn = `<button class="rost-addbtn" style="margin-top:6px;padding:8px 13px;border-radius:8px;border:1px solid ${isDone?"var(--line-strong)":"rgba(31,122,82,.4)"};background:${isDone?"var(--paper)":"rgba(31,122,82,.08)"};color:${isDone?"var(--muted)":"var(--ok)"};font-weight:800;font-size:12px;cursor:pointer" onclick="setKontrolePlanStatus('${p.id}','${isDone?"active":"done"}')">${isDone?"↩ Wznów plan":"✓ Zakończ plan"}</button>`;
-  body(head + addCard + `<div class="soon">Pokoje</div>` + rows + finishBtn);
+  let sections = "";
+  if (hp) {
+    const sorted = hi.slice().sort((a,b) => String(a.room).localeCompare(String(b.room), undefined, {numeric:true}));
+    const rows = sorted.length ? sorted.map(kontroleItemRow).join("") : '<div class="empty">Brak pokoi.</div>';
+    const addCard = `<div class="card" style="margin-bottom:10px">
+      <div class="field" style="margin-bottom:8px"><label>Dodaj pokoje (HK)</label><input id="ckAddRoomsHk" class="inp" placeholder="np. 305,306"/></div>
+      <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="addKontroleRooms('hk')">Dodaj</button>
+    </div>`;
+    sections += `<div class="soon">🧽 HK</div>${addCard}${rows}`;
+  }
+  if (mp) {
+    const sorted = mi.slice().sort((a,b) => String(a.room||"").localeCompare(String(b.room||""), undefined, {numeric:true}));
+    const rows = sorted.length ? sorted.map(maintKontroleRow).join("") : '<div class="empty">Brak pokoi.</div>';
+    const addCard = `<div class="card" style="margin-bottom:10px">
+      <div class="field" style="margin-bottom:8px"><label>Dodaj pokoje (konserwacja)</label><input id="ckAddRoomsKon" class="inp" placeholder="np. 305,306"/></div>
+      <button class="rost-addbtn" style="padding:7px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer" onclick="addKontroleRooms('konserw')">Dodaj</button>
+    </div>`;
+    sections += `<div class="soon" style="margin-top:16px">🔧 Konserwacja</div>${addCard}${rows}`;
+  }
+  const isDone = g.status === "done";
+  const finishBtn = `<button class="rost-addbtn" style="margin-top:14px;padding:8px 13px;border-radius:8px;border:1px solid ${isDone?"var(--line-strong)":"rgba(31,122,82,.4)"};background:${isDone?"var(--paper)":"rgba(31,122,82,.08)"};color:${isDone?"var(--muted)":"var(--ok)"};font-weight:800;font-size:12px;cursor:pointer" onclick="setKontrolePlanStatus('${g.id}','${isDone?"active":"done"}')">${isDone?"↩ Wznów checklistę":"✓ Zakończ checklistę"}</button>`;
+  body(head + sections + finishBtn);
 }
 function kontroleItemRow(r) {
   const col = r.status === "done" ? "var(--ok)" : (r.status === "failed" ? "#b3261e" : "var(--muted)");
@@ -4365,26 +4513,60 @@ function kontroleItemRow(r) {
     ${r.fail_reason?`<div style="font-size:12.5px;color:#b3261e;background:rgba(179,38,30,.06);border:1px solid rgba(179,38,30,.25);border-radius:8px;padding:7px 9px">⚠ ${esc(r.fail_reason)}</div>`:""}
   </div>`;
 }
-window.addKontroleRooms = async (planId) => {
-  const rooms = ((document.getElementById("ckAddRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
-  const msg = document.getElementById("ckAddMsg"), btn = document.getElementById("ckAddBtn");
-  const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
-  if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
-  if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
+function maintKontroleRow(r) {
+  const done = r.status === "done";
+  const photos = Array.isArray(r.photos) ? r.photos : [];
+  const thumbs = photos.length
+    ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px">` + photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener" style="display:block;width:44px;height:44px;border-radius:7px;overflow:hidden;border:1px solid var(--line)"><img src="${esc(u)}" style="width:100%;height:100%;object-fit:cover" loading="lazy"/></a>`).join("") + `</div>`
+    : "";
+  return `<div class="statrow" style="flex-direction:column;align-items:stretch;gap:4px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="k" style="flex:1">Pokój ${esc(r.room||"—")}</span>
+      <span class="chip" style="color:${done?"var(--ok)":"var(--muted)"}">${done?"wykonane":"do zrobienia"}</span>
+    </div>
+    ${r.response?`<div style="font-size:12.5px;color:var(--ink);background:rgba(31,122,82,.06);border:1px solid rgba(31,122,82,.25);border-radius:8px;padding:7px 9px">💬 ${esc(r.response)}</div>`:""}
+    ${thumbs}
+    <div style="display:flex;gap:7px">
+      ${done?`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--muted);font-weight:800;font-size:11.5px;cursor:pointer" onclick="setKontroleTaskStatus('${r.id}','open')">Cofnij</button>`
+            :`<button class="rost-addbtn" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(31,122,82,.4);background:rgba(31,122,82,.08);color:var(--ok);font-weight:800;font-size:11.5px;cursor:pointer" onclick="setKontroleTaskStatus('${r.id}','done')">✓ Wykonane</button>`}
+    </div>
+  </div>`;
+}
+window.setKontroleTaskStatus = async (id, st) => {
+  try { const { error } = await sb.from("panel_plan").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadKontrole(); }
+  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+};
+window.addKontroleRooms = async (kind) => {
+  const planId = kind === "hk" ? CHK_OPEN_HP_ID : CHK_OPEN_MP_ID;
+  const inputId = kind === "hk" ? "ckAddRoomsHk" : "ckAddRoomsKon";
+  const rooms = ((document.getElementById(inputId)||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
+  if (!planId || !rooms.length) return toast("Wpisz przynajmniej jeden pokój.","bad");
   try {
-    const { data:existing } = await sb.from("hk_check_items").select("valid_from,valid_to").eq("plan_id", planId).limit(1);
-    const today = new Date().toISOString().slice(0,10);
-    const from = (existing && existing[0] && existing[0].valid_from) || today;
-    const to   = (existing && existing[0] && existing[0].valid_to) || from;
-    const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
-    const { error } = await sb.from("hk_check_items").insert(rows);
-    if (error) throw error;
+    if (kind === "hk") {
+      const today = new Date().toISOString().slice(0,10);
+      const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:today, valid_to:CHK_FAR_FUTURE, status:"pending" }));
+      const { error } = await sb.from("hk_check_items").insert(rows);
+      if (error) throw error;
+    } else {
+      const { data:plRow } = await sb.from("panel_plan").select("task,date,plan").eq("plan_id", planId).limit(1).maybeSingle();
+      const today = new Date().toISOString().slice(0,10);
+      const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, plan:(plRow&&plRow.plan)||"Plan", room, task:(plRow&&plRow.task)||"", date:(plRow&&plRow.date)||today, status:"open", created_by:CURRENT.name||"Panel" }));
+      const { error } = await sb.from("panel_plan").insert(rows);
+      if (error) throw error;
+    }
     loadKontrole();
-  } catch (e) { setM((e&&e.message)||"Nie udało się.", "err"); if (btn){ btn.disabled=false; btn.textContent="Dodaj pokoje"; } }
+  } catch (e) { toast((e&&e.message)||"Nie udało się.","bad"); }
 };
 window.setKontrolePlanStatus = async (id, st) => {
-  try { const { error } = await sb.from("hk_check_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id); if (error) throw error; loadKontrole(); }
-  catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
+  try {
+    const { error } = await sb.from("checklist_groups").update({ status:st, updated_at:new Date().toISOString() }).eq("id", id);
+    if (error) throw error;
+    const jobs = [];
+    if (CHK_OPEN_HP_ID) jobs.push(sb.from("hk_check_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", CHK_OPEN_HP_ID));
+    if (CHK_OPEN_MP_ID) jobs.push(sb.from("maintenance_plans").update({ status:st, updated_at:new Date().toISOString() }).eq("id", CHK_OPEN_MP_ID));
+    if (jobs.length) await Promise.all(jobs);
+    loadKontrole();
+  } catch (e) { toast((e&&e.message)||"Błąd.","bad"); }
 };
 
 // ── Zmiany: grafik EDYTOWALNY z dwukierunkowym sync NA ŻYWO do recepcji ──
@@ -4786,20 +4968,70 @@ async function loadAkcje() {
   body(`<div class="note" style="margin-top:0;margin-bottom:8px">Ostatnie akcje w panelu — kto co zrobił lub edytował.</div><div class="feed">${html}</div>`);
 }
 
-// ── Konta (admin): dodawanie kont + role + aktywacja ──
+// ── Konta (admin): dodawanie kont + role + aktywacja + struktura (działy/funkcje) ──
 const ROLE_OPTIONS = [["mgr_hk","Menedżer HK"],["koordynator","Koordynator"],["mgr_recepcja","Menedżer recepcji"],
   ["mgr_glowny","Menedżer główny"],["mgr_operacyjny","Menedżer operacyjny"],["mgr_gastro","Menedżer gastronomii"],["admin","Admin"]];
 const roleSelect = (id, sel) => `<select id="${id}" class="inp">${ROLE_OPTIONS.map(([v,l])=>`<option value="${v}"${sel===v?" selected":""}>${l}</option>`).join("")}</select>`;
+let KONTA_DEPTS = [];
+const deptSelect = (id, selId) => `<select id="${id}" class="inp">
+  <option value="">— bez działu —</option>
+  ${KONTA_DEPTS.map(d => `<option value="${esc(d.id)}"${selId===d.id?" selected":""}>${esc(d.name)}</option>`).join("")}
+</select>`;
+// Siatka checkboxów funkcji/zakładek (TAB_CATALOG) — używana i przy dodawaniu konta
+// (podpowiedź AI wg stanowiska), i przy edycji istniejącego. prefix odróżnia id-ki w DOM.
+const tabsCheckboxes = (prefix, checkedKeys) => {
+  const checked = new Set(checkedKeys || []);
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${
+    TAB_CATALOG.map(([k,l]) => `<label style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:7px;background:rgba(255,255,255,.04);border:1px solid var(--line-strong);font-size:12px;cursor:pointer">
+      <input type="checkbox" id="tab_${prefix}_${k}" style="margin:0" ${checked.has(k)?"checked":""}/>${esc(l)}</label>`).join("")
+  }</div>`;
+};
+const readTabsChecked = (prefix) => TAB_CATALOG.map(([k]) => k).filter(k => ((document.getElementById(`tab_${prefix}_${k}`)||{}).checked));
 async function loadKonta() {
   let rows = [];
   try { const { data } = await sb.rpc("admin_list_accounts"); rows = data || []; }
   catch { return body('<div class="empty">Brak uprawnień lub błąd.</div>'); }
+  try { const { data } = await sb.rpc("admin_list_departments"); KONTA_DEPTS = data || []; } catch { KONTA_DEPTS = []; }
+  // "Skrzydła hotelu" — dział jako plakietka z pieczęcią-monogramem, pod spodem
+  // przypisani kierownicy (z tego samego admin_list_accounts, grupowani po dziale).
+  const deptSeal = (name) => String(name||"").trim().slice(0,2).toUpperCase() || "?";
+  const staffOf = (deptId) => rows.filter(r => r.department_id === deptId);
+  const wingHtml = (d) => {
+    const staff = staffOf(d.id);
+    return `<div class="wing">
+      ${staff.length ? "" : `<button type="button" class="wing-del" title="Usuń dział" onclick="delDzial('${esc(d.id)}','${esc(d.name)}')">×</button>`}
+      <div class="wing-seal">${esc(deptSeal(d.name))}</div>
+      <div class="wing-name">${esc(d.name)}</div>
+      <div class="wing-div"></div>
+      <div class="wing-staff">${staff.length
+        ? staff.map(r => `<div class="wing-person"><span class="av" style="background:${avatarBg(r.name)}">${esc(initials(r.name))}</span>
+            <div class="pinfo"><div class="pname">${esc(r.name)}</div><div class="prole">${esc(ROLE_LABEL(r.role))}</div></div></div>`).join("")
+        : `<div class="wing-empty">Brak przypisanych osób</div>`}
+      </div>
+    </div>`;
+  };
+  const deptsBlock = `
+    <div class="card" style="margin-bottom:12px">
+      <div class="soon" style="margin-top:0">Struktura hotelu</div>
+      <div class="wings">
+        ${KONTA_DEPTS.map(wingHtml).join("")}
+        <button type="button" class="wing-add" onclick="addDzial()"><span class="plus">+</span><span>Nowy dział</span></button>
+      </div>
+      ${KONTA_DEPTS.length ? "" : '<div class="note" style="margin-top:2px">Zacznij od pierwszego działu — np. Recepcja, Sprzątanie, Gastronomia.</div>'}
+    </div>`;
   const form = `
     <div class="card" style="margin-bottom:12px">
       <div class="soon" style="margin-top:0">Dodaj konto</div>
       <div class="field"><label>Imię (widoczne na liście logowania)</label>
         <input id="aName" class="inp" placeholder="np. Tetiana"/></div>
       <div class="field"><label>Rola</label>${roleSelect("aRole","mgr_hk")}</div>
+      <div class="field"><label>Dział</label>${deptSelect("aDept", null)}</div>
+      <div class="field"><label>Stanowisko (do doboru funkcji przez AI — nie jest zapisywane)</label>
+        <input id="aTitle" class="inp" placeholder="np. Kierownik recepcji"/></div>
+      <button class="btn btn-outline" type="button" id="aSuggestBtn" onclick="suggestTabsNew()">✨ Dobierz funkcje (AI)</button>
+      <div class="field" style="margin-top:8px"><label>Funkcje (zakładki widoczne tej osobie)</label>
+        ${tabsCheckboxes("new", [])}
+        <div class="note" style="margin:0">Nic niezaznaczone = domyślny zestaw dla wybranej roli (jak dotąd).</div></div>
       <div class="field"><label>Kod 1. logowania (opcjonalny)</label>
         <input id="aCode" class="inp" placeholder="np. 4821 — chroni przed przejęciem konta"/></div>
       <button id="aBtn" class="btn" onclick="addKonto()">Dodaj konto</button>
@@ -4809,6 +5041,7 @@ async function loadKonta() {
   const list = rows.map(r => {
     const st = r.active === false ? "nieaktywne" : (r.claimed ? "aktywne · ma hasło" : "czeka na 1. logowanie");
     const stc = r.active === false ? "var(--bad)" : (r.claimed ? "var(--ok)" : "var(--muted)");
+    const fid = "fn_" + r.email.replace(/[^a-z0-9]/gi, "_");
     return `<div class="wcard" style="cursor:default">
       <div class="wtop"><span class="av">${esc(initials(r.name))}</span>
         <span class="nm">${esc(r.name)}</span>
@@ -4817,6 +5050,11 @@ async function loadKonta() {
         ${roleSelect("role_"+esc(r.email), r.role)}
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
           onclick="saveKontoRole('${esc(r.email)}')">Zapisz rolę</button>
+        ${deptSelect("dept_"+esc(r.email), r.department_id)}
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
+          onclick="saveKontoDept('${esc(r.email)}')">Zapisz dział</button>
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
+          onclick="document.getElementById('${fid}').style.display=document.getElementById('${fid}').style.display==='none'?'':'none'">Funkcje${r.tabs&&r.tabs.length?` (${r.tabs.length})`:""}</button>
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:${r.active===false?"var(--ok)":"var(--bad)"};font-weight:800;font-size:12px;cursor:pointer"
           onclick="toggleKonto('${esc(r.email)}', ${r.active===false})">${r.active===false?"Aktywuj":"Dezaktywuj"}</button>
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
@@ -4824,19 +5062,71 @@ async function loadKonta() {
         <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:12px;cursor:pointer"
           onclick="renameKonto('${esc(r.email)}','${esc(r.name)}')">Zmień login</button>
       </div>
+      <div id="${fid}" style="display:none;margin-top:9px">
+        ${tabsCheckboxes(fid, r.tabs)}
+        <button class="rost-addbtn" style="padding:8px 11px;border-radius:8px;border:none;background:var(--plum);color:#fff;font-weight:800;font-size:12px;cursor:pointer"
+          onclick="saveKontoTabs('${esc(r.email)}','${fid}')">Zapisz funkcje</button>
+      </div>
     </div>`;
   }).join("");
-  body(form + `<div class="soon">Konta (${rows.length})</div>` + (list || '<div class="empty">Brak kont.</div>'));
+  body(deptsBlock + form + `<div class="soon">Konta (${rows.length})</div>` + (list || '<div class="empty">Brak kont.</div>'));
 }
+window.addDzial = async () => {
+  const name = await uiPrompt("Nazwa nowego działu (np. Recepcja):");
+  if (name == null || !name.trim()) return;
+  try { const { error } = await sb.rpc("admin_add_department", { p_name: name.trim() }); if (error) throw error; loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd dodawania działu.","bad"); }
+};
+window.delDzial = async (id, name) => {
+  const ok = await uiConfirm(`Usunąć dział „${name}"? (tylko gdy nikt nie jest do niego przypisany)`, { danger:true, okLabel:"Usuń" });
+  if (!ok) return;
+  try { const { error } = await sb.rpc("admin_delete_department", { p_id: id }); if (error) throw error; loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd usuwania działu.","bad"); }
+};
+window.suggestTabsNew = async () => {
+  const title = (document.getElementById("aTitle")||{}).value || "";
+  if (!title.trim()) return toast("Wpisz najpierw stanowisko.","bad");
+  const deptSel = document.getElementById("aDept");
+  const department = deptSel && deptSel.selectedIndex >= 0 ? deptSel.options[deptSel.selectedIndex].text : "";
+  const btn = document.getElementById("aSuggestBtn");
+  if (btn){ btn.disabled=true; btn.textContent="Dobieram…"; }
+  try {
+    const catalog = TAB_CATALOG.map(([key,label]) => ({ key, label }));
+    const { data, error } = await sb.functions.invoke("llm", { body:{ task:"roletabs", tenant_id:TENANT_ID, payload:{ title:title.trim(), department, catalog } } });
+    if (error) throw error;
+    const suggested = (data && data.data && Array.isArray(data.data.tabs)) ? data.data.tabs : [];
+    TAB_CATALOG.forEach(([k]) => { const el = document.getElementById("tab_new_"+k); if (el) el.checked = suggested.includes(k); });
+    toast(suggested.length ? `AI zaproponowało ${suggested.length} funkcji — dostosuj i zapisz.` : "AI nie zaproponowało żadnych funkcji — zaznacz ręcznie.", "ok");
+  } catch (e) { toast((e&&e.message)||"AI niedostępne.","bad"); }
+  if (btn){ btn.disabled=false; btn.textContent="✨ Dobierz funkcje (AI)"; }
+};
+window.saveKontoDept = async (email) => {
+  const sel = document.getElementById("dept_"+email);
+  const val = sel ? sel.value : "";
+  try { const { error } = await sb.rpc("admin_set_department", { p_email: email, p_department_id: val || null }); if (error) throw error; loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd zmiany działu.","bad"); }
+};
+window.saveKontoTabs = async (email, fid) => {
+  const tabs = readTabsChecked(fid);
+  try { const { error } = await sb.rpc("admin_set_tabs", { p_email: email, p_tabs: tabs.length ? tabs : null }); if (error) throw error; toast("Funkcje zapisane ✓","ok"); loadKonta(); }
+  catch (e) { toast((e&&e.message)||"Błąd zapisu funkcji.","bad"); }
+};
 window.addKonto = async () => {
   const name = (document.getElementById("aName")||{}).value || "";
   const role = (document.getElementById("aRole")||{}).value || "mgr_hk";
   const codeV = (document.getElementById("aCode")||{}).value || "";
+  const deptSel = document.getElementById("aDept");
+  const departmentId = deptSel && deptSel.value ? deptSel.value : null;
+  const tabs = readTabsChecked("new");
   const msg = document.getElementById("aMsg"); const btn = document.getElementById("aBtn");
   const setM = (t,k)=>{ if(msg){ msg.className="msg "+(k||""); msg.textContent=t||""; } };
   if (!name.trim()) return setM("Wpisz imię.", "err");
   if (btn){ btn.disabled=true; btn.textContent="Dodaję…"; }
-  try { const { error } = await sb.rpc("admin_add_account", { p_name: name.trim(), p_role: role, p_code: codeV.trim() });
+  try {
+    const { error } = await sb.rpc("admin_add_account", {
+      p_name: name.trim(), p_role: role, p_code: codeV.trim(),
+      p_department_id: departmentId, p_tabs: tabs.length ? tabs : null,
+    });
     if (error) throw error;
     setM(codeV.trim() ? `Konto dodane. Kod 1. logowania: ${codeV.trim()} — przekaż osobie.` : "Konto dodane.", "info");
     setTimeout(loadKonta, 1400);

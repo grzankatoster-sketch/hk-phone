@@ -17,6 +17,9 @@
 </script>
 <link rel="manifest" href="manifest-konserwacja.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
 /* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
    dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
@@ -91,7 +94,7 @@ html.dark{
   --red-ink:#FF5471;
 }
 html,body{background:var(--cream);transition:background .2s ease}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh}
+body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh}
 .header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
 .header h1{font-size:17px;font-weight:800;flex:1;color:#fff}
 .tabs{display:flex;gap:6px;padding:10px 12px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:60px;z-index:9;overflow-x:auto}
@@ -473,7 +476,7 @@ function planTaskCard(t){
       <div class="desc" style="flex:1;margin:0;font-weight:700;${done?"text-decoration:line-through":""}">${esc(t.task)}</div>
       <span class="badge ${done?"done":"open"}">${done?"Wykonane":"Do zrobienia"}</span>
     </div>
-    <div class="assign-row"><span class="cat-chip">${t.date?"📅 "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
+    <div class="assign-row">${t.room?`<span class="cat-chip">🚪 ${esc(t.room)}</span>`:""}<span class="cat-chip">${t.date?"📅 "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
     ${t.response?`<div class="desc" style="background:rgba(15,122,74,.06);border:1px solid rgba(15,122,74,.25);border-radius:8px;padding:8px 10px;font-size:13px">💬 ${esc(t.response)}</div>`:""}
     ${photos.length?`<div class="thumbs">`+photos.map(u=>`<div class="thumb" onclick="openImg('${esc(u)}')"><img src="${esc(u)}" loading="lazy"/></div>`).join("")+`</div>`:""}
     <div class="actions">
@@ -536,7 +539,8 @@ async function refreshFaults(){
   try{
     const [{ data:fx }, { data:mp }, { data:pl }] = await Promise.all([
       sb.from("faults").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false}),
-      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at",{ascending:false}),
+      // group_id=null: plany z checklist (Kontrole) mają zostać TYLKO tam, nie dublować się tu.
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).is("group_id", null).order("created_at",{ascending:false}),
       sb.from("panel_plan").select("*").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
     if (fx) faults = fx;
@@ -552,7 +556,8 @@ async function load(){
   faults = data||[];
   try {
     const [{ data:mp }, { data:pl }] = await Promise.all([
-      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at",{ascending:false}),
+      // group_id=null: plany z checklist (Kontrole) mają zostać TYLKO tam, nie dublować się tu.
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).is("group_id", null).order("created_at",{ascending:false}),
       sb.from("panel_plan").select("*").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
     mplans = mp||[]; plan = pl||[];
@@ -581,7 +586,7 @@ async function load(){
     .subscribe();
   sb.channel("mplans-konserwacja")
     .on("postgres_changes",{event:"*",schema:"public",table:"maintenance_plans",filter:`tenant_id=eq.${TENANT_ID}`}, ({eventType,new:row,old})=>{
-      if (eventType==="INSERT"){ mplans=[row,...mplans]; if (planForMe(row)) toast("Nowy plan: "+(row.name||"—"),"var(--plum)"); }
+      if (eventType==="INSERT"){ if (row.group_id) return; mplans=[row,...mplans]; if (planForMe(row)) toast("Nowy plan: "+(row.name||"—"),"var(--plum)"); }
       else if (eventType==="UPDATE"){ mplans=mplans.map(p=>p.id===row.id?row:p); }
       else if (eventType==="DELETE"){ mplans=mplans.filter(p=>p.id!==(old&&old.id)); }
       render();

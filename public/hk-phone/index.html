@@ -10,6 +10,9 @@ document.documentElement.classList.add("dark");
 </script>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
 /* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
    dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
@@ -82,7 +85,7 @@ html.dark{
   --amber-ink:#F4C055; --lilac-ink:#B49AFF; --red-ink:#FF5471;
 }
 html,body{background:var(--cream);transition:background .2s ease}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
+body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
 .header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
 .avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .name{font-size:17px;font-weight:800;flex:1;color:#fff}
@@ -90,7 +93,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .theme-btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;font-family:inherit}
 .theme-btn:hover{background:rgba(255,255,255,.22)}
 .tabs{display:flex;background:var(--paper);border-bottom:2px solid var(--line-strong);position:sticky;top:66px;z-index:9}
-.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn svg{width:16px;height:16px;flex-shrink:0}
 .tab-btn.active{color:var(--plum-ink);border-bottom-color:var(--plum)}
 .tab-badge{display:inline-block;background:var(--amber);color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
 .stats{display:flex;gap:6px;padding:12px 14px;background:var(--paper);border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -217,6 +221,12 @@ try {
 const TODAY   = (()=>{ const d=new Date(),p=n=>n<10?"0"+n:""+n; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); })(); // data LOKALNA — spójna z panelem/serwerem HK
 // Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
+
+// Ikony nawigacji — ten sam styl (outline, stroke=currentColor) co panel.html,
+// żeby telefon pracownicy HK i panel menedżera wyglądały jak jeden produkt.
+const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICON_ROOMS = _ic('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>');
+const ICON_TEAM  = _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>');
 
 const COLORS  = ["#5a1d4a","#9b598a","#a07820","#784b8e","#2563eb","#0f7a4a","#c2708a","#b3261e","#7a3a6a","#476d8e"];
 const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
@@ -386,8 +396,8 @@ function render() {
     <div class="shift-badge" style="background:rgba(255,255,255,.16); color:${isPm?"#f0d6e8":"#cdeede"}">${isPm?"PM":"Rano"}</div>
   </div>
   <div class="tabs">
-    <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
-    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">👥 Zespół</button>
+    <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">${ICON_ROOMS}<span>Moje pokoje</span></button>
+    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">${ICON_TEAM}<span>Zespół</span></button>
   </div>`;
 
   if (activeTab === "team") {
