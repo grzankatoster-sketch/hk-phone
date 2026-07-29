@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 import {
   Radio, ListChecks, WashingMachine, Users, PackageSearch, Search, History,
   Play, Check, X, DoorOpen, SquareCheck, ArrowLeftRight, Hand, Zap, Circle,
-  HelpCircle, MessageCircle, BellOff, BellRing,
+  HelpCircle, MessageCircle,
 } from "lucide-react";
 import { supabase, phoneUrl } from "../../lib/supabase";
 import { HK_ALL, HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_LIVE_COLORS, TENANT_ID } from "../../lib/constants";
@@ -61,8 +61,6 @@ const LOG_CFG = {
   priority_off:     logCfgEntry("var(--cc-text-muted)",  Circle,         (l) => l.extra || `Recepcja: anulowano priorytet pokoju ${l.room}`),
   info_request:     logCfgEntry("var(--cc-progress)",    HelpCircle,     (l) => l.extra || `Recepcja pyta o status pokoju ${l.room}`),
   info_reply:       logCfgEntry("var(--emerald)",        MessageCircle,  (l) => `Pokój ${l.room} · ${l.worker}: ${l.extra || ""}`),
-  dnd:              logCfgEntry("var(--rose)",           BellOff,        (l) => `${l.worker} — pokój ${l.room} oznaczony "nie przeszkadzać"`),
-  dnd_off:          logCfgEntry("var(--cc-text-muted)",  BellRing,       (l) => `${l.worker} — zdjęto "nie przeszkadzać" z pokoju ${l.room}`),
 };
 
 const LINEN_FIELDS = [

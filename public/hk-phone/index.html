@@ -518,10 +518,8 @@ function renderTeamHtml() {
     late_checkout_left: l => l.extra ? escHtml(l.extra) : `Recepcja: gość wyjechał — pok. ${escHtml(l.room)} do sprzątania teraz`,
     kontrola_wykonana:    l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} wykonana`,
     kontrola_niewykonana: l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} niewykonana: ${escHtml(l.extra||"")}`,
-    dnd:              l => `${escHtml(l.worker)} — pok. ${escHtml(l.room)} oznaczony "nie przeszkadzać"`,
-    dnd_off:          l => `${escHtml(l.worker)} — zdjęto "nie przeszkadzać" z pok. ${escHtml(l.room)}`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb", kontrola_wykonana:"#0f7a4a", kontrola_niewykonana:"#a07820", dnd:"#b3261e", dnd_off:"#8a6a7e" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb", kontrola_wykonana:"#0f7a4a", kontrola_niewykonana:"#a07820" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -580,28 +578,6 @@ function priorityFor(no) {
   }
   return on;
 }
-
-// Ręczny DND (bez IoT/czujników drzwi) — pokojówka lub gość zgłasza "nie wchodzić",
-// ktokolwiek akurat obsługuje pokój dziś oznacza to sam z telefonu (log w hk_logs,
-// widoczny też w Monitorze HK recepcji dzięki LOG_CFG). dnd bez późniejszego dnd_off.
-function dndFor(no) {
-  let on = false;
-  for (const l of allLogs) {
-    if (l.room !== no) continue;
-    if (l.action === "dnd") on = true;
-    else if (l.action === "dnd_off") on = false;
-  }
-  return on;
-}
-
-window.toggleDnd = async (no) => {
-  const on = dndFor(no);
-  try {
-    await addLog(on ? "dnd_off" : "dnd", no, null);
-    toast(on ? `Pokój ${no} — zdjęto "nie przeszkadzać"` : `Pokój ${no} — oznaczono "nie przeszkadzać"`, on ? "var(--muted)" : "var(--amber)");
-    render();
-  } catch (e) { toast("Nie udało się zapisać", "var(--red)"); }
-};
 
 // Czy recepcja właśnie zaalarmowała, że gość z late checkout wyjechał (zdarzenie jednorazowe,
 // pokazujemy dopóki pokój czeka na sprzątanie — po starcie/zakończeniu komunikat jest już nieaktualny).
@@ -723,8 +699,6 @@ function roomCard(no, status) {
   const pendingAsk = pendingAskFor(no);
   const isPriority  = priorityFor(no);
   const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
-  const isDnd = dndFor(no);
-  const dndBanner = isDnd ? `<div class="prio-banner" style="color:var(--red-ink);background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.32)">🚫 Nie przeszkadzać — nie wchodzić bez sprawdzenia</div>` : "";
   const isLateCheckout = status==="W" && lateCheckoutFor(no);
   const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
@@ -756,7 +730,7 @@ function roomCard(no, status) {
   }
   // Kontrola dopiero po rozpoczęciu sprzątania — przed startem to jeszcze nie ma czego sprawdzać.
   const checkHtml = (status === "W" || status === "vacated") ? "" : checkBox(no);
-  buttons = dndBanner + prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkHtml;
+  buttons = prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkHtml;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
@@ -765,9 +739,6 @@ function roomCard(no, status) {
       ${(status==="W"||status==="vacated")?"":`<div class="room-status" style="color:${col}">${lbl}</div>`}
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
-      <button type="button" title="${isDnd?"Zdejmij: nie przeszkadzać":"Oznacz: nie przeszkadzać"}"
-              onclick="event.stopPropagation();toggleDnd('${no}')"
-              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;margin-left:auto;opacity:${isDnd?1:.35}">🚫</button>
     </div>
     ${buttons ? `<div style="padding:0 12px 12px">${buttons}</div>` : ""}
   </div>`;
