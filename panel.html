@@ -4150,7 +4150,8 @@ async function loadPlan() {
   let plans = [], tasks = [];
   try {
     const [{ data:pl }, { data:tk }] = await Promise.all([
-      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at", { ascending:false }),
+      // group_id=null: plany z checklist (Kontrole) mają zostać TYLKO tam, nie dublować się tu.
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).is("group_id", null).order("created_at", { ascending:false }),
       sb.from("panel_plan").select("id,plan_id,plan,date,task,response,status,photos").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
     plans = pl || []; tasks = tk || [];
@@ -4327,6 +4328,10 @@ window.setPlanStatus = async (id, st) => {
 // ── Kontrole: ujednolicona checklista pokojowa — kierownik wybiera cel (HK,
 // Konserwacja, albo oba) i listę pokoi. checklist_groups to lekki łącznik nad
 // dwoma NIEZALEŻNYMI, już istniejącymi mechanizmami:
+// valid_to "na zawsze" dla hk_check_items — kolumna jest NOT NULL w schemacie,
+// więc zamiast usuwać ją, ustawiamy datę daleko w przyszłości (checklista znika
+// dopiero gdy kierownik ją zakończy, nie sama po jednym dniu).
+const CHK_FAR_FUTURE = "2099-12-31";
 //   HK:          hk_check_plans/hk_check_items — zadanie PRZYPISANE DO POKOJU,
 //                wykonuje kto akurat sprząta dany pokój danego dnia (przydział
 //                z hk_plan.assignments). Rano "wykonane" zamyka na stałe
@@ -4360,7 +4365,6 @@ async function loadKontrole() {
     return renderKontroleDetail(g, hp, hp ? hkItems.filter(x => x.plan_id === hp.id) : [], mp, mp ? mtItems.filter(x => x.plan_id === mp.id) : []);
   }
 
-  const today = new Date().toISOString().slice(0,10);
   const create = `<div class="card" style="margin-bottom:12px">
     <div class="soon" style="margin-top:0">Nowa checklista</div>
     <div class="field"><label>Nazwa</label><input id="nckName" class="inp" placeholder="np. Kontrola kabli - lipiec"/></div>
@@ -4376,10 +4380,6 @@ async function loadKontrole() {
     <div class="field"><label>Pokoje (oddziel przecinkami)</label>
       <input id="nckRooms" class="inp" placeholder="np. 201,202,304"/>
       <button type="button" class="rost-addbtn" style="margin-top:6px;padding:6px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--paper);color:var(--plum);font-weight:800;font-size:11.5px;cursor:pointer" onclick="nckSelectAllRooms()">Zaznacz wszystkie pokoje (${ALL_ROOMS.length})</button>
-    </div>
-    <div style="display:flex;gap:8px">
-      <div class="field" style="flex:1"><label>Od</label><input id="nckFrom" class="inp" type="date" value="${today}"/></div>
-      <div class="field" style="flex:1"><label>Do</label><input id="nckTo" class="inp" type="date" value="${today}"/></div>
     </div>
     <button id="nckBtn" class="btn" onclick="createKontrolePlan()">Utwórz checklistę</button>
     <div id="nckMsg" class="msg"></div>
@@ -4429,8 +4429,6 @@ window.createKontrolePlan = async () => {
   const name  = ((document.getElementById("nckName")||{}).value || "").trim();
   const task  = ((document.getElementById("nckTask")||{}).value || "").trim();
   const rooms = ((document.getElementById("nckRooms")||{}).value || "").split(",").map(s=>s.trim()).filter(Boolean);
-  const from  = (document.getElementById("nckFrom")||{}).value || "";
-  const to    = (document.getElementById("nckTo")||{}).value || from;
   const wantHk      = !!(document.getElementById("nckHk")||{}).checked;
   const wantKonserw = !!(document.getElementById("nckKonserw")||{}).checked;
   const msg = document.getElementById("nckMsg"), btn = document.getElementById("nckBtn");
@@ -4439,9 +4437,9 @@ window.createKontrolePlan = async () => {
   if (!task) return setM("Wpisz zadanie.", "err");
   if (!wantHk && !wantKonserw) return setM("Wybierz cel: HK, konserwacja albo oba.", "err");
   if (!rooms.length) return setM("Wpisz przynajmniej jeden pokój.", "err");
-  if (!from) return setM('Wybierz datę "od".', "err");
   if (btn){ btn.disabled=true; btn.textContent="Tworzę…"; }
   try {
+    const nowDate = new Date().toISOString().slice(0,10);
     const targets = wantHk && wantKonserw ? "both" : (wantHk ? "hk" : "konserw");
     const { data:grp, error:grpErr } = await sb.from("checklist_groups")
       .insert({ tenant_id:TENANT_ID, name, task, targets, status:"active", created_by:CURRENT.name||"Panel" })
@@ -4453,7 +4451,9 @@ window.createKontrolePlan = async () => {
         .insert({ tenant_id:TENANT_ID, group_id:groupId, name, task, status:"active", created_by:CURRENT.name||"Panel" })
         .select("id").single();
       if (hpErr) throw hpErr;
-      const hkRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:hp.id, room, valid_from:from, valid_to:to, status:"pending" }));
+      // Checklista trwa dopóki kierownik jej nie zakończy (bez wygasania po dacie) —
+      // valid_from/valid_to zostają w schemacie, ale nie ograniczają już widoczności.
+      const hkRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:hp.id, room, valid_from:nowDate, valid_to:CHK_FAR_FUTURE, status:"pending" }));
       const { error:hiErr } = await sb.from("hk_check_items").insert(hkRows);
       if (hiErr) throw hiErr;
     }
@@ -4462,7 +4462,7 @@ window.createKontrolePlan = async () => {
         .insert({ tenant_id:TENANT_ID, group_id:groupId, name, status:"active", created_by:CURRENT.name||"Panel" })
         .select("id").single();
       if (mpErr) throw mpErr;
-      const mtRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:mp.id, plan:name, room, task, date:from, status:"open", created_by:CURRENT.name||"Panel" }));
+      const mtRows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:mp.id, plan:name, room, task, date:nowDate, status:"open", created_by:CURRENT.name||"Panel" }));
       const { error:miErr } = await sb.from("panel_plan").insert(mtRows);
       if (miErr) throw miErr;
     }
@@ -4546,11 +4546,8 @@ window.addKontroleRooms = async (kind) => {
   if (!planId || !rooms.length) return toast("Wpisz przynajmniej jeden pokój.","bad");
   try {
     if (kind === "hk") {
-      const { data:existing } = await sb.from("hk_check_items").select("valid_from,valid_to").eq("plan_id", planId).limit(1);
       const today = new Date().toISOString().slice(0,10);
-      const from = (existing && existing[0] && existing[0].valid_from) || today;
-      const to   = (existing && existing[0] && existing[0].valid_to) || from;
-      const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:from, valid_to:to, status:"pending" }));
+      const rows = rooms.map(room => ({ tenant_id:TENANT_ID, plan_id:planId, room, valid_from:today, valid_to:CHK_FAR_FUTURE, status:"pending" }));
       const { error } = await sb.from("hk_check_items").insert(rows);
       if (error) throw error;
     } else {

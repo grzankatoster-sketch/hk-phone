@@ -536,7 +536,8 @@ async function refreshFaults(){
   try{
     const [{ data:fx }, { data:mp }, { data:pl }] = await Promise.all([
       sb.from("faults").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false}),
-      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at",{ascending:false}),
+      // group_id=null: plany z checklist (Kontrole) mają zostać TYLKO tam, nie dublować się tu.
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).is("group_id", null).order("created_at",{ascending:false}),
       sb.from("panel_plan").select("*").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
     if (fx) faults = fx;
@@ -552,7 +553,8 @@ async function load(){
   faults = data||[];
   try {
     const [{ data:mp }, { data:pl }] = await Promise.all([
-      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).order("created_at",{ascending:false}),
+      // group_id=null: plany z checklist (Kontrole) mają zostać TYLKO tam, nie dublować się tu.
+      sb.from("maintenance_plans").select("*").eq("tenant_id", TENANT_ID).is("group_id", null).order("created_at",{ascending:false}),
       sb.from("panel_plan").select("*").eq("tenant_id", TENANT_ID).not("plan_id","is",null),
     ]);
     mplans = mp||[]; plan = pl||[];
@@ -581,7 +583,7 @@ async function load(){
     .subscribe();
   sb.channel("mplans-konserwacja")
     .on("postgres_changes",{event:"*",schema:"public",table:"maintenance_plans",filter:`tenant_id=eq.${TENANT_ID}`}, ({eventType,new:row,old})=>{
-      if (eventType==="INSERT"){ mplans=[row,...mplans]; if (planForMe(row)) toast("Nowy plan: "+(row.name||"—"),"var(--plum)"); }
+      if (eventType==="INSERT"){ if (row.group_id) return; mplans=[row,...mplans]; if (planForMe(row)) toast("Nowy plan: "+(row.name||"—"),"var(--plum)"); }
       else if (eventType==="UPDATE"){ mplans=mplans.map(p=>p.id===row.id?row:p); }
       else if (eventType==="DELETE"){ mplans=mplans.filter(p=>p.id!==(old&&old.id)); }
       render();
