@@ -40,6 +40,7 @@ const MODELS = {
   worker: "llama-3.3-70b-versatile",
   grafik: "llama-3.3-70b-versatile",
   plan: "llama-3.3-70b-versatile",
+  roletabs: "llama-3.3-70b-versatile",
 } as const;
 
 const CORS = {
@@ -194,6 +195,19 @@ function buildPrompt(task: string, payload: any): { system: string; user: string
         "Pole title to krótki (max 6 słów) tytuł po polsku. priority=urgent tylko dla zalania, " +
         "braku prądu, awarii bezpieczeństwa lub blokady pokoju.",
       user: `OPIS USTERKI:\n${payload?.description ?? ""}`,
+    };
+  }
+  if (task === "roletabs") {
+    const catalog = Array.isArray(payload?.catalog) ? payload.catalog : [];
+    const catalogLines = catalog.map((c: any) => `${c?.key} = ${c?.label}`).join("; ");
+    return {
+      system:
+        "Dobierasz zestaw zakładek (funkcji) panelu menedżerskiego hotelu dla nowego stanowiska. " +
+        "Zwracasz WYŁĄCZNIE poprawny JSON w formacie: {\"tabs\": string[]}. " +
+        `Każda wartość w tabs MUSI być kluczem z podanego katalogu: [${catalogLines}] — nie wolno ` +
+        "zwracać kluczy spoza tej listy ani niczego wymyślać. Wybierz tylko funkcje realnie " +
+        "potrzebne na danym stanowisku (zwykle 4-8 pozycji), nie całą listę.",
+      user: `STANOWISKO: ${payload?.title ?? ""}\nDZIAŁ: ${payload?.department ?? ""}`,
     };
   }
   if (task === "weekly") {
@@ -453,9 +467,9 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model,
         max_tokens: task === "weekly" ? 2000 : task === "plan" ? 1200 : task === "briefing" ? 700 : 500,
-        temperature: task === "triage" ? 0 : 0.3,
+        temperature: task === "triage" || task === "roletabs" ? 0 : 0.3,
         // Tryb JSON dla zadań zwracających strukturę (triage, route, schedule).
-        ...(task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" || task === "pricing" ? { response_format: { type: "json_object" } } : {}),
+        ...(task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" || task === "pricing" || task === "roletabs" ? { response_format: { type: "json_object" } } : {}),
         messages: [
           { role: "system", content: system },
           { role: "user", content: user },
@@ -487,12 +501,20 @@ Deno.serve(async (req) => {
   });
 
   // triage/route/schedule: oczekujemy JSON — parsujemy, a gdy się nie uda, klient ma fallback.
-  if (task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" || task === "pricing") {
-    let parsed: unknown = null;
+  if (task === "triage" || task === "route" || task === "schedule" || task === "reviews" || task === "grafik" || task === "plan" || task === "pricing" || task === "roletabs") {
+    let parsed: any = null;
     try {
       const m = text.match(/\{[\s\S]*\}/);
       parsed = m ? JSON.parse(m[0]) : null;
     } catch { parsed = null; }
+    // roletabs: LLM nigdy nie jest źródłem dozwolonych kluczy — odfiltruj do faktycznie
+    // przesłanego katalogu, niezależnie od tego co model zwrócił (obrona w głąb, patrz
+    // też panel_valid_tab_keys() po stronie SQL, który filtruje jeszcze raz przy zapisie).
+    if (task === "roletabs") {
+      const allowed = new Set((Array.isArray(payload?.catalog) ? payload.catalog : []).map((c: any) => c?.key));
+      const tabs = Array.isArray(parsed?.tabs) ? parsed.tabs.filter((k: unknown) => allowed.has(k)) : [];
+      parsed = { tabs };
+    }
     return json({ data: parsed, text });
   }
 

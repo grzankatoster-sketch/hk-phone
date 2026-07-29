@@ -11,9 +11,14 @@ const { todayKey } = require("./lib/dates.cjs");
 
 async function main() {
   const config = loadConfig();
-  const tenantId = "00000000-0000-0000-0000-000000000001";
-  const url = "https://pjgcaujndvjvicqsdcns.supabase.co";
-  const key = "sb_publishable_h_uQ7-zzck71HIWxnlwTbQ_Io9m7wfb";
+  const tenantId = process.env.VITE_TENANT_ID || "";
+  const url = process.env.VITE_SUPABASE_URL || "";
+  const key = process.env.VITE_SUPABASE_ANON_KEY || "";
+  if (!tenantId || !url || !key) {
+    console.error("BLAD: brak VITE_TENANT_ID / VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY w env (.env).");
+    process.exitCode = 1;
+    return;
+  }
 
   const res = await fetch(`${url}/rest/v1/meal_plans?tenant_id=eq.${tenantId}&is_group=eq.true&select=*`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },

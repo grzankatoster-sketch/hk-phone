@@ -71,7 +71,7 @@ import {
   Users, FileText, Download, Cog, Inbox,
   Bell, Calendar, CheckSquare, ArrowLeftRight, Moon, Sun,
   BarChart2, TrendingUp, MessageSquare, RefreshCw, AlertCircle, Send,
-  Eye, EyeOff, Maximize2, Minimize2, Sparkles, Clock,
+  Eye, EyeOff, Maximize2, Minimize2, Sparkles, Clock, ImagePlus,
 } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson, getCustomManagers, setCustomManagers as persistCustomManagers } from "./lib/storage";
 import { isModuleEnabled, loadTenantFeatures } from "./lib/modules";
@@ -2229,7 +2229,7 @@ export default function App(){
                 <label>Zdjęcia</label>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:wikiImages.length?8:0}}>
                   <label style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 12px",borderRadius:"var(--radius-md)",border:`1.5px dashed ${dark?"var(--dark-border)":"var(--border-medium)"}`,cursor:"pointer",fontSize:12.5,color:dark?"var(--dark-text-muted)":"var(--text-muted)",background:"transparent"}}>
-                    🖼️ Dodaj zdjęcie
+                    <ImagePlus size={14}/> Dodaj zdjęcie
                     <input type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>handleWikiImageUpload(e.target.files)}/>
                   </label>
                   <span style={{fontSize:11,color:dark?"var(--dark-text-muted)":"var(--text-faint)"}}>Max 4MB</span>
@@ -3799,9 +3799,9 @@ export default function App(){
                 value={loginAdminInput}
                 autoFocus
                 onChange={e=>setLoginAdminInput(e.target.value)}
-                onKeyDown={e=>{
+                onKeyDown={async e=>{
                   if(e.key==="Enter"){
-                    if(verifyBootstrapPassword(loginAdminInput)){
+                    if(await verifyBootstrapPassword(loginAdminInput)){
                       setLoginAdminInput("");
                       setLoginStep("setup");
                     }else{
@@ -3817,8 +3817,8 @@ export default function App(){
                   className="cc-login-btn"
                   style={{flex:1}}
                   disabled={!loginAdminInput}
-                  onClick={()=>{
-                    if(verifyBootstrapPassword(loginAdminInput)){
+                  onClick={async ()=>{
+                    if(await verifyBootstrapPassword(loginAdminInput)){
                       setLoginAdminInput("");
                       setLoginStep("setup");
                     }else{

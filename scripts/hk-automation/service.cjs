@@ -13,15 +13,16 @@ const { writeSourceSnapshots } = require("./lib/source-snapshots.cjs");
 const { loadReportHistory, mergeReportHistory, saveReportHistory } = require("./lib/report-history.cjs");
 const { upsertPlansToSupabase } = require("./lib/supabase-sync.cjs");
 const { isPosilkiReport, parsePosilkiGrid } = require("./lib/parser-posilki.cjs");
-const { upsertMealsToSupabase, deleteStaleMealRows } = require("./lib/meals-sync.cjs");
+const { upsertMealsToSupabase, deleteStaleMealRows, detectCancelledMealReservations, deleteCancelledMealRows } = require("./lib/meals-sync.cjs");
 const {
   isArrivalsReport,
   isDeparturesReport,
   extractGuestsWithLlm,
   toParsedShape,
 } = require("./lib/parser-guests-llm.cjs");
-const { writeGuestSnapshot, loadPersistedGroups } = require("./lib/guest-snapshots.cjs");
+const { writeGuestSnapshot, loadPersistedGroups, preferGroupWithRooms } = require("./lib/guest-snapshots.cjs");
 const { expandGroupMealReservations } = require("./lib/meals-group-expand.cjs");
+const { extractGroupRoomsFromPositions, loadGroupRoomsFromRecentPdfs } = require("./lib/parser-arrivals-groups.cjs");
 const { recordMailFetchResult } = require("./lib/mail-health.cjs");
 
 function getArg(name, fallback = "") {
@@ -41,11 +42,14 @@ async function processPdfFiles(pdfFiles, config) {
   const generatedAt = new Date().toISOString();
   const incomingReports = [];
   const mealsReservations = [];
+  const posilkiFiles = [];
   const mealsWarnings = [];
   const guestIndividual = [];
   const guestGroups = [];
   const guestWarnings = [];
   const groqApiKey = config.llm?.enabled ? getGroqApiKey(config) : "";
+  const llmTextSeen = new Set();
+  const textHash = (t) => require("crypto").createHash("md5").update(String(t || "")).digest("hex");
 
   for (const pdfPath of pdfFiles) {
     log(`Czytam PDF: ${pdfPath}`);
@@ -60,6 +64,7 @@ async function processPdfFiles(pdfFiles, config) {
       log(`  -> raport POSIŁKÓW: ${mealsParsed.reservations.length} rezerwacji, dni: ${mealsParsed.dates.filter(Boolean).join(", ")}`);
       if (mealsParsed.warnings.length) log(`  -> ostrzezenia posilkow: ${mealsParsed.warnings.length}`);
       mealsReservations.push(...mealsParsed.reservations);
+      posilkiFiles.push({ file: filename, reservations: mealsParsed.reservations, dates: mealsParsed.dates });
       mealsWarnings.push(...mealsParsed.warnings);
       continue;
     }
@@ -69,6 +74,41 @@ async function processPdfFiles(pdfFiles, config) {
     // bo regex tu jest kruchy (patrz komentarz w parser-guests-llm.cjs).
     if (isArrivalsReport(text, filename) || isDeparturesReport(text, filename)) {
       const reportKind = isArrivalsReport(text, filename) ? "przyjazdy" : "wyjazdy";
+
+      // POKOJE GRUP — deterministycznie z pozycji, NIE z LLM. Numer pokoju to
+      // dana strukturalna; model jezykowy "wygladzal" ja do ciaglych zakresow
+      // (28.07.2026: grupa 3550 dostala 5 zmyslonych pokoi i stracila 10
+      // prawdziwych). Liczone ZAWSZE, takze gdy LLM jest wylaczony albo padl
+      // na limicie tokenow — dzieki temu rozbicie grupy na pokoje nie zalezy
+      // juz od dostepnosci Groq.
+      let positionalGroups = [];
+      try {
+        const positions = await extractPdfPositions(pdfPath);
+        const pg = extractGroupRoomsFromPositions(positions);
+        positionalGroups = pg.groups.filter((g) => g.group_no && g.rooms.length);
+        if (positionalGroups.length) {
+          log(`  -> pokoje grup (pozycyjnie, bez LLM): ${positionalGroups.map((g) => `${g.group_no}:${g.rooms.length}`).join(", ")}`);
+        }
+        pg.warnings.forEach((w) => { log(`  -> UWAGA grupy: ${w}`); guestWarnings.push(w); });
+      } catch (e) {
+        log(`  -> pozycyjna ekstrakcja pokoi grup nieudana: ${e.message}`);
+      }
+      const applyPositionalRooms = (llmGroups) => llmGroups.map((g) => {
+        const truth = positionalGroups.find((p) => String(p.group_no) === String(g.group_no));
+        if (!truth) return g;
+        const invented = (g.rooms || []).filter((r) => !truth.rooms.includes(r));
+        if (invented.length) {
+          const msg = `Grupa ${g.group_no}: LLM podal pokoje spoza raportu (${invented.join(", ")}) — zastapione lista pozycyjna.`;
+          log(`  -> ${msg}`); guestWarnings.push(msg);
+        }
+        return { ...g, rooms: truth.rooms };
+      });
+      const mergeLeftoverGroups = (llmGroups) => {
+        const known = new Set(llmGroups.map((g) => String(g.group_no)));
+        return positionalGroups
+          .filter((p) => !known.has(String(p.group_no)))
+          .map((p) => ({ group_no: p.group_no, group_name: p.group_name, rooms: p.rooms, is_business: true, per_room_type: null, persons_from_list: null }));
+      };
       // WAZNE: NIE uzywac tu generycznego parseAnyKwhotelReport jako fallbacku.
       // Ten raport to wolny tekst z notatkami gosci (np. Booking.com Genius: "VAT:
       // 76.20 PLN") — extractDateTokens w parser.cjs lapie "76.20" jako date "dzien.
@@ -77,10 +117,20 @@ async function processPdfFiles(pdfFiles, config) {
       // regexem, ten raport parsujemy WYLACZNIE przez LLM; bez klucza — pomijamy go
       // calkowicie i polegamy na raporcie tygodniowym/dziennym (pokoj+data i tak stamtad).
       if (!config.llm?.enabled) {
-        log(`  -> raport ${reportKind.toUpperCase()}: LLM wylaczony w config (llm.enabled=false) — pomijam ten plik (generyczny parser jest tu niebezpieczny, patrz komentarz).`);
+        log(`  -> raport ${reportKind.toUpperCase()}: LLM wylaczony w config — biore z niego TYLKO pokoje grup (pozycyjnie).`);
+        guestGroups.push(...mergeLeftoverGroups([]));
       } else if (!groqApiKey) {
-        log(`  -> raport ${reportKind.toUpperCase()}: brak klucza Groq API (${config.llm.apiKeyEnv}) — pomijam ten plik.`);
+        log(`  -> raport ${reportKind.toUpperCase()}: brak klucza Groq API (${config.llm.apiKeyEnv}) — biore TYLKO pokoje grup (pozycyjnie).`);
+        guestGroups.push(...mergeLeftoverGroups([]));
+      } else if (llmTextSeen.has(textHash(text))) {
+        // KWHotel wysyla ten sam raport wielokrotnie (rozne pliki, IDENTYCZNA
+        // tresc po ekstrakcji). 2026-07-28: 13 plikow = 3 unikalne tresci, czyli
+        // 12 wywolan LLM zamiast 2 — to wyczerpalo dzienny limit tokenow Groq
+        // (100k TPD) i 4 raporty zostaly pominiete CALKOWICIE. Liczy sie tresc,
+        // nie bajty pliku (PDF-y roznia sie metadanymi/timestampem).
+        log(`  -> raport ${reportKind.toUpperCase()}: identyczna tresc juz przetworzona w tym cyklu — pomijam wywolanie LLM (oszczednosc tokenow).`);
       } else {
+        llmTextSeen.add(textHash(text));
         const extracted = await extractGuestsWithLlm(text, {
           apiKey: groqApiKey,
           model: config.llm.model,
@@ -90,13 +140,18 @@ async function processPdfFiles(pdfFiles, config) {
         log(`  -> raport ${reportKind.toUpperCase()}: ${extracted.individual.length} indywidualnych, ${extracted.groups.length} grup (LLM).`);
         if (extracted.warnings.length) log(`  -> ostrzezenia LLM: ${extracted.warnings.length}`);
         if (extracted.individual.length || extracted.groups.length) {
+          // Pokoje grup z LLM sa NADPISYWANE lista pozycyjna (zrodlo prawdy);
+          // z LLM zostaja nazwy, uwagi i flagi biznesowe.
+          const groups = applyPositionalRooms(extracted.groups);
           guestIndividual.push(...extracted.individual);
-          guestGroups.push(...extracted.groups);
+          guestGroups.push(...groups, ...mergeLeftoverGroups(groups));
           guestWarnings.push(...extracted.warnings);
-          const parsed = toParsedShape(extracted, { reportDate: null });
+          const parsed = toParsedShape({ ...extracted, groups }, { reportDate: null });
           incomingReports.push({ id: path.resolve(pdfPath), name: filename, importedAt: new Date().toISOString(), parsed });
         } else {
-          log(`  -> raport ${reportKind.toUpperCase()}: LLM zwrocil pusty wynik — pomijam ten plik.`);
+          // LLM padl (limit tokenow / blad) — pokoje grup i tak mamy z pozycji.
+          log(`  -> raport ${reportKind.toUpperCase()}: LLM zwrocil pusty wynik — uzywam samych pokoi grup z parsera pozycyjnego.`);
+          guestGroups.push(...mergeLeftoverGroups([]));
         }
       }
       continue;
@@ -118,6 +173,17 @@ async function processPdfFiles(pdfFiles, config) {
       importedAt,
       parsed,
     });
+  }
+
+  // Anulowane w trakcie generowania paczki — patrz detectCancelledMealReservations
+  // w meals-sync.cjs (incydent 2026-07-29). Filtrujemy PRZED dalszym uzyciem
+  // mealsReservations, zeby anulowana rezerwacja nie zasilila tez licznika osob
+  // w grupie (blok nizej) ani rozbicia na pokoje.
+  const mealsCancelledIds = detectCancelledMealReservations(posilkiFiles, { warn: (m) => log(m) });
+  if (mealsCancelledIds.size) {
+    const before = mealsReservations.length;
+    mealsReservations.splice(0, mealsReservations.length, ...mealsReservations.filter((r) => !mealsCancelledIds.has(r.reservation_id)));
+    log(`  -> pominieto ${before - mealsReservations.length} pozycji anulowanych rezerwacji z tego wsadu.`);
   }
 
   // Liczba osób w grupie z Listy przyjazdów/wyjazdów bywa niedokładna (to samo
@@ -162,7 +228,26 @@ async function processPdfFiles(pdfFiles, config) {
     const persistedGroups = loadPersistedGroups(config.outputDir, { todayIso: todayKey() });
     const groupsByNo = new Map();
     for (const g of persistedGroups) if (g.group_no) groupsByNo.set(String(g.group_no), g);
-    for (const g of guestGroups) if (g.group_no) groupsByNo.set(String(g.group_no), g); // biezacy cykl nadpisuje starsze
+    // Biezacy cykl nadpisuje starsze TYLKO gdy nie zgubil listy pokoi — patrz
+    // preferGroupWithRooms (gorsza ekstrakcja LLM nie moze skasowac dobrej).
+    for (const g of guestGroups) if (g.group_no) groupsByNo.set(String(g.group_no), preferGroupWithRooms(groupsByNo.get(String(g.group_no)), g));
+
+    // OSTATNIE SLOWO ma odczyt POZYCYJNY z zarchiwizowanych PDF-ow. Zrzuty
+    // guests-*.json zapisane wczesniej moga zawierac zahalucynowane przez LLM
+    // listy pokoi i BEZ tego kroku reinfekowaly baze przy kazdym cyklu —
+    // 28.07.2026 uzgodniona baza wrocila do blednych 38 pokoi grupy 3550 juz
+    // po najblizszym uruchomieniu. PDF sie nie psuje, wiec czytamy go na nowo.
+    const pdfGroups = await loadGroupRoomsFromRecentPdfs(path.join(config.outputDir, "mail-pdf"), {
+      extractPositions: extractPdfPositions,
+      log: (m) => log(m),
+    });
+    for (const g of pdfGroups) {
+      const prev = groupsByNo.get(String(g.group_no));
+      if (prev && prev.rooms?.length && prev.rooms.join() !== g.rooms.join()) {
+        log(`  -> grupa ${g.group_no}: lista pokoi ze zrzutu (${prev.rooms.length}) zastapiona odczytem z PDF (${g.rooms.length}).`);
+      }
+      groupsByNo.set(String(g.group_no), { ...(prev || {}), ...g });
+    }
     const expansion = expandGroupMealReservations(mealsReservations, [...groupsByNo.values()]);
     mealsStaleAggregateRows = expansion.staleAggregateRows;
     if (expansion.expandedGroups.length) {
@@ -245,6 +330,23 @@ async function processPdfFiles(pdfFiles, config) {
     }
   } else if (mealsReservations.length && config.dryRun) {
     log(`Meals sync pominiety (dryRun): ${mealsReservations.length} pozycji gotowych do wyslania.`);
+  }
+
+  // Kasowanie z bazy juz wczesniej zapisanych wierszy anulowanych rezerwacji
+  // (np. z poprzedniego cyklu, zanim ta paczka zdazyla wykryc anulowanie) —
+  // niezalezne od bloku wyzej, zeby zadzialalo nawet gdy w tym wsadzie nie
+  // bylo juz nic innego do wyslania.
+  if (mealsCancelledIds.size && !config.dryRun) {
+    try {
+      await deleteCancelledMealRows(mealsCancelledIds, {
+        info: (msg) => log(msg.replace(/^\[hk-auto\]\s*/, "")),
+        warn: (msg) => log(msg.replace(/^\[hk-auto\]\s*/, "")),
+      });
+    } catch (e) {
+      log(`Kasowanie anulowanych posilkow BLAD: ${e.message}`);
+    }
+  } else if (mealsCancelledIds.size && config.dryRun) {
+    log(`Kasowanie anulowanych posilkow pominiete (dryRun): ${mealsCancelledIds.size} rezerwacji.`);
   }
 
   return written;

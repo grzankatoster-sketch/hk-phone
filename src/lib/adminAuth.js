@@ -1,5 +1,6 @@
 import { STORAGE_KEYS } from "./storage";
-import { ADMIN_PASSWORD } from "./constants";
+import { TENANT_ID } from "./constants";
+import { supabase } from "./supabase";
 
 async function sha256Hex(value) {
   const data = new TextEncoder().encode(value);
@@ -11,9 +12,16 @@ export function hasAdminPassword() {
   return !!localStorage.getItem(STORAGE_KEYS.adminPasswordHash);
 }
 
-export function verifyBootstrapPassword(input) {
+// Haslo bootstrap (brama do ustawienia WLASNEGO hasla kierownika) nie jest juz
+// zaszyte w bundlu (WYKONANIE 0.2) — porownanie robi RPC po stronie Supabase,
+// zwraca tylko true/false, hash nigdy nie trafia do klienta.
+export async function verifyBootstrapPassword(input) {
   const clean = String(input || "").trim();
-  return clean.length > 0 && clean === ADMIN_PASSWORD;
+  if (!clean || !supabase || !TENANT_ID) return false;
+  const { data, error } = await supabase.rpc("verify_admin_bootstrap", {
+    p_tenant_id: TENANT_ID, p_candidate: clean,
+  });
+  return !error && data === true;
 }
 
 export async function createManagerPassword(newPassword) {

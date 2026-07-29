@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { X, AlertCircle, Send } from "lucide-react";
+import { X, AlertCircle, Send, MessageSquare, Bug } from "lucide-react";
 import { STORAGE_KEYS } from "../../lib/storage";
 
 export default function MessageModal({onClose,employeeName,employees,messages,setMessages,dark}){
@@ -46,14 +46,14 @@ export default function MessageModal({onClose,employeeName,employees,messages,se
         </div>
 
         <div className="cc-msg-type-row">
-          {[["msg","💬","Wiadomość","Informacja dla kierownika"],
-            ["bug","🐛","Błąd programu","Coś nie działa"]].map(([v,ic,lbl,sub])=>(
+          {[["msg",MessageSquare,"Wiadomość","Informacja dla kierownika"],
+            ["bug",Bug,"Błąd programu","Coś nie działa"]].map(([v,Ic,lbl,sub])=>(
             <button
               key={v}
               type="button"
               onClick={()=>setMsgType(v)}
               className={`cc-msg-type-btn cc-msg-type-btn--${v}${msgType===v?" cc-msg-type-btn--on":""}`}>
-              <div className="cc-msg-type-btn-icon">{ic}</div>
+              <div className="cc-msg-type-btn-icon"><Ic size={18}/></div>
               <div className="cc-msg-type-btn-lbl">{lbl}</div>
               <div className="cc-msg-type-btn-sub">{sub}</div>
             </button>

@@ -1,5 +1,10 @@
 import React from "react";
 import QRCode from "qrcode";
+import {
+  Radio, ListChecks, WashingMachine, Users, PackageSearch, Search, History,
+  Play, Check, X, DoorOpen, SquareCheck, ArrowLeftRight, Hand, Zap, Circle,
+  HelpCircle, MessageCircle, BellOff, BellRing,
+} from "lucide-react";
 import { supabase, phoneUrl } from "../../lib/supabase";
 import { HK_ALL, HK_FLOOR1, HK_FLOOR2, HK_FLOOR3, HK_LIVE_COLORS, TENANT_ID } from "../../lib/constants";
 import { loadJson, saveJson } from "../../lib/storage";
@@ -25,31 +30,39 @@ const textColorFor = (hex) => {
   return L > 0.179 ? "#111" : "#fff";
 };
 
+// Kolory statusów: --cc-progress/--cc-alt-accent to muted, marka-spójne warianty
+// niebieskiego/fioletu (NIE Tailwind blue-400/violet-400) — trzymają odrębność
+// wizualną "sprząta" vs "pominięte", której --sky/--violet nie dają (oba = plum).
 const STATUS_CFG = {
-  W:           { label: "Czeka",       color: "#8b949e", bg: "transparent",             bc: "var(--border-light)" },
-  czyszczenie: { label: "Sprząta",     color: "#60a5fa", bg: "rgba(96,165,250,.08)",    bc: "rgba(96,165,250,.3)" },
-  czyste:      { label: "Czyste",      color: "#34d399", bg: "rgba(52,211,153,.08)",    bc: "rgba(52,211,153,.3)" },
-  "pominięte": { label: "Pominięte",   color: "#a78bfa", bg: "rgba(167,139,250,.08)",   bc: "rgba(167,139,250,.3)" },
-  vacated:     { label: "Pusty",       color: "#f59e0b", bg: "rgba(245,158,11,.08)",    bc: "rgba(245,158,11,.3)" },
+  W:           { label: "Czeka",       color: "var(--cc-text-muted)", bg: "transparent",                                              bc: "var(--border-light)" },
+  czyszczenie: { label: "Sprząta",     color: "var(--cc-progress)",   bg: "color-mix(in srgb, var(--cc-progress) 8%, transparent)",   bc: "color-mix(in srgb, var(--cc-progress) 30%, transparent)" },
+  czyste:      { label: "Czyste",      color: "var(--emerald)",       bg: "color-mix(in srgb, var(--emerald) 8%, transparent)",       bc: "color-mix(in srgb, var(--emerald) 30%, transparent)" },
+  "pominięte": { label: "Pominięte",   color: "var(--cc-alt-accent)", bg: "color-mix(in srgb, var(--cc-alt-accent) 8%, transparent)", bc: "color-mix(in srgb, var(--cc-alt-accent) 30%, transparent)" },
+  vacated:     { label: "Pusty",       color: "var(--amber)",         bg: "color-mix(in srgb, var(--amber) 8%, transparent)",         bc: "color-mix(in srgb, var(--amber) 30%, transparent)" },
 };
 
+const logCfgEntry = (color, icon, text) => ({
+  color, icon, text,
+  bg: `color-mix(in srgb, ${color} 8%, transparent)`,
+  bc: `color-mix(in srgb, ${color} 25%, transparent)`,
+});
 const LOG_CFG = {
-  start:            { color: "#60a5fa", bg: "rgba(96,165,250,.08)",   bc: "rgba(96,165,250,.25)",   icon: "▶", text: (l) => `${l.worker} zaczyna pokój ${l.room}` },
-  done:             { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "✓", text: (l) => `${l.worker} skończyła pokój ${l.room}${l.extra ? " · " + l.extra : ""}` },
-  skip:             { color: "#f59e0b", bg: "rgba(245,158,11,.08)",   bc: "rgba(245,158,11,.25)",   icon: "✕", text: (l) => `${l.worker} — goście nie chcieli (${l.room})` },
-  vacate:           { color: "#a78bfa", bg: "rgba(167,139,250,.08)",  bc: "rgba(167,139,250,.25)",  icon: "🔔", text: (l) => `Recepcja: pokój ${l.room} pusty` },
-  task_done:        { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "☑", text: (l) => `${l.worker}: zadanie — ${l.extra || ""}` },
-  exchange_request: { color: "#f59e0b", bg: "rgba(245,158,11,.08)",   bc: "rgba(245,158,11,.25)",   icon: "⇄", text: (l) => l.extra || `${l.worker} proponuje wymianę` },
-  exchange_accept:  { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "⇄", text: (l) => l.extra || `${l.worker} przyjęła wymianę` },
-  exchange_reject:  { color: "#f87171", bg: "rgba(248,113,113,.08)",  bc: "rgba(248,113,113,.25)",  icon: "✕", text: (l) => l.extra || `${l.worker} odrzuciła wymianę` },
-  room_request:     { color: "#60a5fa", bg: "rgba(96,165,250,.08)",   bc: "rgba(96,165,250,.25)",   icon: "🙋", text: (l) => l.extra || `${l.worker} prosi o pokój` },
-  reassign:         { color: "#a78bfa", bg: "rgba(167,139,250,.08)",  bc: "rgba(167,139,250,.25)",  icon: "⇄", text: (l) => l.extra ? `Recepcja: ${l.extra}` : `${l.worker} — zmiana przydziału` },
-  priority:         { color: "#f59e0b", bg: "rgba(245,158,11,.08)",   bc: "rgba(245,158,11,.25)",   icon: "⚡", text: (l) => l.extra || `Recepcja: pokój ${l.room} w pierwszej kolejności` },
-  priority_off:     { color: "#8b949e", bg: "rgba(139,148,158,.08)",  bc: "rgba(139,148,158,.25)",  icon: "○", text: (l) => l.extra || `Recepcja: anulowano priorytet pokoju ${l.room}` },
-  info_request:     { color: "#60a5fa", bg: "rgba(96,165,250,.08)",   bc: "rgba(96,165,250,.25)",   icon: "❓", text: (l) => l.extra || `Recepcja pyta o status pokoju ${l.room}` },
-  info_reply:       { color: "#34d399", bg: "rgba(52,211,153,.08)",   bc: "rgba(52,211,153,.25)",   icon: "💬", text: (l) => `Pokój ${l.room} · ${l.worker}: ${l.extra || ""}` },
-  dnd:              { color: "#f87171", bg: "rgba(248,113,113,.08)",  bc: "rgba(248,113,113,.25)",  icon: "🔕", text: (l) => `${l.worker} — pokój ${l.room} oznaczony "nie przeszkadzać"` },
-  dnd_off:          { color: "#8b949e", bg: "rgba(139,148,158,.08)",  bc: "rgba(139,148,158,.25)",  icon: "🔔", text: (l) => `${l.worker} — zdjęto "nie przeszkadzać" z pokoju ${l.room}` },
+  start:            logCfgEntry("var(--cc-progress)",   Play,           (l) => `${l.worker} zaczyna pokój ${l.room}`),
+  done:             logCfgEntry("var(--emerald)",        Check,          (l) => `${l.worker} skończyła pokój ${l.room}${l.extra ? " · " + l.extra : ""}`),
+  skip:             logCfgEntry("var(--amber)",          X,              (l) => `${l.worker} — goście nie chcieli (${l.room})`),
+  vacate:           logCfgEntry("var(--cc-alt-accent)",  DoorOpen,       (l) => `Recepcja: pokój ${l.room} pusty`),
+  task_done:        logCfgEntry("var(--emerald)",        SquareCheck,    (l) => `${l.worker}: zadanie — ${l.extra || ""}`),
+  exchange_request: logCfgEntry("var(--amber)",          ArrowLeftRight, (l) => l.extra || `${l.worker} proponuje wymianę`),
+  exchange_accept:  logCfgEntry("var(--emerald)",        ArrowLeftRight, (l) => l.extra || `${l.worker} przyjęła wymianę`),
+  exchange_reject:  logCfgEntry("var(--rose)",           X,              (l) => l.extra || `${l.worker} odrzuciła wymianę`),
+  room_request:     logCfgEntry("var(--cc-progress)",    Hand,           (l) => l.extra || `${l.worker} prosi o pokój`),
+  reassign:         logCfgEntry("var(--cc-alt-accent)",  ArrowLeftRight, (l) => l.extra ? `Recepcja: ${l.extra}` : `${l.worker} — zmiana przydziału`),
+  priority:         logCfgEntry("var(--amber)",          Zap,            (l) => l.extra || `Recepcja: pokój ${l.room} w pierwszej kolejności`),
+  priority_off:     logCfgEntry("var(--cc-text-muted)",  Circle,         (l) => l.extra || `Recepcja: anulowano priorytet pokoju ${l.room}`),
+  info_request:     logCfgEntry("var(--cc-progress)",    HelpCircle,     (l) => l.extra || `Recepcja pyta o status pokoju ${l.room}`),
+  info_reply:       logCfgEntry("var(--emerald)",        MessageCircle,  (l) => `Pokój ${l.room} · ${l.worker}: ${l.extra || ""}`),
+  dnd:              logCfgEntry("var(--rose)",           BellOff,        (l) => `${l.worker} — pokój ${l.room} oznaczony "nie przeszkadzać"`),
+  dnd_off:          logCfgEntry("var(--cc-text-muted)",  BellRing,       (l) => `${l.worker} — zdjęto "nie przeszkadzać" z pokoju ${l.room}`),
 };
 
 const LINEN_FIELDS = [
@@ -549,13 +562,13 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
   const text  = dark ? "#e6edf3" : "#111";
 
   const TABS = [
-    { id: "monitor",     label: "Monitor",    icon: "📡" },
-    { id: "zadania",     label: "Zadania",    icon: "✅" },
-    { id: "pranie",      label: "Pranie",     icon: "🧺" },
-    { id: "pracownicy",  label: "Pracownicy", icon: "👥" },
-    { id: "znalezione",  label: "Znalezione", icon: "📦" },
-    { id: "kontrole",    label: "Kontrole",   icon: "🔍" },
-    { id: "historia",    label: "Historia",   icon: "📋" },
+    { id: "monitor",     label: "Monitor",    icon: Radio },
+    { id: "zadania",     label: "Zadania",    icon: ListChecks },
+    { id: "pranie",      label: "Pranie",     icon: WashingMachine },
+    { id: "pracownicy",  label: "Pracownicy", icon: Users },
+    { id: "znalezione",  label: "Znalezione", icon: PackageSearch },
+    { id: "kontrole",    label: "Kontrole",   icon: Search },
+    { id: "historia",    label: "Historia",   icon: History },
   ];
 
   // ─── Render helpers ───────────────────────────────────────────────────────
@@ -1401,7 +1414,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
 
         {displayLogs.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 20px", color: muted }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+            <MessageCircle size={28} style={{ marginBottom: 8, opacity: .5 }}/>
             <div style={{ fontSize: 13, fontWeight: 700 }}>Brak aktywności</div>
           </div>
         ) : (
@@ -1409,9 +1422,10 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {[...displayLogs].reverse().map((l, i) => {
                 const cfg = LOG_CFG[l.action] || LOG_CFG.start;
+                const Ic = cfg.icon;
                 return (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 10, background: cfg.bg, border: `1px solid ${cfg.bc}` }}>
-                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 900, color: "#fff", flexShrink: 0 }}>{cfg.icon}</div>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0 }}><Ic size={16}/></div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: text }}>{cfg.text(l)}</div>
                       <div style={{ fontSize: 11, color: muted, marginTop: 2 }}>{l.log_time}</div>
@@ -1607,10 +1621,11 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
           {recentLogs.length === 0
             ? <div style={{ textAlign: "center", padding: "20px 0", color: muted, fontSize: 12 }}>Brak aktywności</div>
             : recentLogs.map((l, i) => {
-                const cfg = LOG_CFG[l.action] || { color: "#8b949e", icon: "·", text: (ll) => `${ll.worker} ${ll.action}` };
+                const cfg = LOG_CFG[l.action] || logCfgEntry("var(--cc-text-muted)", Circle, (ll) => `${ll.worker} ${ll.action}`);
+                const Ic = cfg.icon;
                 return (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "7px 0", borderBottom: i < recentLogs.length - 1 ? `1px solid ${dark ? "#21262d" : "var(--border-light)"}` : "none" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: cfg.color + "22", color: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0, marginTop: 1 }}>{cfg.icon}</div>
+                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: cfg.bg, color: cfg.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}><Ic size={12}/></div>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: text, lineHeight: 1.4 }}>{cfg.text(l)}</div>
                       <div style={{ fontSize: 10, color: muted, marginTop: 1 }}>{l.log_time}</div>
@@ -1842,6 +1857,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
             const badge = pendingCheckouts > 0 ? pendingCheckouts : openTasks > 0 ? openTasks : openFound > 0 ? openFound : 0;
             const badgeVariant = tab.id === "monitor" ? "warning" : "brand";
             const isActive = activeTab === tab.id;
+            const TabIc = tab.icon;
             return (
               <button
                 key={tab.id}
@@ -1850,7 +1866,7 @@ function HKLivePanel({ dark, hkData, setHkData, hkDate, showToast, askConfirm, a
                 aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={`hk-live-tab-btn cc-hkl-tab${isActive ? " cc-hkl-tab--active" : ""}`}>
-                <span className="cc-hkl-tab-icon" aria-hidden="true">{tab.icon}</span>
+                <span className="cc-hkl-tab-icon" aria-hidden="true"><TabIc size={15}/></span>
                 <span className="hk-live-tab-label">{tab.label}</span>
                 {badge > 0 && (
                   <span className={`cc-hkl-tab-badge cc-hkl-tab-badge--${badgeVariant}`}>{badge}</span>

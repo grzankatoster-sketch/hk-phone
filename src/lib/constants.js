@@ -5,7 +5,6 @@ import { tenantConfig } from "../tenants/config";
 
 // ─── Tenant ──────────────────────────────────────────────────────────────────
 export const TENANT_ID = import.meta.env.VITE_TENANT_ID || "00000000-0000-0000-0000-000000000001";
-export const ADMIN_PASSWORD = import.meta.env?.VITE_ADMIN_PASSWORD || (() => { throw new Error("VITE_ADMIN_PASSWORD is not set"); })();
 
 // Startowa stała kasowa (kasetka) w PLN — wartość domyślna, nadpisywana przez
 // kierownika w UI. Docelowo migruje do tenant_settings (WYKONANIE 2.19).

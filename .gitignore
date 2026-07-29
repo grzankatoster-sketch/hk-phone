@@ -26,5 +26,9 @@ ceny.csv
 kwhotel-calibration.json
 *-revenue-report.csv
 
+# PII realnych klientow/gosci — jednorazowe zrodlo do backfillu DB (WYKONANIE 0.3), nie wersjonowac
+scripts/parking-seed.local.json
+scripts/stali-goscie-seed.local.json
+
 # Worktree agentow MOZG (transientne)
 .claude/worktrees/

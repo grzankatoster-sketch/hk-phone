@@ -8,6 +8,7 @@ const os     = require("os");
 const fs     = require("fs");
 const urlMod = require("url");
 const path   = require("path");
+const crypto = require("crypto");
 const QRCode = require("qrcode");
 
 let webpush = null;
@@ -24,6 +25,29 @@ let _server = null;
 function _localToday() {
   const d = new Date(), p = n => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// ─── Token telefonów LAN (WYKONANIE 0.6) ──────────────────────────────────────
+// QR koduje HMAC(worker, sekret) zamiast gołego imienia — ktoś kto zgaduje
+// URL po imieniu widzi stronę, ale POST /hk/:worker/action bez ważnego tokenu
+// dostaje 401. Sekret generowany raz, persystowany wzorem VAPID_FILE poniżej.
+const WORKER_SECRET_FILE = path.join(os.homedir(), ".hkserver-worker-secret.json");
+let _workerSecret = null;
+function ensureWorkerSecret() {
+  if (_workerSecret) return _workerSecret;
+  try {
+    if (fs.existsSync(WORKER_SECRET_FILE)) {
+      _workerSecret = JSON.parse(fs.readFileSync(WORKER_SECRET_FILE, "utf8")).secret || null;
+    }
+  } catch (e) { _workerSecret = null; }
+  if (!_workerSecret) {
+    _workerSecret = crypto.randomBytes(32).toString("hex");
+    try { fs.writeFileSync(WORKER_SECRET_FILE, JSON.stringify({ secret: _workerSecret })); } catch (e) {}
+  }
+  return _workerSecret;
+}
+function computeWorkerToken(worker) {
+  return crypto.createHmac("sha256", ensureWorkerSecret()).update(String(worker || "")).digest("hex");
 }
 
 // ─── Web Push: VAPID + subskrypcje ───────────────────────────────────────────
@@ -321,7 +345,8 @@ function getAllIPs() {
 async function getQR(workerName, overrideIp, baseUrl, pm) {
   const base = baseUrl || (overrideIp ? `http://${overrideIp}:${PORT}` : getBaseURL());
   const prefix = pm ? "hkpm" : "hk";
-  const link = `${base}/${prefix}/${encodeURIComponent(workerName)}`;
+  const token = computeWorkerToken(workerName);
+  const link = `${base}/${prefix}/${encodeURIComponent(workerName)}?t=${token}`;
   return { url: link, dataURL: await QRCode.toDataURL(link, { width: 280, margin: 2, color: { dark: "#000000", light: "#ffffff" } }) };
 }
 
@@ -637,8 +662,9 @@ function buildTeamHtml(workerName) {
 }
 
 // ─── Mobilna strona HTML dla pokoójwki (z zakładką Zespół) ────────────────────────
-function mobilePage(workerName) {
+function mobilePage(workerName, token) {
   var wJson = JSON.stringify(workerName);
+  var tJson = JSON.stringify(token || "");
   return '<!DOCTYPE html>\n'
   + '<html lang="pl"><head>\n'
   + '<meta charset="UTF-8">\n'
@@ -726,6 +752,7 @@ function mobilePage(workerName) {
   + '<div id="teamView" style="display:none;flex-direction:column;padding:12px;gap:0"><div style="padding:20px;text-align:center;color:#484f58">Wczytywanie...<\/div><\/div>\n'
   + '<script>\n'
   + 'var W=' + wJson + ';\n'
+  + 'var T=' + tJson + ';\n'
   + 'var _allRooms=[];var _currentRoom=null;var _curTab="rooms";var _seen={};var toastT=null;var _seenTasks={};var _tasksReady=false;var _notifGranted=false;var _sbCfg=null;var _today=(function(){var d=new Date(),p=function(n){return n<10?"0"+n:""+n;};return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());})();\n'
   /* Tab switching */
   + 'function switchTab(t){_curTab=t;\n'
@@ -832,7 +859,7 @@ function mobilePage(workerName) {
   + 'function getReport(){var ex=[];document.querySelectorAll(".extra-row").forEach(function(row){var inp=row.querySelectorAll("input");if(inp.length>=2){var n=inp[0].value.trim();var c=parseInt(inp[1].value)||0;if(n)ex.push({name:n,count:c});}});return{poszwa:+document.getElementById("r-poszwa").value||0,poszewki:+document.getElementById("r-poszewki").value||0,przes_sr:+document.getElementById("r-przes-sr").value||0,przes_duze:+document.getElementById("r-przes-duze").value||0,recz_duzy:+document.getElementById("r-recz-duzy").value||0,recz_sredni:+document.getElementById("r-recz-sredni").value||0,dywanik:+document.getElementById("r-dywanik").value||0,narzuta:+document.getElementById("r-narzuta").value||0,koldra:+document.getElementById("r-koldra").value||0,poduszka:+document.getElementById("r-poduszka").value||0,extraItems:ex};}\n'
   + 'function submitDone(){if(!_currentRoom)return;act("done",_currentRoom.no,getReport());goBack();}\n'
   + 'function showToast(msg){clearTimeout(toastT);var old=document.querySelector(".toast");if(old)old.remove();var t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);toastT=setTimeout(function(){t.remove();},5000);}\n'
-  + 'function act(action,room,extra){var body={action:action,room:room};if(extra!==null&&extra!==undefined)body.extra=extra;fetch("/hk/"+encodeURIComponent(W)+"/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(){poll();}).catch(function(){});}\n'
+  + 'function act(action,room,extra){var body={action:action,room:room};if(extra!==null&&extra!==undefined)body.extra=extra;fetch("/hk/"+encodeURIComponent(W)+"/action",{method:"POST",headers:{"Content-Type":"application/json","x-secret":T},body:JSON.stringify(body)}).then(function(r){return r.json();}).then(function(){poll();}).catch(function(){});}\n'
   + 'function poll(){\n'
   + '  var dot=document.getElementById("dot");\n'
   + '  fetch("/api/state").then(function(r){return r.json();}).then(function(s){\n'
@@ -870,8 +897,9 @@ function mobilePage(workerName) {
 }
 
 // ─── Strona mobilna dla popołudniówki ────────────────────────────────────────
-function mobilePagePM(workerName) {
+function mobilePagePM(workerName, token) {
   var wJson = JSON.stringify(workerName);
+  var tJson = JSON.stringify(token || "");
   return '<!DOCTYPE html>\n'
   + '<html lang="pl"><head>\n'
   + '<meta charset="UTF-8">\n'
@@ -916,6 +944,7 @@ function mobilePagePM(workerName) {
   + '<div class="rooms" id="rooms"><div class="empty"><div class="empty-ic">&#8987;</div><p>Pobieranie danych...</p></div></div>\n'
   + '<script>\n'
   + 'var W=' + wJson + ';\n'
+  + 'var T=' + tJson + ';\n'
   + 'function render(rooms){\n'
   + '  var c=document.getElementById("rooms");\n'
   + '  if(!rooms||!rooms.length){c.innerHTML=\'<div class="empty"><div class="empty-ic">&#10003;</div><p>Brak pok\u00f3i</p></div>\';return;}\n'
@@ -949,7 +978,7 @@ function mobilePagePM(workerName) {
   + '  c.innerHTML=html;\n'
   + '}\n'
   + 'function act(action,room){\n'
-  + '  fetch("/hk/"+encodeURIComponent(W)+"/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:action,room:room})}).then(function(){poll();}).catch(function(){});\n'
+  + '  fetch("/hk/"+encodeURIComponent(W)+"/action",{method:"POST",headers:{"Content-Type":"application/json","x-secret":T},body:JSON.stringify({action:action,room:room})}).then(function(){poll();}).catch(function(){});\n'
   + '}\n'
   + 'function poll(){\n'
   + '  var dot=document.getElementById("dot");\n'
@@ -1258,8 +1287,9 @@ function _tryStart() {
     const mPage = p.match(/^\/hk\/([^/]+)$/);
     if (req.method === "GET" && mPage) {
       const w = decodeURIComponent(mPage[1]);
+      const token = typeof parsed.query.t === "string" ? parsed.query.t : "";
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(mobilePage(w));
+      res.end(mobilePage(w, token));
       return;
     }
 
@@ -1276,8 +1306,9 @@ function _tryStart() {
     const mPagePM = p.match(/^\/hkpm\/([^/]+)$/);
     if (req.method === "GET" && mPagePM) {
       const w = decodeURIComponent(mPagePM[1]);
+      const token = typeof parsed.query.t === "string" ? parsed.query.t : "";
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(mobilePagePM(w));
+      res.end(mobilePagePM(w, token));
       return;
     }
 
@@ -1298,6 +1329,11 @@ function _tryStart() {
     const mAction = p.match(/^\/hk\/([^/]+)\/action$/);
     if (req.method === "POST" && mAction) {
       const w = decodeURIComponent(mAction[1]);
+      if (req.headers["x-secret"] !== computeWorkerToken(w)) {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ ok: false, error: "invalid_token" }));
+        return;
+      }
       let body = "";
       req.on("data", c => body += c);
       req.on("end", () => {

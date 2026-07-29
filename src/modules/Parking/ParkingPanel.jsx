@@ -1,40 +1,27 @@
 import React, { useState, useEffect } from "react";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, Trash2, X, Check, Wallet, Phone, Pencil, ChevronUp, ChevronDown } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
 import { pl, displayValue } from "../../lib/format";
 import { TENANT_ID } from "../../lib/constants";
-
-// Realne dane abonamentowe Conrad Comfort — seed tylko dla tenanta domyślnego (ten hotel),
-// żeby build/demo dla nowego klienta SaaS nie odziedziczył cudzych danych osobowych.
-const CONRAD_COMFORT_TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const CONRAD_COMFORT_PARKING_SEED = [
-  // Pracownicy hotelu
-  {id:"p-1",plate:"RT55807",name:"Natalia Szymańska",phone:"",type:"pracownik",status:"Conrad",paidTo:"",paidOn:"",docNr:"",note:"Recepcjonistka",active:true},
-  {id:"p-2",plate:"KK7283C",name:"Tetiana Tymoshenko",phone:"795 009 296",type:"pracownik",status:"Housekeeping",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-3",plate:"BE8018CA",name:"Anastasiia Pidberezniak",phone:"",type:"pracownik",status:"HK",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-4",plate:"KR 8M740",name:"Witkoś",phone:"501095515",type:"pracownik",status:"Conrad",paidTo:"",paidOn:"",docNr:"",note:"Pozwolenie od właściciela",active:true},
-  {id:"p-5",plate:"KGR8XH1",name:"Jan Szczepaniec",phone:"",type:"pracownik",status:"Conrad",paidTo:"",paidOn:"",docNr:"",note:"Od szefów",active:true},
-  {id:"p-6",plate:"KTA3295H",name:"Bartosz Dudowicz",phone:"",type:"pracownik",status:"Conrad",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-7",plate:"KN75526",name:"Oliwier Kowalik",phone:"",type:"pracownik",status:"Conrad",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  // Abonament - firmy / biura
-  {id:"p-8",plate:"WN4740N",name:"Damian Myśliwski (CFE Polska)",phone:"697901416",type:"abonament",status:"Comfort wewnętrzny",paidTo:"2025-08-31",paidOn:"2021-08-03",docNr:"FV",note:"Faktura co miesiąc na początku - CFE POLSKA",active:true},
-  {id:"p-9",plate:"WF1925X",name:"Agata Otfinowska",phone:"601132204",type:"abonament",status:"Os. prywatna",paidTo:"2025-08-31",paidOn:"2025-07-23",docNr:"FS 174/CC/07/2025",note:"250 zł/miesiąc od 1 do 31",active:true},
-  {id:"p-10",plate:"KPR8Y53",name:"Natkaniec Monika",phone:"690 671 884",type:"abonament",status:"Os. prywatna - z osiedla",paidTo:"2026-03-15",paidOn:"2026-02-04",docNr:"PA 99/02/26",note:"250 zł/mies. od 15 do 15",active:true},
-  {id:"p-11",plate:"KBR8RA4",name:"Michał Faron",phone:"",type:"abonament",status:"Os. prywatna - z osiedla",paidTo:"2026-03-15",paidOn:"2026-02-09",docNr:"PA 200/02/2026",note:"250 zł/mies. od 15 do 15",active:true},
-  // NORCONSULT
-  {id:"p-12",plate:"SC1961R",name:"Piotr Sułkowski",phone:"",type:"pracownik",status:"NORCONSULT",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-13",plate:"KK3956T",name:"Zuzanna Fedczyna",phone:"",type:"pracownik",status:"NORCONSULT",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-14",plate:"KK01903",name:"Aleksandra Dzięgielewska",phone:"",type:"pracownik",status:"NORCONSULT",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-15",plate:"LBL79099",name:"Beata Górka",phone:"",type:"pracownik",status:"NORCONSULT",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  // Inne firmy
-  {id:"p-16",plate:"WU5450M",name:"Anna Markowska",phone:"",type:"pracownik",status:"Gabinet Doktor Green",paidTo:"",paidOn:"",docNr:"",note:"",active:true},
-  {id:"p-17",plate:"AH5009IE",name:"Sokolova Mariya",phone:"+380 93 656 1025",type:"abonament",status:"Klient zewnętrzny",paidTo:"2025-09-11",paidOn:"2025-08-30",docNr:"PA 495/08/2025",note:"12 x 50 zł = 600 PLN",active:false},
-  {id:"p-18",plate:"KA7867IT",name:"Aleksey Lukashenko",phone:"38067977288",type:"krotki",status:"Os. prywatna",paidTo:"2025-07-12",paidOn:"2025-07-01",docNr:"PA 5/07/2025",note:"600 zł",active:false},
-];
-const DEFAULT_PARKING = TENANT_ID === CONRAD_COMFORT_TENANT_ID ? CONRAD_COMFORT_PARKING_SEED : [];
+import { supabase } from "../../lib/supabase";
 
 export default function ParkingPanel({dark, isAdmin, showToast, employees, employeeName}) {
-  const [records, setRecords] = React.useState(() => loadJson(STORAGE_KEYS.parking, DEFAULT_PARKING));
+  const [records, setRecords] = React.useState(() => loadJson(STORAGE_KEYS.parking, []));
+
+  // Pierwsze uruchomienie bez lokalnego cache (WYKONANIE 0.3): dane parkingowe
+  // nie są już zaszyte w źródle, ładowane raz z Supabase per tenant.
+  React.useEffect(() => {
+    if (records.length > 0 || !supabase || !TENANT_ID) return;
+    supabase.from("parking_records").select("*").eq("tenant_id", TENANT_ID).then(({ data, error }) => {
+      if (error || !data || !data.length) return;
+      const mapped = data.map(r => ({
+        id: r.id, plate: r.plate, name: r.name, phone: r.phone, type: r.type,
+        status: r.status, paidTo: r.paid_to, paidOn: r.paid_on, docNr: r.doc_nr,
+        note: r.note, price: r.price, active: r.active,
+      }));
+      setRecords(mapped); saveJson(STORAGE_KEYS.parking, mapped);
+    });
+  }, []);
   const [filter, setFilter] = React.useState("all"); // all | abonament | pracownik | krotki
   const [search, setSearch] = React.useState("");
   const [showAdd, setShowAdd] = React.useState(false);
@@ -284,7 +271,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
             <div className="panel-title" style={{margin:0}}>
               {addMode==="abonament"?"+ Nowy abonament":addMode==="krotki"?"+ Krótki najem (z ulicy / hotel obok)":"+ Pracownik / firma"}
             </div>
-            <button onClick={()=>setShowAdd(false)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text-muted)",fontSize:16}}>✕</button>
+            <button onClick={()=>setShowAdd(false)} style={{background:"none",border:"none",cursor:"pointer",color:"var(--text-muted)",display:"flex"}}><X size={16}/></button>
           </div>
 
           {addMode==="krotki" ? (
@@ -300,7 +287,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn btn-outline" onClick={()=>setShowAdd(false)}>Anuluj</button>
-                <button className="btn btn-amber" disabled={!shortRec.name.trim()} onClick={addShortRec}>✓ Dodaj</button>
+                <button className="btn btn-amber" disabled={!shortRec.name.trim()} onClick={addShortRec}><Check size={13}/> Dodaj</button>
               </div>
             </div>
           ) : (
@@ -322,7 +309,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
               </div>
               <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                 <button className="btn btn-outline" onClick={()=>setShowAdd(false)}>Anuluj</button>
-                <button className="btn btn-sky" disabled={!newRec.plate.trim()&&!newRec.name.trim()} onClick={addRecord}>✓ Dodaj</button>
+                <button className="btn btn-sky" disabled={!newRec.plate.trim()&&!newRec.name.trim()} onClick={addRecord}><Check size={13}/> Dodaj</button>
               </div>
             </div>
           )}
@@ -340,7 +327,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
               style={{marginBottom:14}} autoFocus/>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
               <button className="btn btn-outline" onClick={()=>{setPayModal(null);setPayDoc("");}}>Anuluj</button>
-              <button className="btn btn-emerald" disabled={!payDoc.trim()} onClick={()=>markPaid(payModal)}>✓ Zapisz płatność</button>
+              <button className="btn btn-emerald" disabled={!payDoc.trim()} onClick={()=>markPaid(payModal)}><Check size={13}/> Zapisz płatność</button>
             </div>
           </div>
         </div>
@@ -365,7 +352,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
             </div>
             <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
               <button className="btn btn-outline" onClick={()=>setEditRec(null)}>Anuluj</button>
-              <button className="btn btn-sky" onClick={saveEdit}>✓ Zapisz zmiany</button>
+              <button className="btn btn-sky" onClick={saveEdit}><Check size={13}/> Zapisz zmiany</button>
             </div>
           </div>
         </div>
@@ -393,7 +380,7 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
                 <div className="cc-parking-owner-name">{rec.name}</div>
                 {(rec.phone||rec.status)&&(
                   <div className="cc-parking-owner-sub">
-                    {rec.phone&&<span><b>📞 {rec.phone}</b></span>}
+                    {rec.phone&&<span style={{display:"inline-flex",alignItems:"center",gap:3}}><Phone size={11}/><b>{rec.phone}</b></span>}
                     {rec.phone&&rec.status&&<span> · </span>}
                     {rec.status&&<span>{rec.status}</span>}
                   </div>
@@ -424,16 +411,16 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
               <div className="cc-parking-row-actions" onClick={e=>e.stopPropagation()}>
                 {rec.type==="krotki" && !isAdmin && (
                   <button type="button" className="cc-parking-action-btn cc-parking-action-btn--end" onClick={()=>endShort(rec)} title="Zakończ najem">
-                    ✕
+                    <X size={14}/>
                   </button>
                 )}
                 {rec.type==="abonament" && alert && (
                   <button type="button" className="cc-parking-action-btn cc-parking-action-btn--pay" onClick={()=>setPayModal(rec.id)} title="Oznacz jako opłacone">
-                    💰
+                    <Wallet size={14}/>
                   </button>
                 )}
                 <button type="button" className="cc-parking-action-btn" onClick={()=>setExpanded(isOpen?null:rec.id)} title={isOpen?"Zwiń":"Rozwiń"}>
-                  {isOpen?"▲":"▼"}
+                  {isOpen?<ChevronUp size={14}/>:<ChevronDown size={14}/>}
                 </button>
               </div>
             </div>
@@ -468,11 +455,11 @@ export default function ParkingPanel({dark, isAdmin, showToast, employees, emplo
                 <div style={{display:"flex",gap:6,justifyContent:"flex-end",flexWrap:"wrap"}}>
                   {rec.type==="abonament" && (
                     <button className="btn btn-emerald" style={{fontSize:12}} onClick={()=>setPayModal(rec.id)}>
-                      💰 Zarejestruj płatność
+                      <Wallet size={13}/> Zarejestruj płatność
                     </button>
                   )}
                   <button className="btn btn-outline" style={{fontSize:12}} onClick={()=>setEditRec({...rec})}>
-                    ✎ Edytuj
+                    <Pencil size={13}/> Edytuj
                   </button>
                   <button className="btn btn-danger-outline" style={{fontSize:12}} onClick={()=>deleteRecord(rec.id)}>
                     <Trash2 size={12}/> Usuń

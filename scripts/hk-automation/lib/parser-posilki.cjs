@@ -63,10 +63,30 @@ function parsePosilkiGrid(items, options = {}) {
     return result;
   }
 
-  const byY = {};
-  items.filter((i) => DATE_RE.test(i.s)).forEach((i) => { (byY[i.y] = byY[i.y] || []).push(i); });
+  // Nagłówek (daty + kody posiłków) powtarza się NA KAŻDEJ STRONIE, a współrzędne
+  // Y resetują się per strona. Próg "poniżej nagłówka zaczynają się dane" musi
+  // więc być liczony OSOBNO dla każdej strony. Wcześniej był JEDEN globalny próg
+  // z najbogatszego nagłówka (zwykle strona 1) i wiersze z górnej części strony 2
+  // (wyższe Y niż ten próg) wypadały CICHO z parsowania — incydent 2026-07-28:
+  // zgubione 8 śniadań grupy 5083G (bąk konrad) + rezerwacje 107741/108093/3550G,
+  // bez żadnego ostrzeżenia. Grupowanie po samym Y mieszało też wiersze o tym
+  // samym Y z różnych stron, dlatego kluczem jest teraz "strona|Y".
+  const headerRowsByPage = new Map();
+  const rowsByPageY = new Map();
+  items.filter((i) => DATE_RE.test(i.s)).forEach((i) => {
+    const key = `${i.page}|${i.y}`;
+    if (!rowsByPageY.has(key)) rowsByPageY.set(key, []);
+    rowsByPageY.get(key).push(i);
+  });
+  for (const row of rowsByPageY.values()) {
+    const page = row[0].page;
+    const best = headerRowsByPage.get(page);
+    if (!best || row.length > best.length) headerRowsByPage.set(page, row);
+  }
   let headerRow = null;
-  Object.values(byY).forEach((row) => { if (!headerRow || row.length > headerRow.length) headerRow = row; });
+  for (const row of headerRowsByPage.values()) {
+    if (!headerRow || row.length > headerRow.length) headerRow = row;
+  }
   if (!headerRow || !headerRow.length) {
     result.warnings.push("Raport posiłków: nie znaleziono nagłówka z datami (DD.MM.YYYY).");
     return result;
@@ -74,22 +94,42 @@ function parsePosilkiGrid(items, options = {}) {
   const dateCols = headerRow.slice().sort((a, b) => a.x - b.x);
   const DATES = dateCols.map((c) => ddmmyyyyToIso(c.s));
   result.dates = DATES;
-  const headerY = headerRow[0].y;
 
-  const codeItems = items.filter((i) => MEAL_CODES.includes(i.s) && Math.abs(i.y - headerY) < 60);
-  if (!codeItems.length) result.warnings.push("Raport posiłków: nie znaleziono nagłówków kodów posiłków (S/O/OK/K).");
-  const dayOf = (x) => {
+  const dayOfIn = (cols) => (x) => {
     let best = 0, bestD = Infinity;
-    dateCols.forEach((c, idx) => { const d = Math.abs(x - c.x); if (d < bestD) { bestD = d; best = idx; } });
+    cols.forEach((c, idx) => { const d = Math.abs(x - c.x); if (d < bestD) { bestD = d; best = idx; } });
     return best;
   };
-  const colMap = codeItems.map((i) => ({ day: dayOf(i.x), code: i.s, x: i.x }));
 
-  const dataY = Math.min(headerY, ...codeItems.map((c) => c.y)) - 5;
-  const anchors = items.filter((i) => RESID_RE.test(i.s) && i.y < dataY);
+  // Układ kolumn per strona. Jeśli nagłówek na danej stronie jest niepełny
+  // (mniej dat niż na najbogatszej), mapowanie x→dzień bierzemy z globalnego,
+  // żeby nie pomylić kolumn dni.
+  const pageLayouts = new Map();
+  for (const [page, row] of headerRowsByPage) {
+    const cols = row.slice().sort((a, b) => a.x - b.x);
+    const headerY = row[0].y;
+    const codes = items.filter((i) => i.page === page && MEAL_CODES.includes(i.s) && Math.abs(i.y - headerY) < 60);
+    if (!codes.length) continue;
+    const mapCols = cols.length === dateCols.length ? cols : dateCols;
+    const colMap = codes.map((i) => ({ day: dayOfIn(mapCols)(i.x), code: i.s, x: i.x }));
+    pageLayouts.set(page, {
+      colMap,
+      dataY: Math.min(headerY, ...codes.map((c) => c.y)) - 5,
+      firstMealColX: Math.min(...colMap.map((c) => c.x)),
+    });
+  }
+  if (!pageLayouts.size) result.warnings.push("Raport posiłków: nie znaleziono nagłówków kodów posiłków (S/O/OK/K).");
+
+  // Strona-KONTYNUACJA nie powtarza nagłówka (brak dat nagłówkowych i kodów
+  // posiłków) — wtedy CAŁA strona to wiersze danych i próg odcięcia z innej
+  // strony NIE obowiązuje (dataY=Infinity). Układ kolumn (x) jest ten sam co na
+  // stronie z nagłówkiem, więc mapowanie x→dzień bierzemy stamtąd.
+  const headed = pageLayouts.values().next().value || { colMap: [], dataY: -Infinity, firstMealColX: Infinity };
+  const continuationLayout = { ...headed, dataY: Infinity };
+  const layoutFor = (page) => pageLayouts.get(page) || continuationLayout;
+
+  const anchors = items.filter((i) => RESID_RE.test(i.s) && i.y < layoutFor(i.page).dataY);
   if (!anchors.length) result.warnings.push("Raport posiłków: nie znaleziono żadnego numeru rezerwacji.");
-
-  const firstMealColX = colMap.length ? Math.min(...colMap.map((c) => c.x)) : Infinity;
   const HALF_DATE_RE = /^(\d{2}\.\d{2}\.\d{4})-?$/;
 
   const seenRows = new Set();
@@ -97,6 +137,7 @@ function parsePosilkiGrid(items, options = {}) {
     const rowKey = `${a.page}:${a.y}`;
     if (seenRows.has(rowKey)) return;
     seenRows.add(rowKey);
+    const { colMap, firstMealColX } = layoutFor(a.page);
     // Odległość do najbliższej INNEJ rezerwacji na TEJ SAMEJ stronie — żeby okno
     // wyszukiwania (data zawinięta na 2 linie) nigdy nie wjechało w sąsiedni wiersz.
     const otherAnchorsSamePage = anchors.filter((o) => o.page === a.page && o !== a);

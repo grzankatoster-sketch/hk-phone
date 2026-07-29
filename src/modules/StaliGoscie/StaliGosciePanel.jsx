@@ -1,46 +1,14 @@
 import React, { useState, useMemo } from "react";
 import { Plus, Search, Trash2, Users } from "lucide-react";
 import { STORAGE_KEYS, loadJson, saveJson } from "../../lib/storage";
+import { TENANT_ID } from "../../lib/constants";
+import { supabase } from "../../lib/supabase";
 
-const DEFAULT_STALI_GOSCIE=[
-  {id:"sg-1",name:`ALEX RĄCZKA - PREZES HOTELU`,room:`POBYT ZE ŚNIADANIEM BEZPŁATNY`,company:``,notes:``,priceSeason:``,priceOffSeason:``,meal:``,category:"private",hasFV:false},
-  {id:"sg-2",name:`Wojciech Kułaga: manager Ventus z Izb`,room:``,company:``,notes:`Pan płaci za gastronomię normalnie. Nie płaci za pokój`,priceSeason:``,priceOffSeason:``,meal:`płaci w restauracji normalnie`,category:"private",hasFV:false},
-  {id:"sg-3",name:`Andrzej Kochanowski`,room:``,company:``,notes:``,priceSeason:`220 zł bez sniadania lub 260 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:false},
-  {id:"sg-4",name:`Grzegorz Reszczyński`,room:`319, 219`,company:`(MAXTO)`,notes:`MAXTO Proszę o przesyłanie faktur na adres: faktury.elektroniczne@maxtotechnology.pl`,priceSeason:`230/doba ze sniadaniem dla 1 osoby`,priceOffSeason:`230/doba ze sniadaniem dla 1 osoby`,meal:`TAK wliczamy posiłek do zakwaterowania na fakture`,category:"private",hasFV:true},
-  {id:"sg-5",name:`Michał Ryba`,room:`122`,company:`(BREMER)`,notes:``,priceSeason:`220 zł bez sniadania lub 250 ze sniadaniem dla 1 osoby`,priceOffSeason:`220 zł bez sniadania lub 250 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-6",name:`Krzysztof Pamuła`,room:``,company:`(BREMER)`,notes:``,priceSeason:`220 zł bez sniadania lub 260 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-7",name:`Andrzej Giedrojć`,room:`319`,company:``,notes:``,priceSeason:`CENA OD 2026: 250 ZŁ BEZ SNIADANIA DBL`,priceOffSeason:`230 ZŁ BEZ SNIADANIA DBL`,meal:`NIE`,category:"private",hasFV:false},
-  {id:"sg-8",name:`Luca Agostini`,room:`222`,company:``,notes:``,priceSeason:`220 zł bez sniadania lub 260 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:false},
-  {id:"sg-9",name:`Chesney Lanik („Czesiu”)`,room:``,company:``,notes:`Koniecznie w jego pokoju musi być podwójny materac i więcej poduszek, bardzo często prosi o zamwianie taksówek na miasto`,priceSeason:`200 zł ze śniadaniem w przypadku pobytu na więcej niż 1 doba`,priceOffSeason:`200 zł ze śniadaniem w przypadku pobytu na więcej niż 1 doba`,meal:`TAK Ma wliczane posiłki do rezerwacji i płaci wszystko w recepcji.`,category:"private",hasFV:false},
-  {id:"sg-10",name:`Beata Fabianowicz`,room:`216`,company:`(MEDI POLSKA)`,notes:``,priceSeason:`5% zniżki od ceny regularnej`,priceOffSeason:`5% zniżki od ceny regularnej`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-11",name:`Adrian Janus`,room:`222, 223`,company:`PRZEDSIĘBIORSTWO INŻYNIERYJNYCH ROBÓT KOLEJOWYCH "TOR - KRAK" SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ`,notes:``,priceSeason:`220 zł bez sniadania lub 260 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-12",name:`Dorota Ciejka, Magdalena Słobodzian, Agnieszka Gliścińska`,room:`Koniecznie pokoje od osiedla, na pewno nie 123, i jeśli chcą apartament to na pewno nie 106)`,company:`Grupa VAT PEKAO`,notes:``,priceSeason:`210 zł bez sniadania lub 250 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-13",name:`Radosław Kupis, Mateusz Greczka, Mariusz Świerguła`,room:``,company:`Grupa VAT PEKAO`,notes:``,priceSeason:`210 zł bez sniadania lub 250 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-14",name:`NORCONSULT Aleksandra Chrupcała`,room:``,company:`NORCONSULT`,notes:`Nie gość, ale pani często robi u nas rezerwacje dla Norconsult (firma na 4 piętrze), więc warto znać :-)`,priceSeason:`240  ZŁ ZE SNIADANIEM DLA 1 OSOBY, 280 ZŁ ZE SNIADANIEM DLA 2 OSÓB`,priceOffSeason:``,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-15",name:`Piotr Wzgarda`,room:``,company:`P.H.U.PIOTR WZGARDA`,notes:``,priceSeason:`220 zł bez sniadania lub 260 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-16",name:`Arkadiusz Gąsiorek`,room:``,company:`GWE POL-BUD SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ`,notes:``,priceSeason:`220 zł bez sniadania lub 260 ze sniadaniem dla 1 osoby`,priceOffSeason:`200 zł bez sniadania lub 240 ze sniadaniem dla 1 osoby`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-17",name:`Barszczewski Jarosław`,room:`Pan nie ma preferowanego pokoju, ale będzie narzekać jak coś nie działa`,company:`Faktura zazwyczaj brana na CALFERT, NIP: 7010308565`,notes:`Pan robi rezerwacje przez booking. Starszy Pan, narzekający wszędzie (m.in.. opinia na bookingu) na niedziałający domofon do garażu podziemnego.`,priceSeason:`5% zniżki od ceny regularnej`,priceOffSeason:`5% zniżki od ceny regularnej`,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-18",name:`Jerzy Gralak`,room:`Zawsze pokój od strony osiedla!`,company:`Państwo nie biorą faktury.`,notes:`Zazwyczaj rezerwacja telefoniczna na DBL.`,priceSeason:`230 zł bez sniadania lub 270 zł ze sniadaniem dla 2 osób`,priceOffSeason:`220 zł bez sniadania lub 260 zł ze sniadaniem dla 2 osób`,meal:`NIE`,category:"private",hasFV:false},
-  {id:"sg-19",name:`Wiesław Giszczak`,room:``,company:`Pan przyjeżdżał co dwa tygodnie`,notes:``,priceSeason:`5% zniżki od ceny regularnej`,priceOffSeason:`5% zniżki od ceny regularnej`,meal:`NIE`,category:"private",hasFV:false},
-  {id:"sg-20",name:`Silvair`,room:``,company:`Silvair Sp. z o.o. | ul. Opolska 100 | 31-323 Kraków | NIP: 9452164348`,notes:``,priceSeason:`230 zł bez sniadania`,priceOffSeason:`210 zł bez sniadania`,meal:`NIE`,category:"company",hasFV:true},
-  {id:"sg-21",name:`Firma Wurth`,room:``,company:``,notes:``,priceSeason:`250 zł ze śniadaniem dla 1 osoby lub 210 zł bez śniadania dla 1 osoby`,priceOffSeason:`230 zł ze śniadaniem dla 1 osoby lub 200 zł bez śniadania dla 1 osoby`,meal:`Firma Würth Polska  pokrywa tylko koszt noclegu, parkingu (jeśli nie ma opcji bezpłatnego) i posiłek limitowany do 50 zł brutto, koszt konsumpcji nie może przekraczać 50 zł za 1 dzień pobytu, różnicę pracownik pokrywa indywidualnie. Proszą o dopisek nazwiska osoby nocującej w uwagach.`,category:"company",hasFV:false},
-  {id:"sg-22",name:`Infoconsulting`,room:``,company:`Faktura na przelew | Dane do FV: | INFOCONSULTING POLAND SP. Z O.O. | ul. Grzybowska 2/36 00-131 Warszawa | NIP 525 27 50  789`,notes:``,priceSeason:`250 zł ze śniadaniem dla 1 osoby lub 210 zł bez śniadania dla 1 osoby`,priceOffSeason:`230 zł ze śniadaniem dla 1 osoby lub 200 zł bez śniadania dla 1 osoby`,meal:`nie`,category:"company",hasFV:true},
-  {id:"sg-23",name:`ENDEGO`,room:``,company:`Faktura na przelew Endego sp. z o.o. | ul. Kołowa 8 | 30-134 Kraków`,notes:``,priceSeason:`250 zł ze śniadaniem dla 1 osoby lub 210 zł bez śniadania dla 1 osoby ORAZ 270 zł ze sniadniem dla 2 osob lub 230 zł bez śniadania dla 2 osób`,priceOffSeason:`250 zł ze śniadaniem dla 1 osoby lub 210 zł bez śniadania dla 1 osoby ORAZ 270 zł ze sniadniem dla 2 osob lub 230 zł bez śniadania dla 2 osób`,meal:`NIE`,category:"company",hasFV:true},
-  {id:"sg-24",name:`COLUMBUS ENERGY`,room:``,company:``,notes:``,priceSeason:`Pokój jednoosobowy (SGL BB) – 200 zł/doba (ze śniadaniem) |     Pokój dwuosobowy (TWIN BB) – 220 zł/doba (ze śniadaniem) |     Faktura zbiorcza wystawiana na koniec każdego miesiąca |     Termin płatności: 21 dni od daty wystawienia faktury`,priceOffSeason:``,meal:``,category:"company",hasFV:false},
-  {id:"sg-25",name:`Aneta Olejnik`,room:``,company:`BMW FINANCIAL SERVICES POLSKA SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ`,notes:``,priceSeason:`Cena 310 zł ze śniadaniem w sezonie, Bez śniadania 250 zł`,priceOffSeason:``,meal:``,category:"private",hasFV:true},
-  {id:"sg-26",name:`Piotr Rutkowski`,room:``,company:`Faktura przelew 7 dni MAXTO TECHNOLOGY SPÓŁKA Z OGRANICZONĄ ODPOWIEDZIALNOŚCIĄ NIP:5130262994`,notes:`Często rezerwacja telefoniczna: 509926773 - MAXTO Proszę o przesyłanie faktur na adres: faktury.elektroniczne@maxtotechnology.pl`,priceSeason:`230 zł doba ze śniadaniem za 1 osobę`,priceOffSeason:`230 zł doba ze śniadaniem za 1 osobę`,meal:``,category:"private",hasFV:true},
-  {id:"sg-27",name:`Szymon Brewczyński`,room:``,company:``,notes:``,priceSeason:``,priceOffSeason:``,meal:``,category:"private",hasFV:false},
-  {id:"sg-28",name:`"Copa-Data"`,room:``,company:`Goście rezerwują na hasło Copa data i płacą sami na miejscu. Dane do fv mają przekazać recepcji`,notes:`Płacą na miejscu`,priceSeason:`W sezonie ZE ŚNIADANIEM: | - pokój 1 osobowy: 260 PLN / doba | - pokój 2 osobowy: 300 PLN / doba`,priceOffSeason:`Poza sezonem ZE ŚNIADANIEM: | - pokój 1 osobowy: 230 PLN / doba | - pokój 2 osobowy: 270 PLN / doba | - apartament : 360 PLN / doba`,meal:`NIE`,category:"company",hasFV:true},
-  {id:"sg-29",name:`Polska Akademia Trenerów i Instruktorów Sportu GREEN WAY SYLWIA SUBIK`,room:``,company:``,notes:``,priceSeason:`W sezonie ze śniadaniem:- pokój 1 osobowy: 270 PLN / doba - pokój 2 osobowy 290 PLN / doba`,priceOffSeason:``,meal:`NIE`,category:"company",hasFV:false},
-  {id:"sg-30",name:`Schmitt Christelle`,room:``,company:``,notes:`Pani nocuje u nas od wielu lat. Czasami jej pobyty trwały miesiącami. Bardzo spokojna i miła Pani, bezproblemowa. Zazwyczaj robiła rezerwacje mailowe, ale ostatnio przychodzą one z expedii np..`,priceSeason:``,priceOffSeason:``,meal:`NIE`,category:"private",hasFV:false},
-  {id:"sg-31",name:`Świtalska-Skrzypek Ewa`,room:``,company:`Faktura imienna na dane: Świtalska-Skrzypek Ewa, Bydgoszcz 85-685 Zaświat 30/25  Numer rejestracyjny auta: cb518rw.`,notes:`Państwo zazwyczaj robią rezerwację przez BOOKING.`,priceSeason:``,priceOffSeason:``,meal:`NIE`,category:"private",hasFV:true},
-  {id:"sg-32",name:`ODNOVA`,room:``,company:`ODNOVA`,notes:`KONFERENCJ/SZKOLENIA`,priceSeason:`250 ZŁ/OSOBA ZE ŚNIADANIEM`,priceOffSeason:``,meal:`NIE`,category:"company",hasFV:true}
-];
 
 
 
 export default function StaliGosciePanel({dark,isAdmin,currentManager,addAudit}){
-  const [guests,setGuests]=React.useState(()=>loadJson(STORAGE_KEYS.staliGoscie,DEFAULT_STALI_GOSCIE));
+  const [guests,setGuests]=React.useState(()=>loadJson(STORAGE_KEYS.staliGoscie,[]));
   const [search,setSearch]=React.useState("");
   const [filter,setFilter]=React.useState("all"); // all|private|company
   const [expanded,setExpanded]=React.useState(null);
@@ -49,6 +17,21 @@ export default function StaliGosciePanel({dark,isAdmin,currentManager,addAudit})
   const [newGuest,setNewGuest]=React.useState({name:"",room:"",company:"",notes:"",priceSeason:"",priceOffSeason:"",meal:"",category:"private"});
 
   const save=(updated)=>{setGuests(updated);saveJson(STORAGE_KEYS.staliGoscie,updated);};
+
+  // Pierwsze uruchomienie bez lokalnego cache (WYKONANIE 0.3): baza stałych gości
+  // nie jest już zaszyta w źródle, ładowana raz z Supabase per tenant.
+  React.useEffect(() => {
+    if (guests.length > 0 || !supabase || !TENANT_ID) return;
+    supabase.from("stali_goscie").select("*").eq("tenant_id", TENANT_ID).then(({ data, error }) => {
+      if (error || !data || !data.length) return;
+      const mapped = data.map(g => ({
+        id: g.id, name: g.name, room: g.room, company: g.company, notes: g.notes,
+        priceSeason: g.price_season, priceOffSeason: g.price_off_season, meal: g.meal,
+        category: g.category, hasFV: g.has_fv,
+      }));
+      save(mapped);
+    });
+  }, []);
 
   const filtered=React.useMemo(()=>{
     const q=search.trim().toLowerCase();

@@ -115,6 +115,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .tab.active{border-color:var(--gold);background:var(--paper);box-shadow:0 2px 8px rgba(90,29,74,.1)}
 .tab.active.bb{background:linear-gradient(180deg,var(--paper),var(--green-bg))}
 .tab.active.hb{background:linear-gradient(180deg,var(--paper),var(--amber-bg))}
+/* ── Telefony wąskie (≤480px): nagłówek i przełącznik posiłków nie mieszczą się
+   w jednej linii przy dłuższych licznikach ("N pok. / M os.") — bez tego
+   liczbowy licznik potrafił wystawać poza ekran (ucięty tekst). Licznik
+   przechodzi do własnej linii zamiast być obcinany; nagłówek dostaje węższe
+   odstępy, żeby data/„dotknij, aby zmienić" łamała się na mniej linii. ── */
+@media(max-width:480px){
+  .hdr{padding:12px 12px;gap:6px}
+  .hdr .brand{gap:8px}
+  .theme-btn{width:28px;height:28px}
+  .datechip{padding:6px 8px;gap:5px}
+  .datechip .chev{width:10px}
+  .tabs{padding:12px 14px;gap:8px}
+  .tab{min-width:0;flex-wrap:wrap;row-gap:4px;padding:10px 12px}
+  .tab .count{flex-shrink:0}
+}
 
 /* ── Siatka zawieszek (pełna szerokość) ── */
 .board{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:14px;
@@ -426,13 +441,43 @@ function isRoomDone(p, mealKey){
 let doneOpen = false;
 window.toggleDone = () => { doneOpen = !doneOpen; render(); };
 
+// Ten sam pokój bywa jednocześnie w indywidualnej rezerwacji i w rozbiciu
+// grupy na pokoje (np. pokój współdzielony) — bez scalenia pojawiłyby się
+// dwa osobne kafle dla jednego numeru pokoju i sprzeczny stan odhaczenia
+// (checkin jest trzymany per numer pokoju, nie per wiersz).
+// Zbiorczy wiersz grupy (is_group=true) czasem wraca w kolejnym imporcie mimo
+// że jej pokoje są już dawno rozbite na pojedyncze kafle (backend nie zawsze
+// ma czym dopasować/skasować stary wiersz — patrz meals-group-expand.cjs) —
+// jeśli wśród pojedynczych pokoi jest już ta sama rezerwacja, zbiorczy kafel
+// jest zbędnym duchem i go ukrywamy.
+function stripExpandedGroupGhosts(rows){
+  const expandedIds = new Set(rows.filter(p => !p.is_group).map(p => p.reservation_id));
+  return rows.filter(p => !p.is_group || !expandedIds.has(p.reservation_id));
+}
+
+function mergeByRoom(rows){
+  const map = new Map();
+  for (const p of stripExpandedGroupGhosts(rows)) {
+    const key = p.is_group ? `g:${p.room}` : `r:${p.room}`;
+    const existing = map.get(key);
+    if (!existing) { map.set(key, { ...p }); continue; }
+    existing.persons = (existing.persons||0) + (p.persons||0);
+    if (p.guest_name && p.guest_name !== existing.guest_name) {
+      existing.guest_name = existing.guest_name ? `${existing.guest_name} + ${p.guest_name}` : p.guest_name;
+    }
+    if (p.category === "HB") existing.category = "HB";
+  }
+  return Array.from(map.values());
+}
+
 function render(){
-  const rows = meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p));
-  // Licznik pokazuje liczbę POKOI (nie osób) — sam numer bez jednostki mylił
-  // personel, a osoby+pokoje razem było zbyt gęste na małym pill-u.
-  const fmtCount = (arr) => `${arr.length} pok.`;
-  const bfRows = plans.filter(eatsBreakfast);
-  const dnRows = plans.filter(p=>p.category==="HB" && eatsDinner(p));
+  const rows = mergeByRoom(meal === "breakfast" ? plans.filter(eatsBreakfast) : plans.filter(p => p.category === "HB" && eatsDinner(p)));
+  // Licznik pokazuje liczbę POKOI i OSÓB — sama liczba pokoi myliła personel
+  // przy porównaniu z raportem KWHotel (ten liczy osoby, nie pokoje; pokój
+  // 2-osobowy to 1 "pok." ale 2 "os." — stąd różnica typu 66 pok. / 106 os.).
+  const fmtCount = (arr) => `${arr.length} pok. / ${arr.reduce((s,p)=>s+(p.persons||0),0)} os.`;
+  const bfRows = mergeByRoom(plans.filter(eatsBreakfast));
+  const dnRows = mergeByRoom(plans.filter(p=>p.category==="HB" && eatsDinner(p)));
   document.getElementById("countBreakfast").textContent = fmtCount(bfRows);
   document.getElementById("countDinner").textContent = fmtCount(dnRows);
   const board = document.getElementById("board");
@@ -560,7 +605,7 @@ window.groupStep = (room, mealKey, delta, persons) => {
 
 loadAll();
 if (!DEMO) {
-  setInterval(loadAll, 20000); // polling fallback (jak reszta hk-phone)
+  setInterval(loadAll, 15000); // polling fallback
   if (sb) {
     sb.channel(`posilki-${TENANT_ID}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "meal_checkins", filter: `tenant_id=eq.${TENANT_ID}` }, loadAll)

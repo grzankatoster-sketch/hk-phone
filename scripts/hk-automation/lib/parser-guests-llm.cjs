@@ -27,6 +27,32 @@ function isDeparturesReport(text, filename) {
 // jawny marker firmowy w tekście zawsze wymusza is_business=true.
 const BUSINESS_MARKERS_RE = /rez\s*firmow|sp\.?\s*z\s*o\.?\s*o\.?|GMBH|S\.?R\.?L\.?\b|S\.?A\.?\b|LTD\b/i;
 
+// Numer pokoju zawsze zaczyna się cyfrą (opcjonalnie 1-2 litery aneksu, np.
+// "118A") — ten sam wzorzec co roomTok w parser-posilki.cjs, żeby oba parsery
+// zgadzały się co jest "prawdziwym" numerem pokoju. LLM czasem (incydent
+// 2026-07-28, grupa 5083G/Bąk Konrad) wpisuje w to pole opisowe słowo z uwag
+// ("Apartament") zamiast numeru z KWHotel — taki token trafiał wprost do
+// meal_plans.room i tworzył widmowy kafel zamiast prawdziwego pokoju (106).
+const ROOM_TOKEN_RE = /^-?\d+[A-Za-z]{0,2}$/;
+
+function cleanRoomToken(raw) {
+  if (!raw) return null;
+  const upper = String(raw).toUpperCase();
+  return ROOM_TOKEN_RE.test(upper) ? upper : null;
+}
+
+// GROUNDING — najważniejsza bariera antyhalucynacyjna. LLM "wygładza" listy
+// pokoi do ciągłych zakresów: incydent 2026-07-28, grupa 3550 (KOMPAS POLAND)
+// dostała DOPISANE 226/306/308/311/313 (nie ma ich w raporcie) i ZGUBIŁA
+// 208-215/301/302. Skutek na 30.07: 5 pokoi ze śniadaniem dla nikogo i 10
+// realnych pokoi bez śniadania. Numer pokoju, który NIE występuje dosłownie
+// w tekście źródłowym, jest zmyślony — odrzucamy go bez dyskusji. Sprawdzenie
+// jest deterministyczne i darmowe (żadnych dodatkowych tokenów).
+function roomAppearsInSource(room, sourceText) {
+  if (!room) return false;
+  return new RegExp(`(?<![0-9A-Za-z])${room}(?![0-9])`, "i").test(sourceText || "");
+}
+
 // Jeśli "per_room_type" wygląda jak zbiorczy skład grupy (kilka par
 // liczba+typ połączonych "+"), to NIE jest typem TEGO pokoju — zeruj, żeby
 // nie nadpisać typu pojedynczego pokoju bzdurą typu "7 sgl + 8 dbl + ...".
@@ -176,35 +202,53 @@ async function extractGuestsWithLlm(text, { apiKey, model, reportKind, log } = {
   const warnings = Array.isArray(raw.warnings) ? raw.warnings.slice() : [];
   if (truncated) warnings.push("Tekst raportu ucięty przed wysłaniem do LLM (za długi) — sprawdź czy nic nie zgubiono.");
 
-  const cleanIndividual = individual.map((row) => ({
-    room: row.room ? String(row.room).toUpperCase() : null,
-    guest_name: row.guest_name || null,
-    phone: row.phone || null,
-    arrival: row.arrival || null,
-    departure: row.departure || null,
-    price: typeof row.price === "number" ? row.price : null,
-    due_amount: typeof row.due_amount === "number" ? row.due_amount : null,
-    source: row.source || null,
-    notes: row.notes || null,
-    per_room_type: sanitizeRoomType(row.per_room_type),
-    reservation_id: row.reservation_id ? String(row.reservation_id) : null,
-    is_business: !!row.is_business || BUSINESS_MARKERS_RE.test(`${row.source || ""} ${row.guest_name || ""}`),
-  }));
+  const cleanIndividual = individual.map((row) => {
+    const shapedRoom = cleanRoomToken(row.room);
+    if (row.room && !shapedRoom) warnings.push(`Odrzucono nienumeryczny numer pokoju z LLM: "${row.room}" (gość: ${row.guest_name || "?"}) — nie wygląda jak prawdziwy numer.`);
+    const room = shapedRoom && roomAppearsInSource(shapedRoom, input) ? shapedRoom : null;
+    if (shapedRoom && !room) warnings.push(`HALUCYNACJA: pokoj "${shapedRoom}" (gość: ${row.guest_name || "?"}) NIE wystepuje w raporcie — odrzucony.`);
+    return {
+      room,
+      guest_name: row.guest_name || null,
+      phone: row.phone || null,
+      arrival: row.arrival || null,
+      departure: row.departure || null,
+      price: typeof row.price === "number" ? row.price : null,
+      due_amount: typeof row.due_amount === "number" ? row.due_amount : null,
+      source: row.source || null,
+      notes: row.notes || null,
+      per_room_type: sanitizeRoomType(row.per_room_type),
+      reservation_id: row.reservation_id ? String(row.reservation_id) : null,
+      is_business: !!row.is_business || BUSINESS_MARKERS_RE.test(`${row.source || ""} ${row.guest_name || ""}`),
+    };
+  });
 
-  const cleanGroups = groups.map((row) => ({
-    group_no: row.group_no ? String(row.group_no) : null,
-    group_name: row.group_name || null,
-    rooms: Array.isArray(row.rooms) ? row.rooms.map((r) => String(r).toUpperCase()) : [],
-    arrival: row.arrival || null,
-    departure: row.departure || null,
-    source: row.source || null,
-    notes: row.notes || null,
-    persons_from_list: typeof row.persons_from_list === "number" ? row.persons_from_list : null,
-    // Grupy niemal zawsze firmowe/tour-operator — domyślnie true, chyba że LLM
-    // jawnie zaprzeczy I nie ma żadnego markera firmowego w tekście.
-    is_business: row.is_business !== false || BUSINESS_MARKERS_RE.test(`${row.source || ""} ${row.group_name || ""}`),
-    per_room_type: null,
-  }));
+  const cleanGroups = groups.map((row) => {
+    const rawRooms = Array.isArray(row.rooms) ? row.rooms : [];
+    const shaped = rawRooms.map(cleanRoomToken).filter(Boolean);
+    if (shaped.length < rawRooms.length) {
+      warnings.push(`Grupa ${row.group_name || row.group_no || "?"}: odrzucono ${rawRooms.length - shaped.length} nienumerycznych "pokoi" z LLM (${rawRooms.filter((r) => !cleanRoomToken(r)).join(", ")}).`);
+    }
+    const rooms = shaped.filter((r) => roomAppearsInSource(r, input));
+    const invented = shaped.filter((r) => !roomAppearsInSource(r, input));
+    if (invented.length) {
+      warnings.push(`HALUCYNACJA: grupa ${row.group_name || row.group_no || "?"} — LLM podał ${invented.length} pokoi, ktorych NIE MA w raporcie: ${invented.join(", ")}. Odrzucone.`);
+    }
+    return {
+      group_no: row.group_no ? String(row.group_no) : null,
+      group_name: row.group_name || null,
+      rooms,
+      arrival: row.arrival || null,
+      departure: row.departure || null,
+      source: row.source || null,
+      notes: row.notes || null,
+      persons_from_list: typeof row.persons_from_list === "number" ? row.persons_from_list : null,
+      // Grupy niemal zawsze firmowe/tour-operator — domyślnie true, chyba że LLM
+      // jawnie zaprzeczy I nie ma żadnego markera firmowego w tekście.
+      is_business: row.is_business !== false || BUSINESS_MARKERS_RE.test(`${row.source || ""} ${row.group_name || ""}`),
+      per_room_type: null,
+    };
+  });
 
   // Siatka bezpieczeństwa na recall: LLM przy dużych grupach (20+ pokoi) czasem
   // "leni się" i ucina listę pokoi w połowie bez ostrzeżenia. Raport sam podaje
@@ -276,6 +320,8 @@ module.exports = {
   isDeparturesReport,
   extractGuestsWithLlm,
   sanitizeRoomType,
+  cleanRoomToken,
+  roomAppearsInSource,
   toParsedShape,
   BUSINESS_MARKERS_RE,
 };

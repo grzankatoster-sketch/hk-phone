@@ -4,6 +4,7 @@
 // dało się sprawdzić co model wyciągnął, zanim to popłynie dalej.
 const fs = require("fs");
 const path = require("path");
+const { cleanRoomToken } = require("./parser-guests-llm.cjs");
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
@@ -32,6 +33,25 @@ function writeGuestSnapshot(outputDir, { individual, groups, warnings, generated
 // których pobyt już się skończył, żeby lista nie rosła bez końca.
 const RECENT_SNAPSHOT_LIMIT = 20;
 
+// "Nowszy wygrywa" jest złą zasadą, gdy nowszy odczyt zgubił pokoje: ekstrakcja
+// LLM bywa gorsza w jednym cyklu (ucięta lista, opisowe słowo zamiast numeru —
+// incydent 2026-07-28, grupa 5083G) i kasowała wtedy poprawną listę z wcześniej-
+// szego raportu. Numery pokoi mamy z KILKU raportów w czasie, więc przy scalaniu
+// wygrywa ten wpis, który faktycznie ma pokoje; przy remisie decyduje nowszy.
+function preferGroupWithRooms(existing, incoming) {
+  if (!existing) return incoming;
+  // Lista pozycyjna (z PDF) zawsze bije liste od LLM — niezaleznie od dlugosci.
+  // Bez tego zahalucynowana lista wygrywalaby sama liczba pozycji: 28.07.2026
+  // grupa 3550 miala od LLM 27 pokoi, z czego 5 zmyslonych, a prawdziwa lista
+  // tez ma 27 — porownanie po dlugosci nie rozstrzyga, po zrodle owszem.
+  const authoritative = (g) => g?.rooms_source === "positional" && (g.rooms?.length || 0) > 0;
+  if (authoritative(incoming) && !authoritative(existing)) return incoming;
+  if (authoritative(existing) && !authoritative(incoming)) return existing;
+  const had = existing.rooms?.length || 0;
+  const has = incoming.rooms?.length || 0;
+  return has >= had ? incoming : existing;
+}
+
 function loadPersistedGroups(outputDir, { todayIso } = {}) {
   const dir = path.join(outputDir, "guests");
   let files;
@@ -46,7 +66,12 @@ function loadPersistedGroups(outputDir, { todayIso } = {}) {
     try {
       const raw = JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
       for (const g of raw?.groups || []) {
-        if (g?.group_no) byNo.set(String(g.group_no), g);
+        if (!g?.group_no) continue;
+        // Walidacja TAKZE przy odczycie: zrzuty zapisane przed poprawka moga
+        // zawierac smieci z LLM (np. "APARTAMENT" jako pokoj) i bez tego
+        // wracalyby do bazy przy kazdym kolejnym cyklu.
+        const clean = { ...g, rooms: (g.rooms || []).map(cleanRoomToken).filter(Boolean) };
+        byNo.set(String(clean.group_no), preferGroupWithRooms(byNo.get(String(clean.group_no)), clean));
       }
     } catch {
       /* plik uszkodzony/niekompletny — pomiń, kolejne wciąż się liczą */
@@ -56,4 +81,4 @@ function loadPersistedGroups(outputDir, { todayIso } = {}) {
   return [...byNo.values()].filter((g) => !g.departure || g.departure >= cutoff);
 }
 
-module.exports = { writeGuestSnapshot, guestSnapshotPath, loadPersistedGroups };
+module.exports = { writeGuestSnapshot, guestSnapshotPath, loadPersistedGroups, preferGroupWithRooms };

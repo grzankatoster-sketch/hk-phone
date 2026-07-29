@@ -1,5 +1,5 @@
 -- PANEL MENEDŻERSKI + APLIKACJA — INSTALATOR PEŁNY (wklej CAŁOŚĆ do Supabase SQL Editor → Run)
--- Wygenerowany automatycznie ze wszystkich plików supabase/migrations/ (0001-0057) + seed_app_accounts.sql.
+-- Wygenerowany automatycznie ze wszystkich plików supabase/migrations/ (0001-0070) + seed_app_accounts.sql.
 -- Każda migracja jest idempotentna (create...if not exists / drop...if exists+create) — bezpiecznie
 -- uruchomić ten plik w CAŁOŚCI nawet jeśli część z nich była już wcześniej wklejona osobno.
 -- NIE zawiera kroków spoza SQL (Auth Confirm-email OFF, pg_cron extension, Database Webhooks,
@@ -967,6 +967,10 @@ create policy "faults_auth_insert" on public.faults
 alter table public.app_accounts add column if not exists active boolean not null default true;
 
 -- ─── Admin: lista / dodanie / zmiana roli / aktywacja kont ─────────────────────
+-- DROP wymagany: jeśli baza ma już nowszą wersję tej funkcji (patrz definicja
+-- niżej, sekcja "admin_list_accounts: dołóż dział + funkcje") z inną listą kolumn
+-- wyjściowych, CREATE OR REPLACE bez DROP wywala błąd 42P13.
+drop function if exists public.admin_list_accounts();
 create or replace function public.admin_list_accounts()
 returns table(name text, email text, role text, claimed boolean, active boolean, created_at timestamptz)
 language sql stable security definer set search_path = public as $$
@@ -3100,6 +3104,16 @@ grant execute on function public.superadmin_create_tenant(text, text, text) to a
 
 alter table public.schedules enable row level security;
 
+-- ========== 0058_own_rates_current.sql ==========
+-- 0057_own_rates_current.sql  (WYKONANIE 4.20 — pulpit aktualna vs proponowana)
+-- Aktualna cena wystawiona (odczyt z YieldPlanet/KWHotel — TYLKO odczyt, bez wysyłania)
+-- oraz źródło, z którego przyszła. Silnik liczy proponowaną; kierownik wpisuje ją ręcznie
+-- na YP. Idempotentne.
+alter table public.own_rates add column if not exists current_price numeric;
+alter table public.own_rates add column if not exists source text;         -- 'yieldplanet' | 'kwhotel' | 'manual'
+alter table public.own_rates add column if not exists occupancy numeric;    -- zajętość danej daty 0..1 (do zaniżania)
+alter table public.own_rates add column if not exists competitor_price numeric; -- ręczna cena konkurencji (odniesienie; 4.23 legalnie, bez scrapingu)
+
 -- ========== 0059_hk_check_plans.sql ==========
 -- 0059_hk_check_plans.sql
 -- Plan kontroli HK: menedżer/kierownik tworzy zadanie kontrolne przypięte do POKOJU
@@ -3467,23 +3481,6 @@ end $$;
 -- oznaczona is_group, żeby UI mogło pokazać inny styl kafla i większy krok.
 alter table public.meal_plans add column if not exists is_group boolean not null default false;
 
--- ========== seed_app_accounts.sql ==========
--- seed_app_accounts.sql
--- Wstępny spis 7 kont panelu menedżerskiego. Imiona możesz dowolnie zmienić (kolumna name).
--- Email to ukryty login — nie musi istnieć fizycznie (potwierdzanie maila WYŁĄCZONE w Auth).
--- Konta są nieprzejęte (claimed=false): przy 1. logowaniu osoba ustawia swoje hasło.
--- Uruchom PO migracji 0010. Bezpieczne do ponownego puszczenia (ON CONFLICT DO NOTHING).
-
-insert into public.app_accounts (tenant_id, name, email, role) values
-  ('00000000-0000-0000-0000-000000000001', 'Admin',                'admin@conrad-panel.com',      'admin'),
-  ('00000000-0000-0000-0000-000000000001', 'Koordynator',          'koordynator@conrad-panel.com','koordynator'),
-  ('00000000-0000-0000-0000-000000000001', 'Menedżer recepcji',    'recepcja@conrad-panel.com',   'mgr_recepcja'),
-  ('00000000-0000-0000-0000-000000000001', 'Tetiana (HK)',         'tetiana@conrad-panel.com',    'mgr_hk'),
-  ('00000000-0000-0000-0000-000000000001', 'Menedżer główny',      'glowny@conrad-panel.com',     'mgr_glowny'),
-  ('00000000-0000-0000-0000-000000000001', 'Menedżer operacyjny',  'operacyjny@conrad-panel.com', 'mgr_operacyjny'),
-  ('00000000-0000-0000-0000-000000000001', 'Menedżer gastronomii', 'gastro@conrad-panel.com',     'mgr_gastro')
-on conflict (email) do nothing;
-
 -- ========== 0064_schedule_excluded.sql ==========
 -- 0064_schedule_excluded.sql
 -- FIX: "Ułóż grafik" nie pozwalał trwale usunąć osoby z tabeli — schedRemovePerson
@@ -3533,4 +3530,356 @@ grant execute on function public.save_schedule(uuid, jsonb, text, jsonb) to auth
 -- Dodatkowe info na kafelku pokoju w telefonie HK (index.html) — wiadomość
 -- zbiorcza dla wszystkich pokoi grupy (np. "kapcie do pokoi", "pobudka 7:00"),
 -- wysyłana z sekcji "Grupy" w HKPanel.jsx (grupy wykrywane z meal_plans.reservation_id).
-alter table public.hk_plan add column if not exists room_notes jsonb default '{}'::jsonb;
+ALTER TABLE public.hk_plan ADD COLUMN IF NOT EXISTS room_notes jsonb DEFAULT '{}'::jsonb;
+
+-- ========== 0066_panel_plan_room.sql ==========
+-- 0066_panel_plan_room.sql
+-- Zadania konserwacji (panel_plan) mogą teraz dotyczyć konkretnego pokoju —
+-- kierownik dodaje jedno zadanie z listą pokoi (CSV), powstaje osobny wiersz
+-- na pokój, każdy odhaczany niezależnie (analogicznie do hk_check_items, ale
+-- bez logiki zmian AM/PM — konserwacja przypisana jest do osoby, nie „kto
+-- akurat sprząta"). Kolumna nullable — stare, ogólne zadania bez pokoju
+-- działają bez zmian.
+
+alter table public.panel_plan add column if not exists room text;
+create index if not exists panel_plan_room_idx on public.panel_plan(plan_id, room);
+
+-- ========== 0067_checklist_groups.sql ==========
+-- 0067_checklist_groups.sql
+-- Ujednolicona "checklista pokojowa": kierownik tworzy JEDNĄ checklistę (np.
+-- "Sprawdź kable") i wybiera cel — HK, Konserwacja, albo oba naraz. Pod spodem
+-- zależnie od celu powstają wiersze w ISTNIEJĄCYCH tabelach:
+--   HK:         hk_check_plans / hk_check_items (reguła zmian AM/PM bez zmian)
+--   Konserwacja: maintenance_plans / panel_plan (bez logiki zmian — przypisana
+--               do osoby, nie "kto akurat sprząta")
+-- checklist_groups to tylko lekki łącznik dla wspólnego widoku listy/podglądu
+-- postępu w panelu — telefony wykonawców (index.html, konserwacja.html) dalej
+-- czytają swoje własne tabele bez żadnych zmian.
+
+create table if not exists public.checklist_groups (
+  id         uuid primary key default gen_random_uuid(),
+  tenant_id  uuid not null default '00000000-0000-0000-0000-000000000001',
+  name       text not null,
+  task       text not null,
+  targets    text not null default 'hk',  -- 'hk' | 'konserw' | 'both'
+  status     text not null default 'active', -- active | done
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists checklist_groups_tenant_idx
+  on public.checklist_groups(tenant_id, status, created_at desc);
+
+alter table public.checklist_groups enable row level security;
+drop policy if exists "checklist_groups_anon" on public.checklist_groups;
+drop policy if exists "checklist_groups_auth" on public.checklist_groups;
+create policy "checklist_groups_anon" on public.checklist_groups for all to anon using (true) with check (true);
+create policy "checklist_groups_auth" on public.checklist_groups for all to authenticated using (true) with check (true);
+
+alter table public.hk_check_plans add column if not exists group_id uuid references public.checklist_groups(id);
+alter table public.maintenance_plans add column if not exists group_id uuid references public.checklist_groups(id);
+
+-- Backfill: istniejące plany kontroli HK (sprzed tej migracji) dostają swoją
+-- grupę, żeby nie zniknęły z nowego, ujednoliconego widoku listy „Kontrole”.
+-- maintenance_plans NIE dostaje backfillu — ogólne zadania konserwacji (bez
+-- powiązania z checklistą) mają zostać tylko w zakładce „Plan”.
+with ins as (
+  insert into public.checklist_groups (tenant_id, name, task, targets, status, created_by, created_at)
+  select tenant_id, name, task, 'hk', status, created_by, created_at
+  from public.hk_check_plans where group_id is null
+  returning id, tenant_id, name, task, created_at
+)
+update public.hk_check_plans hcp set group_id = ins.id
+from ins
+where hcp.group_id is null and hcp.tenant_id = ins.tenant_id
+  and hcp.name = ins.name and hcp.task = ins.task and hcp.created_at = ins.created_at;
+
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='checklist_groups') then
+    alter publication supabase_realtime add table public.checklist_groups;
+  end if;
+end $$;
+
+-- ========== 0068_parking_stali_goscie.sql ==========
+-- 0066_parking_stali_goscie.sql
+-- Wyprowadzenie PII (WYKONANIE 0.3) z zaszytych seedow JS w ParkingPanel.jsx i
+-- StaliGosciePanel.jsx do bazy per tenant. Dane admin-only, edytowane rzadko —
+-- bez RPC/realtime jak shop_*, komponenty pobieraja je raz przy pustym
+-- localStorage (patrz scripts/backfill-parking-stali-goscie.cjs).
+
+create table if not exists public.parking_records (
+  id         text primary key,
+  tenant_id  uuid not null default '00000000-0000-0000-0000-000000000001',
+  plate      text,
+  name       text,
+  phone      text,
+  type       text not null default 'abonament',
+  status     text,
+  paid_to    text,
+  paid_on    text,
+  doc_nr     text,
+  note       text,
+  price      text,
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists parking_records_tenant_idx on public.parking_records(tenant_id, active);
+
+alter table public.parking_records enable row level security;
+drop policy if exists "parking_records_anon" on public.parking_records;
+drop policy if exists "parking_records_auth" on public.parking_records;
+create policy "parking_records_anon" on public.parking_records for all to anon using (true) with check (true);
+create policy "parking_records_auth" on public.parking_records for all to authenticated using (true) with check (true);
+
+create table if not exists public.stali_goscie (
+  id               text primary key,
+  tenant_id        uuid not null default '00000000-0000-0000-0000-000000000001',
+  name             text not null,
+  room             text,
+  company          text,
+  notes            text,
+  price_season     text,
+  price_off_season text,
+  meal             text,
+  category         text not null default 'private',
+  has_fv           boolean not null default false,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+create index if not exists stali_goscie_tenant_idx on public.stali_goscie(tenant_id, category);
+
+alter table public.stali_goscie enable row level security;
+drop policy if exists "stali_goscie_anon" on public.stali_goscie;
+drop policy if exists "stali_goscie_auth" on public.stali_goscie;
+create policy "stali_goscie_anon" on public.stali_goscie for all to anon using (true) with check (true);
+create policy "stali_goscie_auth" on public.stali_goscie for all to authenticated using (true) with check (true);
+
+-- ========== 0069_panel_struktura.sql ==========
+-- 0069_panel_struktura.sql
+-- Struktura hotelu w panelu: GM sam buduje działy (Recepcja/Sprzątanie/Gastronomia...) i
+-- dodaje do nich kierowników; funkcje/zakładki widoczne danej osobie może zawęzić/rozszerzyć
+-- (domyślnie dobierane przez AI po stanowisku — patrz Edge Function `llm`, task "roletabs").
+-- app_accounts.tabs = null → zachowanie jak dotąd (tabsFor(role) hardkodowany, zero regresji
+-- dla istniejących 7 kont). app_accounts.tabs = tablica → JAWNA lista zakładek nadpisuje rolę.
+-- Idempotentne.
+
+-- ─── panel_departments ─────────────────────────────────────────────────────────
+create table if not exists public.panel_departments (
+  id         uuid primary key default gen_random_uuid(),
+  tenant_id  uuid not null default '00000000-0000-0000-0000-000000000001',
+  name       text not null,
+  created_at timestamptz not null default now(),
+  unique (tenant_id, name)
+);
+alter table public.panel_departments enable row level security;
+
+drop policy if exists "departments_public_list" on public.panel_departments;
+create policy "departments_public_list" on public.panel_departments
+  for select to anon, authenticated using (true);
+
+-- ─── app_accounts: dział + jawna lista funkcji ─────────────────────────────────
+alter table public.app_accounts add column if not exists department_id uuid
+  references public.panel_departments(id) on delete set null;
+alter table public.app_accounts add column if not exists tabs text[];
+
+-- ─── Katalog dozwolonych kluczy zakładek (obrona w głąb — niezależna od panel.html/LLM) ─
+create or replace function public.panel_valid_tab_keys()
+returns text[] language sql immutable as $$
+  select array[
+    'poczta','pulpit','live','wyjazdy','staty','praca','jakosc','kontrole','tablica',
+    'znalezione','grafik','zmiany','zadania','kasa','konserw','sla','plan','akcje',
+    'konta','logi'
+  ]
+$$;
+
+-- ─── RPC: działy (admin) ────────────────────────────────────────────────────────
+create or replace function public.admin_list_departments()
+returns table(id uuid, name text)
+language sql stable security definer set search_path = public as $$
+  select id, name from public.panel_departments
+  where public.current_app_role() = 'admin'
+  order by name;
+$$;
+grant execute on function public.admin_list_departments() to authenticated;
+
+create or replace function public.admin_add_department(p_name text)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
+begin
+  if public.current_app_role() <> 'admin' then raise exception 'Tylko admin.'; end if;
+  if coalesce(trim(p_name),'') = '' then raise exception 'Brak nazwy działu.'; end if;
+  insert into public.panel_departments(name) values (trim(p_name))
+    on conflict (tenant_id, name) do update set name = excluded.name
+    returning id into v_id;
+  perform public.log_action('dzial_dodany', trim(p_name), null);
+  return v_id;
+end $$;
+grant execute on function public.admin_add_department(text) to authenticated;
+
+create or replace function public.admin_delete_department(p_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare v_name text; v_in_use int;
+begin
+  if public.current_app_role() <> 'admin' then raise exception 'Tylko admin.'; end if;
+  select count(*) into v_in_use from public.app_accounts where department_id = p_id;
+  if v_in_use > 0 then raise exception 'Dział ma przypisane konta — najpierw je przenieś.'; end if;
+  delete from public.panel_departments where id = p_id returning name into v_name;
+  if v_name is not null then perform public.log_action('dzial_usuniety', v_name, null); end if;
+end $$;
+grant execute on function public.admin_delete_department(uuid) to authenticated;
+
+-- ─── admin_add_account: rozszerzony o dział + jawną listę funkcji (kompatybilne wstecz) ─
+-- Postgres nie "replace'uje" funkcji przy zmianie liczby parametrów (to byłby nowy overload,
+-- dwuznaczny wobec starych wywołań) — usuwamy WSZYSTKIE starsze sygnatury i tworzymy jedną,
+-- z DEFAULT NULL na nowych parametrach (stare wywołania z 2 lub 3 argumentami działają dalej).
+-- Bez dropu 2-argumentowej wersji (0015_panel_admin_ttl.sql) wywołanie z samymi p_name+p_role
+-- byłoby dwuznaczne między nią a tą funkcją (identyczne typy) → Postgres zwróciłby błąd
+-- "function admin_add_account(...) is not unique".
+drop function if exists public.admin_add_account(text, text);
+drop function if exists public.admin_add_account(text, text, text);
+create or replace function public.admin_add_account(
+  p_name text, p_role text, p_code text default '',
+  p_department_id uuid default null, p_tabs text[] default null
+)
+returns text language plpgsql security definer set search_path = public as $$
+declare v_email text; v_has_code boolean; v_tabs text[];
+begin
+  if public.current_app_role() <> 'admin' then raise exception 'Tylko admin.'; end if;
+  if coalesce(trim(p_name),'') = '' then raise exception 'Brak imienia.'; end if;
+  if p_role not in ('superadmin','owner','admin','koordynator','mgr_recepcja','mgr_hk','mgr_glowny','mgr_operacyjny','mgr_gastro')
+    then raise exception 'Zła rola.'; end if;
+  if p_tabs is not null then
+    select array_agg(t) into v_tabs from unnest(p_tabs) t where t = any(public.panel_valid_tab_keys());
+  end if;
+  v_has_code := coalesce(trim(p_code),'') <> '';
+  v_email := 'acc_' || substr(md5(random()::text || clock_timestamp()::text), 1, 10) || '@conrad-panel.com';
+  insert into public.app_accounts(tenant_id, name, email, role, requires_code, claim_code_hash, department_id, tabs)
+    values ('00000000-0000-0000-0000-000000000001', trim(p_name), v_email, p_role,
+            v_has_code, case when v_has_code then md5(trim(p_code)) else null end,
+            p_department_id, v_tabs);
+  perform public.log_action('konto_dodane',
+    format('%s (%s)%s', trim(p_name), p_role, case when v_has_code then ' + kod' else '' end), null);
+  return v_email;
+end $$;
+grant execute on function public.admin_add_account(text, text, text, uuid, text[]) to authenticated;
+
+-- ─── RPC: dział / funkcje istniejącego konta ───────────────────────────────────
+create or replace function public.admin_set_department(p_email text, p_department_id uuid)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if public.current_app_role() <> 'admin' then raise exception 'Tylko admin.'; end if;
+  update public.app_accounts set department_id = p_department_id where email = p_email;
+  perform public.log_action('konto_dzial', p_email, null);
+end $$;
+grant execute on function public.admin_set_department(text, uuid) to authenticated;
+
+create or replace function public.admin_set_tabs(p_email text, p_tabs text[])
+returns void language plpgsql security definer set search_path = public as $$
+declare v_tabs text[];
+begin
+  if public.current_app_role() <> 'admin' then raise exception 'Tylko admin.'; end if;
+  if p_tabs is null or array_length(p_tabs, 1) is null then
+    update public.app_accounts set tabs = null where email = p_email;
+  else
+    select array_agg(t) into v_tabs from unnest(p_tabs) t where t = any(public.panel_valid_tab_keys());
+    update public.app_accounts set tabs = v_tabs where email = p_email;
+  end if;
+  perform public.log_action('konto_funkcje', p_email, null);
+end $$;
+grant execute on function public.admin_set_tabs(text, text[]) to authenticated;
+
+-- ─── admin_list_accounts: dołóż dział + funkcje ────────────────────────────────
+-- DROP wymagany: Postgres nie pozwala CREATE OR REPLACE zmienić kolumn wyjściowych
+-- (OUT params) już istniejącej funkcji tabelarycznej — błąd 42P13.
+drop function if exists public.admin_list_accounts();
+create or replace function public.admin_list_accounts()
+returns table(name text, email text, role text, claimed boolean, active boolean,
+              created_at timestamptz, department_id uuid, department_name text, tabs text[])
+language sql stable security definer set search_path = public as $$
+  select a.name, a.email, a.role, a.claimed, a.active, a.created_at,
+         a.department_id, d.name as department_name, a.tabs
+  from public.app_accounts a
+  left join public.panel_departments d on d.id = a.department_id
+  where public.current_app_role() = 'admin'
+  order by a.created_at;
+$$;
+grant execute on function public.admin_list_accounts() to authenticated;
+
+-- ========== 0070_admin_bootstrap.sql ==========
+-- 0070_admin_bootstrap.sql
+-- WYKONANIE 0.2: hasło administratora ("bootstrap" — brama do ustawienia
+-- WŁASNEGO hasła kierownika, patrz src/lib/adminAuth.js) przestaje byc
+-- zaszyte w bundlu (VITE_ADMIN_PASSWORD). Zamiast porownania z plaintextem
+-- w JS, klient woła RPC ktore porownuje hash po stronie Postgresa (pgcrypto)
+-- i zwraca tylko true/false — haszu nikt z zewnatrz nie odczyta.
+
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.admin_bootstrap (
+  tenant_id  uuid primary key,
+  hash       text not null,
+  updated_at timestamptz not null default now()
+);
+-- RLS wlaczone, ZERO polityk dla anon/authenticated (deny-by-default) —
+-- tabela czytana/pisana wylacznie przez ponizsze funkcje SECURITY DEFINER.
+alter table public.admin_bootstrap enable row level security;
+
+create or replace function public.verify_admin_bootstrap(p_tenant_id uuid, p_candidate text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  stored text;
+begin
+  select hash into stored from public.admin_bootstrap where tenant_id = p_tenant_id;
+  if stored is null or p_candidate is null or length(p_candidate) = 0 then
+    return false;
+  end if;
+  return extensions.crypt(p_candidate, stored) = stored;
+end;
+$$;
+grant execute on function public.verify_admin_bootstrap(uuid, text) to anon, authenticated;
+
+-- Nadawanie/rotacja hasla — TYLKO service_role (skrypty admina lokalnie,
+-- z kluczem SUPABASE_SERVICE_KEY), nigdy z klienta anon/authenticated.
+create or replace function public.set_admin_bootstrap(p_tenant_id uuid, p_password text)
+returns void
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  insert into public.admin_bootstrap (tenant_id, hash, updated_at)
+  values (p_tenant_id, extensions.crypt(p_password, extensions.gen_salt('bf')), now())
+  on conflict (tenant_id) do update set hash = excluded.hash, updated_at = now();
+end;
+$$;
+revoke all on function public.set_admin_bootstrap(uuid, text) from public, anon, authenticated;
+grant execute on function public.set_admin_bootstrap(uuid, text) to service_role;
+
+-- ========== seed_app_accounts.sql ==========
+-- seed_app_accounts.sql
+-- Wstępny spis 7 kont panelu menedżerskiego. Imiona możesz dowolnie zmienić (kolumna name).
+-- Email to ukryty login — nie musi istnieć fizycznie (potwierdzanie maila WYŁĄCZONE w Auth).
+-- Konta są nieprzejęte (claimed=false): przy 1. logowaniu osoba ustawia swoje hasło.
+-- Uruchom PO migracji 0010. Bezpieczne do ponownego puszczenia (ON CONFLICT DO NOTHING).
+
+-- 'GM' (Główny Menedżer) — konto startowe do budowania struktury (działy + kierownicy,
+-- zakładka Konta, 0069_panel_struktura.sql). Pierwsze logowanie: login "GM", dowolne hasło
+-- min. 6 znaków (np. umówione "1qwerty") — to wpisane hasło STAJE SIĘ hasłem konta (istniejący
+-- mechanizm claim_account), więc nie ma tu nic do "zresetowania" — GM po prostu wpisuje własne
+-- docelowe hasło od razu przy 1. logowaniu.
+insert into public.app_accounts (tenant_id, name, email, role) values
+  ('00000000-0000-0000-0000-000000000001', 'GM',                   'gm@conrad-panel.com',         'admin'),
+  ('00000000-0000-0000-0000-000000000001', 'Admin',                'admin@conrad-panel.com',      'admin'),
+  ('00000000-0000-0000-0000-000000000001', 'Koordynator',          'koordynator@conrad-panel.com','koordynator'),
+  ('00000000-0000-0000-0000-000000000001', 'Menedżer recepcji',    'recepcja@conrad-panel.com',   'mgr_recepcja'),
+  ('00000000-0000-0000-0000-000000000001', 'Tetiana (HK)',         'tetiana@conrad-panel.com',    'mgr_hk'),
+  ('00000000-0000-0000-0000-000000000001', 'Menedżer główny',      'glowny@conrad-panel.com',     'mgr_glowny'),
+  ('00000000-0000-0000-0000-000000000001', 'Menedżer operacyjny',  'operacyjny@conrad-panel.com', 'mgr_operacyjny'),
+  ('00000000-0000-0000-0000-000000000001', 'Menedżer gastronomii', 'gastro@conrad-panel.com',     'mgr_gastro')
+on conflict (email) do nothing;
