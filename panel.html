@@ -237,16 +237,15 @@ body{font-family:var(--ui);background:
 /* ── Logowanie: kameralna recepcja o zmierzchu ── */
 #app.wrap.auth{max-width:440px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:40px 20px}
 
-/* Pieczęć-monogram nad wordmarkiem — jedyny naprawdę ozdobny akcent na ekranie logowania */
-.auth-seal{width:50px;height:50px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(circle at 32% 26%, #ecd19b, var(--gold) 55%, #7c5d26 100%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.55), 0 10px 22px -10px rgba(176,134,58,.55), 0 0 0 1px rgba(176,134,58,.3);
-  font-family:var(--serif);font-size:17px;color:#3a2a08;letter-spacing:.01em;
+/* Logo animowane (te same pulsujące kropki + wordmark co idle-screen posilki.html
+   i prawdziwe logowanie recepcji — Logo.jsx variant="full") — jedyny naprawdę
+   ozdobny akcent na ekranie logowania panelu. */
+.auth-logo-wrap{display:flex;justify-content:center;margin:0 0 6px;
   opacity:0;animation:fadeup .55s cubic-bezier(.2,.9,.25,1) .04s forwards}
-html.dark .auth-seal{box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px -8px rgba(0,0,0,.6), 0 0 0 1px rgba(200,162,105,.35)}
+.auth-logo{filter:drop-shadow(0 8px 20px rgba(90,29,74,.16))}
+.auth-logo .lg-fg{fill:var(--plum)}
+html.dark .auth-logo{filter:drop-shadow(0 8px 22px rgba(0,0,0,.5))}
 
-.auth-brand{display:block;text-align:center;font-family:var(--serif);letter-spacing:.28em;color:var(--plum);font-size:14px;
-  opacity:0;animation:fadeup .5s ease .12s forwards}
 .auth-brand-sub{display:block;text-align:center;font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:4px 0 28px;
   opacity:0;animation:fadeup .5s ease .18s forwards}
 /* Cały „intro" blok (pieczęć → wordmark → nagłówek → opis) trzyma jedną oś —
@@ -311,22 +310,28 @@ html.dark .auth-seal{box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 10px 26px
 /* ════════ KOMPUTER (≥ 920px): sidebar + szeroka treść + siatka ════════ */
 @media(min-width:920px){
   .shell{display:grid;grid-template-columns:264px 1fr}
-  .side{display:flex;flex-direction:column;gap:16px;padding:22px 16px;color:#fff;position:sticky;top:0;height:100vh;
+  .side{display:flex;flex-direction:column;gap:16px;padding:22px 16px;color:#fff;position:sticky;top:0;height:100vh;overflow:hidden;
     background:linear-gradient(170deg,var(--plum) 0%,var(--plum-deep) 100%);box-shadow:inset -1px 0 0 rgba(255,255,255,.06)}
-  .brand{display:flex;align-items:center;gap:11px;padding:4px 6px 6px}
+  .brand{display:flex;align-items:center;gap:11px;padding:4px 6px 6px;flex-shrink:0}
   .brand .b1{font-size:14px;letter-spacing:.16em;color:#fff}
   .brand .b2{font-size:9.5px;letter-spacing:.06em;color:rgba(255,255,255,.6);margin-top:2px}
-  .me{display:flex;align-items:center;gap:11px;padding:11px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1)}
+  .me{display:flex;align-items:center;gap:11px;padding:11px;border-radius:13px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);flex-shrink:0}
   .me-av{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;color:#fff;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.2)}
   .me-n{font-weight:800;font-size:14px;color:#fff;line-height:1.2}
   .me-r{font-size:11px;color:rgba(255,255,255,.65);margin-top:1px}
-  .nav{display:flex;flex-direction:column;gap:3px;margin-top:2px}
+  /* Role z wieloma zakładkami (admin/GM ma ~20) potrafią przekroczyć 100vh —
+     bez własnego scrolla ostatnie pozycje wypadały poza ekran i były niedostępne. */
+  .nav{display:flex;flex-direction:column;gap:3px;margin-top:2px;flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+    scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent}
+  .nav::-webkit-scrollbar{width:6px}
+  .nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:3px}
+  .nav::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.35)}
   .navbtn{display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;background:transparent;color:rgba(255,255,255,.8);
-    border-radius:11px;font:700 13.5px var(--ui);cursor:pointer;text-align:left;transition:background .14s,color .14s}
+    border-radius:11px;font:700 13.5px var(--ui);cursor:pointer;text-align:left;transition:background .14s,color .14s;flex-shrink:0}
   .navbtn svg{width:18px;height:18px;flex-shrink:0;opacity:.9}
   .navbtn:hover{background:rgba(255,255,255,.09);color:#fff}
   .navbtn.on{background:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-  .side-out{margin-top:auto;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;
+  .side-out{margin-top:auto;flex-shrink:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:#fff;
     border-radius:11px;padding:11px;font:800 13px var(--ui);cursor:pointer}
   .side-out:hover{background:rgba(255,255,255,.16)}
   .tabs.mob,.top-out{display:none}
@@ -992,8 +997,16 @@ async function showLogin() {
   accounts = (data || []).filter(a => a.active !== false);
   const savedName = (()=>{ try { return localStorage.getItem("panel_remember_name") || ""; } catch(_) { return ""; } })();
   app.innerHTML = `
-    <div class="auth-seal">CC</div>
-    <div class="auth-brand">CONRAD COMFORT</div>
+    <div class="auth-logo-wrap">
+      <svg class="auth-logo" viewBox="0 0 220 110" width="190" height="95" role="img" aria-label="Conrad Comfort">
+        <circle class="lg-fg" cx="92" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="0s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <circle class="lg-fg" cx="100" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="0.7s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <circle class="lg-fg" cx="120" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="1.4s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <circle class="lg-fg" cx="128" cy="30" r="2.6"><animate attributeName="r" values="2.6;4.4;2.6" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/><animate attributeName="opacity" values=".75;1;.75" dur="4s" begin="2.1s" repeatCount="indefinite" calcMode="spline" keySplines=".45 .05 .55 .95;.45 .05 .55 .95"/></circle>
+        <text class="lg-fg" x="110" y="62" font-family="'DM Serif Display',Georgia,serif" font-size="22" font-weight="400" letter-spacing="0.18em" text-anchor="middle">CONRAD</text>
+        <text class="lg-fg" x="110" y="86" font-family="-apple-system,sans-serif" font-size="11" font-weight="500" letter-spacing="0.55em" text-anchor="middle">COMFORT</text>
+      </svg>
+    </div>
     <div class="auth-brand-sub">Panel menedżerski</div>
     <div class="h2">Logowanie</div>
     <div class="sub">Wpisz swoje imię i hasło.</div>
