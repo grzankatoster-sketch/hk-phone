@@ -2882,14 +2882,11 @@ function mailComposer(){
   const me = CURRENT.email;
   const people = MAIL_ACCOUNTS.filter(a => a.email !== me)
     .map(a => `<option value="email:${esc(a.email)}">${esc(a.name)} — ${esc(ROLE_LABEL(a.role))}</option>`).join("");
-  const roles = [...new Set(MAIL_ACCOUNTS.map(a=>a.role))]
-    .map(rr => `<option value="role:${rr}">Wszyscy: ${esc(ROLE_LABEL(rr))}</option>`).join("");
   return `<div class="card" style="margin-top:16px">
     <div class="soon" style="margin-top:0">Poproś kogoś o coś</div>
     <div class="field"><select id="mTo" class="inp">
       <option value="">— do kogo? —</option>
       <optgroup label="Osoby">${people}</optgroup>
-      <optgroup label="Działy / role">${roles}</optgroup>
     </select></div>
     <div class="field"><textarea id="mBody" class="inp" rows="2" placeholder="Czego potrzebujesz? np. sprawdź proszę grafik na piątek"></textarea></div>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
