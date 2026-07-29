@@ -163,6 +163,11 @@ body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 .fault-add{display:block;width:100%;background:var(--tint);border:1px dashed var(--line-strong);border-radius:8px;padding:11px;color:var(--muted);font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
 .fault-add input{display:none}
 .btn-fault{background:var(--red);color:#fff}
+.check-box{margin-top:10px;padding:10px 11px;border:1px solid rgba(37,99,235,.28);border-radius:10px;background:rgba(37,99,235,.06)}
+.check-title{font-size:11px;font-weight:800;color:var(--blue-ink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.check-row{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap}
+.check-row input{flex:1;min-width:80px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)}
+.check-row .btn{width:auto;flex:0 0 auto;padding:11px 13px;font-size:12.5px;white-space:nowrap}
 .found-title{font-size:11px;font-weight:800;color:var(--green-ink);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
 .btn-found{background:var(--green);color:#fff}
 .task-card{background:var(--paper);border:1.5px solid var(--line);border-radius:10px;margin-bottom:8px;padding:12px 14px;border-left:3px solid var(--amber)}
@@ -625,13 +630,15 @@ function checkBox(no) {
     const prevFailed = c.status === "failed"
       ? `<div style="font-size:11.5px;color:var(--red-ink);margin-bottom:6px">Wcześniej niesprawdzone: ${escHtml(c.fail_reason||"")}</div>`
       : "";
-    const doneBtn = isPm ? "" : `<button class="btn btn-green" style="margin-bottom:8px" onclick="submitCheck('${c.id}','${no}')">✓ Kontrola „${escHtml(task)}" — wykonana</button>`;
-    return `<div class="fault-box open" style="margin-top:10px;border-top:1px dashed var(--line)">
-      <div class="fault-title" style="color:var(--blue-ink)">🧽 Kontrola: ${escHtml(task)}</div>
+    const doneBtn = isPm ? "" : `<button class="btn btn-green" onclick="submitCheck('${c.id}','${no}')">✓ Wszystko sprawne</button>`;
+    return `<div class="check-box">
+      <div class="check-title">🧽 Kontrola: ${escHtml(task)}</div>
       ${prevFailed}
-      ${doneBtn}
-      <textarea id="ckreason-${c.id}" placeholder="Powód, jeśli nie da się sprawdzić (np. gość poprosił o niewchodzenie)…"></textarea>
-      <button class="btn btn-amber" style="margin-top:8px" onclick="submitCheckFailed('${c.id}','${no}')">Nie udało się sprawdzić</button>
+      <div class="check-row">
+        ${doneBtn}
+        <input id="ckreason-${c.id}" type="text" placeholder="Problem — opisz…"/>
+        <button class="btn btn-amber" onclick="submitCheckFailed('${c.id}','${no}')">Zgłoś</button>
+      </div>
     </div>`;
   }).join("");
 }
@@ -747,7 +754,9 @@ function roomCard(no, status) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
     buttons = `<div class="btn-row">${replyBtn}</div>`;
   }
-  buttons = dndBanner + prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkBox(no);
+  // Kontrola dopiero po rozpoczęciu sprzątania — przed startem to jeszcze nie ma czego sprawdzać.
+  const checkHtml = (status === "W" || status === "vacated") ? "" : checkBox(no);
+  buttons = dndBanner + prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkHtml;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
