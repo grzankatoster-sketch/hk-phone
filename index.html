@@ -5,11 +5,51 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>HK Panel</title>
 <script>
+/* Ekran prywatności: przy zejściu aplikacji w tło (przełącznik aplikacji,
+   powiadomienia, blokada telefonu) treść jest natychmiast zasłaniana, żeby
+   system nie mógł jej pokazać w miniaturce podglądu — przeglądarka nie ma
+   API blokującego sam zrzut ekranu, więc to jedyna realna ochrona (tak jak
+   w aplikacjach bankowych). */
+(function(){
+  var shield;
+  function ensure(){
+    if (shield || !document.body) return shield;
+    shield = document.createElement("div");
+    shield.id = "privacy-shield";
+    shield.innerHTML =
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+      '<path d="M12 2 4 5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V5l-8-3Z"/><path d="M9.5 12.2 11.3 14l3.4-3.6"/></svg>' +
+      '<div>Zawartość ukryta<br/>ze względów bezpieczeństwa</div>';
+    var st = document.createElement("style");
+    st.textContent =
+      "#privacy-shield{position:fixed;inset:0;z-index:2147483647;display:none;flex-direction:column;" +
+      "align-items:center;justify-content:center;gap:14px;background:#0B0810;" +
+      "backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);color:#B065A0;" +
+      "font-family:Outfit,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;padding:24px}" +
+      "#privacy-shield.show{display:flex}" +
+      "#privacy-shield div{font-size:13px;font-weight:600;color:#A89DAE;max-width:220px;line-height:1.5}";
+    document.head.appendChild(st);
+    document.body.appendChild(shield);
+    return shield;
+  }
+  function show(){ var el = ensure(); if (el) el.classList.add("show"); }
+  function hide(){ if (shield) shield.classList.remove("show"); }
+  document.addEventListener("visibilitychange", function(){ if (document.hidden) show(); else hide(); });
+  window.addEventListener("blur", show);
+  window.addEventListener("focus", hide);
+  window.addEventListener("pagehide", show);
+  document.addEventListener("keyup", function(e){ if (e.key === "PrintScreen"){ show(); setTimeout(hide, 1200); } });
+})();
+</script>
+<script>
 /* Tylko ciemny motyw — praca w terenie/słabe światło, bez przełącznika. */
 document.documentElement.classList.add("dark");
 </script>
 <link rel="manifest" href="manifest.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
 /* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
    dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
@@ -82,7 +122,7 @@ html.dark{
   --amber-ink:#F4C055; --lilac-ink:#B49AFF; --red-ink:#FF5471;
 }
 html,body{background:var(--cream);transition:background .2s ease}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
+body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh;overscroll-behavior:none}
 .header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
 .avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.25)}
 .name{font-size:17px;font-weight:800;flex:1;color:#fff}
@@ -90,7 +130,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:va
 .theme-btn{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;flex-shrink:0;font-family:inherit}
 .theme-btn:hover{background:rgba(255,255,255,.22)}
 .tabs{display:flex;background:var(--paper);border-bottom:2px solid var(--line-strong);position:sticky;top:66px;z-index:9}
-.tab-btn{flex:1;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 4px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit}
+.tab-btn svg{width:16px;height:16px;flex-shrink:0}
 .tab-btn.active{color:var(--plum-ink);border-bottom-color:var(--plum)}
 .tab-badge{display:inline-block;background:var(--amber);color:#fff;border-radius:999px;font-size:9px;font-weight:900;padding:1px 5px;margin-left:3px;vertical-align:middle}
 .stats{display:flex;gap:6px;padding:12px 14px;background:var(--paper);border-bottom:1px solid var(--line);flex-wrap:wrap}
@@ -222,6 +263,12 @@ try {
 const TODAY   = (()=>{ const d=new Date(),p=n=>n<10?"0"+n:""+n; return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); })(); // data LOKALNA — spójna z panelem/serwerem HK
 // Musi pasować do VITE_TENANT_ID aplikacji recepcji (domyślny tenant).
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
+
+// Ikony nawigacji — ten sam styl (outline, stroke=currentColor) co panel.html,
+// żeby telefon pracownicy HK i panel menedżera wyglądały jak jeden produkt.
+const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const ICON_ROOMS = _ic('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>');
+const ICON_TEAM  = _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>');
 
 const COLORS  = ["#5a1d4a","#9b598a","#a07820","#784b8e","#2563eb","#0f7a4a","#c2708a","#b3261e","#7a3a6a","#476d8e"];
 const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
@@ -391,8 +438,8 @@ function render() {
     <div class="shift-badge" style="background:rgba(255,255,255,.16); color:${isPm?"#f0d6e8":"#cdeede"}">${isPm?"PM":"Rano"}</div>
   </div>
   <div class="tabs">
-    <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">🏠 Moje pokoje</button>
-    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">👥 Zespół</button>
+    <button class="tab-btn${activeTab==="rooms"?" active":""}" onclick="switchTab('rooms')">${ICON_ROOMS}<span>Moje pokoje</span></button>
+    <button class="tab-btn${activeTab==="team"?" active":""}" onclick="switchTab('team')">${ICON_TEAM}<span>Zespół</span></button>
   </div>`;
 
   if (activeTab === "team") {
@@ -508,10 +555,8 @@ function renderTeamHtml() {
     late_checkout_left: l => l.extra ? escHtml(l.extra) : `Recepcja: gość wyjechał — pok. ${escHtml(l.room)} do sprzątania teraz`,
     kontrola_wykonana:    l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} wykonana`,
     kontrola_niewykonana: l => `${escHtml(l.worker)} — kontrola pok. ${escHtml(l.room)} niewykonana: ${escHtml(l.extra||"")}`,
-    dnd:              l => `${escHtml(l.worker)} — pok. ${escHtml(l.room)} oznaczony "nie przeszkadzać"`,
-    dnd_off:          l => `${escHtml(l.worker)} — zdjęto "nie przeszkadzać" z pok. ${escHtml(l.room)}`,
   };
-  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb", kontrola_wykonana:"#0f7a4a", kontrola_niewykonana:"#a07820", dnd:"#b3261e", dnd_off:"#8a6a7e" };
+  const LOG_COLOR = { start:"#2563eb", done:"#0f7a4a", skip:"#a07820", vacate:"#784b8e", task_done:"#0f7a4a", exchange_accept:"#0f7a4a", exchange_reject:"#b3261e", exchange_request:"#a07820", room_request:"#2563eb", reassign:"#784b8e", priority:"#a07820", priority_off:"#8a6a7e", info_request:"#2563eb", info_reply:"#0f7a4a", late_checkout_left:"#2563eb", kontrola_wykonana:"#0f7a4a", kontrola_niewykonana:"#a07820" };
 
   const recentLogs = allLogs.slice(-25).reverse();
   if (recentLogs.length) {
@@ -570,28 +615,6 @@ function priorityFor(no) {
   }
   return on;
 }
-
-// Ręczny DND (bez IoT/czujników drzwi) — pokojówka lub gość zgłasza "nie wchodzić",
-// ktokolwiek akurat obsługuje pokój dziś oznacza to sam z telefonu (log w hk_logs,
-// widoczny też w Monitorze HK recepcji dzięki LOG_CFG). dnd bez późniejszego dnd_off.
-function dndFor(no) {
-  let on = false;
-  for (const l of allLogs) {
-    if (l.room !== no) continue;
-    if (l.action === "dnd") on = true;
-    else if (l.action === "dnd_off") on = false;
-  }
-  return on;
-}
-
-window.toggleDnd = async (no) => {
-  const on = dndFor(no);
-  try {
-    await addLog(on ? "dnd_off" : "dnd", no, null);
-    toast(on ? `Pokój ${no} — zdjęto "nie przeszkadzać"` : `Pokój ${no} — oznaczono "nie przeszkadzać"`, on ? "var(--muted)" : "var(--amber)");
-    render();
-  } catch (e) { toast("Nie udało się zapisać", "var(--red)"); }
-};
 
 // Czy recepcja właśnie zaalarmowała, że gość z late checkout wyjechał (zdarzenie jednorazowe,
 // pokazujemy dopóki pokój czeka na sprzątanie — po starcie/zakończeniu komunikat jest już nieaktualny).
@@ -713,8 +736,6 @@ function roomCard(no, status) {
   const pendingAsk = pendingAskFor(no);
   const isPriority  = priorityFor(no);
   const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
-  const isDnd = dndFor(no);
-  const dndBanner = isDnd ? `<div class="prio-banner" style="color:var(--red-ink);background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.32)">🚫 Nie przeszkadzać — nie wchodzić bez sprawdzenia</div>` : "";
   const isLateCheckout = status==="W" && lateCheckoutFor(no);
   const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
   const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
@@ -746,7 +767,7 @@ function roomCard(no, status) {
   }
   // Kontrola dopiero po rozpoczęciu sprzątania — przed startem to jeszcze nie ma czego sprawdzać.
   const checkHtml = (status === "W" || status === "vacated") ? "" : checkBox(no);
-  buttons = dndBanner + prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkHtml;
+  buttons = prioBanner + lateBanner + notesBanner + askBanner + buttons + replyUI + checkHtml;
 
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
@@ -755,9 +776,6 @@ function roomCard(no, status) {
       ${(status==="W"||status==="vacated")?"":`<div class="room-status" style="color:${col}">${lbl}</div>`}
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
-      <button type="button" title="${isDnd?"Zdejmij: nie przeszkadzać":"Oznacz: nie przeszkadzać"}"
-              onclick="event.stopPropagation();toggleDnd('${no}')"
-              style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;margin-left:auto;opacity:${isDnd?1:.35}">🚫</button>
     </div>
     ${buttons ? `<div style="padding:0 12px 12px">${buttons}</div>` : ""}
   </div>`;
