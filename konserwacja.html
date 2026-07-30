@@ -5,6 +5,43 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <title>Usterki — Konserwacja</title>
 <script>
+/* Ekran prywatności: przy zejściu aplikacji w tło (przełącznik aplikacji,
+   powiadomienia, blokada telefonu) treść jest natychmiast zasłaniana, żeby
+   system nie mógł jej pokazać w miniaturce podglądu — przeglądarka nie ma
+   API blokującego sam zrzut ekranu, więc to jedyna realna ochrona (tak jak
+   w aplikacjach bankowych). */
+(function(){
+  var shield;
+  function ensure(){
+    if (shield || !document.body) return shield;
+    shield = document.createElement("div");
+    shield.id = "privacy-shield";
+    shield.innerHTML =
+      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">' +
+      '<path d="M12 2 4 5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10V5l-8-3Z"/><path d="M9.5 12.2 11.3 14l3.4-3.6"/></svg>' +
+      '<div>Zawartość ukryta<br/>ze względów bezpieczeństwa</div>';
+    var st = document.createElement("style");
+    st.textContent =
+      "#privacy-shield{position:fixed;inset:0;z-index:2147483647;display:none;flex-direction:column;" +
+      "align-items:center;justify-content:center;gap:14px;background:#0B0810;" +
+      "backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);color:#B065A0;" +
+      "font-family:Outfit,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;text-align:center;padding:24px}" +
+      "#privacy-shield.show{display:flex}" +
+      "#privacy-shield div{font-size:13px;font-weight:600;color:#A89DAE;max-width:220px;line-height:1.5}";
+    document.head.appendChild(st);
+    document.body.appendChild(shield);
+    return shield;
+  }
+  function show(){ var el = ensure(); if (el) el.classList.add("show"); }
+  function hide(){ if (shield) shield.classList.remove("show"); }
+  document.addEventListener("visibilitychange", function(){ if (document.hidden) show(); else hide(); });
+  window.addEventListener("blur", show);
+  window.addEventListener("focus", hide);
+  window.addEventListener("pagehide", show);
+  document.addEventListener("keyup", function(e){ if (e.key === "PrintScreen"){ show(); setTimeout(hide, 1200); } });
+})();
+</script>
+<script>
 /* Motyw ustawiany PRZED pierwszym malowaniem strony, żeby uniknąć "błysku" złego
    motywu. Domyślnie CIEMNY — praca w terenie/słabe światło, jasny to świadoma opcja
    (localStorage "kons_theme"="light"). */
@@ -17,6 +54,9 @@
 </script>
 <link rel="manifest" href="manifest-konserwacja.json"/>
 <meta name="theme-color" content="#5a1d4a"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
 /* Auto-aktualizacja: gdy na serwerze pojawi się nowa wersja strony, aplikacja
    dodana do ekranu głównego (standalone PWA) sama się przeładuje — nie trzeba
@@ -91,7 +131,7 @@ html.dark{
   --red-ink:#FF5471;
 }
 html,body{background:var(--cream);transition:background .2s ease}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh}
+body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--ink);min-height:100vh}
 .header{background:var(--plum);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--plum);position:sticky;top:0;z-index:10}
 .header h1{font-size:17px;font-weight:800;flex:1;color:#fff}
 .tabs{display:flex;gap:6px;padding:10px 12px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:60px;z-index:9;overflow-x:auto}
