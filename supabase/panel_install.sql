@@ -3925,3 +3925,14 @@ begin
     do update set enabled = excluded.enabled, updated_at = now();
 end $$;
 grant execute on function public.superadmin_set_tenant_feature(uuid, text, boolean) to authenticated;
+
+-- ─── RLS: tenant_features zapis tylko dla superadmina ─────────────────────────
+-- Domyka lukę z 0049: dotychczas KAŻDE zalogowane konto (dowolna rola) mogło
+-- pisać bezpośrednio do tenant_features przez PostgREST, z pominięciem RPC
+-- powyżej. Zawężenie lustrzane wobec tego co 0056 zrobiło dla tenants.
+drop policy if exists "tenant_features_auth_write" on public.tenant_features;
+drop policy if exists "tenant_features_auth_upd" on public.tenant_features;
+create policy "tenant_features_auth_write" on public.tenant_features for insert to authenticated
+  with check ( public.current_app_role() = 'superadmin' );
+create policy "tenant_features_auth_upd" on public.tenant_features for update to authenticated
+  using ( public.current_app_role() = 'superadmin' ) with check ( public.current_app_role() = 'superadmin' );

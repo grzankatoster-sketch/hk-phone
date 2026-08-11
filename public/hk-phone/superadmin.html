@@ -65,7 +65,13 @@ const LICENSABLE_MODULES = [
   { key: "sklepik",  label: "Sklepik" },
   { key: "zadania",  label: "Zadania" },
 ];
-const featuresCache = {}; // tenantId -> Set(feature_key) z enabled=true
+const featuresCache = {}; // tenantId -> { enabled: Set(feature_key), configured: boolean }
+// configured=false → hotel nie ma ŻADNEGO wiersza w tenant_features. Runtime
+// (src/lib/modules.js) traktuje to jako "wszystko włączone" (allow-by-default,
+// dopóki nie skonfigurowane). Siatka MUSI to odzwierciedlać, inaczej pierwsze
+// zaznaczenie/odznaczenie wygląda jak włączenie jednego modułu, a naprawdę
+// milcząco wyłącza pozostałe 8 (bo obecność choćby jednego wiersza przełącza
+// hotel na deny-by-default w runtime).
 
 function showLogin(msg) {
   app.innerHTML = `
@@ -187,7 +193,10 @@ window.toggleModules = async (tenantId) => {
   if (willOpen && !featuresCache[tenantId]) {
     const { data, error } = await sb.rpc("superadmin_list_tenant_features", { p_tenant_id: tenantId });
     if (error) { box.innerHTML = `<div class="msg err">Błąd: ${esc(error.message)}</div>`; box.style.display = "block"; return; }
-    featuresCache[tenantId] = new Set((data||[]).filter(r => r.enabled).map(r => r.feature_key));
+    featuresCache[tenantId] = {
+      enabled: new Set((data||[]).filter(r => r.enabled).map(r => r.feature_key)),
+      configured: (data||[]).length > 0,
+    };
   }
   if (willOpen) renderModules(tenantId);
   box.style.display = willOpen ? "block" : "none";
@@ -195,18 +204,48 @@ window.toggleModules = async (tenantId) => {
 
 function renderModules(tenantId) {
   const box = document.getElementById(`mod-${tenantId}`);
-  const enabledSet = featuresCache[tenantId] || new Set();
-  box.innerHTML = LICENSABLE_MODULES.map(m => `
+  const cache = featuresCache[tenantId] || { enabled: new Set(), configured: false };
+  const banner = cache.configured ? "" : `
+    <div class="msg" style="color:var(--muted);margin:0 0 8px;line-height:1.4">
+      Brak zapisanej konfiguracji — hotel działa na ustawieniach domyślnych (wszystkie moduły włączone).
+      Zmiana dowolnego przełącznika zapisze bieżący stan wszystkich modułów do bazy.
+    </div>`;
+  const rows = LICENSABLE_MODULES.map(m => {
+    const checked = cache.configured ? cache.enabled.has(m.key) : true;
+    return `
     <label style="display:flex;align-items:center;gap:7px;padding:4px 0;font-weight:600;font-size:13px">
-      <input type="checkbox" ${enabledSet.has(m.key) ? "checked" : ""} onchange="setModule('${tenantId}','${m.key}',this.checked)"/>
+      <input type="checkbox" ${checked ? "checked" : ""} onchange="setModule('${tenantId}','${m.key}',this.checked)"/>
       ${esc(m.label)}
-    </label>`).join("");
+    </label>`;
+  }).join("");
+  box.innerHTML = banner + rows;
 }
 
 window.setModule = async (tenantId, key, enabled) => {
+  const cache = featuresCache[tenantId];
+  if (!cache) return;
+  if (!cache.configured) {
+    // Pierwszy zapis dla tego hotelu: dotąd 0 wierszy = wszystko włączone
+    // (allow-by-default w runtime). Żeby nie zwęzić milcząco zbioru modułów,
+    // zapisujemy WSZYSTKIE 9 kluczy naraz — zmieniony klucz z nową wartością,
+    // resztę jako enabled=true (czyli dokładnie to co było chwilę wcześniej).
+    for (const m of LICENSABLE_MODULES) {
+      const val = m.key === key ? enabled : true;
+      const { error } = await sb.rpc("superadmin_set_tenant_feature", { p_tenant_id: tenantId, p_feature_key: m.key, p_enabled: val });
+      if (error) {
+        alert("Błąd zapisu: " + error.message);
+        renderModules(tenantId); // cache nadal configured:false — bezpieczny stan do ponowienia
+        return;
+      }
+    }
+    cache.configured = true;
+    cache.enabled = new Set(LICENSABLE_MODULES.filter(m => (m.key === key ? enabled : true)).map(m => m.key));
+    renderModules(tenantId);
+    return;
+  }
   const { error } = await sb.rpc("superadmin_set_tenant_feature", { p_tenant_id: tenantId, p_feature_key: key, p_enabled: enabled });
   if (error) { alert("Błąd zapisu: " + error.message); renderModules(tenantId); return; }
-  if (enabled) featuresCache[tenantId].add(key); else featuresCache[tenantId].delete(key);
+  if (enabled) cache.enabled.add(key); else cache.enabled.delete(key);
 };
 </script>
 </body>
