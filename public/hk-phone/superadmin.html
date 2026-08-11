@@ -205,7 +205,7 @@ function renderModules(tenantId) {
 
 window.setModule = async (tenantId, key, enabled) => {
   const { error } = await sb.rpc("superadmin_set_tenant_feature", { p_tenant_id: tenantId, p_feature_key: key, p_enabled: enabled });
-  if (error) { alert("Błąd zapisu: " + error.message); return; }
+  if (error) { alert("Błąd zapisu: " + error.message); renderModules(tenantId); return; }
   if (enabled) featuresCache[tenantId].add(key); else featuresCache[tenantId].delete(key);
 };
 </script>
