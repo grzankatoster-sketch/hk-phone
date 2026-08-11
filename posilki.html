@@ -40,6 +40,26 @@
   document.addEventListener("keyup", function(e){ if (e.key === "PrintScreen"){ show(); setTimeout(hide, 1200); } });
 })();
 </script>
+<script>
+/* Appka natywna (Capacitor): FLAG_SECURE na Androidzie realnie blokuje zrzuty
+   ekranu i nagrywanie (nie tylko podgląd w tle jak zasłona wyżej). W zwykłej
+   przeglądarce window.Capacitor nie istnieje — blok jest no-opem i powyższa
+   zasłona CSS zostaje jedyną ochroną (na iOS to i tak tylko blur w tle, nie
+   blokada samego zrzutu — Apple na to nie pozwala nikomu). */
+(function(){
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+      var ps = window.Capacitor.Plugins && window.Capacitor.Plugins.PrivacyScreen;
+      if (ps && ps.enable){
+        ps.enable({
+          android: { preventScreenshots: true, privacyModeOnActivityHidden: "splash" },
+          ios: { blurEffect: "dark" }
+        });
+      }
+    }
+  } catch (e) {}
+})();
+</script>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#5a1d4a"/>
