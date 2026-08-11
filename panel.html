@@ -40,6 +40,26 @@
   document.addEventListener("keyup", function(e){ if (e.key === "PrintScreen"){ show(); setTimeout(hide, 1200); } });
 })();
 </script>
+<script>
+/* Appka natywna (Capacitor): FLAG_SECURE na Androidzie realnie blokuje zrzuty
+   ekranu i nagrywanie (nie tylko podgląd w tle jak zasłona wyżej). W zwykłej
+   przeglądarce window.Capacitor nie istnieje — blok jest no-opem i powyższa
+   zasłona CSS zostaje jedyną ochroną (na iOS to i tak tylko blur w tle, nie
+   blokada samego zrzutu — Apple na to nie pozwala nikomu). */
+(function(){
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+      var ps = window.Capacitor.Plugins && window.Capacitor.Plugins.PrivacyScreen;
+      if (ps && ps.enable){
+        ps.enable({
+          android: { preventScreenshots: true, privacyModeOnActivityHidden: "splash" },
+          ios: { blurEffect: "dark" }
+        });
+      }
+    }
+  } catch (e) {}
+})();
+</script>
 <meta name="mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="theme-color" content="#5a1d4a"/>
@@ -411,7 +431,7 @@ html.dark .auth-logo{filter:drop-shadow(0 8px 22px rgba(0,0,0,.5))}
 .top-theme:hover{background:rgba(90,29,74,.12)}
 .notif-menu{position:absolute;top:42px;right:0;z-index:1200;width:284px;max-height:72vh;overflow:auto;background:var(--paper);border:1px solid var(--line-strong);border-radius:14px;box-shadow:0 16px 48px rgba(90,29,74,.22);padding:6px}
 .notif-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px 6px;font-weight:800;color:var(--plum);font-size:13px}
-.notif-gear{background:none;border:none;font-size:15px;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:8px;line-height:1}
+.notif-gear{background:none;border:none;display:inline-flex;align-items:center;cursor:pointer;color:var(--muted);padding:2px 7px;border-radius:8px}
 .notif-gear:hover{background:rgba(90,29,74,.06)}
 .notif-row{display:flex;align-items:center;gap:10px;width:100%;background:none;border:none;border-radius:10px;padding:9px 10px;cursor:pointer;text-align:left;font:inherit;color:var(--ink)}
 .notif-row:hover{background:rgba(90,29,74,.05)}
@@ -1417,7 +1437,30 @@ function tabsFor(role){
   return t;
 }
 
-const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const _ic = (p, sz) => `<svg viewBox="0 0 24 24"${sz?` width="${sz}" height="${sz}"`:""} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-3px">${p}</svg>`;
+// Dodatkowe ścieżki ikon (poza NAV_ICON) — do zamiany emoji rozsianych po treści
+// (dashboard Pulpitu, dzwonek, motyw, feed aktywności, ustawienia powiadomień).
+const P_WALLET  = '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>';
+const P_LISTCHK = '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>';
+const P_WRENCH  = '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>';
+const P_DOOR    = '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>';
+const P_USERS2  = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>';
+const P_MOON    = '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>';
+const P_SUN     = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>';
+const P_BELL    = '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>';
+const P_PLAY    = '<polygon points="6 3 20 12 6 21 6 3"/>';
+const P_CHECK   = '<path d="M20 6 9 17l-5-5"/>';
+const P_X       = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>';
+const P_SQCHECK = '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/>';
+const P_CLOCK   = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+const P_SPARKLE = '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>';
+const P_WARN    = '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
+const P_MAIL    = '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>';
+const P_RECEIPT = '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>';
+const P_NOTE    = '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>';
+const P_CALENDAR = '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>';
+const P_SETTINGS = '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>';
+const P_PIN     = '<line x1="12" x2="12" y1="17" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>';
 const NAV_ICON = {
   pulpit:  _ic('<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>'),
   live:    _ic('<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/>'),
@@ -1481,9 +1524,9 @@ function renderHkDashboard(role, name) {
       <main class="main">
         <header class="topbar">
           <h1 id="pageTitle">${esc(tabTitle(role,hkTab))}</h1>
-          <button class="top-theme" id="themeBtn" onclick="toggleTheme()" aria-label="Zmień motyw" title="Zmień motyw">${document.documentElement.classList.contains("dark")?"☀️":"🌙"}</button>
+          <button class="top-theme" id="themeBtn" onclick="toggleTheme()" aria-label="Zmień motyw" title="Zmień motyw">${document.documentElement.classList.contains("dark")?_ic(P_SUN,17):_ic(P_MOON,17)}</button>
           <div class="notif-wrap">
-            <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" aria-haspopup="true" aria-expanded="false" title="Powiadomienia">🔔<span id="notifBellCount" class="navbadge" hidden></span></button>
+            <button class="top-bell" onclick="notifToggle()" aria-label="Powiadomienia" aria-haspopup="true" aria-expanded="false" title="Powiadomienia">${_ic(P_BELL,17)}<span id="notifBellCount" class="navbadge" hidden></span></button>
             <div id="notifMenu" class="notif-menu" hidden></div>
           </div>
           <button class="top-out" onclick="changeMyPassword()">Hasło</button>
@@ -1872,7 +1915,7 @@ window.rosterSave = async (iso, btn) => {
 };
 
 // ── Na żywo: kto robi jaki pokój (hk_rooms dzisiaj) + feed zdarzeń (hk_logs) ──
-const FEED_ICON = { start:"▶", done:"✓", skip:"✕", vacate:"🔔", task_done:"☑", late_checkout_left:"🕐", kontrola_wykonana:"🧽", kontrola_niewykonana:"⚠" };
+const FEED_ICON = { start:_ic(P_PLAY,14), done:_ic(P_CHECK,14), skip:_ic(P_X,14), vacate:_ic(P_BELL,14), task_done:_ic(P_SQCHECK,14), late_checkout_left:_ic(P_CLOCK,14), kontrola_wykonana:_ic(P_SPARKLE,14), kontrola_niewykonana:_ic(P_WARN,14) };
 const FEED_COLOR = { start:"#2563eb", done:"#1f7a52", skip:"#b0863a", vacate:"#7a3a6a", task_done:"#1f7a52", late_checkout_left:"#2563eb", kontrola_wykonana:"#1f7a52", kontrola_niewykonana:"#b0863a" };
 function feedText(l){
   const a = l.action;
@@ -2657,12 +2700,12 @@ function startMailWatch(){
 // Stan „widziane" trzymamy w localStorage (per email+kategoria) — bez zmian schematu.
 // Pierwsze wejście NIE buczy wstecznie: nieznaną kategorię inicjalizujemy bieżącym stanem.
 const NOTIF_CATS = {
-  poczta:  { label:"Poczta",           icon:"✉",  tab:"poczta"  },
-  korekty: { label:"Korekty kasy",     icon:"🧾", tab:"kasa"    },
-  notatki: { label:"Notatki służbowe", icon:"📝", tab:"kasa"    },
-  raporty: { label:"Raporty zmian",    icon:"📋", tab:"kasa"    },
-  zadania: { label:"Zadania",          icon:"✓",  tab:"zadania" },
-  grafik:  { label:"Grafik",           icon:"📅", tab:"grafik"  },
+  poczta:  { label:"Poczta",           icon:_ic(P_MAIL,15),    tab:"poczta"  },
+  korekty: { label:"Korekty kasy",     icon:_ic(P_RECEIPT,15), tab:"kasa"    },
+  notatki: { label:"Notatki służbowe", icon:_ic(P_NOTE,15),    tab:"kasa"    },
+  raporty: { label:"Raporty zmian",    icon:_ic(P_LISTCHK,15), tab:"kasa"    },
+  zadania: { label:"Zadania",          icon:_ic(P_CHECK,15),   tab:"zadania" },
+  grafik:  { label:"Grafik",           icon:_ic(P_CALENDAR,15),tab:"grafik"  },
 };
 let NOTIF_PREFS = null;     // { cat:bool } z DB; null = jeszcze nie wczytane (traktuj jak „wszystko ON")
 let NOTIF_COUNTS = {};      // { cat:liczba nieprzeczytanych }
@@ -2752,7 +2795,7 @@ window.toggleTheme = () => {
   document.documentElement.classList.toggle("dark", dark);
   try{ localStorage.setItem("panel_theme", dark?"dark":"light"); }catch(e){}
   const b = document.getElementById("themeBtn");
-  if (b) b.textContent = dark ? "☀️" : "🌙";
+  if (b) b.innerHTML = dark ? _ic(P_SUN,17) : _ic(P_MOON,17);
 };
 
 // ── Dropdown dzwonka ──
@@ -2800,7 +2843,7 @@ function notifRenderMenu(){
     </button>`;
   }).join("");
   m.innerHTML = `<div class="notif-hd"><span>Powiadomienia</span>
-      <button class="notif-gear" onclick="notifGoSettings()" title="Ustawienia">⚙</button></div>
+      <button class="notif-gear" onclick="notifGoSettings()" title="Ustawienia">${_ic(P_SETTINGS,15)}</button></div>
     ${rows || `<div class="notif-empty">Wszystkie powiadomienia wyłączone.<br>Włącz je w ⚙ ustawieniach.</div>`}`;
 }
 window.notifOpenCat  = (c) => { NOTIF_OPEN = false; const m = document.getElementById("notifMenu"); if (m) m.hidden = true; setHkTab(NOTIF_CATS[c].tab); };
@@ -3432,22 +3475,22 @@ async function loadPulpit() {
   </div>`;
 
   const line = (l,v,c) => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span style="color:var(--muted);font-weight:600">${l}</span><span style="font-weight:800${c?`;color:${c}`:""}">${v}</span></div>`;
-  const tile = (tab,icon,title,lines) => `<div class="wcard" style="cursor:pointer;padding:16px 17px" onclick="setHkTab('${tab}')">
+  const tile = (tab,iconPath,title,lines) => `<div class="wcard" style="cursor:pointer;padding:16px 17px" onclick="setHkTab('${tab}')">
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <span style="display:flex;align-items:center;gap:11px;font-weight:800;font-size:15px"><span style="font-size:26px;line-height:1">${icon}</span>${title}</span>
+      <span style="display:flex;align-items:center;gap:11px;font-weight:800;font-size:15px"><span style="color:var(--plum)">${_ic(iconPath,24)}</span>${title}</span>
       <span style="font-size:11.5px;color:var(--plum);font-weight:800">otwórz ›</span></div>
     <div style="margin-top:11px">${lines}</div></div>`;
 
   const tiles = [
-    tile("kasa","💰","Kasa", line("Kasetka", kasaTxt, kasaLive==null?"var(--muted)":"") + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
-    tile("zadania","✅","Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
-    hasSla ? tile("sla","🛠️","Usterki / SLA", line("Otwarte", faults.length) + line("Po terminie", overdueFaults.length, overdueFaults.length?"var(--bad)":"var(--ok)") + line("Zgłoszone dziś", faultsToday)) : "",
-    tile("wyjazdy","🚪","Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
-    tile("live","👥","Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount) + (shiftSet.size ? line("Zmiany dziś", covTxt) : "")),
+    tile("kasa",P_WALLET,"Kasa", line("Kasetka", kasaTxt, kasaLive==null?"var(--muted)":"") + line("KW (zamknięcie dnia)", kwTxt, kwMissing?"var(--bad)":"var(--ok)") + line("Korekty oczekujące", pendCorr, pendCorr?"var(--gold)":"")),
+    tile("zadania",P_LISTCHK,"Zadania", line("Otwarte", openTasks.length) + line("Pilne", pilne, pilne?"var(--bad)":"")),
+    hasSla ? tile("sla",P_WRENCH,"Usterki / SLA", line("Otwarte", faults.length) + line("Po terminie", overdueFaults.length, overdueFaults.length?"var(--bad)":"var(--ok)") + line("Zgłoszone dziś", faultsToday)) : "",
+    tile("wyjazdy",P_DOOR,"Wyjazdy", line("Wyjazdy (W/WP)", fmtWP(types.w.reg, types.w.apt)) + line("Pobyty PG", types.pg) + line("Pobyty PGZ", types.pgz)),
+    tile("live",P_USERS2,"Obsada / na żywo", line("Housekeeping", hkCount) + line("Recepcja", recCount) + (shiftSet.size ? line("Zmiany dziś", covTxt) : "")),
   ].join("");
 
   const remHtml = rems.length
-    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k" style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">📌</span>${esc(r.title||"")}</span></div>`).join("")
+    ? `<div class="soon">Ogłoszenia i przypomnienia</div>` + rems.slice(0,5).map(r => `<div class="statrow" style="cursor:pointer" onclick="setHkTab('tablica')"><span class="k" style="display:flex;align-items:center;gap:9px"><span style="color:var(--plum)">${_ic(P_PIN,18)}</span>${esc(r.title||"")}</span></div>`).join("")
     : "";
 
   body(`<div class="note fullspan" style="margin-top:0;margin-bottom:12px">Pulpit dnia — ${d.dow}, ${d.txt}. Kliknij kafelek, aby przejść do sekcji.</div>`
