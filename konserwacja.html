@@ -42,6 +42,26 @@
 })();
 </script>
 <script>
+/* Appka natywna (Capacitor): FLAG_SECURE na Androidzie realnie blokuje zrzuty
+   ekranu i nagrywanie (nie tylko podgląd w tle jak zasłona wyżej). W zwykłej
+   przeglądarce window.Capacitor nie istnieje — blok jest no-opem i powyższa
+   zasłona CSS zostaje jedyną ochroną (na iOS to i tak tylko blur w tle, nie
+   blokada samego zrzutu — Apple na to nie pozwala nikomu). */
+(function(){
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+      var ps = window.Capacitor.Plugins && window.Capacitor.Plugins.PrivacyScreen;
+      if (ps && ps.enable){
+        ps.enable({
+          android: { preventScreenshots: true, privacyModeOnActivityHidden: "splash" },
+          ios: { blurEffect: "dark" }
+        });
+      }
+    }
+  } catch (e) {}
+})();
+</script>
+<script>
 /* Motyw ustawiany PRZED pierwszym malowaniem strony, żeby uniknąć "błysku" złego
    motywu. Domyślnie CIEMNY — praca w terenie/słabe światło, jasny to świadoma opcja
    (localStorage "kons_theme"="light"). */
@@ -137,7 +157,7 @@ body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 .tabs{display:flex;gap:6px;padding:10px 12px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:60px;z-index:9;overflow-x:auto}
 .tab-btn{padding:7px 14px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font-size:12px;font-weight:700;border-radius:999px;cursor:pointer;white-space:nowrap;font-family:inherit}
 .tab-btn.active{background:var(--plum);border-color:var(--plum);color:#fff}
-.tab-btn.sec{font-weight:800}
+.tab-btn.sec{font-weight:800;display:inline-flex;align-items:center;gap:5px}
 .tab-btn.sec.active{box-shadow:0 0 0 2px rgba(90,29,74,.2)}
 .tab-btn.tab-urgent{color:var(--red-ink);border-color:rgba(255,84,113,.4)}
 .tab-btn.tab-urgent.active{background:var(--red);border-color:var(--red);color:#fff}
@@ -182,12 +202,12 @@ body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 .thumb{width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--line);cursor:pointer}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
-.act{flex:1;min-width:120px;padding:10px;border-radius:9px;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+.act{flex:1;min-width:120px;padding:10px;border-radius:9px;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .act-toku{background:var(--amber);color:#fff}
 .act-done{background:var(--green);color:#fff}
 .act:active{opacity:.75}
 .empty{text-align:center;padding:50px 20px;color:var(--muted)}
-.empty-icon{font-size:42px;margin-bottom:12px}
+.empty-icon{display:flex;justify-content:center;color:var(--muted);margin-bottom:12px}
 .loading{display:flex;align-items:center;justify-content:center;height:50vh;flex-direction:column;gap:12px;color:var(--muted)}
 .spinner{width:36px;height:36px;border:3px solid var(--line);border-top-color:var(--plum);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -207,13 +227,30 @@ body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 </style>
 </head>
 <body>
-<div class="header" id="konsHeader"><h1>🔧 Usterki — Konserwacja</h1></div>
+<div class="header" id="konsHeader"><h1 style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg> Usterki — Konserwacja</h1></div>
 <div class="alertlist" id="alertlist"></div>
 <div class="tabs" id="tabs"></div>
 <div id="app"><div class="loading"><div class="spinner"></div><div>Ładowanie…</div></div></div>
 <div class="lightbox" id="lightbox" onclick="this.classList.remove('open')"><img id="lightbox-img" src=""/></div>
 
 <script>
+// Ikony — ten sam styl (outline, stroke=currentColor) co panel.html/index.html,
+// żeby ekran konserwacji nie odstawał wyglądem od reszty rodziny hk-phone.
+const _ic = (p, sz=16) => `<svg viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-3px">${p}</svg>`;
+const P_WRENCH  = '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>';
+const P_LIST    = '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/>';
+const P_USER    = '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>';
+const P_USERS   = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>';
+const P_WARN    = '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
+const P_CHECKBIG = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>';
+const P_CHECK   = '<path d="M20 6 9 17l-5-5"/>';
+const P_DOOR    = '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>';
+const P_CALENDAR = '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>';
+const P_CHAT    = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>';
+const P_CAMERA  = '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>';
+const P_MOON    = '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>';
+const P_SUN     = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>';
+
 const params = new URLSearchParams(location.search);
 // Hardcode konserwatorów — każdy ma własny kod QR: ?k=Grzegorz / ?k=Kamil
 const KONSERWATORZY = ["Grzegorz", "Kamil"];
@@ -233,12 +270,12 @@ const THEME_BTN = `<button class="theme-btn" id="themeBtn" onclick="toggleTheme(
 document.getElementById("konsHeader").innerHTML = (KNOWN
   ? `<div class="kons-av">${WHO.charAt(0).toUpperCase()}</div>`
     + `<div class="kons-head"><div class="kons-hi">Dzień dobry,</div><div class="kons-name">${WHO}</div></div>`
-  : `<h1>🔧 Usterki — Konserwacja</h1>`) + THEME_BTN;
+  : `<h1 style="display:flex;align-items:center;gap:8px">${_ic(P_WRENCH,20)} Usterki — Konserwacja</h1>`) + THEME_BTN;
 function applyTheme(t){
   document.documentElement.classList.toggle("dark", t!=="light");
   try{ localStorage.setItem("kons_theme", t); }catch(e){}
   const btn=document.getElementById("themeBtn");
-  if (btn) btn.textContent = t==="light" ? "🌙" : "☀️";
+  if (btn) btn.innerHTML = t==="light" ? _ic(P_MOON,16) : _ic(P_SUN,16);
 }
 window.toggleTheme = ()=> applyTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
 applyTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
@@ -354,14 +391,14 @@ function locOf(f){ return f.room || f.space_id || "—"; }
 // osoba, albo „👥 Wszyscy" gdy brak przypisania (kategoria spoza podziału specjalności).
 function assignChip(f){
   const who = (f.assigned_to||"").trim();
-  if (!who) return `<span class="assignee all">👥 Wszyscy</span>`;
-  if (KNOWN && who.toLowerCase()===WHO.toLowerCase()) return `<span class="assignee me">👤 Ty</span>`;
-  return `<span class="assignee">👤 ${esc(who)}</span>`;
+  if (!who) return `<span class="assignee all">${_ic(P_USERS,11)} Wszyscy</span>`;
+  if (KNOWN && who.toLowerCase()===WHO.toLowerCase()) return `<span class="assignee me">${_ic(P_USER,11)} Ty</span>`;
+  return `<span class="assignee">${_ic(P_USER,11)} ${esc(who)}</span>`;
 }
 
 function renderTabs(){
   // Górny poziom: sekcja (Usterki / Plan) z licznikiem niezakończonych.
-  const secBtns = [["faults","🔧 Usterki"],["plan","📋 Plan"]].map(([k,l])=>{
+  const secBtns = [["faults",_ic(P_WRENCH,14)+" Usterki"],["plan",_ic(P_LIST,14)+" Plan"]].map(([k,l])=>{
     const n = k==="faults"
       ? faults.filter(f=>(f.status||"open")!=="done").length
       : myOpenTaskCount();
@@ -396,7 +433,7 @@ function renderUrgentHeader(){
       document.getElementById("konsHeader").appendChild(pill);
     }
     const changed = prevUrgentCount!==null && prevUrgentCount!==n;
-    pill.textContent = `⚠ ${n} pilne`;
+    pill.innerHTML = `${_ic(P_WARN,13)} ${n} pilne`;
     if (changed){ pill.classList.remove("bump"); void pill.offsetWidth; pill.classList.add("bump"); }
   } else if (pill){
     pill.remove();
@@ -425,7 +462,7 @@ function render(){
   withFlip(() => {
     const base = filter==="all" ? faults : (filter==="urgent" ? urgentFaults() : faults.filter(f=>(f.status||"open")===filter));
     const list = sortByUrgency(base);
-    if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">✅</div><div>Brak usterek w tej kategorii.</div></div>`; return; }
+    if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">${_ic(P_CHECKBIG,32)}</div><div>Brak usterek w tej kategorii.</div></div>`; return; }
     let html = `<div class="list">`;
     list.forEach(f=>{
       const st = f.status||"open";
@@ -446,7 +483,7 @@ function render(){
       }
       html += `<div class="actions">`;
       if (st==="open")     html += `<button class="act act-toku" onclick="setStatus('${f.id}','in_progress')">▶ Zaczynam naprawę</button>`;
-      if (st!=="done")     html += `<button class="act act-done" onclick="setStatus('${f.id}','done')">✓ Naprawione — zakończ</button>`;
+      if (st!=="done")     html += `<button class="act act-done" onclick="setStatus('${f.id}','done')">${_ic(P_CHECK,13)} Naprawione — zakończ</button>`;
       html += `</div></div>`;
     });
     html += `</div>`;
@@ -482,14 +519,14 @@ function renderPlan(){
     return String(a.date).localeCompare(String(b.date));
   });
   const head = `<div style="padding:10px 12px 0"><button class="tab-btn" onclick="backPlan()">← Plany</button>
-    <div style="font-size:17px;font-weight:900;margin:8px 2px 2px">📋 ${esc(p.name)}</div></div>`;
+    <div style="font-size:17px;font-weight:900;margin:8px 2px 2px;display:flex;align-items:center;gap:7px">${_ic(P_LIST,17)} ${esc(p.name)}</div></div>`;
   const body = list.length ? `<div class="list">`+list.map(planTaskCard).join("")+`</div>`
-    : `<div class="empty"><div class="empty-icon">📋</div><div>Brak zadań w tej kategorii.</div></div>`;
+    : `<div class="empty"><div class="empty-icon">${_ic(P_LIST,32)}</div><div>Brak zadań w tej kategorii.</div></div>`;
   app.innerHTML = head + body;
 }
 function renderPlanList(){
   const list = visiblePlans();
-  if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>Brak planów dla Ciebie.</div></div>`; return; }
+  if (!list.length){ app.innerHTML = `<div class="empty"><div class="empty-icon">${_ic(P_LIST,32)}</div><div>Brak planów dla Ciebie.</div></div>`; return; }
   let html = `<div class="list">`;
   list.forEach(p=>{
     const ts = tasksOf(p.id);
@@ -513,14 +550,14 @@ function planTaskCard(t){
       <div class="desc" style="flex:1;margin:0;font-weight:700;${done?"text-decoration:line-through":""}">${esc(t.task)}</div>
       <span class="badge ${done?"done":"open"}">${done?"Wykonane":"Do zrobienia"}</span>
     </div>
-    <div class="assign-row">${t.room?`<span class="cat-chip">🚪 ${esc(t.room)}</span>`:""}<span class="cat-chip">${t.date?"📅 "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
-    ${t.response?`<div class="desc" style="background:rgba(15,122,74,.06);border:1px solid rgba(15,122,74,.25);border-radius:8px;padding:8px 10px;font-size:13px">💬 ${esc(t.response)}</div>`:""}
+    <div class="assign-row">${t.room?`<span class="cat-chip">${_ic(P_DOOR,11)} ${esc(t.room)}</span>`:""}<span class="cat-chip">${t.date?_ic(P_CALENDAR,11)+" "+esc(fmtDay(t.date)):"bez terminu"}</span></div>
+    ${t.response?`<div class="desc" style="background:rgba(15,122,74,.06);border:1px solid rgba(15,122,74,.25);border-radius:8px;padding:8px 10px;font-size:13px">${_ic(P_CHAT,13)} ${esc(t.response)}</div>`:""}
     ${photos.length?`<div class="thumbs">`+photos.map(u=>`<div class="thumb" onclick="openImg('${esc(u)}')"><img src="${esc(u)}" loading="lazy"/></div>`).join("")+`</div>`:""}
     <div class="actions">
       ${done?`<button class="act" style="background:var(--tint);color:var(--muted)" onclick="planUndo('${t.id}')">↩ Cofnij</button>`
-            :`<button class="act act-done" onclick="planDone('${t.id}')">✓ Wykonane</button>`}
-      <button class="act act-toku" onclick="planPhoto('${t.id}')">📷 Zdjęcie</button>
-      <button class="act" style="background:var(--tint);color:var(--plum)" onclick="planRespond('${t.id}')">💬 Odpowiedź</button>
+            :`<button class="act act-done" onclick="planDone('${t.id}')">${_ic(P_CHECK,13)} Wykonane</button>`}
+      <button class="act act-toku" onclick="planPhoto('${t.id}')">${_ic(P_CAMERA,13)} Zdjęcie</button>
+      <button class="act" style="background:var(--tint);color:var(--plum)" onclick="planRespond('${t.id}')">${_ic(P_CHAT,13)} Odpowiedź</button>
     </div>
   </div>`;
 }
@@ -589,7 +626,7 @@ async function refreshFaults(){
 
 async function load(){
   const { data, error } = await sb.from("faults").select("*").eq("tenant_id", TENANT_ID).order("reported_at",{ascending:false});
-  if (error){ app.innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div>Błąd: ${esc(error.message)}</div></div>`; return; }
+  if (error){ app.innerHTML = `<div class="empty"><div class="empty-icon">${_ic(P_WARN,32)}</div><div>Błąd: ${esc(error.message)}</div></div>`; return; }
   faults = data||[];
   try {
     const [{ data:mp }, { data:pl }] = await Promise.all([
