@@ -52,6 +52,20 @@ const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession
 const app = document.getElementById("app");
 const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const STATUS_LBL = { trial:"próba", active:"opłacony", suspended:"WYŁĄCZONY" };
+// Klucze modułów licencjonowalnych — lustro MODULE_REGISTRY z src/lib/modules.js
+// (tylko wpisy bez core:true). Dodałeś tam nowy moduł? Dodaj i tu.
+const LICENSABLE_MODULES = [
+  { key: "hk",       label: "Housekeeping" },
+  { key: "klucze",   label: "Klucze / karty" },
+  { key: "depozyty", label: "Depozyty" },
+  { key: "parking",  label: "Parking" },
+  { key: "goscie",   label: "Stali goście" },
+  { key: "vouchery", label: "Vouchery" },
+  { key: "opinie",   label: "Opinie gości" },
+  { key: "sklepik",  label: "Sklepik" },
+  { key: "zadania",  label: "Zadania" },
+];
+const featuresCache = {}; // tenantId -> Set(feature_key) z enabled=true
 
 function showLogin(msg) {
   app.innerHTML = `
@@ -115,7 +129,9 @@ async function loadHotele() {
         <button class="btn small" onclick="saveWa('${r.id}')">Zapisz numer</button>
         <button class="btn small ghost" onclick="setTrialEnds('${r.id}','${esc(r.name)}')">Zmień datę</button>
         <button class="btn small ${susp?'ok':'danger'}" onclick="toggleKill('${r.id}','${esc(r.name)}', ${susp})">${susp?"Włącz z powrotem":"Wyłącz teraz"}</button>
+        <button class="btn small ghost" onclick="toggleModules('${r.id}')">Moduły</button>
       </div>
+      <div class="card" id="mod-${r.id}" style="display:none;margin-top:8px"></div>
     </div>`;
   }).join("") || '<div class="empty">Brak hoteli.</div>';
   app.innerHTML = `
@@ -162,6 +178,35 @@ window.toggleKill = async (tenantId, name, isSuspended) => {
   const { error } = await sb.rpc("superadmin_set_tenant_status", { p_tenant_id: tenantId, p_status: next });
   if (error) return alert("Błąd: " + error.message);
   loadHotele();
+};
+
+window.toggleModules = async (tenantId) => {
+  const box = document.getElementById(`mod-${tenantId}`);
+  if (!box) return;
+  const willOpen = box.style.display === "none";
+  if (willOpen && !featuresCache[tenantId]) {
+    const { data, error } = await sb.rpc("superadmin_list_tenant_features", { p_tenant_id: tenantId });
+    if (error) { box.innerHTML = `<div class="msg err">Błąd: ${esc(error.message)}</div>`; box.style.display = "block"; return; }
+    featuresCache[tenantId] = new Set((data||[]).filter(r => r.enabled).map(r => r.feature_key));
+  }
+  if (willOpen) renderModules(tenantId);
+  box.style.display = willOpen ? "block" : "none";
+};
+
+function renderModules(tenantId) {
+  const box = document.getElementById(`mod-${tenantId}`);
+  const enabledSet = featuresCache[tenantId] || new Set();
+  box.innerHTML = LICENSABLE_MODULES.map(m => `
+    <label style="display:flex;align-items:center;gap:7px;padding:4px 0;font-weight:600;font-size:13px">
+      <input type="checkbox" ${enabledSet.has(m.key) ? "checked" : ""} onchange="setModule('${tenantId}','${m.key}',this.checked)"/>
+      ${esc(m.label)}
+    </label>`).join("");
+}
+
+window.setModule = async (tenantId, key, enabled) => {
+  const { error } = await sb.rpc("superadmin_set_tenant_feature", { p_tenant_id: tenantId, p_feature_key: key, p_enabled: enabled });
+  if (error) { alert("Błąd zapisu: " + error.message); return; }
+  if (enabled) featuresCache[tenantId].add(key); else featuresCache[tenantId].delete(key);
 };
 </script>
 </body>
