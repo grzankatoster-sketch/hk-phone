@@ -42,6 +42,26 @@
 })();
 </script>
 <script>
+/* Appka natywna (Capacitor): FLAG_SECURE na Androidzie realnie blokuje zrzuty
+   ekranu i nagrywanie (nie tylko podgląd w tle jak zasłona wyżej). W zwykłej
+   przeglądarce window.Capacitor nie istnieje — blok jest no-opem i powyższa
+   zasłona CSS zostaje jedyną ochroną (na iOS to i tak tylko blur w tle, nie
+   blokada samego zrzutu — Apple na to nie pozwala nikomu). */
+(function(){
+  try {
+    if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()){
+      var ps = window.Capacitor.Plugins && window.Capacitor.Plugins.PrivacyScreen;
+      if (ps && ps.enable){
+        ps.enable({
+          android: { preventScreenshots: true, privacyModeOnActivityHidden: "splash" },
+          ios: { blurEffect: "dark" }
+        });
+      }
+    }
+  } catch (e) {}
+})();
+</script>
+<script>
 /* Tylko ciemny motyw — praca w terenie/słabe światło, bez przełącznika. */
 document.documentElement.classList.add("dark");
 </script>
@@ -196,7 +216,7 @@ body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 .fault-thumbs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .fault-thumb{position:relative;width:58px;height:58px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
 .fault-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.fault-thumb button{position:absolute;top:0;right:0;background:rgba(45,20,34,.6);border:none;color:#fff;font-size:13px;font-weight:900;width:20px;height:20px;cursor:pointer;line-height:1}
+.fault-thumb button{position:absolute;top:0;right:0;display:flex;align-items:center;justify-content:center;background:rgba(45,20,34,.6);border:none;color:#fff;width:20px;height:20px;cursor:pointer}
 .fault-add{display:block;width:100%;background:var(--tint);border:1px dashed var(--line-strong);border-radius:8px;padding:11px;color:var(--muted);font-size:13px;text-align:center;cursor:pointer;margin-bottom:8px;font-weight:700}
 .fault-add input{display:none}
 .btn-fault{background:var(--red);color:#fff}
@@ -216,7 +236,7 @@ body{font-family:'Outfit',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideup{from{transform:translateY(40px);opacity:.4}to{transform:translateY(0);opacity:1}}
 .empty{text-align:center;padding:40px 20px;color:var(--muted)}
-.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-icon{display:flex;justify-content:center;color:var(--muted);margin-bottom:12px}
 /* Team tab */
 .team-section{background:var(--paper);border:1.5px solid var(--line);border-radius:12px;margin-bottom:10px;overflow:hidden}
 .team-section-title{padding:10px 14px;font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid var(--line)}
@@ -266,9 +286,29 @@ const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 
 // Ikony nawigacji — ten sam styl (outline, stroke=currentColor) co panel.html,
 // żeby telefon pracownicy HK i panel menedżera wyglądały jak jeden produkt.
-const _ic = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
-const ICON_ROOMS = _ic('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>');
-const ICON_TEAM  = _ic('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>');
+// _ic: SVG outline w stylu lucide (identyczne dane path co ikony React w panelu
+// menedżera) — sz=16 domyślnie dla ikon w linii z tekstem (przyciski/etykiety),
+// większy rozmiar podajemy jawnie przy wywołaniu (nagłówki modali, puste stany).
+const _ic = (p, sz=16) => `<svg viewBox="0 0 24 24" width="${sz}" height="${sz}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-3px">${p}</svg>`;
+const P_ROOMS   = '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>';
+const P_TEAM    = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>';
+const P_CHECK   = '<path d="M20 6 9 17l-5-5"/>';
+const P_X       = '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>';
+const P_WARN    = '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>';
+const P_ZAP     = '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>';
+const P_CLOCK   = '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>';
+const P_CHAT    = '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>';
+const P_NOTE    = '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>';
+const P_CAMERA  = '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>';
+const P_PACKAGE = '<path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>';
+const P_REFRESH = '<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>';
+const P_SEARCH  = '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>';
+const P_SPARKLE = '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>';
+const P_HAND    = '<path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>';
+const P_DOOR    = '<path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.562v16.157a1 1 0 0 1-1.242.97L5 20V5.562a2 2 0 0 1 1.515-1.94l4-1A2 2 0 0 1 13 4.561Z"/>';
+const P_PIN     = '<line x1="12" x2="12" y1="17" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>';
+const ICON_ROOMS = _ic(P_ROOMS);
+const ICON_TEAM  = _ic(P_TEAM);
 
 const COLORS  = ["#5a1d4a","#9b598a","#a07820","#784b8e","#2563eb","#0f7a4a","#c2708a","#b3261e","#7a3a6a","#476d8e"];
 const WCOLOR  = COLORS[Math.abs([...WORKER].reduce((s,c)=>s+c.charCodeAt(0),0)) % COLORS.length];
@@ -416,7 +456,7 @@ function sortRooms(rooms) {
 
 // ─── Rooms tab render ─────────────────────────────────────────────────────────
 function render() {
-  if (!WORKER) { app.innerHTML = `<div class="loading"><div class="empty-icon">⚠️</div><div>Brak parametru ?w= w URL</div></div>`; return; }
+  if (!WORKER) { app.innerHTML = `<div class="loading"><div class="empty-icon">${_ic(P_WARN,32)}</div><div>Brak parametru ?w= w URL</div></div>`; return; }
 
   const allRooms = [...myRooms, ...myPmRooms];
   // Routing: pokoje oznaczone przez recepcję jako PILNE idą na początek kolejki
@@ -465,8 +505,8 @@ function render() {
     myTasks.forEach(t => {
       html += `<div class="task-card">
         <div class="task-text">${escHtml(t.text)}</div>
-        <div class="task-meta">${t.room?"🚪 "+t.room+" · ":""}${escHtml(t.created_by)}</div>
-        <button class="btn btn-green" onclick="doneTask('${t.id}','${escHtml(t.text)}')">✓ Gotowe</button>
+        <div class="task-meta">${t.room?_ic(P_DOOR,12)+" "+t.room+" · ":""}${escHtml(t.created_by)}</div>
+        <button class="btn btn-green" onclick="doneTask('${t.id}','${escHtml(t.text)}')">${_ic(P_CHECK,14)} Gotowe</button>
       </div>`;
     });
   }
@@ -498,7 +538,7 @@ function render() {
     skipped.forEach(r => { html += roomCard(r, "pominięte"); });
   }
   if (!allRooms.length) {
-    html += `<div class="empty"><div class="empty-icon">🧹</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:var(--muted)">Poczekaj na przypisanie przez recepcję.</div></div>`;
+    html += `<div class="empty"><div class="empty-icon">${_ic(P_SPARKLE,32)}</div><div>Brak przypisanych pokoi na dziś.</div><div style="font-size:12px;margin-top:6px;color:var(--muted)">Poczekaj na przypisanie przez recepcję.</div></div>`;
   }
   html += `</div>`;
   app.innerHTML = html;
@@ -529,11 +569,11 @@ function renderTeamHtml() {
   // i może użyć sugestii zamiany (agent/AI).
   const myRemaining = [...myRooms, ...myPmRooms].filter(r => { const s=roomStates[r]; return !s||s.status==="W"; }).length;
   html += `<div class="team-section" style="padding:14px;margin-bottom:12px">
-    <div style="font-size:13px;font-weight:800;color:var(--plum-ink);margin-bottom:4px">🙋 Prośba o pokój</div>
+    <div style="font-size:13px;font-weight:800;color:var(--plum-ink);margin-bottom:4px;display:flex;align-items:center;gap:6px">${_ic(P_HAND,15)} Prośba o pokój</div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">${myRemaining>0?`Masz jeszcze ${myRemaining} do sprzątania.`:"Skończyłaś swoje pokoje?"} Poproś recepcję o kolejny pokój — zobaczą to od razu.</div>
     ${roomRequestSent
-      ? `<div style="text-align:center;padding:10px;border-radius:10px;background:rgba(15,122,74,.1);color:var(--green-ink);font-size:13px;font-weight:700">✓ Prośba wysłana do recepcji</div>`
-      : `<button class="btn btn-blue" onclick="requestRoom()" style="width:100%">🙋 Poproś o pokój</button>`}
+      ? `<div style="text-align:center;padding:10px;border-radius:10px;background:rgba(15,122,74,.1);color:var(--green-ink);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px">${_ic(P_CHECK,14)} Prośba wysłana do recepcji</div>`
+      : `<button class="btn btn-blue" onclick="requestRoom()" style="width:100%">${_ic(P_HAND,14)} Poproś o pokój</button>`}
   </div>`;
 
   // ── Activity feed ──
@@ -643,9 +683,9 @@ function checkBox(no) {
     const prevFailed = c.status === "failed"
       ? `<div style="font-size:11.5px;color:var(--red-ink);margin-bottom:6px">Wcześniej niesprawdzone: ${escHtml(c.fail_reason||"")}</div>`
       : "";
-    const doneBtn = isPm ? "" : `<button class="btn btn-green" onclick="submitCheck('${c.id}','${no}')">✓ Wszystko sprawne</button>`;
+    const doneBtn = isPm ? "" : `<button class="btn btn-green" onclick="submitCheck('${c.id}','${no}')">${_ic(P_CHECK,14)} Wszystko sprawne</button>`;
     return `<div class="check-box">
-      <div class="check-title">🧽 Kontrola: ${escHtml(task)}</div>
+      <div class="check-title" style="display:flex;align-items:center;gap:6px">${_ic(P_SPARKLE,15)} Kontrola: ${escHtml(task)}</div>
       ${prevFailed}
       <div class="check-row">
         ${doneBtn}
@@ -735,16 +775,16 @@ function roomCard(no, status) {
 
   const pendingAsk = pendingAskFor(no);
   const isPriority  = priorityFor(no);
-  const prioBanner = isPriority ? `<div class="prio-banner">⚡ Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
+  const prioBanner = isPriority ? `<div class="prio-banner">${_ic(P_ZAP,14)} Recepcja: posprzątaj w pierwszej kolejności</div>` : "";
   const isLateCheckout = status==="W" && lateCheckoutFor(no);
-  const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">🕐 Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
-  const askBanner  = pendingAsk ? `<div class="ask-banner">💬 Recepcja pyta o status — odpowiedz</div>` : "";
+  const lateBanner = isLateCheckout ? `<div class="prio-banner" style="color:var(--blue-ink);background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.32)">${_ic(P_CLOCK,14)} Late checkout — gość wyjechał, sprzątaj teraz</div>` : "";
+  const askBanner  = pendingAsk ? `<div class="ask-banner">${_ic(P_CHAT,14)} Recepcja pyta o status — odpowiedz</div>` : "";
   // Dodatkowe info od recepcji (karta gościa: prośby, "sprząta codziennie"…).
   const notes = roomNotes[no] || [];
-  const notesBanner = notes.length ? `<div class="prio-banner" style="color:var(--plum-ink);background:var(--tint);border-color:var(--line-strong);text-align:left">📝 ${notes.map(escHtml).join("<br>")}</div>` : "";
+  const notesBanner = notes.length ? `<div class="prio-banner" style="color:var(--plum-ink);background:var(--tint);border-color:var(--line-strong);text-align:left">${_ic(P_NOTE,14)} ${notes.map(escHtml).join("<br>")}</div>` : "";
   // Przycisk odpowiedzi (z gotowcami) pokazujemy TYLKO gdy recepcja faktycznie
   // pyta o status pokoju. Bez pytania pracownik widzi sam "Zaczynam sprzątać".
-  const replyBtn   = pendingAsk ? `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">💬 Odpowiedz</button>` : "";
+  const replyBtn   = pendingAsk ? `<button class="btn btn-amber" style="flex:1;min-width:0" onclick="toggleReply('${no}')">${_ic(P_CHAT,14)} Odpowiedz</button>` : "";
   const replyUI    = replyOpen === no ? renderReplyPanel(no) : "";
 
   // Pobyt (PG/PGZ, zmiana popołudniowa) — gość może nie chcieć sprzątania.
@@ -755,11 +795,11 @@ function roomCard(no, status) {
   if (status === "W" || status === "vacated") {
     buttons = `<div class="btn-row"><button class="btn btn-blue" style="flex:3" onclick="startRoom('${no}')">▶ Zaczynam sprzątać</button>${replyBtn}</div>`;
     // Dla pobytów od razu drugi przycisk obok startu (nie po rozpoczęciu sprzątania).
-    if (isPobyt) buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">✕ Goście nie chcieli</button>`;
+    if (isPobyt) buttons += `<button class="btn btn-amber" onclick="skipRoom('${no}')" style="margin-top:8px">${_ic(P_X,14)} Goście nie chcieli</button>`;
     if (status === "vacated") buttons = `<div style="background:rgba(160,120,32,.1);border:1px solid rgba(160,120,32,.3);border-radius:8px;padding:10px;font-size:12px;color:var(--amber-ink);font-weight:700;text-align:center;margin-bottom:8px">Recepcja: pokój pusty</div>` + buttons;
   } else if (status === "czyszczenie") {
     buttons = `
-      <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">📋 ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
+      <div class="btn-row" style="margin-bottom:8px"><button class="btn btn-green" style="flex:3" onclick="toggleReport('${no}')">${_ic(P_NOTE,14)} ${isOpen?"Ukryj raport":"Wypełnij raport i zatwierdź"}</button>${replyBtn}</div>
       <div id="rp-${no}" class="report-panel"></div>`;
   } else if (pendingAsk) {
     // Pokój już posprzątany/pominięty, ale recepcja pyta — pozwól odpisać
@@ -772,7 +812,7 @@ function roomCard(no, status) {
   return `<div class="room-card ${status==="czyszczenie"?"cleaning":status==="czyste"?"done":status==="pominięte"?"skipped":""}">
     <div class="room-head" onclick="toggleRoom('${no}')">
       <div class="room-no" style="color:${col}">${no}</div>
-      ${roomTypes[no]?`<div class="room-phystype${_typeChangedRooms.has(no)?" type-changed":""}">${escHtml(roomTypes[no])}${_typeChangedRooms.has(no)?" 🔄":""}</div>`:""}
+      ${roomTypes[no]?`<div class="room-phystype${_typeChangedRooms.has(no)?" type-changed":""}">${escHtml(roomTypes[no])}${_typeChangedRooms.has(no)?" "+_ic(P_REFRESH,11):""}</div>`:""}
       ${(status==="W"||status==="vacated")?"":`<div class="room-status" style="color:${col}">${lbl}</div>`}
       ${duration?`<div class="room-dur" style="color:${col}">${duration}</div>`:""}
       ${pm?`<div class="room-type">${pmt||"PM"}</div>`:""}
@@ -817,11 +857,11 @@ function renderReportPanel(room) {
       <input placeholder="Nazwa…" value="${escHtml(it.name)}" oninput="getExtra('${room}')[${idx}].name=this.value"/>
       <input class="num-input" style="flex:0 0 70px" type="number" inputmode="numeric" min="0" value="${it.count||0}"
         onfocus="this.select()" oninput="getExtra('${room}')[${idx}].count=Math.max(0,parseInt(this.value)||0)">
-      <button onclick="removeExtraRow('${room}',${idx})" style="background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--red-ink);cursor:pointer">✕</button>
+      <button onclick="removeExtraRow('${room}',${idx})" style="background:var(--tint);border:1px solid var(--line);border-radius:7px;padding:6px 10px;color:var(--red-ink);cursor:pointer;display:inline-flex">${_ic(P_X,13)}</button>
     </div>`;
   });
   html += `<button class="add-extra" onclick="addExtraRow('${room}')" style="margin-bottom:14px;width:100%">+ Dodaj pozycję</button>`;
-  html += `<button class="btn btn-green" onclick="doneRoom('${room}')">✓ Gotowe — zatwierdź raport</button>`;
+  html += `<button class="btn btn-green" onclick="doneRoom('${room}')">${_ic(P_CHECK,14)} Gotowe — zatwierdź raport</button>`;
 
   // ── Usterka (zwinięta domyślnie — kafel + rozwijana treść) ──
   html += `<button class="mini-toggle fault-toggle" onclick="toggleMiniBox(this)">
@@ -830,17 +870,17 @@ function renderReportPanel(room) {
     <svg class="chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
   </button>
   <div class="fault-box">
-    <div class="fault-title">⚠ Zgłoś usterkę</div>
+    <div class="fault-title" style="display:flex;align-items:center;gap:6px">${_ic(P_WARN,16)} Zgłoś usterkę</div>
     <textarea placeholder="Co się stało? Opisz usterkę…" oninput="getFaultDraft('${room}').desc=this.value">${escHtml(fd.desc)}</textarea>
     <div class="fault-thumbs">`;
   fd.photos.forEach((p,idx) => {
-    html += `<div class="fault-thumb"><img src="${p}"/><button onclick="removeFaultPhoto('${room}',${idx})">✕</button></div>`;
+    html += `<div class="fault-thumb"><img src="${p}"/><button onclick="removeFaultPhoto('${room}',${idx})">${_ic(P_X,12)}</button></div>`;
   });
   html += `</div>
-    <label class="fault-add">📷 Dodaj zdjęcie (aparat lub galeria)
+    <label class="fault-add">${_ic(P_CAMERA,14)} Dodaj zdjęcie (aparat lub galeria)
       <input type="file" accept="image/*" capture="environment" multiple onchange="addFaultPhotos('${room}',this)">
     </label>
-    <button class="btn btn-fault" onclick="reportFault('${room}')">⚠ Wyślij zgłoszenie usterki</button>
+    <button class="btn btn-fault" onclick="reportFault('${room}')">${_ic(P_WARN,14)} Wyślij zgłoszenie usterki</button>
   </div>`;
 
   // ── Znaleziony przedmiot (zwinięty domyślnie — kafel + rozwijana treść) ──
@@ -851,17 +891,17 @@ function renderReportPanel(room) {
     <svg class="chevron" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
   </button>
   <div class="fault-box">
-    <div class="found-title">📦 Znaleziony przedmiot</div>
+    <div class="found-title" style="display:flex;align-items:center;gap:6px">${_ic(P_PACKAGE,16)} Znaleziony przedmiot</div>
     <textarea placeholder="Co znalazłaś? Opisz przedmiot…" oninput="getFoundDraft('${room}').desc=this.value">${escHtml(found.desc)}</textarea>
     <div class="fault-thumbs">`;
   found.photos.forEach((p,idx) => {
-    html += `<div class="fault-thumb"><img src="${p}"/><button onclick="removeFoundPhoto('${room}',${idx})">✕</button></div>`;
+    html += `<div class="fault-thumb"><img src="${p}"/><button onclick="removeFoundPhoto('${room}',${idx})">${_ic(P_X,12)}</button></div>`;
   });
   html += `</div>
-    <label class="fault-add">📷 Dodaj zdjęcie (aparat lub galeria)
+    <label class="fault-add">${_ic(P_CAMERA,14)} Dodaj zdjęcie (aparat lub galeria)
       <input type="file" accept="image/*" capture="environment" multiple onchange="addFoundPhotos('${room}',this)">
     </label>
-    <button class="btn btn-found" onclick="reportFound('${room}')">📦 Zgłoś znaleziony przedmiot</button>
+    <button class="btn btn-found" onclick="reportFound('${room}')">${_ic(P_PACKAGE,14)} Zgłoś znaleziony przedmiot</button>
   </div>`;
 
   panel.innerHTML = html;
@@ -1232,7 +1272,7 @@ function showQcModal(c) {
     </label>`).join("");
   const o = _ackOverlay(`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-      <span style="font-size:22px">🔍</span>
+      <span style="color:var(--plum)">${_ic(P_SEARCH,22)}</span>
       <div style="font-size:18px;font-weight:800;color:var(--plum-ink)">Kontrola pokoju ${escHtml(c.room)}</div>
     </div>
     <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${c.cleaned_by?("Sprzątał(a): "+escHtml(c.cleaned_by)+". "):""}Sprawdź pokój i potwierdź każdy punkt.</div>
@@ -1258,7 +1298,7 @@ function showQcModal(c) {
 function showReminderModal(r) {
   const o = _ackOverlay(`
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-      <span style="font-size:22px">📌</span>
+      <span style="color:var(--plum)">${_ic(P_PIN,22)}</span>
       <div style="font-size:18px;font-weight:800;color:var(--plum-ink)">Przypomnienie</div>
     </div>
     <div style="font-size:15px;color:var(--ink);line-height:1.55;background:rgba(90,29,74,.05);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:16px">${escHtml(r.body)}</div>
