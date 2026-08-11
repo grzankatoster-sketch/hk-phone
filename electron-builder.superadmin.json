@@ -1,0 +1,38 @@
+{
+  "appId": "pl.guestsage.superadmin",
+  "productName": "GuestSage Operator",
+  "copyright": "Copyright © 2026 GuestSage. Wszelkie prawa zastrzeżone.",
+  "extraMetadata": {
+    "main": "electron-superadmin/main.cjs",
+    "name": "guestsage-superadmin"
+  },
+  "asar": true,
+  "directories": {
+    "output": "release-superadmin"
+  },
+  "files": [
+    "electron-superadmin/**/*"
+  ],
+  "win": {
+    "icon": "public/icon.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "artifactName": "GuestSage-Operator-Setup-${version}.${ext}",
+    "installerIcon": "public/icon.ico",
+    "uninstallerIcon": "public/icon.ico",
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "GuestSage Operator"
+  }
+}

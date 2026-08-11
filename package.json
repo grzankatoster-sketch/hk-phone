@@ -33,6 +33,7 @@
     "prerelease": "npm run lint && npm run migrations:check",
     "release": "npm run build && electron-builder --win --x64 --publish always",
     "dist:manager": "electron-builder --win --x64 --config electron-builder.manager.json",
+    "dist:superadmin": "electron-builder --win --x64 --config electron-builder.superadmin.json",
     "release:manager": "electron-builder --win --x64 --publish always --config electron-builder.manager.json"
   },
   "dependencies": {
